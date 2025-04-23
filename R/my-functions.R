@@ -88,6 +88,11 @@ get_A <- function(n, L = 2) {
 #' @examples
 #' @export
 equiv.cov <- function(X, Y = NULL, L = 2) {
+  if (is.null(Y)) {
+    n <- nrow(X)
+  } else {
+    n <- length(X)
+  }
   K <- matrix(c(rep(1, L), 1:L), ncol = 2)
   R <- sapply(1:L, function(k) lag_diff(X, Y, k) / (2 * n))
   B <- solve(t(K) %*% K) %*% t(K) %*% R
