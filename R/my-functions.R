@@ -108,10 +108,17 @@ equiv.corr <- function() {
 
 }
 
-ece <- function(X, Y, L = 2, normalize = FALSE) {
-  equiv.cov(X, Y, L = L)
-  equiv.cov(X, L = L)
-  equiv.cov(Y, L = L)
+ece <- function(X, L = 2, normalize = FALSE) {
+  p <- ncol(X)
+  cov_mat <- matrix(0, nrow = p, ncol = p)
+  for (i in 1:p) {
+    for (j in i:p) {
+      cov_ij <- equiv.cov(X[, c(i, j)], L = L)
+      cov_mat[i, j] <- cov_ij$cov
+      cov_mat[j, i] <- cov_ij$cov # symmetry
+    }
+  }
+  return(cov_mat)
 }
 
 ece.conf.int <- function() {
