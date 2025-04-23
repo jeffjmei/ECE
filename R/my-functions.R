@@ -104,6 +104,25 @@ equiv.cov <- function(X, Y = NULL, L = 2) {
   )
 }
 
+# equiv.cov <- function(X, Y = NULL, L = 2) {
+#  if (is.matrix(X)) {
+#    stopifnot(ncol(X) == 2)
+#    return(equiv.cov.matrix(X, L = L))
+#  } else if (is.vector(X) && is.vector(Y)) {
+#    return(equiv.cov.vector(X, Y, L = L))
+#  } else {
+#    stop("Invalid input: Provide either a matrix with 2 columns or two numeric vectors.")
+#  }
+# }
+#
+# equiv.cov.vector <- function() {
+#
+# }
+#
+# equiv.cov.matrix <- function() {
+#
+# }
+
 equiv.corr <- function() {
 
 }
@@ -117,6 +136,9 @@ ece <- function(X, L = 2, normalize = FALSE) {
       cov_mat[i, j] <- cov_ij$cov
       cov_mat[j, i] <- cov_ij$cov # symmetry
     }
+  }
+  if (normalize) {
+    return(cov2cor(cov_mat))
   }
   return(cov_mat)
 }
