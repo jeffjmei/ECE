@@ -36,9 +36,15 @@ mod_idx <- function(i, n) {
 rotate <- function(X, k = 1) {
   if (is.matrix(X)) {
     n <- nrow(X)
+    if (k %% n == 0) {
+      return(X)
+    }
     return(X[c((k + 1):n, 1:k), ])
   } else {
     n <- length(X)
+    if (k %% n == 0) {
+      return(X)
+    }
     return(X[c((k + 1):n, 1:k)])
   }
 }
