@@ -17,18 +17,21 @@ mod_idx <- function(i, n) {
   (i - 1) %% n + 1
 }
 
-#' rotate
+#' Rotate Elements to the Right
 #'
-#' rotates elements to the right by k
+#' Rotates a vector or matrix downwards (i.e., toward the end) by `k` positions. For a vector, the last `k` elements move to the front. For a matrix, rows are rotated downward.
 #'
-#' @param X data sequence
-#' @return rotated data sequence
+#' @param X A numeric vector or matrix.
+#' @param k An integer specifying how many positions to rotate. Defaults to 1.
+#'
+#' @return A rotated vector or matrix of the same dimensions as `X`.
+#'
 #' @examples
-#' X <- 1:3
-#' rotate(X, k = 1) # 3 1 2
+#' rotate(1:3, k = 1) # returns 3 1 2
 #'
 #' X <- matrix(c(1:3, 1:3), ncol = 2)
-#' rotate(X, k = 1)
+#' rotate(X, k = 1) # rotates rows downward
+#'
 #' @export
 rotate <- function(X, k = 1) {
   if (is.matrix(X)) {
