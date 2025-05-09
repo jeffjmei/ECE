@@ -16,3 +16,14 @@ segmented_mean <- function(data, change_points) {
 
   return(seg_mean)
 }
+
+# TODO: add roxygen docstring
+get_cp <- function(x, method = "PELT", penalty = "BIC", minseglen = 2) {
+  cp <- cpt.mean(
+    x,
+    method = "PELT",
+    penalty = "BIC",
+    minseglen = 2
+  )
+  return(cp)
+}
