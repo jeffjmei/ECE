@@ -153,8 +153,8 @@ scenario10 <- function(s12 = 0, n = 100, signal = 1) {
     s12, 1
   ), byrow = T, ncol = 2)
 
-  h1 <- rep(c(1, 1, 1, 1, -1, -1, -1, -1), n / 8)
-  h2 <- rep(c(1, 1, 1, 1, -1, -1, -1, -1), n / 8)
+  h1 <- rep(c(1, 1, -1, -1), n / 4)
+  h2 <- rep(c(1, 1, -1, -1), n / 4)
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
