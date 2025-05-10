@@ -33,3 +33,21 @@ test_that("equiv.cov accepts matrix inputs", {
 test_that("equiv.cov errors with mismatched X and Y", {
   expect_error(equiv.cov(1:10, 1:5), "X and Y must be the same length")
 })
+
+test_that("equiv.cov() matches manual matrix for multiple s", {
+  # exclude misspecified cases
+  misspecified_scenarios <- c(8, 9)
+  scenario_list <- setdiff(1:11, misspecified_scenarios)
+  for (s in 1:7) {
+    params <- scenario(s)
+    n <- params$n
+    h <- params$h
+    hx <- h[, 1]
+    hy <- h[, 2]
+
+    expect_equal(
+      equiv.cov(hx, hy, return.norm = TRUE)$norm,
+      lag_diff(hx, hy) / n
+    )
+  }
+})

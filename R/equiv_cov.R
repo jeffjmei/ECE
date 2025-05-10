@@ -33,7 +33,7 @@ equiv.cov <- function(X, Y = NULL, L = 2, return.norm = FALSE) {
     R <- sapply(1:L, function(k) lag_diff(x1, x2, k) / (2 * n))
     B <- solve(t(K) %*% K) %*% t(K) %*% R
     if (return.norm) {
-      list(cov = as.numeric(B[1]), norm = as.numeric(B[2]))
+      list(cov = as.numeric(B[1]), norm = as.numeric(2 * B[2]))
     } else {
       as.numeric(B[1])
     }
