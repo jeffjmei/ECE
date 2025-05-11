@@ -185,34 +185,47 @@ scenario11 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   return(obj)
 }
 
-scenario <- function(scenario_num = 1, s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario <- function(
+    scenario_num = 1,
+    sxy = 0,
+    sx = 1,
+    sy = 1,
+    n = 100,
+    signal = 1,
+    seed = 321) {
   # used to select simulation scenario
 
   if (scenario_num == 1) {
-    params <- scenario1(s12, n, signal)
+    params <- scenario1(sxy, n, signal)
   } else if (scenario_num == 2) {
-    params <- scenario2(s12, n, signal)
+    params <- scenario2(sxy, n, signal)
   } else if (scenario_num == 3) {
-    params <- scenario3(s12, n, signal)
+    params <- scenario3(sxy, n, signal)
   } else if (scenario_num == 4) {
-    params <- scenario4(s12, n, signal)
+    params <- scenario4(sxy, n, signal)
   } else if (scenario_num == 5) {
-    params <- scenario5(s12, n, signal)
+    params <- scenario5(sxy, n, signal)
   } else if (scenario_num == 6) {
-    params <- scenario6(s12, n, signal)
+    params <- scenario6(sxy, n, signal)
   } else if (scenario_num == 7) {
-    params <- scenario7(s12, n, signal)
+    params <- scenario7(sxy, n, signal)
   } else if (scenario_num == 8) {
-    params <- scenario8(s12, n, signal)
+    params <- scenario8(sxy, n, signal)
   } else if (scenario_num == 9) {
-    params <- scenario9(s12, n, signal)
+    params <- scenario9(sxy, n, signal)
   } else if (scenario_num == 10) {
-    params <- scenario10(s12, n, signal)
+    params <- scenario10(sxy, n, signal)
   } else if (scenario_num == 11) {
-    params <- scenario11(s12, n, signal, seed)
+    params <- scenario11(sxy, n, signal, seed)
   } else {
     stop("No such scenario. Try again.")
   }
+  # HACK: should probably change individual scenario parameters
+  # - e.g. scenario1(sxy, sx, sy, n, signal)
+  params$S[1, 1] <- sx
+  params$S[1, 2] <- sxy
+  params$S[2, 1] <- sxy
+  params$S[2, 2] <- sy
   return(params)
 }
 
