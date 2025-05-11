@@ -75,6 +75,7 @@ test_that("covariance matrix is correct", {
   expect_equal(sy^2, params$S[2, 2], tol = 0.05)
   expect_equal(sxy, params$S[1, 2], tol = 0.05)
 })
+
 # TEST: return.norm yields expected value (no noise)
 n_scenarios <- 11
 misspecified_scenarios <- c(8, 9)
@@ -95,5 +96,47 @@ for (scenario_num in scenario_list) {
 
   test_that(sprintf("ECE slope is wxy (Scenario %d) without noise", scenario_num), {
     expect_equal(w_mat_est, w_mat_exp)
+  })
+}
+
+# TEST: return.norm yields expected value (with noise)
+n_scenarios <- 11
+misspecified_scenarios <- c(8, 9)
+scenario_list <- setdiff(1:n_scenarios, misspecified_scenarios)
+for (scenario_num in scenario_list) {
+  params <- scenario(scenario_num, sxy = 0, sx = sqrt(3), sy = sqrt(5))
+  h <- params$h
+  n <- params$n
+
+  # expected value
+  wx <- lag_diff(h[, 1]) / n
+  wy <- lag_diff(h[, 2]) / n
+  wxy <- lag_diff(h[, 1], h[, 2]) / n
+  w_mat_exp <- matrix(c(wx, wxy, wxy, wy), nrow = 2)
+
+  # estimated value
+  w_mat_sims <- map(1:10000, ~ {
+    X <- generate_data(params)
+    w_mat_est <- equiv.cov(X, return.norm = TRUE)$norm
+    return(
+      list(
+        wx = w_mat_est[1, 1],
+        wy = w_mat_est[2, 2],
+        wxy = w_mat_est[1, 2]
+      )
+    )
+  })
+  wx_est <- map_dbl(w_mat_sims, "wx")
+  wy_est <- map_dbl(w_mat_sims, "wy")
+  wxy_est <- map_dbl(w_mat_sims, "wxy")
+
+  # check if values are within confidence bound
+  wx_ci <- t.test(wx_est, conf.level = 0.99)$conf.int
+  wy_ci <- t.test(wy_est, conf.level = 0.99)$conf.int
+  wxy_ci <- t.test(wxy_est, conf.level = 0.99)$conf.int
+  test_that(sprintf("ECE slope is wxy (Scenario %d) with noise", scenario_num), {
+    expect_true((wx_ci[1] < wx) & (wx < wx_ci[2]))
+    expect_true((wy_ci[1] < wy) & (wy < wy_ci[2]))
+    expect_true((wxy_ci[1] < wxy) & (wxy < wxy_ci[2]))
   })
 }
