@@ -51,3 +51,27 @@ test_that("equiv.cov outputs correct norms", {
     )
   }
 })
+
+test_that("covariance matrix is correct", {
+  params <- scenario(11, s12 = 0, n = 1000)
+  params$S[1, 1] <- 3
+  params$S[2, 2] <- 5
+  S <- params$S
+  var_sims <- map(1:1000, ~ {
+    X <- generate_data(params)
+    S_hat <- equiv.cov(X)
+    return(
+      list(
+        sx = sqrt(S_hat[1, 1]),
+        sy = sqrt(S_hat[2, 2]),
+        sxy = S_hat[1, 2]
+      )
+    )
+  })
+  sx <- map_dbl(var_sims, "sx") %>% mean()
+  sy <- map_dbl(var_sims, "sy") %>% mean()
+  sxy <- map_dbl(var_sims, "sxy") %>% mean()
+  expect_equal(sx^2, params$S[1, 1], tol = 0.05)
+  expect_equal(sy^2, params$S[2, 2], tol = 0.05)
+  expect_equal(sxy, params$S[1, 2], tol = 0.05)
+})
