@@ -39,7 +39,7 @@ test_that("equiv.cov outputs correct norms", {
   n_scenarios <- 11
   misspecified_scenarios <- c(8, 9)
   scenario_list <- setdiff(1:n_scenarios, misspecified_scenarios)
-  for (s in 10) {
+  for (s in scenario_list) {
     # set parameters
     params <- scenario(s)
     n <- params$n
