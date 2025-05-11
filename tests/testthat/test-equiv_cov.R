@@ -75,3 +75,25 @@ test_that("covariance matrix is correct", {
   expect_equal(sy^2, params$S[2, 2], tol = 0.05)
   expect_equal(sxy, params$S[1, 2], tol = 0.05)
 })
+# TEST: return.norm yields expected value (no noise)
+n_scenarios <- 11
+misspecified_scenarios <- c(8, 9)
+scenario_list <- setdiff(1:n_scenarios, misspecified_scenarios)
+for (scenario_num in scenario_list) {
+  params <- scenario(scenario_num)
+  h <- params$h
+  n <- params$n
+
+  # estimated value
+  w_mat_est <- equiv.cov(h, return.norm = TRUE)$norm
+
+  # expected value
+  wx <- lag_diff(h[, 1]) / n
+  wy <- lag_diff(h[, 2]) / n
+  wxy <- lag_diff(h[, 1], h[, 2]) / n
+  w_mat_exp <- matrix(c(wx, wxy, wxy, wy), nrow = 2)
+
+  test_that(sprintf("ECE slope is wxy (Scenario %d) without noise", scenario_num), {
+    expect_equal(w_mat_est, w_mat_exp)
+  })
+}
