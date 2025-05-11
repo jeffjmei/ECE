@@ -222,10 +222,10 @@ scenario <- function(
   }
   # HACK: should probably change individual scenario parameters
   # - e.g. scenario1(sxy, sx, sy, n, signal)
-  params$S[1, 1] <- sx
+  params$S[1, 1] <- sx^2
   params$S[1, 2] <- sxy
   params$S[2, 1] <- sxy
-  params$S[2, 2] <- sy
+  params$S[2, 2] <- sy^2
   return(params)
 }
 
