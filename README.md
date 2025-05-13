@@ -10,7 +10,7 @@ Let $\varepsilon \sim N(0, S)$ where:
 
 $$
 S = \begin{bmatrix}
-\sigma_x^2 & \sigma_{xy} \\\\
+\sigma_x^2 & \sigma_{xy} \\
 \sigma_{xy} & \sigma_y^2
 \end{bmatrix}
 $$
@@ -21,6 +21,7 @@ Let $\theta_x$ and $\theta_y$ be $n$-length **piecewise constant** vectors. The 
 - $Y = \theta_y + \varepsilon_y$
 
 We estimate the **correlation**:
+
 $$
 \rho = \frac{\sigma_{xy}}{\sigma_x \sigma_y}
 $$
@@ -31,12 +32,11 @@ $$
 H_0: \rho = 0 \quad \text{vs.} \quad H_1: \rho \ne 0
 $$
 
-## ✨ Features
+## Features
 
-- ✅ Unbiased estimation of $\sigma_{xy}$ under structural change
-- ✅ Hypothesis testing with p-values
-- ✅ Works with simulated scenarios or user-supplied data
-- ✅ Fast, vectorized implementation in R
+- Unbiased estimation of $\sigma_{xy}$ under structural change
+- Hypothesis testing with p-values
+- Works with simulated scenarios or user-supplied data
 
 ## Demo
 ```R
