@@ -21,7 +21,7 @@ test_that("equiv.cov accepts matrix inputs", {
   n <- 10
   S_ind <- matrix(c(2, 0, 0, 3), nrow = 2)
   S_dep <- matrix(c(2, 1, 1, 3), nrow = 2)
-  e <- mvrnorm(n = n, mu = c(0, 0), Sigma = S_ind)
+  e <- MASS::mvrnorm(n = n, mu = c(0, 0), Sigma = S_ind)
   hx <- c(rep(-1, n / 2), rep(1, n / 2))
   hy <- c(rep(1, n / 2), rep(-1, n / 2))
   X <- hx + e[, 1]
