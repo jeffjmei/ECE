@@ -21,6 +21,7 @@ test_that("estimator is unbiased under null", {
   params <- scenario(10, n = 1000, sxy = 0, sx = 2, sy = 3)
 
   # simulate ece correlation estimate
+  set.seed(123)
   rxy_est_sim <- map_dbl(1:1000, ~ {
     X <- generate_data(params)
     ece.test(X[, 1], X[, 2])$estimate
@@ -35,6 +36,7 @@ test_that("estimator is unbiased under null", {
 test_that("type I error rate is controlled", {
   params <- scenario(10, n = 1000, sxy = 0, sx = 2, sy = 3)
 
+  set.seed(123)
   pvals <- map_dbl(1:1000, ~ {
     X <- generate_data(params)
     ece.test(X[, 1], X[, 2])$p.value
