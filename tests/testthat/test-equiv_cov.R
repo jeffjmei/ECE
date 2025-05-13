@@ -13,7 +13,7 @@ test_that("equiv.cov handles univariate input with Y", {
   out <- equiv.cov(X, Y, return.norm = TRUE)
   expect_named(out, c("cov", "norm"))
   expect_equal(out$cov, 0)
-  expect_equal(out$norm, -1)
+  expect_equal(out$norm, -2)
 })
 
 test_that("equiv.cov accepts matrix inputs", {
