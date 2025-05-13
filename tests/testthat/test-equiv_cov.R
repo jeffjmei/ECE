@@ -104,39 +104,56 @@ n_scenarios <- 11
 misspecified_scenarios <- c(8, 9)
 scenario_list <- setdiff(1:n_scenarios, misspecified_scenarios)
 for (scenario_num in scenario_list) {
-  params <- scenario(scenario_num, sxy = 0, sx = sqrt(3), sy = sqrt(5), n = 1000)
-  h <- params$h
-  n <- params$n
-
-  # expected value
-  wx <- lag_diff(h[, 1]) / n
-  wy <- lag_diff(h[, 2]) / n
-  wxy <- lag_diff(h[, 1], h[, 2]) / n
-  w_mat_exp <- matrix(c(wx, wxy, wxy, wy), nrow = 2)
-
-  # estimated value
-  w_mat_sims <- map(1:10000, ~ {
-    X <- generate_data(params)
-    w_mat_est <- equiv.cov(X, return.norm = TRUE)$norm
+  params <- scenario(scenario_num, sxy = 0, sx = 1, sy = 1, n = 1000)
+  sim_results <- map(1:1000, ~ {
+    sim_results_inner <- map(1:10, ~ {
+      X <- generate_data(params)
+      ece_obj <- equiv.cov(X, return.norm = TRUE)
+      return(
+        list(
+          wx = ece_obj$norm[1, 1],
+          wy = ece_obj$norm[2, 2],
+          wxy = ece_obj$norm[1, 2],
+          rho = cov2cor(ece_obj$cov)[1, 2]
+        )
+      )
+    })
     return(
       list(
-        wx = w_mat_est[1, 1],
-        wy = w_mat_est[2, 2],
-        wxy = w_mat_est[1, 2]
+        wx = map_dbl(sim_results_inner, "wx") %>% mean(),
+        wy = map_dbl(sim_results_inner, "wy") %>% mean(),
+        wxy = map_dbl(sim_results_inner, "wxy") %>% mean(),
+        rho = map_dbl(sim_results_inner, "rho") %>% var()
       )
     )
   })
-  wx_est <- map_dbl(w_mat_sims, "wx")
-  wy_est <- map_dbl(w_mat_sims, "wy")
-  wxy_est <- map_dbl(w_mat_sims, "wxy")
 
-  # check if values are within confidence bound
-  wx_ci <- t.test(wx_est, conf.level = 0.99)$conf.int
-  wy_ci <- t.test(wy_est, conf.level = 0.99)$conf.int
-  wxy_ci <- t.test(wxy_est, conf.level = 0.99)$conf.int
-  test_that(sprintf("ECE slope is wxy (Scenario %d) with noise", scenario_num), {
-    expect_true((wx_ci[1] < wx) & (wx < wx_ci[2]))
-    expect_true((wy_ci[1] < wy) & (wy < wy_ci[2]))
-    expect_true((wxy_ci[1] < wxy) & (wxy < wxy_ci[2]))
+  # save simulations
+  wx_sims <- map_dbl(sim_results, "wx")
+  wy_sims <- map_dbl(sim_results, "wy")
+  wxy_sims <- map_dbl(sim_results, "wxy")
+  rho_sims <- map_dbl(sim_results, "rho")
+
+  # get confidence intervals
+  wx_ci <- t.test(wx_sims, conf.level = 0.99)$conf.int
+  wy_ci <- t.test(wy_sims, conf.level = 0.99)$conf.int
+  wxy_ci <- t.test(wxy_sims, conf.level = 0.99)$conf.int
+  rho_ci <- t.test(rho_sims, conf.level = 0.99)$conf.int
+
+  # get expected values
+  ece_obj <- equiv.cov(params$h, return.norm = TRUE)
+  wx_true <- ece_obj$norm[1, 1]
+  wy_true <- ece_obj$norm[2, 2]
+  wxy_true <- ece_obj$norm[1, 2]
+  rho_true <- ece.cor.asymp(params)
+
+  # Test
+  test_that("norms are properly estimated (with noise)", {
+    expect_true((wx_ci[1] < wx_true) & (wx_true < wx_ci[2]))
+    expect_true((wy_ci[1] < wy_true) & (wy_true < wy_ci[2]))
+    expect_true((wxy_ci[1] < wxy_true) & (wxy_true < wxy_ci[2]))
+  })
+  test_that("variance of correlation estimate converges to asymptotic estimate", {
+    expect_true((rho_ci[1] < rho_true) & (rho_true < rho_ci[2]))
   })
 }
