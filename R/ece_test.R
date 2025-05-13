@@ -1,6 +1,6 @@
 # TODO: add docstring
 ece.test <- function(X, Y, L = 2, alpha = 0.05) {
-  # TEST: len(X) != len(Y)
+  if (length(X) != length(Y)) stop("X and Y must have same length")
 
   # extract variables
   n <- length(X)
@@ -14,7 +14,7 @@ ece.test <- function(X, Y, L = 2, alpha = 0.05) {
   wxy <- ece_obj$norm[1, 2]
 
   # asymptotic variance (rho=0)
-  k22 <- 1 # TODO: true for gaussian
+  k22 <- 1 # TODO: true for gaussian (rho=0)
   rxy <- 0 # TODO: generalize beyond null hypothesis
   v <- (1 / n) * (
     k22 +
