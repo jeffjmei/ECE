@@ -17,12 +17,14 @@
 rotate <- function(X, k = 1) {
   if (is.matrix(X)) {
     n <- nrow(X)
+    k <- k %% n
     if (k %% n == 0) {
       return(X)
     }
     return(X[c((k + 1):n, 1:k), ])
   } else {
     n <- length(X)
+    k <- k %% n
     if (k %% n == 0) {
       return(X)
     }
