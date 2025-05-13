@@ -3,7 +3,7 @@ test_that("rotate handles vector input", {
   expect_equal(rotate(1:5, k = 2), c(3:5, 1:2))
   expect_equal(rotate(1:5, k = 5), 1:5)
   expect_equal(rotate(1:5, k = 0), 1:5)
-  expect_equal(rotate(1:5, k = 6), rotate(1:5, k = k %% 5)) # FIX: for k > n
+  expect_equal(rotate(1:5, k = 6), rotate(1:5, k = 6 %% 5))
 })
 
 test_that("rotate handles matrix input", {
@@ -12,5 +12,5 @@ test_that("rotate handles matrix input", {
   expect_equal(rotate(X, k = 2), matrix(c(3, 1, 2, 6, 4, 5), ncol = 2))
   expect_equal(rotate(X, k = 3), X)
   expect_equal(rotate(X, k = 0), X)
-  expect_equal(rotate(X, k = 4), rotate(X, k = k %% 3)) # FIX: for k > n
+  expect_equal(rotate(X, k = 4), rotate(X, k = 4 %% 3))
 })
