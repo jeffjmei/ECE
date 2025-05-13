@@ -53,7 +53,7 @@ test_that("equiv.cov outputs correct norms", {
 })
 
 test_that("covariance matrix is correct", {
-  params <- scenario(11, s12 = 0, n = 1000)
+  params <- scenario(11, sxy = 0, n = 1000)
   params$S[1, 1] <- 3
   params$S[2, 2] <- 5
   S <- params$S
