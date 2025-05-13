@@ -16,3 +16,18 @@ test_that("p-value and confidence interval align across simulations", {
   # Fail if too many inconsistencies (allowing for small randomness margin)
   expect_equal(mean(results), 1)
 })
+
+test_that("estimator is unbiased under null", {
+  params <- scenario(10, n = 1000, sxy = 0, sx = 2, sy = 3)
+
+  # simulate ece correlation estimate
+  rxy_est_sim <- map_dbl(1:1000, ~ {
+    X <- generate_data(params)
+    ece.test(X[, 1], X[, 2])$estimate
+  })
+
+  # test if true correlation is within ece.ci
+  ci <- t.test(rxy_est_sim, conf.level = 0.99)$conf.int
+  rxy <- params$S[1, 2] / sqrt(params$S[1, 1] * params$S[2, 2])
+  expect_true((ci[1] < rxy) & (rxy < ci[2]))
+})
