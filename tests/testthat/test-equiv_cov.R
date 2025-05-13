@@ -81,7 +81,7 @@ n_scenarios <- 11
 misspecified_scenarios <- c(8, 9)
 scenario_list <- setdiff(1:n_scenarios, misspecified_scenarios)
 for (scenario_num in scenario_list) {
-  params <- scenario(scenario_num)
+  params <- scenario(scenario_num, sxy = 0, sx = 1, sy = 1, n = 1000)
   h <- params$h
   n <- params$n
 
@@ -104,7 +104,7 @@ n_scenarios <- 11
 misspecified_scenarios <- c(8, 9)
 scenario_list <- setdiff(1:n_scenarios, misspecified_scenarios)
 for (scenario_num in scenario_list) {
-  params <- scenario(scenario_num, sxy = 0, sx = sqrt(3), sy = sqrt(5))
+  params <- scenario(scenario_num, sxy = 0, sx = sqrt(3), sy = sqrt(5), n = 1000)
   h <- params$h
   n <- params$n
 
