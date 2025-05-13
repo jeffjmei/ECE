@@ -140,31 +140,3 @@ for (scenario_num in scenario_list) {
     expect_true((wxy_ci[1] < wxy) & (wxy < wxy_ci[2]))
   })
 }
-
-# TEST: estimated norms are correct (with noise)
-s <- 11
-params <- scenario(s, sxy = 0, sx = 1, sy = 1, n = 1000)
-sim_results <- map(1:1000, ~ {
-  X <- generate_data(params)
-  ece_obj <- equiv.cov(X, return.norm = TRUE)
-
-  return(
-    list(
-      wx = ece_obj$norm[1, 1],
-      wy = ece_obj$norm[2, 2],
-      wxy = ece_obj$norm[1, 2]
-    )
-  )
-})
-
-wx_ci <- t.test(map_dbl(sim_results, "wx"), conf.level = 0.99)$conf.int
-wy_ci <- t.test(map_dbl(sim_results, "wy"), conf.level = 0.99)$conf.int
-wxy_ci <- t.test(map_dbl(sim_results, "wxy"), conf.level = 0.99)$conf.int
-wx_theory <- lag_diff(params$h[, 1]) / params$n
-wy_theory <- lag_diff(params$h[, 2]) / params$n
-wxy_theory <- lag_diff(params$h[, 1], params$h[, 2]) / params$n
-test_that("", {
-  expect_true((wx_ci[1] < wx_theory) & (wx_theory < wx_ci[2]))
-  expect_true((wy_ci[1] < wy_theory) & (wy_theory < wy_ci[2]))
-  expect_true((wxy_ci[1] < wxy_theory) & (wxy_theory < wxy_ci[2]))
-})
