@@ -12,8 +12,7 @@ test_that("lag_diff returns lagged cross-product when Y is provided", {
 
 test_that("edge cases", {
   X <- c(-1, -1, 1, 1)
-  expect_equal(lag_diff(X, k = 2), -1) # FIX: k > n/2:
-  expect_equal(lag_diff(X, k = 2), -1) # FIX: k < 0:
+  expect_error(lag_diff(X, k = -1)) # FIX: 0 < k < n/2:
 })
 
 # TODO: matrix input
