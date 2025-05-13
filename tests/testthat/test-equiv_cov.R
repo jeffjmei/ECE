@@ -17,7 +17,6 @@ test_that("equiv.cov handles univariate input with Y", {
 })
 
 test_that("equiv.cov accepts matrix inputs", {
-  # FIX: test value
   n <- 10
   S_ind <- matrix(c(2, 0, 0, 3), nrow = 2)
   S_dep <- matrix(c(2, 1, 1, 3), nrow = 2)
@@ -53,10 +52,9 @@ test_that("equiv.cov outputs correct norms", {
 })
 
 test_that("covariance matrix is correct", {
-  params <- scenario(11, sxy = 0, n = 1000)
-  params$S[1, 1] <- 3
-  params$S[2, 2] <- 5
+  params <- scenario(11, sxy = 0, sx = sqrt(3), sy = sqrt(5), n = 1000)
   S <- params$S
+  set.seed(123)
   var_sims <- map(1:1000, ~ {
     X <- generate_data(params)
     S_hat <- equiv.cov(X)
@@ -68,12 +66,21 @@ test_that("covariance matrix is correct", {
       )
     )
   })
-  sx <- map_dbl(var_sims, "sx") %>% mean()
-  sy <- map_dbl(var_sims, "sy") %>% mean()
-  sxy <- map_dbl(var_sims, "sxy") %>% mean()
-  expect_equal(sx^2, params$S[1, 1], tol = 0.05)
-  expect_equal(sy^2, params$S[2, 2], tol = 0.05)
-  expect_equal(sxy, params$S[1, 2], tol = 0.05)
+  sx_sim <- map_dbl(var_sims, "sx")
+  sy_sim <- map_dbl(var_sims, "sy")
+  sxy_sim <- map_dbl(var_sims, "sxy")
+
+  sx_ci <- t.test(sx_sim, conf.level = 0.99)$conf.int
+  sy_ci <- t.test(sy_sim, conf.level = 0.99)$conf.int
+  sxy_ci <- t.test(sxy_sim, conf.level = 0.99)$conf.int
+
+  sx <- sqrt(params$S[1, 1])
+  sy <- sqrt(params$S[2, 2])
+  sxy <- params$S[1, 2]
+
+  expect_true((sx_ci[1] < sx) & (sx < sx_ci[2]))
+  expect_true((sy_ci[1] < sy) & (sy < sy_ci[2]))
+  expect_true((sxy_ci[1] < sxy) & (sxy < sxy_ci[2]))
 })
 
 # TEST: return.norm yields expected value (no noise)
