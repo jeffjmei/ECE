@@ -74,3 +74,43 @@ abline(v = rxy, lwd = 2, col = "red")
 # PLOT: power-curves
 # PLOT: misspecified model
 ```
+
+
+# Power Analysis
+
+```{R}
+# POWER ANALYSIS
+power_sim <- function(params, rxy_seq = seq(0, 1, 0.05), N_sim = 1000) {
+  power_tbl <- rep(NA, length(rxy_seq))
+  S_rxy <- params$S
+
+  # iterate through correlation sequence
+  for (i in 1:length(rxy_seq)) {
+    # simulate p-values
+    S_rxy[1, 2] <- S_rxy[2, 1] <- rxy_seq[i] * sqrt(S_rxy[1, 1] * S_rxy[2, 2])
+    pval_sims <- map_dbl(1:N_sim, ~ {
+      X <- MASS::mvrnorm(params$n, mu = c(0, 0), Sigma = S_rxy)
+      ece.test(X[, 1], X[, 2])$p.value
+    })
+    p_reject <- mean(pval_sims < 0.05)
+
+    # Save
+    power_tbl[i] <- p_reject
+  }
+  return(power_tbl)
+}
+```
+
+```{R}
+# Run Power Analysis
+params <- scenario(
+  scenario_num = 2,
+  sx = sqrt(2),
+  sy = sqrt(5),
+  n = 1000
+)
+
+# Plot Power
+power_tbl <- power_sim(params, N_sim = 100)
+plot(power_tbl, type = "l")
+```
