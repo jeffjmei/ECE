@@ -27,3 +27,8 @@ get_cp <- function(x, method = "PELT", penalty = "BIC", minseglen = 2) {
   )
   return(cp)
 }
+
+segment_mean <- function(x, method = "PELT", penalty = "BIC", minseglen = 2) {
+  cp <- cpts(get_cp(x, method, penalty, minseglen))
+  segmented_mean(x, cp)
+}
