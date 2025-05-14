@@ -1,0 +1,50 @@
+---
+title: "ece-asymptotics"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{ece-asymptotics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{R setup, message=FALSE, warning=FALSE}
+# Load Package
+devtools::load_all("~/Documents/Research/Code/ECE")
+```
+
+```{R}
+# Set Parameters
+scenario_num <- 2
+n <- 1000
+sxy <- 0
+sx <- sqrt(2)
+sy <- sqrt(5)
+rxy <- sxy / (sx * sy)
+params <- scenario(
+  scenario_num,
+  sxy = sxy,
+  sx = sx,
+  sy = sy,
+  n = n
+)
+
+# Simulate Estimate
+N_sims <- 1000
+sims <- map(1:N_sims, ~ {
+  X <- generate_data(params)
+  ece_obj <- ece.test(X[, 1], X[, 2])
+  return(
+    list(
+      estimate = ece_obj$estimate,
+      pval = ece_obj$p.value,
+      ci = ece_obj$conf.int
+    )
+  )
+})
