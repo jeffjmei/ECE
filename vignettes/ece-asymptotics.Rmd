@@ -63,5 +63,14 @@ test_that("ece.test has ~100% power at ρ_xy = 0.9", {
   expect_true((ci[1] < 0.05) & (0.05 < ci[2]))
 })
 
+# PLOT: estimate convergence
+x <- map_dbl(sims, "estimate")
+ci <- t.test(x)$conf.int
+hist(x, breaks = 40)
+abline(v = ci, lty = 2, col = "darkgray")
+abline(v = mean(x), lwd = 2, col = "blue")
+abline(v = rxy, lwd = 2, col = "red")
+
 # PLOT: power-curves
+# PLOT: misspecified model
 ```
