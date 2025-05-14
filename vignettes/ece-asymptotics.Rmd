@@ -55,3 +55,13 @@ test_that("ece.test: CI for rxy covers true rxy when rxy = 0", {
   ci <- t.test(x)$conf.int
   expect_true((ci[1] < rxy) & (rxy < ci[2]))
 })
+
+# TEST: false-positive control
+test_that("ece.test has ~100% power at ρ_xy = 0.9", {
+  x <- map_dbl(sims, "pval")
+  ci <- t.test(x < 0.05)$conf.int
+  expect_true((ci[1] < 0.05) & (0.05 < ci[2]))
+})
+
+# PLOT: power-curves
+```
