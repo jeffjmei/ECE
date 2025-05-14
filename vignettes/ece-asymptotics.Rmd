@@ -48,3 +48,10 @@ sims <- map(1:N_sims, ~ {
     )
   )
 })
+
+# TEST: correlation estimate converges to true estimate
+test_that("ece.test: CI for rxy covers true rxy when rxy = 0", {
+  x <- map_dbl(sims, "estimate")
+  ci <- t.test(x)$conf.int
+  expect_true((ci[1] < rxy) & (rxy < ci[2]))
+})
