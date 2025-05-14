@@ -1,0 +1,133 @@
+---
+title: "COVID"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{covid}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{R setup, message=FALSE, warning=FALSE}
+# Load Libraries
+# library(ECE)
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(changepoint)
+library(tidyverse)
+```
+
+```{R, message=FALSE, warning=FALSE}
+# Load Data
+url <- "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
+raw_data <- read_csv(url)
+```
+
+```{R}
+# Clean Data (output n x 2: matrix)
+data <- raw_data %>%
+  # reduce dataset size
+  filter(("2020-04-01" < date) & (date < "2021-04-01")) %>%
+  filter(county %in% c("Pima", "Maricopa")) %>%
+  # organize into time series
+  group_by(county) %>%
+  arrange(date) %>%
+  mutate(new_cases = cases - lag(cases)) %>%
+  filter(new_cases > 0) %>%
+  mutate(log_new_cases = log(1 + new_cases)) %>%
+  ungroup() %>%
+  #
+  dplyr::select(date, county, log_new_cases) %>%
+  pivot_wider(
+    names_from = county,
+    values_from = log_new_cases
+  ) %>%
+  drop_na() %>%
+  # rename
+  rename(
+    index = date,
+    X1 = Maricopa,
+    X2 = Pima
+  ) %>%
+  # get piecewise constant means
+  mutate(
+    X1_mean = segment_mean(X1),
+    X2_mean = segment_mean(X2)
+  )
+```
+
+```{R, echo=FALSE}
+# Plot Segmentation
+ggplot(data) +
+  geom_line(aes(x = index, y = X1), color = "red") +
+  geom_line(aes(x = index, y = X2), color = "blue") +
+  geom_line(aes(x = index, y = X1_mean), color = "red") +
+  geom_line(aes(x = index, y = X2_mean), color = "blue") +
+  labs(
+    title = "Change Point Segmentation",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal()
+```
+
+
+```{R, echo=FALSE}
+# Check Autocorrelation
+acf_df <- data %>%
+  mutate(
+    X1_demeaned = X1 - X1_mean,
+    X2_demeaned = X2 - X2_mean
+  )
+X1_demeaned <- acf_df$X1_demeaned
+X2_demeaned <- acf_df$X2_demeaned
+
+par(mfrow = c(1, 2))
+acf(X1_demeaned)
+acf(X2_demeaned)
+par(mfrow = c(1, 1))
+```
+
+```{R}
+# =================
+# Compare Estimates
+# =================
+X1 <- data$X1
+X2 <- data$X2
+
+# calculate correlation
+ece_obj <- ece.test(X1, X2)
+pearson_obj <- cor.test(X1, X2)
+pearson_demeaned_obj <- cor.test(X1_demeaned, X2_demeaned)
+```
+
+
+```{R, echo=FALSE}
+# organize data
+row_names <- c("ECE", "Pearson (demeaned)", "Pearson (classical)")
+col_names <- c("estimate", "p.val", "ci(lower)", "ci(upper)")
+
+estimate <- c(ece_obj$estimate, pearson_obj$estimate, pearson_demeaned_obj$estimate)
+pval <- c(ece_obj$p.val, pearson_obj$p.val, pearson_demeaned_obj$p.val)
+ci_lower <- c(
+  ece_obj$conf.int[1],
+  pearson_obj$conf.int[1],
+  pearson_demeaned_obj$conf.int[1]
+)
+ci_upper <- c(
+  ece_obj$conf.int[2],
+  pearson_obj$conf.int[2],
+  pearson_demeaned_obj$conf.int[2]
+)
+
+# Print Results
+results <- cbind(estimate, pval, ci_lower, ci_upper)
+rownames(results) <- row_names
+colnames(results) <- col_names
+knitr::kable(results)
+```
