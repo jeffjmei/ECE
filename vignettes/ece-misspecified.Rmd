@@ -1,0 +1,42 @@
+---
+title: 
+output: html_document
+author: Jeffrey Mei
+date: 2025-05-16
+---
+
+# Misspecified ECE
+```{R}
+devtools::load_all()
+n <- 1000
+n_sims <- 1000
+```
+
+## Non-Stationary Covariance 
+```{R}
+# Covariance Changes Halfway Through Sequence
+S1 <- matrix(c(1, 0, 0, 1), nrow = 2)
+S2 <- matrix(c(1, 0.5, 0.5, 1), nrow = 2)
+
+# Simulate Scenario
+sims <- map_dbl(1:n_sims, ~ {
+  # Generate Data
+  X <- rbind(
+    MASS::mvrnorm(n / 2, mu = c(0, 0), Sigma = S1),
+    MASS::mvrnorm(n / 2, mu = c(0, 0), Sigma = S2)
+  )
+  # Get Estimate
+  ece.test(X[, 1], X[, 2])$estimate
+})
+
+# Aggregate Results
+sims %>% mean()
+sims %>%
+  t.test() %>%
+  .$conf.int
+```
+
+### Analysis/Observations
+My guess is that when the correlation changes over time, ECE will give you the average of them. For example, in the above simulation, half of the data points had a true correlation of 0 and the other half had a correlation of 0.5. On average, ECE produced an estimate right in the middle: 0.25. 
+
+This is unsurprising considering we take lagged differences, and each lagged difference is an instance of correlation estimation.
