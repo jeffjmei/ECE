@@ -46,3 +46,10 @@ segment_mean <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen
   }
   segmented_mean(x, cp)
 }
+
+winsorize <- function(x, alpha = 0.01) {
+  q <- quantile(x, probs = c(alpha, 1 - alpha), na.rm = TRUE)
+  x[x < q[1]] <- q[1]
+  x[x > q[2]] <- q[2]
+  return(x)
+}
