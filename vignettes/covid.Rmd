@@ -81,8 +81,8 @@ ggplot(data) +
 # Check Autocorrelation
 X1 <- data$X1
 X2 <- data$X2
-X1_demeaned <- X1 - X1_mean
-X2_demeaned <- X2 - X2_mean
+X1_demeaned <- data$X1 - data$X1_mean
+X2_demeaned <- data$X2 - data$X2_mean
 
 par(mfrow = c(1, 2))
 acf(X1_demeaned)
