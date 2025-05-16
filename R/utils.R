@@ -18,17 +18,31 @@ segmented_mean <- function(data, change_points) {
 }
 
 # TODO: add roxygen docstring
-get_cp <- function(x, method = "PELT", penalty = "BIC", minseglen = 2) {
-  cp <- cpt.mean(
-    x,
-    method = "PELT",
-    penalty = "BIC",
-    minseglen = 2
-  )
+get_cp <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL) {
+  if (penalty == "Manual") {
+    cp <- cpt.mean(
+      x,
+      method = method,
+      penalty = penalty,
+      minseglen = minseglen,
+      pen.value = pen.value
+    )
+  } else {
+    cp <- cpt.mean(
+      x,
+      method = method,
+      penalty = penalty,
+      minseglen = minseglen,
+    )
+  }
   return(cp)
 }
 
-segment_mean <- function(x, method = "PELT", penalty = "BIC", minseglen = 2) {
-  cp <- cpts(get_cp(x, method, penalty, minseglen))
+segment_mean <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL) {
+  if (penalty == "Manual") {
+    cp <- cpts(get_cp(x, method, penalty, minseglen, pen.value = pen.value))
+  } else {
+    cp <- cpts(get_cp(x, method, penalty, minseglen))
+  }
   segmented_mean(x, cp)
 }
