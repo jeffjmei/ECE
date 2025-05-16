@@ -40,3 +40,37 @@ sims %>%
 My guess is that when the correlation changes over time, ECE will give you the average of them. For example, in the above simulation, half of the data points had a true correlation of 0 and the other half had a correlation of 0.5. On average, ECE produced an estimate right in the middle: 0.25. 
 
 This is unsurprising considering we take lagged differences, and each lagged difference is an instance of correlation estimation.
+
+
+## Rolling Average Covariance
+
+```{R}
+rolling_cov <- function(X, window) {
+  n <- nrow(X)
+  covariances <- rep(NA, n) # initialize result vector
+
+  for (i in seq(window, n)) {
+    window_data <- X[(i - window + 1):i, , drop = FALSE]
+    covariances[i] <- cov(window_data[, 1], window_data[, 2])
+  }
+
+  return(covariances)
+}
+```
+
+```{R}
+# Generate Data
+X <- rbind(
+  MASS::mvrnorm(n / 2, mu = c(0, 0), Sigma = S1),
+  MASS::mvrnorm(n / 2, mu = c(0, 0), Sigma = S2)
+)
+
+# Rolling Average Covariance
+local_cov <- rolling_cov(X, window = 20)
+
+# Plot Covariance
+plot(local_cov)
+lines(segment_mean(local_cov[!is.na(local_cov)]))
+```
+
+
