@@ -79,13 +79,10 @@ ggplot(data) +
 
 ```{R, echo=FALSE}
 # Check Autocorrelation
-acf_df <- data %>%
-  mutate(
-    X1_demeaned = X1 - X1_mean,
-    X2_demeaned = X2 - X2_mean
-  )
-X1_demeaned <- acf_df$X1_demeaned
-X2_demeaned <- acf_df$X2_demeaned
+X1 <- data$X1
+X2 <- data$X2
+X1_demeaned <- X1 - X1_mean
+X2_demeaned <- X2 - X2_mean
 
 par(mfrow = c(1, 2))
 acf(X1_demeaned)
@@ -97,8 +94,6 @@ par(mfrow = c(1, 1))
 # =================
 # Compare Estimates
 # =================
-X1 <- data$X1
-X2 <- data$X2
 
 # calculate correlation
 ece_obj <- ece.test(X1, X2)
