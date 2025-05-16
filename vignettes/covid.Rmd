@@ -104,7 +104,7 @@ pearson_demeaned_obj <- cor.test(X1_demeaned, X2_demeaned)
 
 ```{R, echo=FALSE}
 # organize data
-row_names <- c("ECE", "Pearson (demeaned)", "Pearson (classical)")
+row_names <- c("ECE", "Pearson (classical)", "Pearson (demeaned)")
 col_names <- c("estimate", "p.val", "ci(lower)", "ci(upper)")
 
 estimate <- c(ece_obj$estimate, pearson_obj$estimate, pearson_demeaned_obj$estimate)
