@@ -158,6 +158,10 @@ acf(X2_demeaned)
 par(mfrow = c(1, 1))
 ```
 
+
+
+After the segmentation, there is some concern for auto-correlation. This is likely due to model misspecification. For example, there is a ramping number of COVID cases around October of 2020. It does not increase so quickly that we can neatly separate the counts from the bottom to the top of the trough. Instead, the mean is used throughout the ramp so the two time series are heavily auto-correlated. 
+
 ```{R}
 # =================
 # Compare Estimates
@@ -173,7 +177,7 @@ pearson_demeaned_obj <- cor.test(X1_demeaned, X2_demeaned)
 ```{R, echo=FALSE}
 # organize data
 row_names <- c("ECE", "Pearson (classical)", "Pearson (demeaned)")
-col_names <- c("estimate", "p.val", "ci(lower)", "ci(upper)")
+col_names <- c("method", "estimate", "p.val")
 
 estimate <- c(ece_obj$estimate, pearson_obj$estimate, pearson_demeaned_obj$estimate)
 pval <- c(ece_obj$p.val, pearson_obj$p.val, pearson_demeaned_obj$p.val)
@@ -189,8 +193,11 @@ ci_upper <- c(
 )
 
 # Print Results
-results <- cbind(estimate, pval, ci_lower, ci_upper)
-rownames(results) <- row_names
+#results <- cbind(estimate, pval, ci_lower, ci_upper)
+method <- c("ECE", "Pearson (classical)", "Pearson (demeaned)")
+results <- cbind(method, round(estimate, 3), pval)
+rownames(results) <- NULL
 colnames(results) <- col_names
 knitr::kable(results)
 ```
+
