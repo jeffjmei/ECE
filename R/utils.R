@@ -17,7 +17,30 @@ segmented_mean <- function(data, change_points) {
   return(seg_mean)
 }
 
-# TODO: add roxygen docstring
+#' Detect Change Points in a Numeric Vector
+#'
+#' Applies change point detection to a numeric vector using the `cpt.mean()` function from the `changepoint` package.
+#'
+#' @param x A numeric vector to detect change points in.
+#' @param method A character string specifying the segmentation method. Default is `"PELT"`. Other options include `"AMOC"` and `"BinSeg"`.
+#' @param penalty A character string specifying the penalty method. Options include `"BIC"`, `"AIC"`, `"Manual"`, etc. Default is `"BIC"`.
+#' @param minseglen An integer specifying the minimum segment length. Default is `2`.
+#' @param pen.value A numeric value for the penalty, used only if `penalty = "Manual"`. Default is `NULL`.
+#'
+#' @return An object of class `cpt` representing the estimated change points.
+#'
+#' @details This function is a convenience wrapper around `changepoint::cpt.mean()` that allows optional manual penalty specification. It is primarily used for detecting mean shifts in time series or sequences.
+#'
+#' @seealso [changepoint::cpt.mean()]
+#'
+#' @examples
+#' if (requireNamespace("changepoint", quietly = TRUE)) {
+#'   x <- c(rep(0, 50), rep(5, 50), rep(0, 50))
+#'   cp <- get_cp(x)
+#'   changepoint::cpts(cp)
+#' }
+#'
+#' @export
 get_cp <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL) {
   if (penalty == "Manual") {
     cp <- cpt.mean(
