@@ -201,3 +201,132 @@ colnames(results) <- col_names
 knitr::kable(results)
 ```
 
+# Other Analysis Approaches
+
+```{R, echo=FALSE, message=FALSE, warning=FALSE}
+# Exponential Smoothing
+X1_smooth <- forecast::ses(ts(X1), alpha=0.1)$fit
+X2_smooth <- forecast::ses(ts(X2), alpha=0.1)$fit
+
+# Robust Loess Smoothing
+X1_smooth <- stats::loess(X1 ~ time(X1), span = 0.3, family = "symmetric")$fitted
+X2_smooth <- stats::loess(X2 ~ time(X2), span = 0.3, family = "symmetric")$fitted
+
+X1_desmoothed <- X1 - X1_smooth
+X2_desmoothed <- X2 - X2_smooth
+```
+
+We use robust loess smoothing and find that it fits quite naturally with the data. 
+
+```{R, echo=FALSE}
+data_smooth <- data %>% 
+  mutate(
+    X1_smooth = stats::loess(X1 ~ time(X1), span = 0.1, family = "symmetric")$fitted,
+    X2_smooth = stats::loess(X2 ~ time(X2), span = 0.1, family = "symmetric")$fitted
+  )
+
+plot_smoothed <-  ggplot(data_smooth, aes(x = index)) +
+  geom_line(aes(y = X1), color = "red") +
+  geom_line(aes(y = X2), color = "blue") +
+  geom_line(aes(y = X1_smooth), color = "red") +
+  geom_line(aes(y = X2_smooth), color = "blue") +
+  labs(title = "Smoothed Time Series", x = "Time", y = "") +
+  theme_minimal()
+
+plot_smoothed_residual <- ggplot(data_smooth, aes(x = index)) +
+  geom_line(aes(y = X1 - X1_smooth), color = "red") +
+  geom_line(aes(y = X2 - X2_smooth), color = "blue") +
+  geom_hline(yintercept = 0, color = "gray50", linewidth = 0.5) +
+  labs(title = "Demeaned Residuals", x = "Time", y = "") +
+  theme_minimal()
+
+plot_smoothed_residual_hist <- ggplot(data_smooth, aes(x = index)) + 
+  geom_histogram(aes(x=X1 - X1_smooth), fill="red", color="black", bins=40, alpha=0.5) + 
+  geom_histogram(aes(x=X2 - X2_smooth), fill="blue", color="black", bins=40, alpha=0.5) + 
+  labs(
+    title = "Histogram of Residuals",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal()
+
+plot_smoothed 
+plot_smoothed_residual 
+plot_residual_hist
+```
+
+```{R}
+par(mfrow = c(1, 2))
+acf(X1_desmoothed)
+acf(X2_desmoothed)
+par(mfrow = c(1, 1))
+```
+
+The ACF plot illustrates even larger auto-correlation. This is because of the poor fit at the beginning of the sequence (before 07/2020). 
+
+```{R}
+par(mfrow = c(1, 2))
+acf(X1_desmoothed[100:length(X1_desmoothed)])
+acf(X2_desmoothed[100:length(X2_desmoothed)])
+par(mfrow = c(1, 1))
+```
+
+We see that by removing a few months, the corresponding ACF plot does not exhibit the excessive auto-correlation. 
+
+```{R, echo=FALSE}
+# Test Estimators
+ece_obj_exclude100 <- ece.test(X1[100:length(X1)], X2[100:length(X2)])
+pearson_desmoothed_obj <- cor.test(X1_desmoothed, X2_desmoothed) 
+pearson_desmoothed_exclude100 <- cor.test(
+  X1_desmoothed[100:length(X1_desmoothed)], 
+  X2_desmoothed[100:length(X2_desmoothed)]
+) 
+pearson_demeaned_exclude100 <- cor.test(
+  X1_demeaned[100:length(X1_demeaned)], 
+  X2_demeaned[100:length(X2_demeaned)]
+)
+
+method <- c(
+  "ECE",
+  "Pearson (demeaned)",
+  "Pearson (desmoothed)"
+)
+estimate <- c(
+  ece_obj$estimate,
+  pearson_demeaned_obj$estimate,
+  pearson_desmoothed_obj$estimate
+)
+pval <- c(
+  ece_obj$p.val,
+  pearson_demeaned_obj$p.val,
+  pearson_desmoothed_obj$p.val
+)
+
+results <- cbind(method, round(estimate, 3), pval)
+rownames(results) <- NULL
+colnames(results) <- col_names
+knitr::kable(results)
+```
+
+```{R, echo=FALSE}
+method <- c(
+  "ECE (exclude 100)",
+  "Pearson (demeaned; exclude 100)",
+  "Pearson (desmoothed; exclude 100)"
+)
+estimate <- c(
+  ece_obj_exclude100$estimate, 
+  pearson_demeaned_exclude100$estimate,
+  pearson_desmoothed_exclude100$estimate
+)
+pval <- c(
+  ece_obj_exclude100$p.val, 
+  pearson_demeaned_exclude100$p.val,
+  pearson_desmoothed_exclude100$p.val
+)
+
+results <- cbind(method, round(estimate, 3), pval)
+rownames(results) <- NULL
+colnames(results) <- col_names
+knitr::kable(results)
+```
