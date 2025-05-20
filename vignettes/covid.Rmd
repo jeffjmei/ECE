@@ -412,3 +412,49 @@ data %>%
   theme_minimal() 
 
 ```
+```{R, echo=FALSE}
+clark <- raw_data %>%
+  # reduce dataset size
+  filter(("2020-04-01" < date) & (date < "2022-01-01")) %>%
+  filter(county == "Clark", state == "Nevada") %>%
+  # organize into time series
+  group_by(county) %>%
+  arrange(date) %>%
+  mutate(new_cases = cases - lag(cases)) %>%
+  filter(new_cases > 0) %>%
+  mutate(log_new_cases = log(1 + new_cases)) %>%
+  ungroup() %>%
+  #
+  dplyr::select(date, county, log_new_cases) %>%
+  pivot_wider(
+    names_from = county,
+    values_from = log_new_cases
+  ) %>%
+  drop_na() %>%
+  # rename
+  rename(
+    index = date,
+    X3 = Clark
+  ) %>%
+  # get piecewise constant means
+  mutate(
+    X3_mean = segment_mean(X3)
+  )
+```
+
+```{R, echo=FALSE, warning=FALSE, message=FALSE}
+left_join(data, clark) %>% 
+  ggplot() +
+  geom_line(aes(x = index, y = X1), color = "red") +
+  geom_line(aes(x = index, y = X2), color = "blue") +
+  geom_line(aes(x = index, y = X3), color = "green") +
+  geom_line(aes(x = index, y = X1_mean), color = "red") +
+  geom_line(aes(x = index, y = X2_mean), color = "blue") +
+  geom_line(aes(x = index, y = X3_mean), color = "green") +
+  labs(
+    title = "Change Point Segmentation",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal()
+```
