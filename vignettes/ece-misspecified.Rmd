@@ -56,6 +56,18 @@ rolling_cov <- function(X, window) {
 
   return(covariances)
 }
+
+rolling_cor <- function(X, window) {
+  n <- nrow(X)
+  corr <- rep(NA, n) # initialize result vector
+
+  for (i in seq(window, n)) {
+    window_data <- X[(i - window + 1):i, , drop = FALSE]
+    corr[i] <- cor(window_data[, 1], window_data[, 2])
+  }
+
+  return(corr)
+}
 ```
 
 ```{R}
@@ -72,5 +84,4 @@ local_cov <- rolling_cov(X, window = 20)
 plot(local_cov)
 lines(segment_mean(local_cov[!is.na(local_cov)]))
 ```
-
 
