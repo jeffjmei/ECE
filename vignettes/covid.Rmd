@@ -330,3 +330,85 @@ rownames(results) <- NULL
 colnames(results) <- col_names
 knitr::kable(results)
 ```
+
+--- 
+
+# Correlation Homogeneity
+
+```{R, echo=FALSE}
+rolling_cor <- function(X, window) {
+  n <- nrow(X)
+  corr <- rep(NA, n) # initialize result vector
+
+  for (i in seq(window, n)) {
+    window_data <- X[(i - window + 1):i, , drop = FALSE]
+    corr[i] <- cor(window_data[, 1], window_data[, 2])
+  }
+
+  return(corr)
+}
+```
+
+```{R, echo=FALSE, message=FALSE, warning=FALSE}
+local_cor <- rolling_cor(cbind(data$X1, data$X2), window = 10)
+
+# Plot Local Correlation
+local_cor_df <- data.frame(local_cor) %>% 
+  mutate(
+    index = data$index, 
+    mean = c(rep(NA, 9), segment_mean(local_cor[!is.na(local_cor)]))
+  )
+
+plot_local_cor <- ggplot(data=local_cor_df) + 
+  geom_line(aes(x = index, y=local_cor)) + 
+  geom_line(aes(x = index, y=mean)) + 
+  labs(
+    title = "Rolling Correlation (bandwidth=10)",
+    x = "",
+    y = "correlation"
+  ) +
+  theme_minimal()
+
+plot_segmentation / plot_local_cor
+```
+
+Here, we take the rolling correlation over the raw data. Overall, it looks like there's some heterogeneity in the correlation. It decreases within the middle section. 
+
+```{R}
+mean(local_cor, na.rm=TRUE)
+ece.test(X1, X2)$estimate
+```
+
+Why is the demeaned correlation the lowest? 
+
+```{R, echo=FALSE, warning=FALSE, message=FALSE}
+# SCRATCH 
+foo <- cor.test(
+  X1 - segment_mean(X1, penalty="Manual", pen.value=20),
+  X2 - segment_mean(X2, penalty="Manual", pen.value=20)
+)$estimate
+bar <- cor.test(
+  X1 - segment_mean(X1),
+  X2 - segment_mean(X2)
+)$estimate
+data %>% 
+  mutate(
+    X1_mean = segment_mean(X1, penalty="Manual", pen.value=19),
+    X2_mean = segment_mean(X2, penalty="Manual", pen.value=19)
+  ) %>% 
+  mutate(
+    X1_mean2 = segment_mean(X1),
+    X2_mean2 = segment_mean(X2)
+  ) %>% 
+  ggplot() + 
+  geom_line(aes(x=index, y=X1), color="red") + 
+  geom_line(aes(x=index, y=X2), color="blue") +
+  geom_line(aes(x=index, y=X1_mean), color="red") +
+  geom_line(aes(x=index, y=X2_mean), color="blue") + 
+  geom_line(aes(x=index, y=X1_mean2), color="red", linetype="dashed") +
+  geom_line(aes(x=index, y=X2_mean2), color="blue", linetype="dashed") + 
+  geom_text(aes(x=as.Date("2020-11-29"), y=1), label=paste("segmentation (solid)", round(foo, 3))) +
+  geom_text(aes(x=as.Date("2020-11-29"), y=2), label=paste("segmentation (dashed)", round(bar, 3))) +
+  theme_minimal() 
+
+```
