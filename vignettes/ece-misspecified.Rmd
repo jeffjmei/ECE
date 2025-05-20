@@ -85,3 +85,75 @@ plot(local_cov)
 lines(segment_mean(local_cov[!is.na(local_cov)]))
 ```
 
+## Simulation - Known Change Points, Unknown Mean
+
+In this set of simulations, we're going to be analyzing the effect of "demeaning" on auto-correlation. We measure auto-correlation as the ACF function at the 2nd index. Obviously, the 1st index will always be 1, so the 2nd index provides a sense of how strong auto-correlation is. 
+
+The reason why we're interested in this at all is because if there is auto-correlation, it violates assumptions for Pearson correlation. 
+
+```{R}
+# set parameters
+params <- scenario(
+  10,
+  sxy = 0,
+  sx = sqrt(2),
+  sy = sqrt(5),
+  n = n
+)
+```
+
+When we are simulating IID data and we know the true mean structure, there is no auto-correlation. 
+
+```{R}
+# completely iid data
+sims <- map_dbl(1:1000, ~ {
+  X <- generate_data(params)
+  acf(X - params$h)$acf[[2]]
+})
+t.test(sims)$conf.int # 0
+```
+
+What happens if we try a slightly harder problem? Assume change points are known, but the mean is unknown. The natural way to estimate the mean is to take the average of all the values within the segment. Here, we see that auto-correlation emerges. 
+
+```{R}
+sims <- map(1:1000, ~ {
+  X <- generate_data(params)
+  X_mean <- map2(
+    .x = as.data.frame(X),
+    .y = as.data.frame(params$h), # known change points
+    ~ segmented_mean(.x, find_cp(.y))
+  ) %>% do.call(what = cbind)
+  X_demeaned <- X - X_mean
+
+  return(
+    list(
+      acf1 = acf(X_demeaned[, 1])$acf[[2]],
+      acf2 = acf(X_demeaned[, 2])$acf[[2]]
+    )
+  )
+})
+map_dbl(sims, "acf1") %>% mean() # -0.25
+map_dbl(sims, "acf2") %>% mean() # -0.25
+```
+
+Unsurprisingly, when both change points and the mean are unknown. Once again, we find there is auto-correlation. 
+
+```{R}
+# Unknown Change Points
+sims <- map(1:1000, ~ {
+  X <- generate_data(params)
+  X_mean <- map(as.data.frame(X), segment_mean) %>%
+    do.call(what = cbind)
+  X_demeaned <- X - X_mean
+
+  return(
+    list(
+      acf1 = acf(X_demeaned[, 1])$acf[[2]],
+      acf2 = acf(X_demeaned[, 2])$acf[[2]]
+    )
+  )
+})
+map_dbl(sims, "acf1") %>% mean() # 0.10
+map_dbl(sims, "acf2") %>% mean() # -0.22
+```
+
