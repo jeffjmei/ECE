@@ -14,25 +14,28 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{R setup, message=FALSE, warning=FALSE}
+```{R setup, message=FALSE, warning=FALSE, echo=FALSE}
 # Load Libraries
 # library(ECE)
 devtools::load_all("~/Documents/Research/Code/ECE")
 library(changepoint)
 library(tidyverse)
+library(patchwork) # for advanced plot placement 
 ```
 
-```{R, message=FALSE, warning=FALSE}
+```{R, message=FALSE, warning=FALSE, echo=FALSE, cache=TRUE}
 # Load Data
 url <- "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
 raw_data <- read_csv(url)
 ```
 
-```{R}
+We study the number of COVID cases between Maricopa (`X1`; red) and Pima (`X2`; blue) counties. We track the log of the number of new cases: `log(1 + new_cases)`. Due to the geographic proximity, we can assume a moderate level of correlation. Even with a moderately sophisticated model, the noise component is likely to compensate for some of the unexplained variation. 
+
+```{R, echo=FALSE}
 # Clean Data (output n x 2: matrix)
 data <- raw_data %>%
   # reduce dataset size
-  filter(("2020-04-01" < date) & (date < "2021-04-01")) %>%
+  filter(("2020-04-01" < date) & (date < "2022-01-01")) %>%
   filter(county %in% c("Pima", "Maricopa")) %>%
   # organize into time series
   group_by(county) %>%
@@ -63,7 +66,7 @@ data <- raw_data %>%
 
 ```{R, echo=FALSE}
 # Plot Segmentation
-ggplot(data) +
+plot_segmentation <- ggplot(data) +
   geom_line(aes(x = index, y = X1), color = "red") +
   geom_line(aes(x = index, y = X2), color = "blue") +
   geom_line(aes(x = index, y = X1_mean), color = "red") +
@@ -74,8 +77,73 @@ ggplot(data) +
     y = ""
   ) +
   theme_minimal()
+
+# Plot Residual
+plot_residual <- ggplot(data) + 
+  geom_line(aes(x = index, y = X1 - X1_mean), color = "red") +
+  geom_line(aes(x = index, y = X2 - X2_mean), color = "blue") +
+  geom_vline(
+    xintercept = data$index[cpts(get_cp(data$X1))], 
+    color = "red", linewidth = 0.5, linetype="dashed"
+  ) +
+  geom_vline(
+    xintercept = data$index[cpts(get_cp(data$X2))], 
+    color = "blue", linewidth = 0.5, linetype="dashed"
+  ) +
+  labs(
+    title = "Segmentation Residuals",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal()
+
+
+plot_residual_hist <- ggplot(data) + 
+  geom_histogram(aes(x=X1 - X1_mean, y= after_stat(density)), 
+    fill="red", color="black", bins=40, alpha=0.5) + 
+  geom_histogram(aes(x=X2 - X2_mean, y=after_stat(density)), 
+    fill="blue", color="black", bins=40, alpha=0.5) + 
+  labs(
+    title = "Histogram of Residuals",
+    x = "",
+    y = ""
+  ) +
+  stat_function(fun = dnorm, args = list(
+    mean = mean(data$X1 - data$X1_mean), 
+    sd = sd(data$X1 - data$X1_mean)
+  ), color = "red", linewidth = 1) +
+  stat_function(
+    fun = dnorm, args = list(
+    mean = mean(data$X2 - data$X2_mean), 
+    sd = sd(data$X2 - data$X2_mean)
+  ), color = "blue", linewidth = 1) +
+  theme_minimal()
+
+
+plot_bivariate <- ggplot(data) + 
+  geom_hline(yintercept = 0, color = "gray50", linewidth = 0.5) +
+  geom_vline(xintercept = 0, color = "gray50", linewidth = 0.5) +
+  geom_point(aes(x=X1 - X1_mean, y=X2 - X2_mean)) + 
+  labs(
+    title = "Bivariate Distribution",
+    x = "X1",
+    y = "X2"
+  ) +
+  theme_minimal()
+
+# Plot Segmentation
+plot_segmentation 
+plot_residual
 ```
 
+```{R, echo=FALSE}
+# Plot Diagnostics
+plot_residual_hist
+```
+
+The residual plot illustrates that the segmentation does a reasonable job of fitting the data. Nevertheless, there are some regions where the constant piecewise function is misspecified (e.g. where there are long periods of increases and decreases). This likely produces some auto-correlation since low values of `X1` are likely to correspond to low values of `X2` and high values of `X1` are likely to correspond to high values of `X2`. We can see this clearly near the break points (illustrated by dashed vertical lines). 
+
+Moreover, the histogram of the residuals shows the existence of some outliers. We also see the distribution deviates from a normal distribution since it has fatter tails. Nevertheless, the segmentation appears to produce a fit that results in a "normal"-looking residual plot. 
 
 ```{R, echo=FALSE}
 # Check Autocorrelation
