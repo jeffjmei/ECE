@@ -38,6 +38,15 @@ get_cp <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value
   return(cp)
 }
 
+find_cp <- function(h) {
+  if (is.vector(h)) {
+    which(h[-1] != h[-length(h)])
+  } else if (is.matrix(h)) {
+    change_exists <- (h[-1, ] != h[-nrow(h), ])
+    which(apply(change_exists, 1, any))
+  }
+}
+
 segment_mean <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL) {
   if (penalty == "Manual") {
     cp <- cpts(get_cp(x, method, penalty, minseglen, pen.value = pen.value))
