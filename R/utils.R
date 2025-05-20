@@ -70,13 +70,26 @@ find_cp <- function(h) {
   }
 }
 
-segment_mean <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL) {
+segment_mean_vec <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL) {
   if (penalty == "Manual") {
     cp <- cpts(get_cp(x, method, penalty, minseglen, pen.value = pen.value))
   } else {
     cp <- cpts(get_cp(x, method, penalty, minseglen))
   }
   segmented_mean(x, cp)
+}
+
+segment_mean_mat <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL) {
+  map(as.data.frame(x), segment_mean_vec) %>%
+    do.call(what = cbind)
+}
+
+segment_mean <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL) {
+  if (is.vector(x)) {
+    segment_mean_vec(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL)
+  } else if (is.matrix(x)) {
+    segment_mean_mat(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL)
+  }
 }
 
 winsorize <- function(x, alpha = 0.01) {
