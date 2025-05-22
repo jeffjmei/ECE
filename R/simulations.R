@@ -335,3 +335,11 @@ simulate_power_desmooth <- function(params, n_sim = 1000, method = "loess", ...)
   })
   mean(pval < 0.05)
 }
+
+simulate_power_ece <- function(params, n_sim = 1000) {
+  pval <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    ece.test(X[, 1], X[, 2])$p.val # estimate cor
+  })
+  mean(pval < 0.05)
+}
