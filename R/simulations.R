@@ -325,3 +325,13 @@ simulate_power_demean <- function(params, n_sim = 1000, ...) {
   })
   mean(pval < 0.05)
 }
+
+simulate_power_desmooth <- function(params, n_sim = 1000, method = "loess", ...) {
+  pval <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    X_mean <- smooth_mean(X, method = method, ...) # estimate mean
+    X_demean <- X - X_mean # remove mean
+    cor.test(X_demean[, 1], X_demean[, 2])$p.val # estimate cor
+  })
+  mean(pval < 0.05)
+}
