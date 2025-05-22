@@ -92,6 +92,32 @@ segment_mean <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen
   }
 }
 
+smooth_mean_vec <- function(x, method = "loess", ...) {
+  if (method == "loess") {
+    loess(x ~ seq_along(x), span = 0.3, family = "symmetric", ...)$fitted
+  } else if (method == "exponential") {
+    forecast::ses(ts(x), ...)$fitted
+  } else {
+    stop("Unknown smoothing method.")
+  }
+}
+
+smooth_mean_mat <- function(X, method = "loess", ...) {
+  X_df <- as.data.frame(X)
+  smoothed_list <- lapply(X_df, smooth_mean_vec, method = method, ...)
+  do.call(cbind, smoothed_list)
+}
+
+smooth_mean <- function(X, method = "loess", ...) {
+  if (is.vector(X)) {
+    smooth_mean_vec(X, method = method, ...)
+  } else if (is.matrix(X) || is.data.frame(X)) {
+    smooth_mean_mat(X, method = method, ...)
+  } else {
+    stop("Unsupported input type. Must be vector, matrix, or data.frame.")
+  }
+}
+
 winsorize <- function(x, alpha = 0.01) {
   q <- quantile(x, probs = c(alpha, 1 - alpha), na.rm = TRUE)
   x[x < q[1]] <- q[1]
