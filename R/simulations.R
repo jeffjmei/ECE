@@ -315,3 +315,13 @@ scenario_num_to_name <- function(scenario_num) {
     stop("No such scenario. Try again.")
   }
 }
+
+simulate_power_demean <- function(params, n_sim = 1000, ...) {
+  pval <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    X_mean <- segment_mean(X, ...) # estimate mean
+    X_demean <- X - X_mean # remove mean
+    cor.test(X_demean[, 1], X_demean[, 2])$p.val # estimate cor
+  })
+  mean(pval < 0.05)
+}
