@@ -343,3 +343,13 @@ simulate_power_ece <- function(params, n_sim = 1000) {
   })
   mean(pval < 0.05)
 }
+
+simulate_power <- function(params, method, n_sim = 1000, ...) {
+  if (method == "ECE") {
+    simulate_power_ece(params, n_sim)
+  } else if (method == "demean") {
+    simulate_power_demean(params, n_sim, ...)
+  } else if (method == "desmooth") {
+    simulate_power_desmooth(params, n_sim, ...)
+  }
+}
