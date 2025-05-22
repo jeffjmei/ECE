@@ -377,7 +377,7 @@ simulate_power <- function(params, method, n_sim = 1000, ...) {
 #' power <- simulate_power(params, method = "ECE")
 #' export_file <- tempfile(fileext = ".csv")
 #' export_power_simulations(power, method = "ECE", params, export_file)
-export_power_simulations <- function(power, method, params, export_file) {
+export_power_simulations <- function(power, method, params, n_sims, export_file) {
   row <- data.frame(
     power = power,
     method = method,
@@ -386,6 +386,7 @@ export_power_simulations <- function(power, method, params, export_file) {
     sy = sqrt(params$S[2, 2]),
     sxy = params$S[1, 2],
     scenario_num = params$scenario,
+    n_sims = n_sims,
     datetime = Sys.time()
   )
 
