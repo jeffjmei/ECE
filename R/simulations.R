@@ -353,3 +353,46 @@ simulate_power <- function(params, method, n_sim = 1000, ...) {
     simulate_power_desmooth(params, n_sim, ...)
   }
 }
+
+#' Export Power Simulation Results
+#'
+#' Appends a row of simulation results to a CSV file, including power, sample size,
+#' standard deviations, correlation, scenario ID, and timestamp. If the file does not exist,
+#' it is created with column headers.
+#'
+#' @param power A numeric value representing the estimated power from a simulation.
+#' @param params A list of parameters used in the simulation. It should include:
+#'   \itemize{
+#'     \item \code{n} - Sample size.
+#'     \item \code{S} - Covariance matrix (2x2).
+#'     \item \code{scenario} - Scenario number or label.
+#'   }
+#' @param export_file A string specifying the path to the CSV file where results should be saved.
+#'
+#' @return Invisibly returns the data frame row that was written to file.
+#' @export
+#'
+#' @examples
+#' params <- scenario(2, n = 1000)
+#' power <- simulate_power(params, method = "ECE")
+#' export_file <- tempfile(fileext = ".csv")
+#' export_power_simulations(power, params, export_file)
+export_power_simulations <- function(power, params, export_file) {
+  row <- data.frame(
+    power = power,
+    n = params$n,
+    sx = sqrt(params$S[1, 1]),
+    sy = sqrt(params$S[2, 2]),
+    sxy = params$S[1, 2],
+    scenario_num = params$scenario,
+    datetime = Sys.time()
+  )
+
+  # If file doesn't exist, write with header
+  if (!file.exists(export_file)) {
+    write.table(row, export_file, sep = ",", row.names = FALSE, col.names = TRUE)
+  } else {
+    # Append without writing header
+    write.table(row, export_file, sep = ",", row.names = FALSE, col.names = FALSE, append = TRUE)
+  }
+}
