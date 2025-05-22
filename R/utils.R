@@ -72,9 +72,9 @@ find_cp <- function(h) {
 
 segment_mean_vec <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL) {
   if (penalty == "Manual") {
-    cp <- cpts(get_cp(x, method, penalty, minseglen, pen.value = pen.value))
+    cp <- changepoint::cpts(get_cp(x, method, penalty, minseglen, pen.value = pen.value))
   } else {
-    cp <- cpts(get_cp(x, method, penalty, minseglen))
+    cp <- changepoint::cpts(get_cp(x, method, penalty, minseglen))
   }
   segmented_mean(x, cp)
 }
