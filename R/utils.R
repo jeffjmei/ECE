@@ -94,7 +94,11 @@ segment_mean <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen
 
 smooth_mean_vec <- function(x, method = "loess", ...) {
   if (method == "loess") {
-    loess(x ~ seq_along(x), span = 0.3, family = "symmetric", ...)$fitted
+    default_args <- list(span = 0.3, family = "symmetric")
+    user_args <- list(...)
+    loess_args <- modifyList(default_args, user_args)
+    loess_args$formula <- x ~ seq_along(x)
+    do.call(loess, loess_args)$fitted
   } else if (method == "exponential") {
     forecast::ses(ts(x), ...)$fitted
   } else {
