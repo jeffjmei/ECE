@@ -496,3 +496,13 @@ simulate_ece <- function(params, n_sim = 1000) {
   })
   mean(est)
 }
+
+simulate_est <- function(params, method, n_sim = 1000, ...) {
+  if (method == "ECE") {
+    simulate_ece(params, n_sim)
+  } else if (method == "demean") {
+    simulate_demean(params, n_sim, ...)
+  } else if (method == "desmooth") {
+    simulate_desmooth(params, n_sim, ...)
+  }
+}
