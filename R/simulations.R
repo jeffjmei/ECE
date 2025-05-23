@@ -229,19 +229,27 @@ scenario <- function(
   return(params)
 }
 
+# Plot Simulation Instance
 plot_scenario <- function(params, main = "Scenario Example") {
   e <- MASS::mvrnorm(params$n, c(0, 0), params$S)
-  X <- params$h + e
+  X <- data.frame(params$h + e)
+  colnames(X) <- c("X1", "X2")
+  X$h1 <- params$h[, 1]
+  X$h2 <- params$h[, 2]
+  X$index <- seq_len(params$n)
 
-  plot(NA,
-    xlim = c(1, params$n), ylim = range(X),
-    xlab = "Index", ylab = "X", main = main
-  )
-  points(X[, 1], col = "red")
-  points(X[, 2], col = "blue")
-  lines(params$h[, 1], type = "s", col = "red", lwd = 3)
-  lines(params$h[, 2], type = "s", col = "blue", lwd = 2)
-  abline()
+  params$scenario
+  ggplot(X, aes(x = index)) +
+    geom_line(aes(y = X1), color = "red", alpha = 0.5) +
+    geom_line(aes(y = X2), color = "blue", alpha = 0.5) +
+    geom_line(aes(y = h1), color = "red", linewidth = 1.5) +
+    geom_line(aes(y = h2), color = "blue", linewidth = 1.5) +
+    labs(
+      title = glue::glue("Scenario Instance (n = {sample_size}, Scenario {params$scenario})"),
+      x = "Index",
+      y = "Value"
+    ) +
+    theme_minimal()
 }
 
 scenario_name_to_num <- function(name) {
