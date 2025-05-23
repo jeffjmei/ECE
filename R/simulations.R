@@ -245,7 +245,7 @@ plot_scenario <- function(params, main = "Scenario Example") {
     geom_line(aes(y = h1), color = "red", linewidth = 1.5) +
     geom_line(aes(y = h2), color = "blue", linewidth = 1.5) +
     labs(
-      title = glue::glue("Scenario Instance (n = {sample_size}, Scenario {params$scenario})"),
+      title = glue::glue("Scenario Instance (n = {params$n}, Scenario {params$scenario})"),
       x = "Index",
       y = "Value"
     ) +
