@@ -468,3 +468,13 @@ plot_mse <- function(sim_est, sample_size, scenario, n_simulations) {
     ) +
     theme_minimal()
 }
+
+simulate_demean <- function(params, n_sim = 1000, ...) {
+  est <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    X_mean <- segment_mean(X, ...) # estimate mean
+    X_demean <- X - X_mean # remove mean
+    cor.test(X_demean[, 1], X_demean[, 2])$estimate # estimate cor
+  })
+  mean(est)
+}
