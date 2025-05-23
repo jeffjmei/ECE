@@ -85,3 +85,25 @@ sim_power <- pmap_dfr(
   }
 )
 ```
+
+```{R, eval=FALSE, echo=FALSE}
+# Simulate Estimate Results
+progress_ct <- 0 # global counter
+sim_est <- pmap_dfr(
+  param_grid,
+  function(scenario, method, sxy, sx, sy, n, n_sim) {
+    progress_ct <<- progress_ct + 1 # update counter
+    message("Running: ", progress_ct, "/", nrow(param_grid))
+    params <- scenario(
+      scenario_num = scenario,
+      sxy = sxy,
+      sx = sx,
+      sy = sy,
+      n = n
+    )
+    est <- simulate_est(params, method = method, n_sim = n_sim)
+    export_est_simulations(est, method, params, n_sims, export_est_file)
+    tibble(scenario, method, n, n_sim, est)
+  }
+)
+```
