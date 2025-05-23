@@ -48,3 +48,40 @@ p7 | p8
 p9 | p10
 p11
 ```
+
+## Simulate Data
+
+```{R, echo=FALSE}
+# Set Simulation Parameters
+param_grid <- expand.grid(
+  scenario = 1:11,
+  method = c("ECE", "demean", "desmooth"),
+  sxy = seq(0, 0.5, 0.05),
+  sx = 1,
+  sy = 1,
+  n = c(200, 1000),
+  n_sim = 1000
+)
+```
+
+```{R, eval=FALSE, echo=FALSE}
+# Simulate Power Results
+progress_ct <- 0 # global counter
+sim_power <- pmap_dfr(
+  param_grid,
+  function(scenario, method, sxy, sx, sy, n, n_sim) {
+    progress_ct <<- progress_ct + 1 # update counter
+    message("Running: ", progress_ct, "/", nrow(param_grid))
+    params <- scenario(
+      scenario_num = scenario,
+      sxy = sxy,
+      sx = sx,
+      sy = sy,
+      n = n
+    )
+    power <- simulate_power(params, method = method, n_sim = n_sim)
+    export_power_simulations(power, method, params, n_sims, export_power_file)
+    tibble(scenario, method, n, n_sim, power)
+  }
+)
+```
