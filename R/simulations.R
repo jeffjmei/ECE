@@ -43,7 +43,7 @@ plot_power <- function(sim_est, sample_size, scenario, n_simulations) {
       scenario_num == scenario,
       n_sims == n_simulations
     ) %>%
-    ggplot(aes(x = sxy, y = power, color = method)) +
+    ggplot(aes(x = sxy, y = val, color = method)) +
     geom_line(linewidth = 1) +
     geom_point(size = 2) +
     ylim(0, 1) +
@@ -64,14 +64,14 @@ plot_est <- function(sim_est, sample_size, scenario, n_simulations) {
       scenario_num == scenario,
       n_sims == n_simulations
     ) %>%
-    ggplot(aes(x = sxy, y = est, color = method)) +
+    ggplot(aes(x = sxy, y = val, color = method)) +
     geom_line(linewidth = 1) +
     geom_point(size = 2) +
     xlim(0, 0.55) +
     ylim(0, 0.55) +
     geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
     labs(
-      title = glue::glue("Estimated Correlation vs True Correlation (n = {sample_size}, Scenario {scenario})"),
+      title = glue::glue("Correlation Bias (n = {sample_size}, Scenario {scenario})"),
       x = "True Correlation (sxy)",
       y = "Estimated Correlation",
       color = "Method"
