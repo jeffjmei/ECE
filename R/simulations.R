@@ -406,3 +406,24 @@ export_power_simulations <- function(power, method, params, n_sims, export_file)
     write.table(row, export_file, sep = ",", row.names = FALSE, col.names = FALSE, append = TRUE)
   }
 }
+
+plot_power <- function(sim_est, sample_size, scenario, n_simulations) {
+  sim_est %>%
+    filter(
+      n == sample_size,
+      scenario_num == scenario,
+      n_sims == n_simulations
+    ) %>%
+    ggplot(aes(x = sxy, y = power, color = method)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2) +
+    ylim(0, 1) +
+    geom_hline(yintercept = 0.05) +
+    labs(
+      title = "Power by Correlation Level (n = 200, Scenario 1)",
+      x = "True Correlation (sxy)",
+      y = "Power",
+      color = "Method"
+    ) +
+    theme_minimal()
+}
