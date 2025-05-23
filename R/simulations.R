@@ -540,3 +540,13 @@ simulate_ece_mse <- function(params, n_sim = 1000) {
     (est - params$S[1, 2] / sqrt(params$S[1, 1] * params$S[2, 2]))^2
   )
 }
+
+simulate_mse <- function(params, method, n_sim = 1000, ...) {
+  if (method == "ECE") {
+    simulate_ece_mse(params, n_sim)
+  } else if (method == "demean") {
+    simulate_demean_mse(params, n_sim, ...)
+  } else if (method == "desmooth") {
+    simulate_desmooth_mse(params, n_sim, ...)
+  }
+}
