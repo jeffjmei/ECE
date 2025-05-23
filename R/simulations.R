@@ -530,3 +530,13 @@ simulate_desmooth_mse <- function(params, n_sim = 1000, method = "loess", ...) {
     (est - params$S[1, 2] / sqrt(params$S[1, 1] * params$S[2, 2]))^2
   )
 }
+
+simulate_ece_mse <- function(params, n_sim = 1000) {
+  est <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    ece.test(X[, 1], X[, 2])$estimate # estimate cor
+  })
+  mean(
+    (est - params$S[1, 2] / sqrt(params$S[1, 1] * params$S[2, 2]))^2
+  )
+}
