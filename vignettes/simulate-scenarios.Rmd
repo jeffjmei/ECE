@@ -107,3 +107,41 @@ sim_est <- pmap_dfr(
   }
 )
 ```
+
+## Analyze Results
+
+```{R, message=FALSE, warning=FALSE}
+# Read CSV
+sim_power <- readr::read_csv(export_power_file)
+sim_est <- read_csv(export_est_file)
+```
+
+```{R, echo=FALSE, warning=FALSE, mesage=FALSE}
+# Plot Estimates
+p1_est <- plot_est(sim_est, sample_size = 1000, scenario = 1, n_simulations = 1000)
+p2_est <- plot_est(sim_est, sample_size = 1000, scenario = 2, n_simulations = 1000)
+p3_est <- plot_est(sim_est, sample_size = 1000, scenario = 3, n_simulations = 1000)
+p4_est <- plot_est(sim_est, sample_size = 1000, scenario = 4, n_simulations = 1000)
+p5_est <- plot_est(sim_est, sample_size = 1000, scenario = 5, n_simulations = 1000)
+p6_est <- plot_est(sim_est, sample_size = 1000, scenario = 6, n_simulations = 1000)
+p7_est <- plot_est(sim_est, sample_size = 1000, scenario = 7, n_simulations = 1000)
+p8_est <- plot_est(sim_est, sample_size = 1000, scenario = 8, n_simulations = 1000) #
+p9_est <- plot_est(sim_est, sample_size = 1000, scenario = 9, n_simulations = 1000) #
+p10_est <- plot_est(sim_est, sample_size = 1000, scenario = 10, n_simulations = 1000) #
+p11_est <- plot_est(sim_est, sample_size = 1000, scenario = 11, n_simulations = 1000) #
+```
+
+```{R, echo=FALSE, message=FALSE, warning=FALSE}
+# Plot Instances Alongside
+p1 | p1_est
+p2 | p2_est # desmooth small bias
+p3 | p3_est # desmooth small bias
+p4 | p4_est # desmooth small bias
+p5 | p5_est # desmooth small bias
+p6 | p6_est
+p7 | p7_est
+p8 | p8_est # desmooth fail
+p9 | p9_est # desmooth/demean fail
+p10 | p10_est # desmooth/demean fail
+p11 | p11_est # desmooth/demean fail
+```
