@@ -43,7 +43,7 @@ segmented_mean <- function(data, change_points) {
 #' @export
 get_cp <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL) {
   if (penalty == "Manual") {
-    cp <- cpt.mean(
+    cp <- changepoint::cpt.mean(
       x,
       method = method,
       penalty = penalty,
@@ -51,7 +51,7 @@ get_cp <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value
       pen.value = pen.value
     )
   } else {
-    cp <- cpt.mean(
+    cp <- changepoint::cpt.mean(
       x,
       method = method,
       penalty = penalty,
