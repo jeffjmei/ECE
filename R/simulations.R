@@ -550,3 +550,25 @@ simulate_mse <- function(params, method, n_sim = 1000, ...) {
     simulate_desmooth_mse(params, n_sim, ...)
   }
 }
+
+export_simulations <- function(val, method, params, n_sims, export_file) {
+  row <- data.frame(
+    val = val,
+    method = method,
+    n = params$n,
+    sx = sqrt(params$S[1, 1]),
+    sy = sqrt(params$S[2, 2]),
+    sxy = params$S[1, 2],
+    scenario_num = params$scenario,
+    n_sims = n_sims,
+    datetime = Sys.time()
+  )
+
+  # If file doesn't exist, write with header
+  if (!file.exists(export_file)) {
+    write.table(row, export_file, sep = ",", row.names = FALSE, col.names = TRUE)
+  } else {
+    # Append without writing header
+    write.table(row, export_file, sep = ",", row.names = FALSE, col.names = FALSE, append = TRUE)
+  }
+}
