@@ -14,17 +14,25 @@ knitr::opts_chunk$set(
 )
 ```
 
-# Simulate Scenarios
-
 ```{r setup, message=FALSE, warning=FALSE, echo=FALSE}
 # Load Libraries
 devtools::load_all()
 library(patchwork) #
 library(tidyverse)
 
-export_power_file <- "~/Documents/Research/Code/ECE/dev/power-sims.csv"
-export_est_file <- "~/Documents/Research/Code/ECE/dev/est-sims.csv"
+directory <- "~/Documents/Research/Code/ECE/dev/"
+export_power_file <- paste0(directory, "power-sims.csv")
+export_est_file <- paste0(directory, "est-sims.csv")
+export_mse_file <- paste0(directory, "mse-sims.csv")
 ```
+
+# Simulate Scenarios
+In this vignette, we will compare the _equivariant covariance estimator_ against some mean-removing alternatives. 
+
+1. `demean`: estimate change points, estimate the segment means, remove means, and estimate Pearson correlation
+2. `desmooth`: apply loess smoothing, remove estimated mean, estimate Pearson correlation
+
+We consider a variety of simulations shown below, which have varying levels of mean structure complexity. All of them have minimum segment length of 4. 
 
 ```{R, echo=FALSE}
 # Plot Scenarios
@@ -50,6 +58,8 @@ p11
 ```
 
 ## Simulate Data
+
+We simulate the results and store them in a csv file. This way, we reduce our computational burden and we can conveniently call plots to provide different views of the data. 
 
 ```{R, echo=FALSE}
 # Set Simulation Parameters
@@ -108,12 +118,35 @@ sim_est <- pmap_dfr(
 )
 ```
 
+```{R, eval=FALSE, echo=FALSE}
+# Simulate MSE Results
+progress_ct <- 0 # global counter
+sim_mse <- pmap_dfr(
+  param_grid,
+  function(scenario, method, sxy, sx, sy, n, n_sim) {
+    progress_ct <<- progress_ct + 1 # update counter
+    message("Running: ", progress_ct, "/", nrow(param_grid))
+    params <- scenario(
+      scenario_num = scenario,
+      sxy = sxy,
+      sx = sx,
+      sy = sy,
+      n = n
+    )
+    mse <- simulate_mse(params, method = method, n_sim = n_sim)
+    export_simulations(mse, method, params, n_sims, export_mse_file)
+    tibble(scenario, method, n, n_sim, mse)
+  }
+)
+```
+
 ## Analyze Results
 
 ```{R, message=FALSE, warning=FALSE}
 # Read CSV
 sim_power <- readr::read_csv(export_power_file)
-sim_est <- read_csv(export_est_file)
+sim_est <- readr::read_csv(export_est_file)
+sim_mse <- readr::read_csv(export_mse_file)
 ```
 
 ```{R, echo=FALSE, warning=FALSE, mesage=FALSE}
