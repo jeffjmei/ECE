@@ -23,3 +23,17 @@ library(patchwork) #
 libary(tidyverse)
 ```
 
+```{R, echo=FALSE}
+# Plot Scenarios
+p1 <- plot_scenario(scenario(1, n = 1000))
+p2 <- plot_scenario(scenario(2, n = 1000))
+p3 <- plot_scenario(scenario(3, n = 1000))
+p4 <- plot_scenario(scenario(4, n = 1000))
+p5 <- plot_scenario(scenario(5, n = 1000))
+p6 <- plot_scenario(scenario(6, n = 1000))
+p7 <- plot_scenario(scenario(7, n = 1000))
+p8 <- plot_scenario(scenario(8, n = 1000))
+p9 <- plot_scenario(scenario(9, n = 1000))
+p10 <- plot_scenario(scenario(10, n = 1000))
+p11 <- plot_scenario(scenario(11, n = 1000))
+```
