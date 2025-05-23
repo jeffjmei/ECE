@@ -488,3 +488,11 @@ simulate_desmooth <- function(params, n_sim = 1000, method = "loess", ...) {
   })
   mean(est)
 }
+
+simulate_ece <- function(params, n_sim = 1000) {
+  est <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    ece.test(X[, 1], X[, 2])$estimate # estimate cor
+  })
+  mean(est)
+}
