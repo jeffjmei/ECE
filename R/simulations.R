@@ -449,3 +449,22 @@ plot_est <- function(sim_est, sample_size, scenario, n_simulations) {
     ) +
     theme_minimal()
 }
+
+plot_mse <- function(sim_est, sample_size, scenario, n_simulations) {
+  sim_mse %>%
+    filter(
+      n == sample_size,
+      scenario_num == scenario,
+      n_sims == n_simulations
+    ) %>%
+    ggplot(aes(x = sxy, y = val, color = method)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2) +
+    labs(
+      title = glue::glue("MSE vs Correlation (n = {sample_size}, Scenario {scenario})"),
+      x = "Correlation (sxy)",
+      y = "MSE",
+      color = "Method"
+    ) +
+    theme_minimal()
+}
