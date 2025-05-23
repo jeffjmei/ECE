@@ -1,0 +1,25 @@
+---
+title: "simulate-scenarios"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{simulate-scenarios}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Simulate Scenarios
+
+```{r setup, message=FALSE, warning=FALSE}
+# Load Libraries
+devtools::load_all()
+library(patchwork) #
+libary(tidyverse)
+```
+
