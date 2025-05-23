@@ -178,3 +178,36 @@ p9 | p9_est # desmooth/demean fail
 p10 | p10_est # desmooth/demean fail
 p11 | p11_est # desmooth/demean fail
 ```
+
+In all simulations considered, ECE is unbiased, even in misspecified cases like scenario 8 and 9, maximally frequent change point scenarios like 10, and in randomly distributed changes as in 11. While the mean-removing strategies are reasonably effective in many simple cases, they struggle once the changes become too erratic such as in scenario 8. 
+
+```{R}
+# Analyzing MSE
+p1_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 1, n_simulations = 1000)
+p2_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 2, n_simulations = 1000)
+p3_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 3, n_simulations = 1000)
+p4_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 4, n_simulations = 1000)
+p5_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 5, n_simulations = 1000)
+p6_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 6, n_simulations = 1000)
+p7_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 7, n_simulations = 1000)
+p8_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 8, n_simulations = 1000)
+p9_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 9, n_simulations = 1000)
+p10_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 10, n_simulations = 1000)
+p11_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 11, n_simulations = 1000)
+```
+
+```{R, echo=FALSE, message=FALSE, warning=FALSE}
+# Plot Instances Alongside
+p1 | p1_mse
+p2 | p2_mse
+p3 | p3_mse
+p4 | p4_mse
+p5 | p5_mse
+p6 | p6_mse
+p7 | p7_mse
+p8 | p8_mse
+p9 | p9_mse
+p10 | p10_mse
+p11 | p11_mse
+```
+
