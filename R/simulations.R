@@ -506,3 +506,15 @@ simulate_est <- function(params, method, n_sim = 1000, ...) {
     simulate_desmooth(params, n_sim, ...)
   }
 }
+
+simulate_demean_mse <- function(params, n_sim = 1000, ...) {
+  est <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    X_mean <- segment_mean(X, ...) # estimate mean
+    X_demean <- X - X_mean # remove mean
+    cor.test(X_demean[, 1], X_demean[, 2])$estimate # estimate cor
+  })
+  mean(
+    (est - params$S[1, 2] / sqrt(params$S[1, 1] * params$S[2, 2]))^2
+  )
+}
