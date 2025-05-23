@@ -16,11 +16,14 @@ knitr::opts_chunk$set(
 
 # Simulate Scenarios
 
-```{r setup, message=FALSE, warning=FALSE}
+```{r setup, message=FALSE, warning=FALSE, echo=FALSE}
 # Load Libraries
 devtools::load_all()
 library(patchwork) #
-libary(tidyverse)
+library(tidyverse)
+
+export_power_file <- "~/Documents/Research/Code/ECE/dev/power-sims.csv"
+export_est_file <- "~/Documents/Research/Code/ECE/dev/est-sims.csv"
 ```
 
 ```{R, echo=FALSE}
@@ -36,4 +39,12 @@ p8 <- plot_scenario(scenario(8, n = 1000))
 p9 <- plot_scenario(scenario(9, n = 1000))
 p10 <- plot_scenario(scenario(10, n = 1000))
 p11 <- plot_scenario(scenario(11, n = 1000))
+
+# Show Results
+p1 | p2
+p3 | p4
+p5 | p6
+p7 | p8
+p9 | p10
+p11
 ```
