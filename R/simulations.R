@@ -478,3 +478,13 @@ simulate_demean <- function(params, n_sim = 1000, ...) {
   })
   mean(est)
 }
+
+simulate_desmooth <- function(params, n_sim = 1000, method = "loess", ...) {
+  est <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    X_mean <- smooth_mean(X, method = method, ...) # estimate mean
+    X_demean <- X - X_mean # remove mean
+    cor.test(X_demean[, 1], X_demean[, 2])$estimate # estimate cor
+  })
+  mean(est)
+}
