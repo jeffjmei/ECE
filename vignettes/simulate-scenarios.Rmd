@@ -150,6 +150,21 @@ sim_mse <- readr::read_csv(export_mse_file)
 ```
 
 ```{R, echo=FALSE, warning=FALSE, mesage=FALSE}
+# Plot Power
+p1_power <- plot_power(sim_power, sample_size = 1000, scenario = 1, n_simulations = 1000)
+p2_power <- plot_power(sim_power, sample_size = 1000, scenario = 2, n_simulations = 1000)
+p3_power <- plot_power(sim_power, sample_size = 1000, scenario = 3, n_simulations = 1000)
+p4_power <- plot_power(sim_power, sample_size = 1000, scenario = 4, n_simulations = 1000)
+p5_power <- plot_power(sim_power, sample_size = 1000, scenario = 5, n_simulations = 1000)
+p6_power <- plot_power(sim_power, sample_size = 1000, scenario = 6, n_simulations = 1000)
+p7_power <- plot_power(sim_power, sample_size = 1000, scenario = 7, n_simulations = 1000)
+p8_power <- plot_power(sim_power, sample_size = 1000, scenario = 8, n_simulations = 1000) #
+p9_power <- plot_power(sim_power, sample_size = 1000, scenario = 9, n_simulations = 1000) #
+p10_power <- plot_power(sim_power, sample_size = 1000, scenario = 10, n_simulations = 1000) #
+p11_power <- plot_power(sim_power, sample_size = 1000, scenario = 11, n_simulations = 1000) #
+```
+
+```{R, echo=FALSE, warning=FALSE, mesage=FALSE}
 # Plot Estimates
 p1_est <- plot_est(sim_est, sample_size = 1000, scenario = 1, n_simulations = 1000)
 p2_est <- plot_est(sim_est, sample_size = 1000, scenario = 2, n_simulations = 1000)
@@ -163,23 +178,6 @@ p9_est <- plot_est(sim_est, sample_size = 1000, scenario = 9, n_simulations = 10
 p10_est <- plot_est(sim_est, sample_size = 1000, scenario = 10, n_simulations = 1000) #
 p11_est <- plot_est(sim_est, sample_size = 1000, scenario = 11, n_simulations = 1000) #
 ```
-
-```{R, echo=FALSE, message=FALSE, warning=FALSE}
-# Plot Instances Alongside
-p1 | p1_est
-p2 | p2_est # desmooth small bias
-p3 | p3_est # desmooth small bias
-p4 | p4_est # desmooth small bias
-p5 | p5_est # desmooth small bias
-p6 | p6_est
-p7 | p7_est
-p8 | p8_est # desmooth fail
-p9 | p9_est # desmooth/demean fail
-p10 | p10_est # desmooth/demean fail
-p11 | p11_est # desmooth/demean fail
-```
-
-In all simulations considered, ECE is unbiased, even in misspecified cases like scenario 8 and 9, maximally frequent change point scenarios like 10, and in randomly distributed changes as in 11. While the mean-removing strategies are reasonably effective in many simple cases, they struggle once the changes become too erratic such as in scenario 8. 
 
 ```{R}
 # Analyzing MSE
@@ -198,16 +196,17 @@ p11_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 11, n_simulations = 
 
 ```{R, echo=FALSE, message=FALSE, warning=FALSE}
 # Plot Instances Alongside
-p1 | p1_mse
-p2 | p2_mse
-p3 | p3_mse
-p4 | p4_mse
-p5 | p5_mse
-p6 | p6_mse
-p7 | p7_mse
-p8 | p8_mse
-p9 | p9_mse
-p10 | p10_mse
-p11 | p11_mse
+(p1 | p1_power) / (p1_est | p1_mse)
+(p2 | p2_power) / (p2_est | p2_mse)
+(p3 | p3_power) / (p3_est | p3_mse)
+(p4 | p4_power) / (p4_est | p4_mse)
+(p5 | p5_power) / (p5_est | p5_mse)
+(p6 | p6_power) / (p6_est | p6_mse)
+(p7 | p7_power) / (p7_est | p7_mse)
+(p8 | p8_power) / (p8_est | p8_mse)
+(p9 | p9_power) / (p9_est | p9_mse)
+(p10 | p10_power) / (p10_est | p10_mse)
+(p11 | p11_power) / (p11_est | p11_mse)
 ```
 
+In all simulations considered, ECE is unbiased, even in misspecified cases like scenario 8 and 9, maximally frequent change point scenarios like 10, and in randomly distributed changes as in 11. While the mean-removing strategies are reasonably effective in many simple cases, they struggle once the changes become too erratic such as in scenario 8. 
