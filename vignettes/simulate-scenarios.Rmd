@@ -214,3 +214,26 @@ p11_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 11, n_simulations = 
 ```
 
 In all simulations considered, ECE is unbiased, even in misspecified cases like scenario 8 and 9, maximally frequent change point scenarios like 10, and in randomly distributed changes as in 11. While the mean-removing strategies are reasonably effective in many simple cases, they struggle once the changes become too erratic such as in scenario 8. 
+
+```{R, echo=FALSE, message=FALSE, warning=FALSE}
+plot_segment <- function(X, params) {
+  # Combine
+  df <- as.data.frame(X)
+  colnames(df) <- c("X1", "X2")
+  X_mean <- segment_mean(X)
+  df$X1_mean <- X_mean[, 1]
+  df$X2_mean <- X_mean[, 2]
+  df$h1 <- params$h[, 1]
+  df$h2 <- params$h[, 2]
+  df$index <- seq_len(nrow(X))
+
+  ggplot(df, aes(x = index)) +
+    geom_line(aes(y = X1), color = "red", alpha = 0.5) +
+    geom_line(aes(y = X2), color = "blue", alpha = 0.5) +
+    geom_line(aes(y = h1), color = "red", linewidth = 1.5) +
+    geom_line(aes(y = h2), color = "blue", linewidth = 1.5) +
+    geom_line(aes(y = X1_mean), color = "red") +
+    geom_line(aes(y = X2_mean), color = "blue") +
+    theme_minimal()
+}
+```
