@@ -79,7 +79,7 @@ param_grid <- expand.grid(
 progress_ct <- 0 # global counter
 sim_power <- pmap_dfr(
   param_grid,
-  function(scenario, method, sxy, sx, sy, n, n_sim) {
+  function(scenario, method, sxy, sx, sy, n, signal, n_sim) {
     progress_ct <<- progress_ct + 1 # update counter
     message("Running: ", progress_ct, "/", nrow(param_grid))
     params <- scenario(
@@ -87,10 +87,11 @@ sim_power <- pmap_dfr(
       sxy = sxy,
       sx = sx,
       sy = sy,
-      n = n
+      n = n,
+      signal = signal
     )
     power <- simulate_power(params, method = method, n_sim = n_sim)
-    export_power_simulations(power, method, params, n_sims, export_power_file)
+    export_simulations(power, method, params, n_sims, export_power_file)
     tibble(scenario, method, n, n_sim, power)
   }
 )
@@ -101,7 +102,7 @@ sim_power <- pmap_dfr(
 progress_ct <- 0 # global counter
 sim_est <- pmap_dfr(
   param_grid,
-  function(scenario, method, sxy, sx, sy, n, n_sim) {
+  function(scenario, method, sxy, sx, sy, n, signal, n_sim) {
     progress_ct <<- progress_ct + 1 # update counter
     message("Running: ", progress_ct, "/", nrow(param_grid))
     params <- scenario(
@@ -109,10 +110,11 @@ sim_est <- pmap_dfr(
       sxy = sxy,
       sx = sx,
       sy = sy,
-      n = n
+      n = n,
+      signal = signal
     )
     est <- simulate_est(params, method = method, n_sim = n_sim)
-    export_est_simulations(est, method, params, n_sims, export_est_file)
+    export_simulations(est, method, params, n_sims, export_est_file)
     tibble(scenario, method, n, n_sim, est)
   }
 )
@@ -123,7 +125,7 @@ sim_est <- pmap_dfr(
 progress_ct <- 0 # global counter
 sim_mse <- pmap_dfr(
   param_grid,
-  function(scenario, method, sxy, sx, sy, n, n_sim) {
+  function(scenario, method, sxy, sx, sy, n, signal, n_sim) {
     progress_ct <<- progress_ct + 1 # update counter
     message("Running: ", progress_ct, "/", nrow(param_grid))
     params <- scenario(
@@ -131,7 +133,8 @@ sim_mse <- pmap_dfr(
       sxy = sxy,
       sx = sx,
       sy = sy,
-      n = n
+      n = n,
+      signal = signal
     )
     mse <- simulate_mse(params, method = method, n_sim = n_sim)
     export_simulations(mse, method, params, n_sims, export_mse_file)
@@ -165,6 +168,7 @@ p11_power <- plot_power(sim_power, sample_size = 1000, scenario = 11, n_simulati
 ```
 
 ```{R, echo=FALSE, warning=FALSE, mesage=FALSE}
+```{R, echo=FALSE, warning=FALSE, message=FALSE}
 # Plot Estimates
 p1_est <- plot_est(sim_est, sample_size = 1000, scenario = 1, n_simulations = 1000)
 p2_est <- plot_est(sim_est, sample_size = 1000, scenario = 2, n_simulations = 1000)
