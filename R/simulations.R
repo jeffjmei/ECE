@@ -26,6 +26,14 @@ simulate_power_ece <- function(params, n_sim = 1000) {
   mean(pval < 0.05)
 }
 
+simulate_power_oracle <- function(params, n_sim = 1000) {
+  pval <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    cor.test(X[, 1] - params$h[, 1], X[, 2] - params$h[, 2])$p.val # estimate cor
+  })
+  mean(pval < 0.05)
+}
+
 simulate_power <- function(params, method, n_sim = 1000, ...) {
   if (method == "ECE") {
     simulate_power_ece(params, n_sim)
@@ -33,6 +41,8 @@ simulate_power <- function(params, method, n_sim = 1000, ...) {
     simulate_power_demean(params, n_sim, ...)
   } else if (method == "desmooth") {
     simulate_power_desmooth(params, n_sim, ...)
+  } else if (method == "oracle") {
+    simulate_power_oracle(params, n_sim)
   }
 }
 
@@ -126,6 +136,14 @@ simulate_ece <- function(params, n_sim = 1000) {
   mean(est)
 }
 
+simulate_oracle <- function(params, n_sim = 1000) {
+  est <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    cor.test(X[, 1] - params$h[, 1], X[, 2] - params$h[, 2])$estimate # estimate cor
+  })
+  mean(est)
+}
+
 simulate_est <- function(params, method, n_sim = 1000, ...) {
   if (method == "ECE") {
     simulate_ece(params, n_sim)
@@ -133,6 +151,8 @@ simulate_est <- function(params, method, n_sim = 1000, ...) {
     simulate_demean(params, n_sim, ...)
   } else if (method == "desmooth") {
     simulate_desmooth(params, n_sim, ...)
+  } else if (method == "oracle") {
+    simulate_oracle(params, n_sim)
   }
 }
 
@@ -170,6 +190,16 @@ simulate_ece_mse <- function(params, n_sim = 1000) {
   )
 }
 
+simulate_oracle_mse <- function(params, n_sim = 1000) {
+  est <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    cor.test(X[, 1] - params$h[, 1], X[, 2] - params$h[, 2])$estimate # estimate cor
+  })
+  mean(
+    (est - params$S[1, 2] / sqrt(params$S[1, 1] * params$S[2, 2]))^2
+  )
+}
+
 simulate_mse <- function(params, method, n_sim = 1000, ...) {
   if (method == "ECE") {
     simulate_ece_mse(params, n_sim)
@@ -177,6 +207,8 @@ simulate_mse <- function(params, method, n_sim = 1000, ...) {
     simulate_demean_mse(params, n_sim, ...)
   } else if (method == "desmooth") {
     simulate_desmooth_mse(params, n_sim, ...)
+  } else if (method == "oracle") {
+    simulate_oracle_mse(params, n_sim)
   }
 }
 
