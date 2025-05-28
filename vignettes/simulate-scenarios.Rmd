@@ -237,3 +237,55 @@ plot_segment <- function(X, params) {
     theme_minimal()
 }
 ```
+
+```{R, warning=FALSE, message=FALSE, echo=FALSE}
+bias <- sim_est %>%
+  dplyr::filter(
+    n == 200,
+    sxy == 0,
+    scenario_num == 4,
+    n_sims == 10000
+  ) %>%
+  ggplot(aes(x = signal, y = val, color = method)) +
+  geom_hline(yintercept = 0) +
+  geom_line() +
+  geom_point() +
+  xlab("signal strength") + 
+  ylab("correlation estimate") + 
+  ggtitle("Mean-Removing Techniques are Biased (n=200, scenario=4)") + 
+  theme_minimal()
+
+params <- scenario(4, n=200, sxy=0, signal=0.25)
+plot_segment(generate_data(params), params) | bias
+```
+
+We see that mean-removing strategies are biased for small mean shifts. If the strategies are unable to control for Type I error, the corresponding power curves are somewhat meaningless. Strategies unable to control for Type I error will have inflated power and will look superior to techniques that can control for Type I error. 
+
+```{R, warning=FALSE, message=FALSE, echo=FALSE}
+power <- sim_power %>%
+  dplyr::filter(
+    n == 200,
+    sxy == 0,
+    scenario_num == 4,
+    n_sims == 10000
+  ) %>%
+  ggplot(aes(x = signal, y = val, color = method)) +
+  geom_hline(yintercept = 0.05) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x="signal",
+    y="power",
+    title="Power Reflects Bias (n=200, scenario=4)"
+  ) + 
+  theme_minimal()
+
+params <- scenario(4, n=200, sxy=0, signal=0.25)
+plot_segment(generate_data(params), params) | power
+```
+
+## Future Simulations
+The general story is this: desmoothing is always biased since it can't handle the abrupt changes. Segmentation does really well if the segments can be found. However, it is challenging to identify the changes when they are 1.) too frequent/sporadic, 2.) too small and cannot be detected. ECE is unbiased, but suffers from very high variance. Because of this, it tends to have a worse MSE than the competing methods. 
+
+The simulations I ran have fairly large mean shifts, which paints a fairly pessimistic perspective of our estimator. However, we see quite plainly that when the mean structure is complicated, ECE dominates performance. 
+
