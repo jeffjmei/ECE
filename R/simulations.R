@@ -46,12 +46,13 @@ simulate_power <- function(params, method, n_sim = 1000, ...) {
   }
 }
 
-plot_power <- function(sim_est, sample_size, scenario, n_simulations) {
-  sim_est %>%
+plot_power <- function(sim_power, sample_size, scenario, n_simulations, signal_val = 1) {
+  sim_power %>%
     filter(
       n == sample_size,
       scenario_num == scenario,
-      n_sims == n_simulations
+      n_sims == n_simulations,
+      signal == signal_val
     ) %>%
     ggplot(aes(x = sxy, y = val, color = method)) +
     geom_line(linewidth = 1) +
@@ -59,7 +60,7 @@ plot_power <- function(sim_est, sample_size, scenario, n_simulations) {
     ylim(0, 1) +
     geom_hline(yintercept = 0.05) +
     labs(
-      title = "Power by Correlation Level (n = 200, Scenario 1)",
+      title = glue::glue("Power (n = {sample_size}, Scenario {scenario})"),
       x = "True Correlation (sxy)",
       y = "Power",
       color = "Method"
@@ -67,34 +68,37 @@ plot_power <- function(sim_est, sample_size, scenario, n_simulations) {
     theme_minimal()
 }
 
-plot_est <- function(sim_est, sample_size, scenario, n_simulations) {
+plot_est <- function(sim_est, sample_size, scenario, n_simulations, signal_val = 1) {
   sim_est %>%
     filter(
       n == sample_size,
       scenario_num == scenario,
-      n_sims == n_simulations
+      n_sims == n_simulations,
+      signal == signal_val
     ) %>%
-    ggplot(aes(x = sxy, y = val, color = method)) +
+    ggplot(aes(x = sxy, y = sxy - val, color = method)) +
     geom_line(linewidth = 1) +
     geom_point(size = 2) +
-    xlim(0, 0.55) +
-    ylim(0, 0.55) +
-    geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    geom_hline(yintercept = 0) +
+    # xlim(0, 0.55) +
+    # ylim(0, 0.55) +
+    # geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
     labs(
       title = glue::glue("Correlation Bias (n = {sample_size}, Scenario {scenario})"),
       x = "True Correlation (sxy)",
-      y = "Estimated Correlation",
+      y = "Bias",
       color = "Method"
     ) +
     theme_minimal()
 }
 
-plot_mse <- function(sim_est, sample_size, scenario, n_simulations) {
+plot_mse <- function(sim_est, sample_size, scenario, n_simulations, signal_val = 1) {
   sim_mse %>%
     filter(
       n == sample_size,
       scenario_num == scenario,
-      n_sims == n_simulations
+      n_sims == n_simulations,
+      signal == signal_val
     ) %>%
     ggplot(aes(x = sxy, y = val, color = method)) +
     geom_line(linewidth = 1) +
