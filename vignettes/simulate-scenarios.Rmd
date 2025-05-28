@@ -200,17 +200,17 @@ p11_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 11, n_simulations = 
 
 ```{R, echo=FALSE, message=FALSE, warning=FALSE}
 # Plot Instances Alongside
-(p1 | p1_power) / (p1_est | p1_mse)
-(p2 | p2_power) / (p2_est | p2_mse)
-(p3 | p3_power) / (p3_est | p3_mse)
-(p4 | p4_power) / (p4_est | p4_mse)
-(p5 | p5_power) / (p5_est | p5_mse)
-(p6 | p6_power) / (p6_est | p6_mse)
-(p7 | p7_power) / (p7_est | p7_mse)
-(p8 | p8_power) / (p8_est | p8_mse)
-(p9 | p9_power) / (p9_est | p9_mse)
-(p10 | p10_power) / (p10_est | p10_mse)
-(p11 | p11_power) / (p11_est | p11_mse)
+(p1 | p1_est) / (p1_power | p1_mse)
+(p2 | p2_est) / (p2_power | p2_mse)
+(p3 | p3_est) / (p3_power | p3_mse)
+(p4 | p4_est) / (p4_power | p4_mse)
+(p5 | p5_est) / (p5_power | p5_mse)
+(p6 | p6_est) / (p6_power | p6_mse)
+(p7 | p7_est) / (p7_power | p7_mse)
+(p8 | p8_est) / (p8_power | p8_mse)
+(p9 | p9_est) / (p9_power | p9_mse)
+(p10 | p10_est) / (p10_power | p10_mse)
+(p11 | p11_est) / (p11_power | p11_mse)
 ```
 
 In all simulations considered, ECE is unbiased, even in misspecified cases like scenario 8 and 9, maximally frequent change point scenarios like 10, and in randomly distributed changes as in 11. While the mean-removing strategies are reasonably effective in many simple cases, they struggle once the changes become too erratic such as in scenario 8. 
