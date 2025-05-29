@@ -34,7 +34,7 @@ simulate_power_oracle <- function(params, n_sim = 1000) {
   mean(pval < 0.05)
 }
 
-simulate_oracle_cp_power <- function(params, n_sim = 1000, ...) {
+simulate_power_oracle_cp <- function(params, n_sim = 1000, ...) {
   pval <- replicate(n_sim, {
     X <- generate_data(params) # generate data
     X_mean <- cbind(
