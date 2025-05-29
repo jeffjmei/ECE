@@ -34,6 +34,19 @@ simulate_power_oracle <- function(params, n_sim = 1000) {
   mean(pval < 0.05)
 }
 
+simulate_oracle_cp_power <- function(params, n_sim = 1000, ...) {
+  pval <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    X_mean <- cbind(
+      X1 = segmented_mean(X[, 1], find_cp(params$h)),
+      X2 = segmented_mean(X[, 2], find_cp(params$h))
+    )
+    X_demean <- X - X_mean # remove mean
+    cor.test(X_demean[, 1], X_demean[, 2])$estimate # estimate cor
+  })
+  mean(pval < 0.05)
+}
+
 simulate_power <- function(params, method, n_sim = 1000, ...) {
   if (method == "ECE") {
     simulate_power_ece(params, n_sim)
@@ -43,6 +56,8 @@ simulate_power <- function(params, method, n_sim = 1000, ...) {
     simulate_power_desmooth(params, n_sim, ...)
   } else if (method == "oracle") {
     simulate_power_oracle(params, n_sim)
+  } else if (method == "oracle cp") {
+    simulate_power_oracle_cp(params, n_sim)
   }
 }
 
@@ -148,6 +163,19 @@ simulate_oracle <- function(params, n_sim = 1000) {
   mean(est)
 }
 
+simulate_oracle_cp <- function(params, n_sim = 1000, ...) {
+  est <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    X_mean <- cbind(
+      X1 = segmented_mean(X[, 1], find_cp(params$h)),
+      X2 = segmented_mean(X[, 2], find_cp(params$h))
+    )
+    X_demean <- X - X_mean # remove mean
+    cor.test(X_demean[, 1], X_demean[, 2])$estimate # estimate cor
+  })
+  mean(est)
+}
+
 simulate_est <- function(params, method, n_sim = 1000, ...) {
   if (method == "ECE") {
     simulate_ece(params, n_sim)
@@ -157,6 +185,8 @@ simulate_est <- function(params, method, n_sim = 1000, ...) {
     simulate_desmooth(params, n_sim, ...)
   } else if (method == "oracle") {
     simulate_oracle(params, n_sim)
+  } else if (method == "oracle cp") {
+    simulate_oracle_cp(params, n_sim)
   }
 }
 
@@ -204,6 +234,21 @@ simulate_oracle_mse <- function(params, n_sim = 1000) {
   )
 }
 
+simulate_oracle_cp_mse <- function(params, n_sim = 1000, ...) {
+  est <- replicate(n_sim, {
+    X <- generate_data(params) # generate data
+    X_mean <- cbind(
+      X1 = segmented_mean(X[, 1], find_cp(params$h)),
+      X2 = segmented_mean(X[, 2], find_cp(params$h))
+    )
+    X_demean <- X - X_mean # remove mean
+    cor.test(X_demean[, 1], X_demean[, 2])$estimate # estimate cor
+  })
+  mean(
+    (est - params$S[1, 2] / sqrt(params$S[1, 1] * params$S[2, 2]))^2
+  )
+}
+
 simulate_mse <- function(params, method, n_sim = 1000, ...) {
   if (method == "ECE") {
     simulate_ece_mse(params, n_sim)
@@ -213,6 +258,8 @@ simulate_mse <- function(params, method, n_sim = 1000, ...) {
     simulate_desmooth_mse(params, n_sim, ...)
   } else if (method == "oracle") {
     simulate_oracle_mse(params, n_sim)
+  } else if (method == "oracle cp") {
+    simulate_oracle_cp_mse(params, n_sim)
   }
 }
 
