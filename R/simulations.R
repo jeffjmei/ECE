@@ -263,9 +263,9 @@ simulate_mse <- function(params, method, n_sim = 1000, ...) {
   }
 }
 
-export_simulations <- function(val, method, params, n_sims, export_file) {
+export_simulations <- function(..., method, params, n_sims, export_file) {
   row <- data.frame(
-    val = val,
+    ...,
     method = method,
     n = params$n,
     sx = sqrt(params$S[1, 1]),

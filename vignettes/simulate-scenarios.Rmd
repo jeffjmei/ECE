@@ -91,7 +91,13 @@ sim_power <- pmap_dfr(
       signal = signal
     )
     power <- simulate_power(params, method = method, n_sim = n_sim)
-    export_simulations(power, method, params, n_sims, export_power_file)
+    export_simulations(
+      val=power, 
+      method=method, 
+      params=params, 
+      n_sims=n_sims, 
+      export_file=export_power_file
+    )
     tibble(scenario, method, n, n_sim, power)
   }
 )
@@ -114,7 +120,13 @@ sim_est <- pmap_dfr(
       signal = signal
     )
     est <- simulate_est(params, method = method, n_sim = n_sim)
-    export_simulations(est, method, params, n_sims, export_est_file)
+    export_simulations(
+      val=est, 
+      method=method, 
+      params=params, 
+      n_sims=n_sims, 
+      export_file=export_est_file
+    )
     tibble(scenario, method, n, n_sim, est)
   }
 )
@@ -137,7 +149,13 @@ sim_mse <- pmap_dfr(
       signal = signal
     )
     mse <- simulate_mse(params, method = method, n_sim = n_sim)
-    export_simulations(mse, method, params, n_sims, export_mse_file)
+    export_simulations(
+      val=mse, 
+      method=method, 
+      params=params, 
+      n_sims=n_sims, 
+      export_file=export_mse_file
+    )
     tibble(scenario, method, n, n_sim, mse)
   }
 )
