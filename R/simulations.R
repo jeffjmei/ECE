@@ -285,3 +285,60 @@ export_simulations <- function(..., method, params, n_sims, export_file) {
     write.table(row, export_file, sep = ",", row.names = FALSE, col.names = FALSE, append = TRUE)
   }
 }
+
+simulate_value <- function(param_grid, sim_type, export_file) {
+  progress_ct <- 0 # global counter
+  sim_power <- pmap_dfr(
+    param_grid,
+    function(scenario, method, sxy, sx, sy, n, signal, n_sim) {
+      # update counter
+      progress_ct <<- progress_ct + 1
+      message("Running: ", progress_ct, "/", nrow(param_grid))
+
+      # pull scenario information
+      params <- scenario(
+        scenario_num = scenario,
+        sxy = sxy,
+        sx = sx,
+        sy = sy,
+        n = n,
+        signal = signal
+      )
+
+      # run simulation
+      if (sim_type == "power") {
+        val <- simulate_power(params, method = method, n_sim = n_sim)
+        export_vals <- list(val = val)
+      } else if (sim_type == "est") {
+        val <- simulate_est(params, method = method, n_sim = n_sim)
+        export_vals <- list(val = val)
+      } else if (sim_type == "mse") {
+        val <- simulate_mse(params, method = method, n_sim = n_sim)
+        export_vals <- list(val = val)
+      } else {
+        stop("Unknown sim_type: please select from power, est, mse")
+      }
+      export_simulations(
+        export_vals,
+        method = method,
+        params = params,
+        n_sims = n_sim,
+        export_file = export_file
+      )
+      # output
+      row <- data.frame(
+        export_vals,
+        method = method,
+        n = params$n,
+        sx = sqrt(params$S[1, 1]),
+        sy = sqrt(params$S[2, 2]),
+        sxy = params$S[1, 2],
+        signal = params$signal,
+        scenario_num = params$scenario,
+        n_sims = n_sim,
+        datetime = Sys.time()
+      )
+      tibble(row)
+    }
+  )
+}

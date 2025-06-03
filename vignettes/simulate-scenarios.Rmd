@@ -74,91 +74,11 @@ param_grid <- expand.grid(
 )
 ```
 
-```{R, eval=FALSE, echo=FALSE}
-# Simulate Power Results
-progress_ct <- 0 # global counter
-sim_power <- pmap_dfr(
-  param_grid,
-  function(scenario, method, sxy, sx, sy, n, signal, n_sim) {
-    progress_ct <<- progress_ct + 1 # update counter
-    message("Running: ", progress_ct, "/", nrow(param_grid))
-    params <- scenario(
-      scenario_num = scenario,
-      sxy = sxy,
-      sx = sx,
-      sy = sy,
-      n = n,
-      signal = signal
-    )
-    power <- simulate_power(params, method = method, n_sim = n_sim)
-    export_simulations(
-      val=power, 
-      method=method, 
-      params=params, 
-      n_sims=n_sims, 
-      export_file=export_power_file
-    )
-    tibble(scenario, method, n, n_sim, power)
-  }
-)
-```
-
-```{R, eval=FALSE, echo=FALSE}
-# Simulate Estimate Results
-progress_ct <- 0 # global counter
-sim_est <- pmap_dfr(
-  param_grid,
-  function(scenario, method, sxy, sx, sy, n, signal, n_sim) {
-    progress_ct <<- progress_ct + 1 # update counter
-    message("Running: ", progress_ct, "/", nrow(param_grid))
-    params <- scenario(
-      scenario_num = scenario,
-      sxy = sxy,
-      sx = sx,
-      sy = sy,
-      n = n,
-      signal = signal
-    )
-    est <- simulate_est(params, method = method, n_sim = n_sim)
-    export_simulations(
-      val=est, 
-      method=method, 
-      params=params, 
-      n_sims=n_sims, 
-      export_file=export_est_file
-    )
-    tibble(scenario, method, n, n_sim, est)
-  }
-)
-```
-
-```{R, eval=FALSE, echo=FALSE}
-# Simulate MSE Results
-progress_ct <- 0 # global counter
-sim_mse <- pmap_dfr(
-  param_grid,
-  function(scenario, method, sxy, sx, sy, n, signal, n_sim) {
-    progress_ct <<- progress_ct + 1 # update counter
-    message("Running: ", progress_ct, "/", nrow(param_grid))
-    params <- scenario(
-      scenario_num = scenario,
-      sxy = sxy,
-      sx = sx,
-      sy = sy,
-      n = n,
-      signal = signal
-    )
-    mse <- simulate_mse(params, method = method, n_sim = n_sim)
-    export_simulations(
-      val=mse, 
-      method=method, 
-      params=params, 
-      n_sims=n_sims, 
-      export_file=export_mse_file
-    )
-    tibble(scenario, method, n, n_sim, mse)
-  }
-)
+```{R, echo=FALSE, warning=FALSE, message=FALSE}
+# Run Simulations
+simulate_value(param_grid, "power", export_power_file)
+simulate_value(param_grid, "est", export_est_file)
+simulate_value(param_grid, "mse", export_mse_file)
 ```
 
 ## Analyze Results
