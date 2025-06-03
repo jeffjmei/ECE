@@ -41,8 +41,8 @@ simulate_power_oracle_cp <- function(params, n_sim = 1000, ...) {
       X1 = segmented_mean(X[, 1], find_cp(params$h)),
       X2 = segmented_mean(X[, 2], find_cp(params$h))
     )
-    X_demean <- X - X_mean # remove mean
-    cor.test(X_demean[, 1], X_demean[, 2])$estimate # estimate cor
+    X_demean <- X - X_mean
+    cor.test(X_demean[, 1], X_demean[, 2])$p.val # estimate cor
   })
   mean(pval < 0.05)
 }
@@ -170,7 +170,7 @@ simulate_oracle_cp <- function(params, n_sim = 1000, ...) {
       X1 = segmented_mean(X[, 1], find_cp(params$h)),
       X2 = segmented_mean(X[, 2], find_cp(params$h))
     )
-    X_demean <- X - X_mean # remove mean
+    X_demean <- X - X_mean
     cor.test(X_demean[, 1], X_demean[, 2])$estimate # estimate cor
   })
   mean(est)
@@ -241,7 +241,7 @@ simulate_oracle_cp_mse <- function(params, n_sim = 1000, ...) {
       X1 = segmented_mean(X[, 1], find_cp(params$h)),
       X2 = segmented_mean(X[, 2], find_cp(params$h))
     )
-    X_demean <- X - X_mean # remove mean
+    X_demean <- X - X_mean
     cor.test(X_demean[, 1], X_demean[, 2])$estimate # estimate cor
   })
   mean(
