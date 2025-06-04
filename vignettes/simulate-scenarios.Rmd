@@ -76,9 +76,9 @@ param_grid <- expand.grid(
 
 ```{R, echo=FALSE, warning=FALSE, message=FALSE}
 # Run Simulations
-simulate_value(param_grid, "power", export_power_file)
-simulate_value(param_grid, "est", export_est_file)
-simulate_value(param_grid, "mse", export_mse_file)
+simulate_grid(param_grid, "power", export_power_file)
+simulate_grid(param_grid, "est", export_est_file)
+simulate_grid(param_grid, "mse", export_mse_file)
 ```
 
 ## Analyze Results
