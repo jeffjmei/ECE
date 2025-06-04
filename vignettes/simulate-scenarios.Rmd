@@ -31,31 +31,10 @@ In this vignette, we will compare the _equivariant covariance estimator_ against
 
 1. `demean`: estimate change points, estimate the segment means, remove means, and estimate Pearson correlation
 2. `desmooth`: apply loess smoothing, remove estimated mean, estimate Pearson correlation
+3. `oracle`: the true mean is completely known -- both change point and mean value.
+4. `oracle_cp`: change points are known, and the means are estimated using a simple sample mean. 
 
-We consider a variety of simulations shown below, which have varying levels of mean structure complexity. All of them have minimum segment length of 4. 
-
-```{R, echo=FALSE}
-# Plot Scenarios
-p1 <- plot_scenario(scenario(1, n = 1000))
-p2 <- plot_scenario(scenario(2, n = 1000))
-p3 <- plot_scenario(scenario(3, n = 1000))
-p4 <- plot_scenario(scenario(4, n = 1000))
-p5 <- plot_scenario(scenario(5, n = 1000))
-p6 <- plot_scenario(scenario(6, n = 1000))
-p7 <- plot_scenario(scenario(7, n = 1000))
-p8 <- plot_scenario(scenario(8, n = 1000))
-p9 <- plot_scenario(scenario(9, n = 1000))
-p10 <- plot_scenario(scenario(10, n = 1000))
-p11 <- plot_scenario(scenario(11, n = 1000))
-
-# Show Results
-p1 | p2
-p3 | p4
-p5 | p6
-p7 | p8
-p9 | p10
-p11
-```
+We consider a variety of simulations, which have varying levels of mean structure complexity. All of them have minimum segment length of 4. 
 
 ## Simulate Data
 
@@ -74,7 +53,7 @@ param_grid <- expand.grid(
 )
 ```
 
-```{R, echo=FALSE, warning=FALSE, message=FALSE}
+```{R, echo=FALSE, warning=FALSE, message=FALSE, eval=FALSE}
 # Run Simulations
 simulate_grid(param_grid, "power", export_power_file)
 simulate_grid(param_grid, "est", export_est_file)
@@ -90,66 +69,59 @@ sim_est <- readr::read_csv(export_est_file)
 sim_mse <- readr::read_csv(export_mse_file)
 ```
 
-```{R, echo=FALSE, warning=FALSE, mesage=FALSE}
-# Plot Power
-p1_power <- plot_power(sim_power, sample_size = 1000, scenario = 1, n_simulations = 1000)
-p2_power <- plot_power(sim_power, sample_size = 1000, scenario = 2, n_simulations = 1000)
-p3_power <- plot_power(sim_power, sample_size = 1000, scenario = 3, n_simulations = 1000)
-p4_power <- plot_power(sim_power, sample_size = 1000, scenario = 4, n_simulations = 1000)
-p5_power <- plot_power(sim_power, sample_size = 1000, scenario = 5, n_simulations = 1000)
-p6_power <- plot_power(sim_power, sample_size = 1000, scenario = 6, n_simulations = 1000)
-p7_power <- plot_power(sim_power, sample_size = 1000, scenario = 7, n_simulations = 1000)
-p8_power <- plot_power(sim_power, sample_size = 1000, scenario = 8, n_simulations = 1000) #
-p9_power <- plot_power(sim_power, sample_size = 1000, scenario = 9, n_simulations = 1000) #
-p10_power <- plot_power(sim_power, sample_size = 1000, scenario = 10, n_simulations = 1000) #
-p11_power <- plot_power(sim_power, sample_size = 1000, scenario = 11, n_simulations = 1000) #
-```
-
-```{R, echo=FALSE, warning=FALSE, mesage=FALSE}
-```{R, echo=FALSE, warning=FALSE, message=FALSE}
-# Plot Estimates
-p1_est <- plot_est(sim_est, sample_size = 1000, scenario = 1, n_simulations = 1000)
-p2_est <- plot_est(sim_est, sample_size = 1000, scenario = 2, n_simulations = 1000)
-p3_est <- plot_est(sim_est, sample_size = 1000, scenario = 3, n_simulations = 1000)
-p4_est <- plot_est(sim_est, sample_size = 1000, scenario = 4, n_simulations = 1000)
-p5_est <- plot_est(sim_est, sample_size = 1000, scenario = 5, n_simulations = 1000)
-p6_est <- plot_est(sim_est, sample_size = 1000, scenario = 6, n_simulations = 1000)
-p7_est <- plot_est(sim_est, sample_size = 1000, scenario = 7, n_simulations = 1000)
-p8_est <- plot_est(sim_est, sample_size = 1000, scenario = 8, n_simulations = 1000) #
-p9_est <- plot_est(sim_est, sample_size = 1000, scenario = 9, n_simulations = 1000) #
-p10_est <- plot_est(sim_est, sample_size = 1000, scenario = 10, n_simulations = 1000) #
-p11_est <- plot_est(sim_est, sample_size = 1000, scenario = 11, n_simulations = 1000) #
-```
-
-```{R}
-# Analyzing MSE
-p1_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 1, n_simulations = 1000)
-p2_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 2, n_simulations = 1000)
-p3_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 3, n_simulations = 1000)
-p4_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 4, n_simulations = 1000)
-p5_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 5, n_simulations = 1000)
-p6_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 6, n_simulations = 1000)
-p7_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 7, n_simulations = 1000)
-p8_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 8, n_simulations = 1000)
-p9_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 9, n_simulations = 1000)
-p10_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 10, n_simulations = 1000)
-p11_mse <- plot_mse(sim_mse, sample_size = 1000, scenario = 11, n_simulations = 1000)
-```
-
 ```{R, echo=FALSE, message=FALSE, warning=FALSE}
-# Plot Instances Alongside
-(p1 | p1_est) / (p1_power | p1_mse)
-(p2 | p2_est) / (p2_power | p2_mse)
-(p3 | p3_est) / (p3_power | p3_mse)
-(p4 | p4_est) / (p4_power | p4_mse)
-(p5 | p5_est) / (p5_power | p5_mse)
-(p6 | p6_est) / (p6_power | p6_mse)
-(p7 | p7_est) / (p7_power | p7_mse)
-(p8 | p8_est) / (p8_power | p8_mse)
-(p9 | p9_est) / (p9_power | p9_mse)
-(p10 | p10_est) / (p10_power | p10_mse)
-(p11 | p11_est) / (p11_power | p11_mse)
+# Produce Plots for Metrics
+scenarios   <- 1:12
+n_sim       <- 1000
+sample_size <- 1000
+
+# scenario instance
+scenario_plots <- map(
+  scenarios,
+  ~ plot_scenario(
+      scenario(.x, n=sample_size)
+    )
+)
+# metrics
+power_plots <- map(
+  scenarios,
+  ~ plot_power(
+      sim_power,
+      sample_size   = sample_size,
+      scenario      = .x,
+      n_simulations = n_sim
+    )
+)
+est_plots <- map(
+  scenarios,
+  ~ plot_est(
+      sim_est,
+      sample_size   = sample_size,
+      scenario      = .x,
+      n_simulations = n_sim
+    )
+)
+mse_plots <- map(
+  scenarios,
+  ~ plot_mse(
+      sim_mse,
+      sample_size   = sample_size,
+      scenario      = .x,
+      n_simulations = n_sim
+    )
+)
+# aggregate plots
+combined_plots <- map(
+  seq_along(scenarios),
+  function(i) {
+    (scenario_plots[[i]] | est_plots[[i]]) /
+    (power_plots[[i]] | mse_plots[[i]])
+  }
+)
+combined_plots
 ```
+
+
 
 In all simulations considered, ECE is unbiased, even in misspecified cases like scenario 8 and 9, maximally frequent change point scenarios like 10, and in randomly distributed changes as in 11. While the mean-removing strategies are reasonably effective in many simple cases, they struggle once the changes become too erratic such as in scenario 8. 
 
