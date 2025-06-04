@@ -25,7 +25,7 @@ simulate_metric <- function(method, metric, params, n_sim = 1000, ...) {
     "demean",
     "desmooth",
     "oracle",
-    "oracle_cp"
+    "oracle cp"
   )
   if (!(method %in% available_methods)) {
     stop("No such property. Please choose from power, est, mse")
