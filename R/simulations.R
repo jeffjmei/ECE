@@ -4,7 +4,7 @@ demean <- function(X, method, params, ...) {
   } else if (method == "demean") {
     X_mean <- segment_mean(X, ...)
   } else if (method == "desmooth") {
-    X_mean <- smooth_mean(X, method = method, ...)
+    X_mean <- smooth_mean(X, ...)
   } else if (method == "oracle") {
     X_mean <- cbind(
       X1 = params$h[, 1],
@@ -40,7 +40,10 @@ simulate_metric <- function(method, metric, params, n_sim = 1000, ...) {
     if (method == "ECE") {
       cor_obj <- ece.test(X[, 1], X[, 2])
     } else {
-      X_demean <- demean(X, method, params, ...)
+      # HACK: demean missing ... because it causes conflicting
+      #   names. `method` is being used for "loess" and "PELT"
+      #   in addition to `cor.method` such as "ECE" and "desmooth"
+      X_demean <- demean(X, method, params)
       cor_obj <- cor.test(X_demean[, 1], X_demean[, 2])
     }
   })
