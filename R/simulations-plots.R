@@ -63,3 +63,28 @@ plot_mse <- function(sim_est, sample_size, scenario, n_simulations, signal_val =
     ) +
     theme_minimal()
 }
+
+plot_type1 <- function(sim_type1, sample_size, scenario, n_simulations, signal_val = 1) {
+  sim_type1 %>%
+    filter(
+      n == sample_size,
+      scenario_num == scenario,
+      n_sims == n_simulations,
+      signal == signal_val
+    ) %>%
+    mutate(
+      se       = sd / sqrt(n_sims),
+      ci_lower = type1 - 1.96 * se,
+      ci_upper = type1 + 1.96 * se
+    ) %>%
+    ggplot(aes(x = method, y = type1)) +
+    geom_point(size = 3) +
+    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width = 0.2) +
+    geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
+    labs(
+      x = "Method",
+      y = "Estimated Type I Error (95% CI)",
+      title = glue::glue("Type I Error (n = {sample_size}, Scenario {scenario})")
+    ) +
+    theme_minimal()
+}
