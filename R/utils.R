@@ -86,9 +86,9 @@ segment_mean_mat <- function(x, method = "PELT", penalty = "BIC", minseglen = 2,
 
 segment_mean <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL) {
   if (is.vector(x)) {
-    segment_mean_vec(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL)
-  } else if (is.matrix(x)) {
-    segment_mean_mat(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL)
+    segment_mean_vec(x, method = method, penalty = penalty, minseglen = minseglen, pen.value = pen.value)
+  } else if (is.matrix(x) || is.data.frame(x)) {
+    segment_mean_mat(x, method = method, penalty = penalty, minseglen = minseglen, pen.value = pen.value)
   }
 }
 
