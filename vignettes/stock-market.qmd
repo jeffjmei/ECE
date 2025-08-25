@@ -9,6 +9,8 @@ server: shiny
 ```{R}
 #| echo: false 
 #| context: setup
+#| message: false
+#| warning: false
 
 # Load Packages
 devtools::load_all("~/Documents/Research/Code/ECE")
@@ -20,13 +22,14 @@ library(tidyquant)
 # Stock Market Data
 Here, we compare the closing cost of `MSFT`, `META`, and `NVDA` stocks. 
 
+Under the standard segmentation method -- i.e., PELT with BIC penalty with `minseglen = 2`, we get the following mean-segmentation. It is difficult to see what PELT determines as the best mean-segmentation, because the breaks are so frequent. This can be adjusted by utilizing a manual penalty or changing the `minseglen`.
+
 ```{R}
 dateRangeInput("daterange", "Choose dates:",
                start = "2020-01-01",
                end   = "2025-05-01",
                min   = "2010-01-01",
                max   = Sys.Date())
-plotOutput("stockPlot")
 ```
 
 ```{R}
@@ -139,32 +142,44 @@ output$ece_cor <- renderPrint({
 })
 ```
 
+::: {.panel-tabset}
 
-Under the standard segmentation method -- i.e., PELT with BIC penalty with `minseglen = 2`, we get the following mean-segmentation. It is difficult to see what PELT determines as the best mean-segmentation, because the breaks are so frequent. This can be adjusted by utilizing a manual penalty or changing the `minseglen`.
+## Plot
+```{R}
+plotOutput("stockPlot")
+```
 
+
+## Residuals
 ```{R}
 plotOutput("residualPlot")
 ```
 
 We see a little bit of heteroscedasticity. Whatever variance/covariance we estimate, it will be the average across this time interval.
 
+## ACF
 ```{R}
 plotOutput("acfPlots")
 ```
 
 Given this segmentation, it looks like there's still some auto-correlation. It's hard to claim this is due to inadequate fitting since it the fit is already so tight. This intrinsic auto-correlation deflates the estimated correlation. This means our estimated correlation will be deflated from the true value. 
+:::
 
 
+
+::: {.panel-tabset}
+
+## Correlation
+```{R}
+verbatimTextOutput("ece_cor")
+```
+
+## Covariance
 ```{R}
 verbatimTextOutput("ece_cov")
 ```
 
-This shows that there is very strong correlation between MSFT and META, but only a moderate correlation between MSFT and NVDA.
-
-```{R}
-verbatimTextOutput("ece_cor")
-```
-Here, the correlations are much more modest after mean-segmentation. 
+:::
 
 # Conclusions
 The way `MSFT`, `META`, and `NVDA` were chosen is because we additionally compare `AAPL`, `GOOG`, and `AMZN`, but they yielded nonsensical results -- the correlation coefficient would be greater than 1 if it could be calculated at all. This is a major problem in finding applications for ECE. Many of the time series result in NA values. This is a huge detriment of the technique. 
@@ -172,13 +187,14 @@ The way `MSFT`, `META`, and `NVDA` were chosen is because we additionally compar
 Moreover, the estimate is extremely unstable. Try varying the end-date for the data-collection. You'll find the estimates vary widely, and often times you'll find NA values. 
 
 
-## More
+# More
 How do we determine which of the analyses are more accurate? Simulations should give a hint as to the behavior between the two 
 
 Are we supposed to be using log-returns instead? 
 
 Can you find the penalty value that minimizes the difference between ECE estimate and segmented-mean estimate? 
 
+To evaluate the stability, let's plot correlation of `MSFT-META`, `MSFT-NVDA`, AND `META-NVDA` over time. 
 
 
 ```{R}
