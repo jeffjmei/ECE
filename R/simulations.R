@@ -57,7 +57,7 @@ simulate_metric <- function(method, metric, params, n_sim = 1000, ...) {
     mean(est)
   } else if (metric == "mse") {
     rxy <- params$S[1, 2] / sqrt(params$S[1, 1] * params$S[2, 2])
-    mean((cor_obj$estimate - rxy)^2)
+    mean((est - rxy)^2)
   } else if (metric == "type1") {
     list(
       type1 = mean(pval < 0.05),
