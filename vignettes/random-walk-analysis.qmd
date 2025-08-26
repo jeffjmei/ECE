@@ -1,0 +1,282 @@
+---
+title: Random Walks
+output: html_document
+author: Jeffrey Mei
+date: 2025-08-19
+server: shiny
+---
+
+
+```{R}
+#| echo: false 
+#| context: setup
+#| message: false
+#| warning: false
+
+# Load Packages
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(tidyverse)
+library(changepoint)
+library(tidyquant)
+library(MASS)
+```
+
+```{R}
+#| context: setup
+plot.ece.helper <- function(X, Y, L=2){
+
+  n <- length(X)
+
+  # generate points
+  xx <- 1:2
+  yy <- c(
+    lag_diff(X, Y, k=1),
+    lag_diff(X, Y, k=2)
+  ) / (2 * n)
+  fit <- lm(yy ~ xx)
+
+  # initialize plot
+  plot(NULL, 
+    xlim=c(-1, 2), 
+    ylim=c(
+      -0.5, 1
+    ),
+    ylab="Tk",
+    main= paste(
+      paste("variance =", round(fit$coef[1], 3)),
+      paste("theta =", round(fit$coef[2], 3))
+    )
+  )
+  abline(v = 0, h = 0, lwd=2)
+  points(xx, yy)
+
+  # plot regression line
+  abline(fit)
+  points(0, fit$coef[1], col="red")
+
+  # print slope/intercept
+}
+
+plot.ece <- function(X){
+  p <- ncol(X)
+  par(mfrow=c(p, p))
+  for(i in 1:p){
+    for(j in i:p){
+      plot.ece.helper(X[,i], X[,j])
+    }
+  }
+  par(mfrow=c(1, 1))
+}
+
+```
+
+The Equivariant Covariance Estimator (ECE) produces unstable estimates for correlation when analyzing stock data. Despite the abundance of stock time series, it is challenging to find stocks that produce coherent estimates for the correlation matrix. The correlation matrix often contains NA values, or fails to be positive semi-definite. The reason why this occurs is still unknown. The purpose of this report is to study simulated data in hopes to gain some insight on this phenomenon.
+
+In this report, we study mean-segmentation and ECE on random walks with drift: 
+$$
+\begin{aligned}
+  X_i &= X_{i-1} + \mu_x + \varepsilon_{x, i} \\
+  Y_i &= Y_{i-1} + \mu_y + \varepsilon_{y, i} \\
+\end{aligned}
+$$
+where $\begin{bmatrix} \varepsilon_{x, i} \\ \varepsilon_{y, i} \end{bmatrix} \sim N(0, \Sigma)$ and $\Sigma = \begin{bmatrix} 1 & \rho \\ \rho & 1 \end{bmatrix}$. 
+
+```{R}
+#| panel: sidebar
+
+# UI controls
+numericInput("n", "Sample Size (n)", value=1000)
+numericInput("rho", "Correlation (rho)", value=0.25)
+numericInput("hx", "Drift hx", value=0.01, step=0.005)
+numericInput("hy", "Drift hy", value=0.015, step=0.005)
+actionButton("resim", "Simulate", class = "btn-primary")
+```
+
+```{R}
+#| context: server 
+sim_data <- eventReactive(input$resim, {
+  e <- MASS::mvrnorm(
+    input$n, mu=c(input$hx, input$hy),
+    Sigma=matrix(c(1, input$rho, input$rho, 1), nrow=2)
+  )
+  ex <- cumsum(e[,1])
+  ey <- cumsum(e[,2])
+
+  tibble(
+    index = 1:input$n,
+    #X1 = input$hx + ex,
+    #X2 = input$hy + ey
+    X1 = ex,
+    X2 = ey
+  ) %>%
+    mutate(
+      X1_mean = segment_mean(X1),
+      X2_mean = segment_mean(X2)
+    )
+})
+
+```
+
+
+```{R}
+#| context: server
+
+output$plot <- renderPlot({
+  df <- sim_data()
+  ggplot(df, aes(x=index)) +
+    geom_line(aes(y=X1), color="red") +
+    geom_line(aes(y=X2), color="blue") +
+    geom_line(aes(y=X1_mean), color="red", linewidth=1.5) +
+    geom_line(aes(y=X2_mean), color="blue", linewidth=1.5) +
+    labs(title="Change Point Segmentation", x="", y="") +
+    theme_minimal()
+})
+```
+
+```{R}
+#| context: server
+
+output$residuals <- renderPlot({
+  df <- sim_data()
+  ggplot(df, aes(x=index)) +
+    geom_hline(yintercept=0) +
+    geom_line(aes(y=X1 - X1_mean), color="red") +
+    geom_line(aes(y=X2 - X2_mean), color="blue") +
+    labs(title="Segmentation Residuals", x="", y="") +
+    theme_minimal()
+})
+```
+
+```{R}
+#| context: server
+
+output$acf <- renderPlot({
+  df <- sim_data()
+  par(mfrow=c(1,2))
+  acf(df$X1 - df$X1_mean, main="X1 residuals")
+  acf(df$X2 - df$X2_mean, main="X2 residuals")
+  par(mfrow=c(1,1))
+})
+```
+
+```{R}
+#| context: server
+
+output$ece_regression <- renderPlot({
+  df <- sim_data()
+  plot.ece(data.frame(X1=df$X1, X2=df$X2))
+})
+
+```
+
+```{R}
+#| context: server
+output$ece_cov <- renderPrint({
+  df <- sim_data()
+  demean_cov <- cov(cbind(
+    df$X1 - df$X1_mean,
+    df$X2 - df$X2_mean
+  ))
+
+  ece_cov <- matrix(c(
+    equiv.cov(df$X1, df$X1),
+    equiv.cov(df$X1, df$X2),
+    equiv.cov(df$X2, df$X1),
+    equiv.cov(df$X2, df$X2)
+  ), nrow=2, byrow=TRUE)
+
+  cat("Demean Covariance:\n")
+  print(round(demean_cov, 3))
+  cat("\nECE Covariance:\n")
+  print(round(ece_cov, 3))
+})
+
+output$ece_cor <- renderPrint({
+  df <- sim_data()
+  demean_cor <- cor(cbind(
+    df$X1 - df$X1_mean,
+    df$X2 - df$X2_mean
+  ))
+
+  ece_cor <- matrix(c(
+    ece.test(df$X1, df$X1)$estimate,
+    ece.test(df$X1, df$X2)$estimate,
+    ece.test(df$X2, df$X1)$estimate,
+    ece.test(df$X2, df$X2)$estimate
+  ), nrow=2, byrow=TRUE)
+
+  cat("Demean Correlation:\n")
+  print(round(demean_cor, 3))
+  cat("\nECE Correlation:\n")
+  print(round(ece_cor, 3))
+})
+```
+
+
+::: {layout="[ [1,1] ]"}
+
+::: {.panel-tabset}
+
+## Plot
+```{R}
+#| panel: fill
+plotOutput("plot")
+```
+
+## Residuals
+```{R}
+#| panel: fill
+plotOutput("residuals")
+```
+
+## ACF
+```{R}
+#| panel: fill
+plotOutput("acf")
+```
+
+## ECE Regression
+```{R}
+#| panel: fill
+plotOutput("ece_regression")
+```
+
+:::
+
+::: {.panel-tabset}
+
+## Correlation
+```{R}
+verbatimTextOutput("ece_cor")
+```
+
+## Covariance
+```{R}
+verbatimTextOutput("ece_cov")
+```
+:::
+:::
+
+## Conclusions
+**Key Points**  
+
+- ECE correlation matrix often contains NA values or is not positive semi-definite for the random-walk model  
+- mean-segmentation produces auto-correlation in residuals  
+- residuals after mean-removal have deflated variance  
+
+---
+
+We apply mean-segmentation using PELT with default BIC penalty and `minseglen = 2`. We see that it fits tightly along the random walk and the **residuals capture the systematic variation**. Nevertheless, we see the **estimated variance is slightly deflated** (see diagonals of demean covariance matrix). In addition, the model misspecification results in the **auto-correlation seen in all of the ACF plots**. 
+
+Notice that the **ECE estimates for variance are extremely deflated**. It should come as no surprise that there's an excess of negative estimates for variance. As a consequence, **NA values are often produced in the ECE correlation matrix**. 
+
+
+# More Work
+- simulate whether the residual consistently estimates the true variance
+- histogram of the covariance matrix 
+- strategy: take first difference as pre-processing step
+- compare this against a model that is not misspecified
+- [x] plot ECE regression plot
+
+
+
