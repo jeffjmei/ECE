@@ -201,6 +201,20 @@ scenario12 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   return(obj)
 }
 
+scenario13 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Misspecified Random Walk
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+
+  h <- NA
+
+  # Return Parameter Object
+  obj <- list(scenario = 13, n = n, S = S, h = h, signal = signal)
+  return(obj)
+}
+
 scenario <- function(
     scenario_num = 1,
     sxy = 0,
@@ -235,6 +249,8 @@ scenario <- function(
     params <- scenario11(sxy, n, signal, seed)
   } else if (scenario_num == 12) {
     params <- scenario12(sxy, n, signal, seed)
+  } else if (scenario_num == 13) {
+    params <- scenario13(sxy, n, signal, seed)
   } else {
     stop("No such scenario. Try again.")
   }
