@@ -92,3 +92,47 @@ scenario_num_to_name <- function(scenario_num) {
     stop("No such scenario. Try again.")
   }
 }
+
+plot.ece.helper <- function(X, Y, L = 2) {
+  n <- length(X)
+
+  # generate points
+  xx <- 1:2
+  yy <- c(
+    lag_diff(X, Y, k = 1),
+    lag_diff(X, Y, k = 2)
+  ) / (2 * n)
+  fit <- lm(yy ~ xx)
+
+  # initialize plot
+  plot(NULL,
+    xlim = c(-1, 2),
+    ylim = c(
+      -0.5, 1
+    ),
+    ylab = "Tk",
+    main = paste(
+      paste("variance =", round(fit$coef[1], 3)),
+      paste("theta =", round(fit$coef[2], 3))
+    )
+  )
+  abline(v = 0, h = 0, lwd = 2)
+  points(xx, yy)
+
+  # plot regression line
+  abline(fit)
+  points(0, fit$coef[1], col = "red")
+
+  # print slope/intercept
+}
+
+plot.ece <- function(X) {
+  p <- ncol(X)
+  par(mfrow = c(p, p))
+  for (i in 1:p) {
+    for (j in i:p) {
+      plot.ece.helper(X[, i], X[, j])
+    }
+  }
+  par(mfrow = c(1, 1))
+}
