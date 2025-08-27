@@ -1,0 +1,642 @@
+---
+title: Air Quality
+output: html_document
+author: Jeffrey Mei
+date: 2025-08-26
+link: https://aqs.epa.gov/aqsweb/airdata/download_files.html
+server: shiny
+---
+
+
+```{R}
+#| echo: false 
+#| context: setup
+#| message: false
+#| warning: false
+
+# Load Packages
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(tidyverse)
+library(changepoint)
+```
+
+We collect air-quality data from the [EPA](https://aqs.epa.gov/aqsweb/airdata/download_files.html). In this analysis, we compare the **ozone levels** of three metropolitan areas at a time.  
+
+
+::: {.callout-note collapse="true"}
+
+### Useful City Codes
+
+Here are some useful city codes to make some comparisons.
+
+**Arizona**
+
+- Payson: 37740
+- Prescott: 39140
+- Flagstaff: 22380
+- Phoenix: 38060
+- Tucson: 46060
+- Yuma: 49740
+
+**New York**
+
+- Jamestown: 27460
+- Ithaca: 27060
+- Watertown: 48060
+- New York: 35620
+
+**California**
+
+- Clearlake: 17340
+- Sonora: 43760
+- Redding: 39820
+- San Francisco: 41860
+- Los Angeles: 31080
+
+**Nevada**
+
+- Carson City: 16180
+- Fernley: 22280
+- Fallon: 21980
+
+**Other**
+
+- Seattle: 42660
+
+:::
+
+
+
+```{R}
+#| context: server
+
+# Read Data
+years <- 2020:2025
+files <- paste0("~/Documents/Research/Code/ECE/data/air-quality/daily_aqi_by_cbsa_", years, ".csv")
+raw_df <- map_dfr(files, read_csv)
+
+# Process Data
+df <- raw_df %>% 
+  janitor::clean_names() 
+
+  # order by CBSA with the most non-NA values by defining_parameter
+  #foo <- df %>%
+  #  filter(
+  #    defining_parameter == "Ozone"
+  #    #str_detect(cbsa, "NY")
+  #  ) %>%
+  #  group_by(cbsa, cbsa_code) %>%
+  #  summarise(non_missing = sum(!is.na(aqi)), .groups = "drop") %>%
+  #  arrange(non_missing)
+  #print(foo, n=Inf)
+
+  #PM2.5: 2000
+  #PM10: ~2000
+  #Ozone: ~2000 (Flagstaff, Prescott)
+  #CO: bad
+
+# Jamestown: 27460
+# Ithaca: 27060
+# Watertown: 48060
+
+# Clearlake: 17340
+# Sonora: 43760
+# Redding: 39820
+
+# Carson City: 16180
+# Fernley: 22280
+# Fallon: 21980
+
+# Payson: 37740
+# Prescott: 39140
+# San Francisco: 41860
+# Los Angeles: 31080
+# Seattle: 42660
+# New York: 35620
+# Phoenix: 38060
+# Tucson: 46060
+# Flagstaff: 22380
+# Yuma: 49740
+
+cbsa_code1 <- 27460
+cbsa_code2 <- 27060
+cbsa_code3 <- 48060
+
+```
+
+```{R}
+#| panel: sidebar
+numericInput("cbsa_code1", "CBSA Code 1:", value = 37740)
+numericInput("cbsa_code2", "CBSA Code 2:", value = 39140)
+numericInput("cbsa_code3", "CBSA Code 3:", value = 22380)
+
+dateRangeInput("daterange", "Choose dates:",
+               start = "2020-01-01",
+               end   = "2025-09-01",
+               min   = "2010-01-01",
+               max   = Sys.Date())
+```
+
+```{R}
+#| context: server
+
+df_reactive <- reactive({
+  df %>%
+    filter(
+      (cbsa_code == input$cbsa_code1) |
+      (cbsa_code == input$cbsa_code2) |  
+      (cbsa_code == input$cbsa_code3),
+      defining_parameter == "Ozone" #PM2.5, PM10, Ozone, CO
+    ) %>%
+    dplyr::select(date, cbsa_code, aqi) %>%
+    tidyr::pivot_wider(
+      names_from = cbsa_code,
+      values_from = aqi
+    ) %>% 
+    drop_na() %>%
+    rename(
+      index = date, 
+      X1 = !!sym(as.character(input$cbsa_code1)), 
+      X2 = !!sym(as.character(input$cbsa_code2)),
+      X3 = !!sym(as.character(input$cbsa_code3))
+    ) %>% 
+    mutate(
+      X1_mean = segment_mean(X1),
+      X2_mean = segment_mean(X2),
+      X3_mean = segment_mean(X3)
+    )
+})
+
+#| context: server
+output$stockPlot <- renderPlot({
+  df <- df_reactive()
+  ggplot(df, aes(x=index)) +
+    geom_line(aes(y=X1), color="red") +
+    geom_line(aes(y=X2), color="blue") +
+    geom_line(aes(y=X3), color="green") +
+    geom_line(aes(y=X1_mean), color="red", linetype="dashed") +
+    geom_line(aes(y=X2_mean), color="blue", linetype="dashed") +
+    geom_line(aes(y=X3_mean), color="green", linetype="dashed") +
+    labs(title="Change Point Segmentation", x="", y="") +
+    theme_minimal()
+})
+
+output$residualPlot <- renderPlot({
+  df <- df_reactive()
+  ggplot(df, aes(x=index)) +
+    geom_hline(yintercept=0) +
+    geom_line(aes(y=X1 - X1_mean), color="red") +
+    geom_line(aes(y=X2 - X2_mean), color="blue") +
+    geom_line(aes(y=X3 - X3_mean), color="green") +
+    labs(title="Segmentation Residuals", x="", y="") +
+    theme_minimal()
+})
+
+output$acfPlots <- renderPlot({
+  df <- df_reactive()
+  par(mfrow=c(1,3))
+  acf(df$X1 - df$X1_mean, main="X1")
+  acf(df$X2 - df$X2_mean, main="X2")
+  acf(df$X3 - df$X3_mean, main="X3")
+  par(mfrow=c(1,1))
+})
+
+running_ece <- function(x, y, start = 1000) {
+  n <- length(x)
+  map_dbl(start:n, ~ ece.test(x[1:.x], y[1:.x])$estimate)
+}
+
+output$running_ece <- renderPlot({
+  df <- df_reactive()
+  X1_X2 <- running_ece(df$X1, df$X2)
+  X1_X3 <- running_ece(df$X1, df$X3)
+  X2_X3 <- running_ece(df$X2, df$X3)
+
+  df <- cbind(index=70:length(df$X1), X1_X2, X1_X3, X2_X3)
+  ggplot(data=df) + 
+    geom_line(aes(x=index, y=X1_X2, color="X1 vs X2")) + 
+    geom_line(aes(x=index, y=X1_X3, color="X1 vs X3")) + 
+    geom_line(aes(x=index, y=X2_X3, color="X2 vs X3")) + 
+    geom_hline(yintercept=-1) + 
+    geom_hline(yintercept= 1) + 
+    scale_color_manual(values = c(
+      "X1 vs X2" = "red",
+      "X1 vs X3" = "blue",
+      "X2 vs X3" = "green"
+    )) +
+    ylab("Correlation") + 
+    theme_minimal()
+})
+
+output$ece_regression <- renderPlot({
+  df <- df_reactive()
+  plot.ece(data.frame(X1=df$X1, X2=df$X2))
+})
+
+#| context: server
+output$ece_cov <- renderPrint({
+  df <- df_reactive()
+  demean_cov <- cov(cbind(
+    df$X1 - df$X1_mean,
+    df$X2 - df$X2_mean,
+    df$X3 - df$X3_mean
+  ))
+  colnames(demean_cov) <- rownames(demean_cov) <- c("X1","X2","X3")
+
+  ece_cov <- matrix(c(
+    equiv.cov(df$X1, df$X1),
+    equiv.cov(df$X1, df$X2),
+    equiv.cov(df$X1, df$X3),
+    equiv.cov(df$X2, df$X1),
+    equiv.cov(df$X2, df$X2),
+    equiv.cov(df$X2, df$X3),
+    equiv.cov(df$X3, df$X1),
+    equiv.cov(df$X3, df$X2),
+    equiv.cov(df$X3, df$X3)
+  ), nrow=3, byrow=TRUE)
+  colnames(ece_cov) <- rownames(ece_cov) <- c("X1","X2","X3")
+
+  cat("Demean Covariance:\n")
+  print(demean_cov)
+  cat("\nECE Covariance:\n")
+  print(ece_cov)
+})
+
+output$ece_cor <- renderPrint({
+  df <- df_reactive()
+  demean_cor <- cor(cbind(
+    df$X1 - df$X1_mean,
+    df$X2 - df$X2_mean,
+    df$X3 - df$X3_mean
+  ))
+  colnames(demean_cor) <- rownames(demean_cor) <- c("X1","X2","X3")
+
+  ece_cor <- matrix(c(
+    ece.test(df$X1, df$X1)$estimate,
+    ece.test(df$X1, df$X2)$estimate,
+    ece.test(df$X1, df$X3)$estimate,
+    ece.test(df$X2, df$X1)$estimate,
+    ece.test(df$X2, df$X2)$estimate,
+    ece.test(df$X2, df$X3)$estimate,
+    ece.test(df$X3, df$X1)$estimate,
+    ece.test(df$X3, df$X2)$estimate,
+    ece.test(df$X3, df$X3)$estimate
+  ), nrow=3, byrow=TRUE)
+  colnames(ece_cor) <- rownames(ece_cor) <- c("X1","X2","X3")
+
+  cat("Demean Correlation:\n")
+  print(demean_cor)
+  cat("\nECE Correlation:\n")
+  print(ece_cor)
+})
+```
+
+
+
+::: {.panel-tabset}
+
+## Plot
+```{R}
+#| panel: fill
+plotOutput("stockPlot")
+```
+
+
+## Residuals
+```{R}
+#| panel: fill
+plotOutput("residualPlot")
+```
+
+We see a little bit of heteroscedasticity. Whatever variance/covariance we estimate, it will be the average across this time interval.
+
+## ACF
+```{R}
+#| panel: fill
+plotOutput("acfPlots")
+```
+
+Given this segmentation, it looks like there's still some auto-correlation. It's hard to claim this is due to inadequate fitting since it the fit is already so tight. This intrinsic auto-correlation deflates the estimated correlation. This means our estimated correlation will be deflated from the true value. 
+
+## Stability
+```{R}
+#| panel: fill
+plotOutput("running_ece")
+```
+
+## ECE-Regression
+```{R}
+#| panel: fill
+plotOutput("ece_regression")
+```
+
+:::
+
+
+
+::: {.panel-tabset}
+
+## Correlation
+```{R}
+verbatimTextOutput("ece_cor")
+```
+
+## Covariance
+```{R}
+verbatimTextOutput("ece_cov")
+```
+
+:::
+
+
+---
+
+# Notes
+
+
+::: {.panel-tabset}
+
+## AZ
+
+::: columns
+
+::: {.column width="50%"}
+```
+Demean Correlation:
+           X1         X2         X3
+X1 1.00000000 0.04977778 0.01068085
+X2 0.04977778 1.00000000 0.38154017
+X3 0.01068085 0.38154017 1.00000000
+
+ECE Correlation:
+           X1         X2         X3
+X1 1.00000000 0.02714285 0.09616937
+X2 0.02714285 1.00000000 0.39321855
+X3 0.09616937 0.39321855 1.00000000
+```
+:::
+
+::: {.column width="50%"}
+```
+Demean Covariance:
+           X1         X2         X3
+X1 29.3351715  0.9391622  0.2139456
+X2  0.9391622 12.1344919  4.9153458
+X3  0.2139456  4.9153458 13.6774775
+
+ECE Covariance:
+           X1         X2        X3
+X1 51.1113636  0.8571023  3.358523
+X2  0.8571023 19.5090909  8.484091
+X3  3.3585227  8.4840909 23.861932
+```
+:::
+
+:::
+
+::: columns
+
+::: {.column width="50%"}
+Consider the Arizona cities 
+
+- X1: `Payson` (37740)
+- X2: `Prescott` (39140)
+- X3: `Flagstaff` (22380)
+
+Intercity Distances: 
+
+- Payson - Prescott: 99.2 miles
+- Payson - Flagstaff: 93.8 miles
+- Prescott - Flagstaff: 95.4 miles
+
+These were chosen because they had the most non-missing Ozone values. As it turns out, they all are near each other. This is interesting because this analysis yields **similar correlation matrices** between segmentation and ECE. While the correlation matrices look very similar, their corresponding **covariance matrices are slightly different**, especially diagonal terms. There is some heteroscedasticity from seasonality in the residuals. 
+
+
+
+:::
+
+::: {.column width="50%"}
+![Arizona Map](https://m.media-amazon.com/images/I/718OtpueiKL.jpg){width=100%}
+:::
+
+:::
+
+## NV
+::: columns
+
+::: {.column width="50%"}
+```
+Demean Correlation:
+          X1        X2        X3
+X1 1.0000000 0.4472477 0.4669696
+X2 0.4472477 1.0000000 0.6221018
+X3 0.4669696 0.6221018 1.0000000
+
+ECE Correlation:
+         X1        X2        X3
+X1 1.000000 0.5903730 0.5794720
+X2 0.590373 1.0000000 0.7396378
+X3 0.579472 0.7396378 1.0000000
+```
+:::
+
+::: {.column width="50%"}
+```
+Demean Covariance:
+          X1        X2        X3
+X1 13.261578  6.068482  7.150757
+X2  6.068482 13.882530  9.746788
+X3  7.150757  9.746788 17.682004
+
+ECE Covariance:
+         X1       X2       X3
+X1 22.04204 14.12854 16.72797
+X2 14.12854 25.98302 23.18189
+X3 16.72797 23.18189 37.80679
+```
+:::
+
+:::
+
+::: columns
+
+
+::: {.column width="50%"}
+Consider the Nevada cities
+
+- X1: `Carson City` (16180)
+- X2: `Fernley` (22280)
+- X3: `Fallon` (21980)
+
+Intercity Distances: 
+
+- Carson City - Fernley: 49.7 miles
+- Carson City - Fallon: 62 miles
+- Fernley - Fallon: 28 miles
+
+Fallon is between Reno and Fernley, but not indicated on the map. This makes all three cities in somewhat close proximity. 
+
+ECE produces more **inflated values of correlation**, relative to the demean strategy. Moreover, the covariance matrix of ECE is larger. 
+
+
+::: 
+
+:::{.column width="50%"}
+![NV](https://www.americanmapstore.com/cdn/shop/products/NVWM004-1_1800x1800.jpg?v=1630530209){width=100%}
+:::
+
+
+::: 
+
+
+## CA
+
+::: columns
+
+::: {.column width="50%"}
+```
+Demean Correlation:
+           X1          X2          X3
+X1 1.00000000  0.07277324  0.11481749
+X2 0.07277324  1.00000000 -0.01460778
+X3 0.11481749 -0.01460778  1.00000000
+
+ECE Correlation:
+           X1         X2         X3
+X1  1.0000000 -0.1462979  0.1021522
+X2 -0.1462979  1.0000000 -0.2910970
+X3  0.1021522 -0.2910970  1.0000000
+```
+:::
+
+::: {.column width="50%"}
+```
+Demean Covariance:
+          X1         X2         X3
+X1 7.1686175  0.7372194  1.2812152
+X2 0.7372194 14.3157678 -0.2303498
+X3 1.2812152 -0.2303498 17.3697144
+
+ECE Covariance:
+          X1        X2       X3
+X1 12.073269 -2.243961  1.81401
+X2 -2.243961 19.486312 -6.56723
+X3  1.814010 -6.567230 26.11916
+```
+:::
+
+:::
+
+:::columns
+
+:::{.column width=50%}
+
+Consider the California cities
+
+- X1: `Clearlake` (17340)
+- X2: `Sonora` (43760)
+- X3: `Redding` (39820)
+
+Intercity Distances: 
+
+- Clearlake - Sonora: 209.3 miles
+- Clearlake - Redding: 142.6 miles
+- Sonora - Redding: 253.7 miles
+
+Clearlake is in Lake County (not shown on map). Sonora is located near Sacramento in central California. Redding is located in northern CA in Shasta county. This makes all of the cities considered a triangle in central-north CA. 
+
+
+
+:::
+
+:::{.column width=50%}
+![CA](https://m.media-amazon.com/images/I/81K1E4qgnqL.jpg){width=100%}
+:::
+
+:::
+
+
+
+## NY
+::: columns
+
+::: {.column width="50%"}
+```
+Demean Correlation:
+          X1        X2        X3
+X1 1.0000000 0.3136106 0.2154307
+X2 0.3136106 1.0000000 0.3218327
+X3 0.2154307 0.3218327 1.0000000
+
+ECE Correlation:
+          X1        X2        X3
+X1 1.0000000 0.1683677 0.1000386
+X2 0.1683677 1.0000000 0.1111763
+X3 0.1000386 0.1111763 1.0000000
+```
+:::
+
+::: {.column width="50%"}
+```
+Demean Covariance:
+          X1        X2        X3
+X1 20.074113  4.513369  3.660164
+X2  4.513369 10.317719  3.920097
+X3  3.660164  3.920097 14.379691
+
+ECE Covariance:
+          X1        X2        X3
+X1 30.969626  3.113026  2.480432
+X2  3.113026 11.038551  1.645736
+X3  2.480432  1.645736 19.851051
+```
+:::
+
+:::
+
+::: columns
+
+::: {.column width="50%"}
+Consider the New York cities: 
+
+- X1: `Jamestown` (27460)
+- X2: `Ithaca` (27060)
+- X3: ` Watertown` (48060)
+
+Intercity Distances:
+
+- Jamestown - Ithaca: 187.4 miles
+- Jamestown - Watertown: 279.5 miles
+- Ithaca - Watertown: 126.5 miles
+
+Like other states, ECE estimates a larger variance than segmentation. However, it also estimates less correlation between cities. 
+
+:::
+
+::: {.column width="50%"}
+![NY](https://m.media-amazon.com/images/I/91fTG2jt4VL.jpg){width=100%}
+:::
+
+:::
+
+::: 
+
+
+
+
+# Thoughts
+I'm seeing the correlation between cities be slightly deflated. I wonder if this is a natural phenomenon when comparing between the segmentation and ECE.
+
+ECE yields smaller correlation between
+
+**Strong negative lag-1 auto-correlation.** Interestingly enough, the ACF plots in the simulation tool do not produce this pattern. Why does this happen? 
+
+**ECE Covariance > Segmentation Covariance**. In all of the states considered, we see ECE estimate a larger covariance matrix. 
+
+
+## Future Directions
+- create button for sites
+- compare Ozone, PM2.5, and PM10 with each other
+- how do you interpret these negative lag-1 auto-correlations? 
+
+
