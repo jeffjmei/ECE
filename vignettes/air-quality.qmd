@@ -356,7 +356,11 @@ verbatimTextOutput("ece_cov")
 ---
 
 # Notes
+We collect data from several states. We choose these cities because they have the most complete data. For whatever reason, the major metropolitan areas have less data than some of the more rural ones. 
 
+We record the **covariance/correlation** from both ECE and the segmentation method. We have also included the distance between cities, which is calculated as the driving distance via Google Maps. 
+
+We've included a map to get a general sense of where the cities are, but often times, the maps do not contain certain cities. 
 
 ::: {.panel-tabset}
 
@@ -628,14 +632,37 @@ Like other states, ECE estimates a larger variance than segmentation. However, i
 
 
 
-# Thoughts
-I'm seeing the correlation between cities be slightly deflated. I wonder if this is a natural phenomenon when comparing between the segmentation and ECE.
+# Observations
 
-NV (\~50) - AZ (\~100) - NY (\~200) - CA (\~200)
+::: {.callout-note collapse="true"}
+## ECE Covariance $>$ Segmentation Covariance
+In all of the states considered, we see ECE estimate a larger covariance matrix. 
 
-ECE yields smaller correlation between
+**This is similar to the simulated scenario `harmonious sin`.** Air quality data generally follows some season effects that can be approximated by sinusoidal waves. They indicate the **simulated ECE covariance matrix is larger than segmentation's.** 
+:::
 
-**ECE Covariance > Segmentation Covariance**. In all of the states considered, we see ECE estimate a larger covariance matrix. 
+::: {.callout-warning collapse="true"}
+## ECE Correlation $<$ Segmentation Correlation
+Comparing correlations between the two techniques, we see ECE produces smaller correlation estimates. 
+
+When continuing with the `harmonious sin` analogy, this should not be occurring. **This is a mystery**. 
+:::
+
+
+::: {.callout-note collapse="true"}
+## The correlation broadly follows proximity
+This is a good sign. We should expect that cities that are close in proximity exhibit higher levels of correlation than cities that are further apart. 
+
+| State | Distance Range | Correlation Range |
+|-------|----------------|-------------------|
+| NV    | 28 – 62        | 0.58 – 0.74       |
+| AZ    | 94 – 100       | 0 – 0.40          |
+| NY    | 127 – 280      | 0.10 – 0.16       |
+| CA    | 142 – 253      | -0.29 – 0.10      |
+
+::: 
+
+
 
 ::: {.callout-note collapse="true"}
 ## Negative Lag-1 Autocorrelation
