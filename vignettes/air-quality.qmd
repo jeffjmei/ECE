@@ -133,7 +133,7 @@ numericInput("cbsa_code3", "CBSA Code 3:", value = 22380)
 dateRangeInput("daterange", "Choose dates:",
                start = "2020-01-01",
                end   = "2025-09-01",
-               min   = "2010-01-01",
+               min   = "2020-01-01",
                max   = Sys.Date())
 ```
 
@@ -147,6 +147,10 @@ df_reactive <- reactive({
       (cbsa_code == input$cbsa_code2) |  
       (cbsa_code == input$cbsa_code3),
       defining_parameter == "Ozone" #PM2.5, PM10, Ozone, CO
+    ) %>%
+    filter(
+      input$daterange[1] <= date, 
+      input$daterange[2] >= date
     ) %>%
     dplyr::select(date, cbsa_code, aqi) %>%
     tidyr::pivot_wider(
@@ -627,14 +631,29 @@ Like other states, ECE estimates a larger variance than segmentation. However, i
 # Thoughts
 I'm seeing the correlation between cities be slightly deflated. I wonder if this is a natural phenomenon when comparing between the segmentation and ECE.
 
-ECE yields smaller correlation between
+NV (\~50) - AZ (\~100) - NY (\~200) - CA (\~200)
 
-**Strong negative lag-1 auto-correlation.** Interestingly enough, the ACF plots in the simulation tool do not produce this pattern. Why does this happen? 
+ECE yields smaller correlation between
 
 **ECE Covariance > Segmentation Covariance**. In all of the states considered, we see ECE estimate a larger covariance matrix. 
 
+::: {.callout-note collapse="true"}
+## Negative Lag-1 Autocorrelation
+**Strong negative lag-1 auto-correlation.** Interestingly enough, the ACF plots in the simulation tool do not produce this pattern. Why does this happen? 
+
+**Could it be time-jumps?** This data contains large blocks of missing data. 
+
+**Could it be heavy tail jumps?** In principle, if there is a spike in an AQI, the segmentation might jump with it. If it is one day, PELT _must_ be length 2. This guarantees the next point is smaller than the estimated point. 
+
+When you look at individual years, the missing data does not show up as prevalently. Nevertheless, the **negative auto-correlation persists**.
+
+Instead, **the data is just spiky**. If it is high one day, it is low the next day. This may just be an artifact of the data. Zooming in further, it is really difficult to find places where the data does not zigzag. 
+
+:::
+
 
 ## Future Directions
+
 - create button for sites
 - compare Ozone, PM2.5, and PM10 with each other
 - how do you interpret these negative lag-1 auto-correlations? 
