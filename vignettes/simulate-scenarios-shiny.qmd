@@ -1,0 +1,479 @@
+---
+title: Simulate Scenarios
+output: html_document
+author: Jeffrey Mei
+date: 2025-08-26
+server: shiny
+---
+
+
+```{R}
+#| echo: false 
+#| context: setup
+#| message: false
+#| warning: false
+
+# Load Packages
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(tidyverse)
+library(changepoint)
+library(tidyquant)
+library(MASS)
+```
+
+::: {.callout-note collapse="true"}
+## Scenario Summary
+- **Scenario 1**: no change point
+- **Scenario 2**: single change point at center ($K=1$)
+- **Scenario 3**: single change point at center ($K=1$; mirrored)
+- **Scenario 4**: square-wave ($K=4$; unison)
+- **Scenario 5**: square-wave ($K=4$; mirrored)
+- **Scenario 6**: staircase ($K=4$; unison)
+- **Scenario 7**: staircase ($K=4$; mirrored)
+- **Scenario 8**: harmonious sin (misspecified)
+- **Scenario 9**: discordant sin (misspecified)
+- **Scenario 10**: extreme square-wave (unison, $L=4$)
+- **Scenario 11**: random mean - random change point ($K = 0.1 \cdot n$)
+- **Scenario 12**: linear (misspecified)
+- **Scenario 13**: random walk (misspecified)
+:::
+
+::: {layout="[ [1,1] ]"}
+
+```{R}
+#| panel: sidebar
+
+# UI controls
+numericInput("scenario_num", "Scenario", value=2)
+numericInput("n", "Sample Size (n)", value=1000)
+actionButton("resim", "Simulate", class = "btn-primary")
+```
+
+```{R}
+#| panel: sidebar
+numericInput("rho", "Covariance (rho)", value=0.25)
+numericInput("sx", "Variance(X) (sx)", value=1)
+numericInput("sy", "Variance(Y) (sy)", value=1)
+```
+
+:::
+
+```{R}
+#| context: server 
+sim_data <- eventReactive(input$resim, {
+  params <- scenario(
+    input$scenario_num, 
+    sx=input$sx,
+    sy=input$sy,
+    sxy=input$rho, 
+    n=input$n
+  )
+  X <- generate_data(params)
+  tibble(
+    index = 1:input$n,
+    X1 = X[,1],
+    X2 = X[,2]
+  ) %>%
+  mutate(
+    X1_mean = segment_mean(X1),
+    X2_mean = segment_mean(X2)
+  )
+})
+
+```
+
+
+```{R}
+#| context: server
+
+output$plot <- renderPlot({
+  df <- sim_data()
+  ggplot(df, aes(x=index)) +
+    geom_line(aes(y=X1), color="red") +
+    geom_line(aes(y=X2), color="blue") +
+    geom_line(aes(y=X1_mean), color="red", linewidth=1.5) +
+    geom_line(aes(y=X2_mean), color="blue", linewidth=1.5) +
+    labs(title="Change Point Segmentation", x="", y="") +
+    theme_minimal()
+})
+```
+
+```{R}
+#| context: server
+
+output$residuals <- renderPlot({
+  df <- sim_data()
+  ggplot(df, aes(x=index)) +
+    geom_hline(yintercept=0) +
+    geom_line(aes(y=X1 - X1_mean), color="red") +
+    geom_line(aes(y=X2 - X2_mean), color="blue") +
+    labs(title="Segmentation Residuals", x="", y="") +
+    theme_minimal()
+})
+```
+
+```{R}
+#| context: server
+
+output$acf <- renderPlot({
+  df <- sim_data()
+  par(mfrow=c(1,2))
+  acf(df$X1 - df$X1_mean, main="X1 residuals")
+  acf(df$X2 - df$X2_mean, main="X2 residuals")
+  par(mfrow=c(1,1))
+})
+```
+
+```{R}
+#| context: server
+
+output$ece_regression <- renderPlot({
+  df <- sim_data()
+  plot.ece(data.frame(X1=df$X1, X2=df$X2))
+})
+
+```
+
+```{R}
+#| context: server
+output$ece_cov <- renderPrint({
+  df <- sim_data()
+  demean_cov <- cov(cbind(
+    df$X1 - df$X1_mean,
+    df$X2 - df$X2_mean
+  ))
+
+  ece_cov <- matrix(c(
+    equiv.cov(df$X1, df$X1),
+    equiv.cov(df$X1, df$X2),
+    equiv.cov(df$X2, df$X1),
+    equiv.cov(df$X2, df$X2)
+  ), nrow=2, byrow=TRUE)
+
+  cat("Demean Covariance:\n")
+  print(round(demean_cov, 3))
+  cat("\nECE Covariance:\n")
+  print(round(ece_cov, 3))
+})
+
+output$ece_cor <- renderPrint({
+  df <- sim_data()
+  demean_cor <- cor(cbind(
+    df$X1 - df$X1_mean,
+    df$X2 - df$X2_mean
+  ))
+
+  ece_cor <- matrix(c(
+    ece.test(df$X1, df$X1)$estimate,
+    ece.test(df$X1, df$X2)$estimate,
+    ece.test(df$X2, df$X1)$estimate,
+    ece.test(df$X2, df$X2)$estimate
+  ), nrow=2, byrow=TRUE)
+
+  cat("Demean Correlation:\n")
+  print(round(demean_cor, 3))
+  cat("\nECE Correlation:\n")
+  print(round(ece_cor, 3))
+})
+```
+
+
+::: {layout="[ [1,1] ]"}
+
+::: {.panel-tabset}
+
+## Plot
+```{R}
+#| panel: fill
+plotOutput("plot")
+```
+
+## Residuals
+```{R}
+#| panel: fill
+plotOutput("residuals")
+```
+
+## ACF
+```{R}
+#| panel: fill
+plotOutput("acf")
+```
+
+## ECE Regression
+```{R}
+#| panel: fill
+plotOutput("ece_regression")
+```
+
+:::
+
+::: {.panel-tabset}
+
+## Correlation
+```{R}
+verbatimTextOutput("ece_cor")
+```
+
+## Covariance
+```{R}
+verbatimTextOutput("ece_cov")
+```
+:::
+:::
+
+```{R} 
+#| context: server
+running_ece <- function(x, y, start = 1000) {
+  n <- length(x)
+  map_dbl(start:n, ~ equiv.cov(x[1:.x], y[1:.x]))
+}
+
+output$ece_run <- renderPlot({
+  df <- sim_data()
+  X1_X1 <- running_ece(
+    df$X1, df$X1, 
+    start=round(0.9 * length(df$X1))
+  )
+  X1_X2 <- running_ece(
+    df$X1, df$X2, 
+    start=round(0.9 * length(df$X1))
+  )
+  X2_X2 <- running_ece(
+    df$X2, df$X2, 
+    start=round(0.9 * length(df$X1))
+  )
+  df <- cbind(
+    index = round(0.9 * length(df$X1)):length(df$X1), 
+    X1_X1, 
+    X1_X2, 
+    X2_X2
+  )
+  ggplot(data=df) + 
+    geom_line(aes(x=index, y=X1_X1, color="red")) + 
+    geom_line(aes(x=index, y=X1_X2, color="blue")) + 
+    geom_line(aes(x=index, y=X2_X2, color="green")) + 
+    geom_hline(yintercept=-1) + 
+    geom_hline(yintercept= 1) + 
+    ylab("Covariance") + 
+    theme_minimal()
+})
+```
+
+```{R}
+#| panel: fill
+plotOutput("ece_run")
+```
+
+
+# Long Simulations
+Here, we aggregate simulations in the traditional sense. This allows us to make statistical statements. 
+
+
+```{R}
+#| panel: sidebar
+
+# UI controls
+numericInput("n_sims", "Number of Simulations (N)", value=1000)
+actionButton("longsim_button", "Simulate", class = "btn-primary")
+```
+
+```{R}
+#| context: server
+largesim_data <- eventReactive(input$longsim_button, {
+  params <- scenario(
+    input$scenario_num, 
+    sx=input$sx,
+    sy=input$sy,
+    sxy=input$rho, 
+    n=input$n
+  )
+  sim_data <- map(1:input$n_sims, ~{
+    X <- generate_data(params)
+    X_segment <- segment_mean(X)
+    segment_cov <- cov(X - X_segment)
+    segment_cor <- cor(X - X_segment)
+    list(
+      ece_cov_11 = equiv.cov(X[,1], X[,1]),
+      ece_cov_12 = equiv.cov(X[,1], X[,2]),
+      ece_cov_22 = equiv.cov(X[,2], X[,2]),
+      ece_cor_12 = ece.test(X[,1], X[,2])$estimate,
+      segment_cov_11 = segment_cov[1, 1],
+      segment_cov_12 = segment_cov[1, 2],
+      segment_cov_22 = segment_cov[2, 2],
+      segment_cor_12 = segment_cor[1, 2]
+    )
+  })
+})
+```
+
+```{R}
+#| context: server
+
+output$longsim_covariance <- renderPlot({
+  sim_data <- largesim_data()
+
+  df <- tibble(
+    ece_cov_11      = map_dbl(sim_data, "ece_cov_11"),
+    ece_cov_22      = map_dbl(sim_data, "ece_cov_22"),
+    ece_cov_12      = map_dbl(sim_data, "ece_cov_12"),
+    segment_cov_11  = map_dbl(sim_data, "segment_cov_11"),
+    segment_cov_22  = map_dbl(sim_data, "segment_cov_22"),
+    segment_cov_12  = map_dbl(sim_data, "segment_cov_12")
+  ) %>%
+    pivot_longer(
+      everything(),
+      names_to = c("method", "element"),
+      names_pattern = "(ece|segment)_cov_(.*)",
+      values_to = "value"
+    ) %>%
+    mutate(
+      element = recode(element,
+                      "11" = "Var(X1)",
+                      "22" = "Var(X2)",
+                      "12" = "Cov(X1,X2)")
+    )
+
+  ggplot(df, aes(x = value, fill = method)) +
+    geom_histogram(alpha = 0.5, position = "identity", bins = 40) +
+    geom_vline(
+      data = df %>%
+        group_by(method, element) %>%
+        summarise(m = mean(value), .groups = "drop"),
+      aes(xintercept = m, color = method),
+      linetype = "dashed"
+    ) +
+    facet_wrap(~ element, scales = "free") +
+    scale_fill_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
+    scale_color_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
+    labs(
+      x = "Estimated value",
+      y = "Count",
+      fill = "Method",
+      color = "Method"
+    ) +
+    theme_minimal()
+})
+
+
+output$longsim_correlation <- renderPlot({
+  sim_data <- largesim_data()
+  df_cor <- tibble(
+    ece_cor_12     = map_dbl(sim_data, "ece_cor_12"),
+    segment_cor_12 = map_dbl(sim_data, "segment_cor_12")
+  ) %>%
+    pivot_longer(
+      everything(),
+      names_to = c("method", "element"),
+      names_pattern = "(ece|segment)_cor_(.*)",
+      values_to = "value"
+    ) %>%
+    mutate(element = "Cor(X1, X2)")
+
+  ggplot(df_cor, aes(x = value, fill = method)) +
+    geom_histogram(alpha = 0.5, position = "identity", bins = 40) +
+    geom_vline(
+      data = df_cor %>%
+        group_by(method, element) %>%
+        summarise(m = mean(value), .groups = "drop"),
+      aes(xintercept = m, color = method),
+      linetype = "dashed"
+    ) +
+    facet_wrap(~ element, scales = "free") +
+    scale_fill_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
+    scale_color_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
+    labs(
+      x = "Estimated correlation",
+      y = "Count",
+      fill = "Method",
+      color = "Method"
+    ) +
+    theme_minimal()
+})
+
+```
+
+```{R}
+#| panel: fill
+plotOutput("longsim_covariance")
+```
+
+```{R}
+#| panel: fill
+plotOutput("longsim_correlation")
+```
+
+# Observations
+
+**Key Takeaways**
+
+- when $\|\theta\|$ is large relative to $\sigma^2$, the correlation matrix is likely to contain NA values
+- random walk completely defeats ECE
+- ECE beats segmentation for scenario 10 and 11
+
+
+**ECE dominates segmentation for scenarios 10 and 11.** When there are large high-frequency changes and PELT is unable to detect the changes, it will overestimate the variance. 
+
+**Random walk completely defeats ECE.** When looking at the ECE regression-plot, we see that unlike the other scenarios, the slope is much more prominent than in other scenarios. 
+
+
+::: {.callout-note collapse="true"}
+## Scenarios 2 - 7: Sparse Change Points 
+In all of these examples, **segmentation yields better results**. Both estimators are **unbiased**, and **segmentation has less variance**.
+::: 
+
+::: {.callout-note collapse="true"}
+## Scenario 8: Harmonious Sin
+We observe modest **negative biasedness in segmentation**. The ACF and residual plots demonstrate that the segmentation method cannot capture the systematic effects of the sin wave. This is unsurprising since sin waves are not constant anywhere. 
+
+This biasedness gets mistranslated into some correlation between the inputs.
+::: 
+
+::: {.callout-note collapse="true"}
+## Scenario 9: - Discordant Sin
+Of course, ECE is unbiased, but it's worth noting that this example highlights the bias in segmentation. We see that one wave exhibits strong positive bias, whereas the other exhibits modest negative bias. 
+::: 
+
+::: {.callout-note collapse="true"}
+## Scenario 10: Extreme Square-Wave
+
+**ACF function is sinusoidal**. This gives away that something is seriously wrong. 
+
+**ECE dominates segmentation**. ECE gets pretty good estimates for the correlation, and segmentation guesses there is no change points. This yields a massively inflated covariance matrix. The variance estimates mistakes the mean jumps for variation, where the covariance mistakes the mean jumps for covariation. 
+
+**ECE regression-plot has a steep slope**. This is unsurprising because the mean shifts are so frequent. The regression slope is a function of $\|\theta\|$, which is the lagged difference of the mean-vector.
+
+::: 
+
+::: {.callout-note collapse="true"}
+## Scenario 11: Random Mean - Random Change Point
+Segmentation produces **biased** results in all categories. This is due to it missing some change points. We can see this by the systematic pattern in the ACF plot. 
+::: 
+
+::: {.callout-note collapse="true"}
+## Scenario 12: Linear
+**ECE produces similar results as segmentation.** They are both terribly biased. Still, ECE estimates are more volatile than segmentation, so the comparison between the two is a wash. **Estimates of variance are largely inflated**. 
+
+Interestingly enough, while the variance estimates are poor, the **ECE covariance estimates tends to be accurate**. 
+::: 
+
+::: {.callout-note collapse="true"}
+## Scenario 13: Random Walk
+
+**ACF function exhibits long-range auto-correlation**. It snakes positive and then negative. 
+
+**ECE regression-plot has a sharp slope.** This slope is very accurate in hitting 1 at the intercept. 
+
+**ECE variance is often near 0.** As a consequence, the correlation matrix is often NA or correlation is often greater than 1. 
+:::
+
+---
+
+# To Do
+
+- [x] run simulations for mean-segmentation
+  - might explain why ECE produces smaller values for correlation
+- [ ] produce statistics for long simulations
+  - number NA
+- [ ] report ratio: $\hat{\beta}_1 / \hat{\beta}_0$ 
+
