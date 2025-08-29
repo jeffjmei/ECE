@@ -24,25 +24,43 @@ Here, we compare the closing cost of `MSFT`, `META`, and `NVDA` stocks.
 
 Under the standard segmentation method -- i.e., PELT with BIC penalty with `minseglen = 2`, we get the following mean-segmentation. It is difficult to see what PELT determines as the best mean-segmentation, because the breaks are so frequent. This can be adjusted by utilizing a manual penalty or changing the `minseglen`.
 
+We load data from the S&P 500 from [Cam Nugent on Kaggle](https://www.kaggle.com/datasets/camnugent/sandp500/data). This is the dataset that is used from the GeomCP paper.
+
+Following that paper, we take the log-returns. That is, we take the log of the values in each time series, and then we take the first difference. 
+
 ```{R}
 dateRangeInput("daterange", "Choose dates:",
                start = "2020-01-01",
                end   = "2025-05-01",
                min   = "2010-01-01",
                max   = Sys.Date())
+textInput("ticker1", "Ticker 1:", value = "MSFT")
+textInput("ticker2", "Ticker 2:", value = "META")
+textInput("ticker3", "Ticker 3:", value = "NVDA")
 ```
 
 ```{R}
 #| context: server
 
 df_reactive <- reactive({
-  tq_get(c("MSFT", "META", "NVDA"),
+  tickers <- c(input$ticker1, input$ticker2, input$ticker3)
+  tq_get(tickers,
          from = input$daterange[1],
          to   = input$daterange[2]) %>%
     dplyr::select(symbol, date, close) %>%
     pivot_wider(names_from = symbol, values_from = close) %>%
+    rename(
+      index = date,
+      X1 = !!sym(input$ticker1),
+      X2 = !!sym(input$ticker2),
+      X3 = !!sym(input$ticker3)
+    ) %>%
+    mutate(
+      X1 = log(X1) - log(dplyr::lag(X1)),
+      X2 = log(X2) - log(dplyr::lag(X2)),
+      X3 = log(X3) - log(dplyr::lag(X3))
+    ) %>%
     drop_na() %>%
-    rename(index = date, X1 = MSFT, X2 = META, X3 = NVDA) %>%
     mutate(
       X1_mean = segment_mean(X1),
       X2_mean = segment_mean(X2),
@@ -78,9 +96,9 @@ output$residualPlot <- renderPlot({
 output$acfPlots <- renderPlot({
   df <- df_reactive()
   par(mfrow=c(1,3))
-  acf(df$X1 - df$X1_mean, main="MSFT")
-  acf(df$X2 - df$X2_mean, main="META")
-  acf(df$X3 - df$X3_mean, main="NVDA")
+  acf(df$X1 - df$X1_mean, main="X1")
+  acf(df$X2 - df$X2_mean, main="X2")
+  acf(df$X3 - df$X3_mean, main="X3")
   par(mfrow=c(1,1))
 })
 
@@ -92,7 +110,7 @@ output$ece_cov <- renderPrint({
     df$X2 - df$X2_mean,
     df$X3 - df$X3_mean
   ))
-  colnames(demean_cov) <- rownames(demean_cov) <- c("MSFT","META","NVDA")
+  colnames(demean_cov) <- rownames(demean_cov) <- c("X1","X2","X3")
 
   ece_cov <- matrix(c(
     equiv.cov(df$X1, df$X1),
@@ -105,7 +123,7 @@ output$ece_cov <- renderPrint({
     equiv.cov(df$X3, df$X2),
     equiv.cov(df$X3, df$X3)
   ), nrow=3, byrow=TRUE)
-  colnames(ece_cov) <- rownames(ece_cov) <- c("MSFT","META","NVDA")
+  colnames(ece_cov) <- rownames(ece_cov) <- c("X1","X2","X3")
 
   cat("Demean Covariance:\n")
   print(demean_cov)
@@ -120,7 +138,7 @@ output$ece_cor <- renderPrint({
     df$X2 - df$X2_mean,
     df$X3 - df$X3_mean
   ))
-  colnames(demean_cor) <- rownames(demean_cor) <- c("MSFT","META","NVDA")
+  colnames(demean_cor) <- rownames(demean_cor) <- c("X1","X2","X3")
 
   ece_cor <- matrix(c(
     ece.test(df$X1, df$X1)$estimate,
@@ -133,7 +151,7 @@ output$ece_cor <- renderPrint({
     ece.test(df$X3, df$X2)$estimate,
     ece.test(df$X3, df$X3)$estimate
   ), nrow=3, byrow=TRUE)
-  colnames(ece_cor) <- rownames(ece_cor) <- c("MSFT","META","NVDA")
+  colnames(ece_cor) <- rownames(ece_cor) <- c("X1","X2","X3")
 
   cat("Demean Correlation:\n")
   print(demean_cor)
@@ -196,43 +214,40 @@ Can you find the penalty value that minimizes the difference between ECE estimat
 
 To evaluate the stability, let's plot correlation of `MSFT-META`, `MSFT-NVDA`, AND `META-NVDA` over time. 
 
+```{R}
+#| context: server
+running_ece <- function(x, y, start = 1000) {
+  n <- length(x)
+  map_dbl(start:n, ~ ece.test(x[1:.x], y[1:.x])$estimate)
+}
+
+output$running_ece <- renderPlot({
+  df <- df_reactive()
+  X1_X2 <- running_ece(df$X1, df$X2)
+  X1_X3 <- running_ece(df$X1, df$X3)
+  X2_X3 <- running_ece(df$X2, df$X3)
+
+  df <- cbind(index=70:length(df$X1), X1_X2, X1_X3, X2_X3)
+  ggplot(data=df) + 
+    geom_line(aes(x=index, y=X1_X2, color="X1 vs X2")) + 
+    geom_line(aes(x=index, y=X1_X3, color="X1 vs X3")) + 
+    geom_line(aes(x=index, y=X2_X3, color="X2 vs X3")) + 
+    geom_hline(yintercept=-1) + 
+    geom_hline(yintercept= 1) + 
+    scale_color_manual(values = c(
+      "X1 vs X2" = "red",
+      "X1 vs X3" = "blue",
+      "X2 vs X3" = "green"
+    )) +
+    ylab("Correlation") + 
+    theme_minimal()
+})
+```
 
 ```{R}
-#| echo: false
-get_weights <- function(L){
-    K = sum((1:L)^2)
-    S = sum(1:L)
-    norm = L * K - S^2
-    a = sapply(1:L, function(k) K - k * S)  / norm
-    return(a)
-}
-
-Ak <- function(n, k){
-    (1/n) * (diag(n) - 0.5 * (Ck(n, k) + t(Ck(n, k))))
-}
-
-Ck <- function(n, k){
-    if(k == 0){
-        return(diag(1, n))
-    }
-    rbind(diag(1, n)[-(1:k),], 
-          diag(1, n)[1:k,])
-}
-
-b_to_A <- function(b, n, L){
-    A = sapply(1:L, function(k) b[k] * Ak(n, k), simplify=F)
-    return(Reduce('+', A))
-}
-
-est <- function(X, L=2){
-    n = nrow(X)
-    b = get_weights(L)
-    A = b_to_A(b, n, L)
-    return(t(X) %*% A %*% X)
-}
-
-#est(cbind(X1, X2, X3), L=2)
-
+#| panel: fill
+plotOutput("running_ece")
 ```
+
 
 
