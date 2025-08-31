@@ -28,16 +28,27 @@ We load data from the S&P 500 from [Cam Nugent on Kaggle](https://www.kaggle.com
 
 Following that paper, we take the log-returns. That is, we take the log of the values in each time series, and then we take the first difference. 
 
+::: columns
+
+::: {.column width=50%}
 ```{R}
-dateRangeInput("daterange", "Choose dates:",
-               start = "2020-01-01",
-               end   = "2025-05-01",
-               min   = "2010-01-01",
-               max   = Sys.Date())
 textInput("ticker1", "Ticker 1:", value = "MSFT")
 textInput("ticker2", "Ticker 2:", value = "META")
 textInput("ticker3", "Ticker 3:", value = "NVDA")
 ```
+::: 
+
+::: {.column width=50%}
+```{R}
+dateRangeInput("daterange", "Choose dates:",
+               start = "2015-01-01",
+               end   = "2016-12-01",
+               min   = "2010-01-01",
+               max   = Sys.Date())
+```
+::: 
+::: 
+
 
 ```{R}
 #| context: server
@@ -126,9 +137,9 @@ output$ece_cov <- renderPrint({
   colnames(ece_cov) <- rownames(ece_cov) <- c("X1","X2","X3")
 
   cat("Demean Covariance:\n")
-  print(demean_cov)
+  print(round(demean_cov, 3))
   cat("\nECE Covariance:\n")
-  print(ece_cov)
+  print(round(ece_cov, 3))
 })
 
 output$ece_cor <- renderPrint({
@@ -154,11 +165,42 @@ output$ece_cor <- renderPrint({
   colnames(ece_cor) <- rownames(ece_cor) <- c("X1","X2","X3")
 
   cat("Demean Correlation:\n")
-  print(demean_cor)
+  print(round(demean_cor, 3))
   cat("\nECE Correlation:\n")
-  print(ece_cor)
+  print(round(ece_cor, 3))
+})
+
+#| context: server
+running_ece <- function(x, y, start = 1000) {
+  n <- length(x)
+  map_dbl(start:n, ~ ece.test(x[1:.x], y[1:.x])$estimate)
+}
+
+output$running_ece <- renderPlot({
+  df <- df_reactive()
+  X1_X2 <- running_ece(df$X1, df$X2, 0.9 * nrow(df))
+  X1_X3 <- running_ece(df$X1, df$X3, 0.9 * nrow(df))
+  X2_X3 <- running_ece(df$X2, df$X3, 0.9 * nrow(df))
+
+  df <- cbind(index=70:length(df$X1), X1_X2, X1_X3, X2_X3)
+  ggplot(data=df) + 
+    geom_line(aes(x=index, y=X1_X2, color="X1 vs X2")) + 
+    geom_line(aes(x=index, y=X1_X3, color="X1 vs X3")) + 
+    geom_line(aes(x=index, y=X2_X3, color="X2 vs X3")) + 
+    geom_hline(yintercept=-1) + 
+    geom_hline(yintercept= 1) + 
+    scale_color_manual(values = c(
+      "X1 vs X2" = "red",
+      "X1 vs X3" = "blue",
+      "X2 vs X3" = "green"
+    )) +
+    ylab("Correlation") + 
+    theme_minimal()
 })
 ```
+
+::: columns
+::: {.column width=70%}
 
 ::: {.panel-tabset}
 
@@ -181,9 +223,17 @@ plotOutput("acfPlots")
 ```
 
 Given this segmentation, it looks like there's still some auto-correlation. It's hard to claim this is due to inadequate fitting since it the fit is already so tight. This intrinsic auto-correlation deflates the estimated correlation. This means our estimated correlation will be deflated from the true value. 
+
+## Stability
+```{R}
+#| panel: fill
+plotOutput("running_ece")
+```
 :::
+::: 
 
 
+::: {.column width=30%}
 
 ::: {.panel-tabset}
 
@@ -198,6 +248,7 @@ verbatimTextOutput("ece_cov")
 ```
 
 :::
+::: 
 
 # Conclusions
 The way `MSFT`, `META`, and `NVDA` were chosen is because we additionally compare `AAPL`, `GOOG`, and `AMZN`, but they yielded nonsensical results -- the correlation coefficient would be greater than 1 if it could be calculated at all. This is a major problem in finding applications for ECE. Many of the time series result in NA values. This is a huge detriment of the technique. 
@@ -214,40 +265,6 @@ Can you find the penalty value that minimizes the difference between ECE estimat
 
 To evaluate the stability, let's plot correlation of `MSFT-META`, `MSFT-NVDA`, AND `META-NVDA` over time. 
 
-```{R}
-#| context: server
-running_ece <- function(x, y, start = 1000) {
-  n <- length(x)
-  map_dbl(start:n, ~ ece.test(x[1:.x], y[1:.x])$estimate)
-}
-
-output$running_ece <- renderPlot({
-  df <- df_reactive()
-  X1_X2 <- running_ece(df$X1, df$X2)
-  X1_X3 <- running_ece(df$X1, df$X3)
-  X2_X3 <- running_ece(df$X2, df$X3)
-
-  df <- cbind(index=70:length(df$X1), X1_X2, X1_X3, X2_X3)
-  ggplot(data=df) + 
-    geom_line(aes(x=index, y=X1_X2, color="X1 vs X2")) + 
-    geom_line(aes(x=index, y=X1_X3, color="X1 vs X3")) + 
-    geom_line(aes(x=index, y=X2_X3, color="X2 vs X3")) + 
-    geom_hline(yintercept=-1) + 
-    geom_hline(yintercept= 1) + 
-    scale_color_manual(values = c(
-      "X1 vs X2" = "red",
-      "X1 vs X3" = "blue",
-      "X2 vs X3" = "green"
-    )) +
-    ylab("Correlation") + 
-    theme_minimal()
-})
-```
-
-```{R}
-#| panel: fill
-plotOutput("running_ece")
-```
 
 
 
