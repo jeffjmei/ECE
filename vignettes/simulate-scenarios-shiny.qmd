@@ -334,6 +334,15 @@ output$longsim_covariance <- renderPlot({
                       "12" = "Cov(X1,X2)")
     )
 
+  ref_vals <- tibble(
+    element = c("Var(X1)", "Var(X2)", "Cov(X1,X2)"),
+    true_val = c(
+      input$sx, 
+      input$sy, 
+      input$rho
+    )   # replace with your known values
+  )
+
   ggplot(df, aes(x = value, fill = method)) +
     geom_histogram(alpha = 0.5, position = "identity", bins = 40) +
     geom_vline(
@@ -342,6 +351,13 @@ output$longsim_covariance <- renderPlot({
         summarise(m = mean(value), .groups = "drop"),
       aes(xintercept = m, color = method),
       linetype = "dashed"
+    ) +
+    geom_vline(        # reference line per facet
+      data = ref_vals,
+      aes(xintercept = true_val),
+      color = "black",
+      linetype = "solid",
+      inherit.aes = FALSE
     ) +
     facet_wrap(~ element, scales = "free") +
     scale_fill_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
@@ -476,4 +492,5 @@ Interestingly enough, while the variance estimates are poor, the **ECE covarianc
 - [ ] produce statistics for long simulations
   - number NA
 - [ ] report ratio: $\hat{\beta}_1 / \hat{\beta}_0$ 
+- [ ] modify `equiv.cov` to produce $\|\theta\|$
 
