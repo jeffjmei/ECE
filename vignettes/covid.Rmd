@@ -141,6 +141,32 @@ plot_residual
 plot_residual_hist
 ```
 
+```{R, echo=FALSE}
+# Plot Bivariate Residuals
+df <- data %>% mutate(
+  X1_demeaned = X1 - X1_mean,
+  X2_demeaned = X2 - X2_mean
+) 
+corr <- cor(df$X1_demeaned, df$X2_demeaned)
+ggplot(df, aes(x = X1_demeaned, y = X2_demeaned)) +
+  geom_point(alpha = 0.3) +
+  stat_ellipse(
+    type = "norm", 
+    level = 0.95, 
+    color = "blue", 
+    size = 1
+  ) + 
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray") +
+  coord_equal() +
+  theme_minimal() +
+  labs(
+    title = paste0("Centered Bivariate Scatterplot (Correlation = ", round(corr, 2), ")"),
+    x = "X1 (demeaned)",
+    y = "X2 (demeaned)"
+  )
+```
+
 The residual plot illustrates that the segmentation does a reasonable job of fitting the data. Nevertheless, there are some regions where the constant piecewise function is misspecified (e.g. where there are long periods of increases and decreases). This likely produces some auto-correlation since low values of `X1` are likely to correspond to low values of `X2` and high values of `X1` are likely to correspond to high values of `X2`. We can see this clearly near the break points (illustrated by dashed vertical lines). 
 
 Moreover, the histogram of the residuals shows the existence of some outliers. We also see the distribution deviates from a normal distribution since it has fatter tails. Nevertheless, the segmentation appears to produce a fit that results in a "normal"-looking residual plot. 
@@ -253,6 +279,32 @@ plot_smoothed_residual_hist <- ggplot(data_smooth, aes(x = index)) +
 plot_smoothed 
 plot_smoothed_residual 
 plot_residual_hist
+```
+
+```{R, echo=FALSE}
+# Plot Bivariate Residuals
+df <- data %>% mutate(
+  X1_desmoothed = X1 - X1_smooth,
+  X2_desmoothed = X2 - X2_smooth
+) 
+corr <- cor(df$X1_desmoothed, df$X2_desmoothed)
+ggplot(df, aes(x = X1_desmoothed, y = X2_desmoothed)) +
+  geom_point(alpha = 0.3) +
+  stat_ellipse(
+    type = "norm", 
+    level = 0.95, 
+    color = "blue", 
+    size = 1
+  ) + 
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray") +
+  coord_equal() +
+  theme_minimal() +
+  labs(
+    title = paste0("Centered Bivariate Scatterplot (Correlation = ", round(corr, 2), ")"),
+    x = "X1 (desmoothed)",
+    y = "X2 (desmoothed)"
+  )
 ```
 
 ```{R}
