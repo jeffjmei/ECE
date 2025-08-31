@@ -1,0 +1,204 @@
+---
+title: Gas Prices
+output: html_document
+author: Jeffrey Mei
+date: 2025-08-19
+link: https://github.com/rfordatascience/tidytuesday/blob/main/data/2025/2025-07-01/readme.md
+---
+
+```{R}
+#| echo: false
+#| message: false
+
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+devtools::load_all("~/Documents/Research/Code/ECE")
+
+# Load Data
+tuesdata <- tidytuesdayR::tt_load('2025-07-01')
+## OR
+tuesdata <- tidytuesdayR::tt_load(2025, week = 26)
+
+weekly_gas_prices <- tuesdata$weekly_gas_prices
+
+# Option 2: Read directly from GitHub
+
+weekly_gas_prices <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-07-01/weekly_gas_prices.csv')
+```
+
+Time-Series:  
+- Fuel:  
+  - gasoline  
+  - diesel  
+- Formulation:   
+  - all  
+  - conventional  
+  - reformulated  
+- Grade:  
+  - regular  
+  - all  
+  - midgrade  
+  - premium  
+  - ultra_low_sulfur  
+  - low_sulfur  
+
+**Limiting the Scope:** we're going to only consider `all` for both Formulation and Grade. 
+
+```{R}
+#| echo: false
+
+# diesel
+diesel <- weekly_gas_prices %>% 
+  filter(
+    fuel == "diesel", 
+    grade == "all"
+  )
+
+# gasoline
+gasoline <- weekly_gas_prices %>% 
+  filter(
+    fuel == "gasoline",
+    grade == "all",
+    formulation == "all"
+  )
+
+# clean data
+data <- rbind(diesel, gasoline) %>% 
+  select(fuel, date, price) %>%
+  pivot_wider(
+    names_from = fuel,
+    values_from = price
+  ) %>% 
+  drop_na() %>%
+  rename(
+    index = date,
+    X1 = diesel,
+    X2 = gasoline
+  ) %>%
+  mutate(
+    X1_mean = segment_mean(X1, penalty="Manual", pen.value=0.5),
+    X2_mean = segment_mean(X2, penalty="Manual", pen.value=0.5)
+  )
+
+X1 <- data$X1
+X2 <- data$X2
+X1_mean <- data$X1_mean
+X2_mean <- data$X2_mean
+X1_demeaned <- X1 - X1_mean
+X2_demeaned <- X2 - X2_mean
+```
+
+```{R, echo=FALSE}
+#| echo: false
+
+# Plot Segmentation
+ggplot(data) +
+  geom_line(aes(x = index, y = X1), color = "red") +
+  geom_line(aes(x = index, y = X2), color = "blue") +
+  geom_line(aes(x = index, y = X1_mean), color = "red") +
+  geom_line(aes(x = index, y = X2_mean), color = "blue") +
+  labs(
+    title = "Change Point Segmentation",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal()
+```
+
+```{R}
+#| echo: false
+
+# Plot Residuals
+ggplot(data) +
+  geom_hline(yintercept=0) +
+  geom_line(aes(x = index, y = X1 - X1_mean), color = "red") +
+  geom_line(aes(x = index, y = X2 - X2_mean), color = "blue") +
+  labs(
+    title = "Segmentation Residuals",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal()
+```
+
+```{R}
+# Bivariate Residuals
+ggplot(data) + 
+  geom_point(aes(x=X1 - X1_mean, y = X2 - X2_mean)) + 
+  geom_hline(yintercept=0) + 
+  geom_vline(xintercept=0) + 
+  theme_minimal()
+
+```
+
+```{R}
+#| echo: false
+
+# Plot Residual Histogram
+xx <- seq(-1, 1, by=0.01)
+par(mfrow=c(1, 2))
+  hist(X1_demeaned, breaks=40, freq=FALSE)
+  lines(xx, dnorm(xx, 0, sd(X1_demeaned)))
+  hist(X2_demeaned, breaks=40, freq=FALSE)
+  lines(xx, dnorm(xx, 0, sd(X2_demeaned)))
+par(mfrow=c(1, 1))
+```
+
+```{R, echo=FALSE}
+#| echo: false
+
+# Check Autocorrelation
+par(mfrow = c(1, 2))
+acf(X1_demeaned)
+acf(X2_demeaned)
+par(mfrow = c(1, 1))
+```
+
+```{R}
+#| echo: false
+#| message: false
+
+# =================
+# Compare Estimates
+# =================
+
+# calculate correlation
+ece_obj <- ece.test(X1, X2)
+pearson_obj <- cor.test(X1, X2)
+pearson_demeaned_obj <- cor.test(X1_demeaned, X2_demeaned)
+```
+
+```{R}
+#| echo: false
+
+# organize data
+row_names <- c("ECE", "Pearson (demeaned)", "Pearson (classical)")
+col_names <- c("estimate", "p.val", "ci(lower)", "ci(upper)")
+
+estimate <- c(ece_obj$estimate, pearson_obj$estimate, pearson_demeaned_obj$estimate)
+pval <- c(ece_obj$p.val, pearson_obj$p.val, pearson_demeaned_obj$p.val)
+ci_lower <- c(
+  ece_obj$conf.int[1],
+  pearson_obj$conf.int[1],
+  pearson_demeaned_obj$conf.int[1]
+)
+ci_upper <- c(
+  ece_obj$conf.int[2],
+  pearson_obj$conf.int[2],
+  pearson_demeaned_obj$conf.int[2]
+)
+
+# Print Results
+results <- cbind(estimate, pval, ci_lower, ci_upper)
+rownames(results) <- row_names
+colnames(results) <- col_names
+knitr::kable(results)
+```
+
+I wonder if the reason why this fails is because large signal, small noise. 
+
+
+```{R}
+plot.ece(data.frame(X1=X1, X2=X2))
+```
