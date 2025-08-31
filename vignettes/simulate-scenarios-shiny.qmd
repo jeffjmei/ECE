@@ -51,9 +51,9 @@ actionButton("resim", "Simulate", class = "btn-primary")
 
 ```{R}
 #| panel: sidebar
-numericInput("rho", "Covariance (rho)", value=0.25)
-numericInput("sx", "Variance(X) (sx)", value=1)
-numericInput("sy", "Variance(Y) (sy)", value=1)
+numericInput("rho", "Covariance", value=0.25)
+numericInput("sx", "Variance(X)", value=1.5)
+numericInput("sy", "Variance(Y)", value=1.5)
 ```
 
 :::
@@ -63,8 +63,8 @@ numericInput("sy", "Variance(Y) (sy)", value=1)
 sim_data <- eventReactive(input$resim, {
   params <- scenario(
     input$scenario_num, 
-    sx=input$sx,
-    sy=input$sy,
+    sx=sqrt(input$sx),
+    sy=sqrt(input$sy),
     sxy=input$rho, 
     n=input$n
   )
@@ -283,8 +283,8 @@ actionButton("longsim_button", "Simulate", class = "btn-primary")
 largesim_data <- eventReactive(input$longsim_button, {
   params <- scenario(
     input$scenario_num, 
-    sx=input$sx,
-    sy=input$sy,
+    sx=sqrt(input$sx),
+    sy=sqrt(input$sy),
     sxy=input$rho, 
     n=input$n
   )
