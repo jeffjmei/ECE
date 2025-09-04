@@ -20,13 +20,10 @@ library(tidyquant)
 ```
 
 # Stock Market Data
-Here, we compare the closing cost of `MSFT`, `META`, and `NVDA` stocks. 
+Here, we compare the log-returns of of three stocks at some user-defined date-range. That is, we take the log of the values in each time series, and then we take the first difference. This is the same approach the GeomCP paper uses, except we don't get the data from [Cam Nugent on Kaggle.](https://www.kaggle.com/datasets/camnugent/sandp500/data)
 
-Under the standard segmentation method -- i.e., PELT with BIC penalty with `minseglen = 2`, we get the following mean-segmentation. It is difficult to see what PELT determines as the best mean-segmentation, because the breaks are so frequent. This can be adjusted by utilizing a manual penalty or changing the `minseglen`.
+We compare ECE against a segmentation method -- i.e., PELT with BIC penalty with `minseglen = 2`. We also provide several diagnostic views on the analysis: `Plot` to visualize the log-returns time-series, `Residuals` to visualize whether segmentation identifies systematic errors, `ACF` to assess the presence of autocorrelation, and `Stability` to evaluate how volatile the ECE estimate is.
 
-We load data from the S&P 500 from [Cam Nugent on Kaggle](https://www.kaggle.com/datasets/camnugent/sandp500/data). This is the dataset that is used from the GeomCP paper.
-
-Following that paper, we take the log-returns. That is, we take the log of the values in each time series, and then we take the first difference. 
 
 ::: columns
 
@@ -137,9 +134,9 @@ output$ece_cov <- renderPrint({
   colnames(ece_cov) <- rownames(ece_cov) <- c("X1","X2","X3")
 
   cat("Demean Covariance:\n")
-  print(round(demean_cov, 3))
+  print(round(demean_cov, 5))
   cat("\nECE Covariance:\n")
-  print(round(ece_cov, 3))
+  print(round(ece_cov, 5))
 })
 
 output$ece_cor <- renderPrint({
@@ -251,19 +248,111 @@ verbatimTextOutput("ece_cov")
 ::: 
 
 # Conclusions
-The way `MSFT`, `META`, and `NVDA` were chosen is because we additionally compare `AAPL`, `GOOG`, and `AMZN`, but they yielded nonsensical results -- the correlation coefficient would be greater than 1 if it could be calculated at all. This is a major problem in finding applications for ECE. Many of the time series result in NA values. This is a huge detriment of the technique. 
 
-Moreover, the estimate is extremely unstable. Try varying the end-date for the data-collection. You'll find the estimates vary widely, and often times you'll find NA values. 
+::: {.callout-note collapse="true"}
+## We use log-returns because closing prices are volatile. 
+The whole reason why we switched to _log-returns_ is because when we were looking at closing-costs, they were extremely volatile. Of the Magnificent 7, only `MSFT`, `APPL`, and `NVDA` seemed to yield sensible results. Even then, they were highly volatile. Correlation values would often be greater than 1, if they weren't NA. 
+
+Random walks give insight into ECE's instability. Ultimately, we see that the variance essentially tends towards 0, which makes any covariance estimate extremely unstable. 
+::: 
+
+::: {.callout-note collapse="true"}
+## Log-returns for ECE and segmentation are very similar.
+This is unsurprising because segmentation appears to struggle to identify any change points at all. This seems to be a natural consequence of working with log-returns data. Mean-shifts don't tend to be expressed in this kind of data. Instead, the volatility is expressed. We see this in the `GeomCP` paper where they identify shifts in both means and variances.
+
+![S&P500 stock log-returns from Grundy et al. (2020)](https://media.springernature.com/full/springer-static/image/art%3A10.1007%2Fs11222-020-09940-y/MediaObjects/11222_2020_9940_Fig8_HTML.png?as=webp){width=100%}
+::: 
+
+::: {.callout-note collapse="true"}
+## ECE Correlation $\approx$ Segmentation Correlation
+As a natural consequence of the above observation that there are no change points, the correlation estimates are similar between the two estimation methods. 
+
+In terms of simulations, this is similar to the case with no change points. That is, both estimation techniques are unbiased, but ECE is more volatile. 
+::: 
+
+::: {.panel-tabset}
+
+## Tech (2015-01-01 - 2016-12-01)
+X1: `MSFT` 
+X2: `META` 
+X3: `NVDA`
+```
+Demean Correlation:
+      X1    X2    X3
+X1 1.000 0.495 0.411
+X2 0.495 1.000 0.238
+X3 0.411 0.238 1.000
+
+ECE Correlation:
+      X1    X2   X3
+X1 1.000 0.422 0.36
+X2 0.422 1.000 0.18
+X3 0.360 0.180 1.00
+```
+
+## Retail (2015-01-01 - 2016-12-01)
+X1: `AMZN` 
+X2: `WMT` 
+X3: `COST`
+```
+Demean Correlation:
+      X1    X2    X3
+X1 1.000 0.169 0.323
+X2 0.169 1.000 0.455
+X3 0.323 0.455 1.000
+
+ECE Correlation:
+      X1    X2    X3
+X1 1.000 0.254 0.290
+X2 0.254 1.000 0.472
+X3 0.290 0.472 1.000
+```
+
+## Finance (2015-01-01 - 2016-12-01)
+X1: `JPM` 
+X2: `GS` 
+X3: `PYPL`
+```
+Demean Correlation:
+      X1    X2    X3
+X1 1.000 0.883 0.410
+X2 0.883 1.000 0.455
+X3 0.410 0.455 1.000
+
+ECE Correlation:
+      X1    X2    X3
+X1 1.000 0.864 0.398
+X2 0.864 1.000 0.475
+X3 0.398 0.475 1.000
+```
+
+## Pharmaceuticals (2019-01-01 - 2022-12-01)
+X1: `JNJ`
+X2: `PFE`
+X3: `MRNA`
+```
+Demean Correlation:
+      X1    X2    X3
+X1 1.000 0.545 0.111
+X2 0.545 1.000 0.198
+X3 0.111 0.198 1.000
+
+ECE Correlation:
+      X1    X2    X3
+X1 1.000 0.603 0.002
+X2 0.603 1.000 0.146
+X3 0.002 0.146 1.000
+```
+
+:::
+
 
 
 # More
-How do we determine which of the analyses are more accurate? Simulations should give a hint as to the behavior between the two 
-
-Are we supposed to be using log-returns instead? 
-
-Can you find the penalty value that minimizes the difference between ECE estimate and segmented-mean estimate? 
-
-To evaluate the stability, let's plot correlation of `MSFT-META`, `MSFT-NVDA`, AND `META-NVDA` over time. 
+- [x] How do we determine which of the analyses are more accurate? Simulations should give a hint as to the behavior between the two 
+- [x] Are we supposed to be using log-returns instead? 
+- [ ] Can you find the penalty value that minimizes the difference between ECE estimate and segmented-mean estimate? 
+- [x] To evaluate the stability, let's plot correlation of `MSFT-META`, `MSFT-NVDA`, AND `META-NVDA` over time. 
 
 
 
