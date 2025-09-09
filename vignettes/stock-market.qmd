@@ -42,6 +42,8 @@ dateRangeInput("daterange", "Choose dates:",
                end   = "2016-12-01",
                min   = "2010-01-01",
                max   = Sys.Date())
+numericInput("scenario_num", "Scenario", value=1)
+numericInput("signal", "Signal", value=0.05)
 ```
 ::: 
 ::: 
@@ -52,7 +54,7 @@ dateRangeInput("daterange", "Choose dates:",
 
 df_reactive <- reactive({
   tickers <- c(input$ticker1, input$ticker2, input$ticker3)
-  tq_get(tickers,
+  df <- tq_get(tickers,
          from = input$daterange[1],
          to   = input$daterange[2]) %>%
     dplyr::select(symbol, date, close) %>%
@@ -68,7 +70,22 @@ df_reactive <- reactive({
       X2 = log(X2) - log(dplyr::lag(X2)),
       X3 = log(X3) - log(dplyr::lag(X3))
     ) %>%
-    drop_na() %>%
+    drop_na() 
+  # inject artificial mean 
+  params <- scenario(
+    input$scenario_num, 
+    sx=1,
+    sy=1,
+    sxy=0, 
+    n=nrow(df),
+    signal=input$signal
+  )
+  df %>% 
+    mutate(
+      X1 = X1 + params$h[,1],
+      X2 = X2 + params$h[,2],
+      X3 = X3 + params$h[,2]
+    ) %>% 
     mutate(
       X1_mean = segment_mean(X1),
       X2_mean = segment_mean(X2),
@@ -348,12 +365,99 @@ X3 0.002 0.146 1.000
 
 
 
-# More
-- [x] How do we determine which of the analyses are more accurate? Simulations should give a hint as to the behavior between the two 
-- [x] Are we supposed to be using log-returns instead? 
-- [ ] Can you find the penalty value that minimizes the difference between ECE estimate and segmented-mean estimate? 
-- [x] To evaluate the stability, let's plot correlation of `MSFT-META`, `MSFT-NVDA`, AND `META-NVDA` over time. 
+```{R}
+#| context: server
+inject_mean <- function(df_init, scenario_num, signal=1){
+  params <- scenario(
+    scenario_num, 
+    n=nrow(df_init), 
+    signal=signal
+  )
 
+  df <- df_init %>% 
+    mutate(
+      X1 = X1 + params$h[,1],
+      X2 = X2 + params$h[,2],
+      X3 = X3 + params$h[,2]
+    ) %>% 
+    # re-fit segmentation
+    mutate(
+      X1_mean = segment_mean(X1),
+      X2_mean = segment_mean(X2),
+      X3_mean = segment_mean(X3)
+    )
+  return(df)
+}
 
+output$boxplot <- renderPlot({
 
+  df <- df_reactive()
+  params <- scenario(
+    input$scenario_num, 
+    sx=1,
+    sy=1,
+    sxy=0, 
+    n=nrow(df),
+    signal=input$signal
+  )
 
+  df0 <- df %>% 
+    # remove injected mean
+    mutate(
+      X1 = X1 - params$h[,1],
+      X2 = X2 - params$h[,2],
+      X3 = X3 - params$h[,2]
+    ) 
+
+  res <- map_dfr(1:12, function(scenario_num) {
+    scenario_df <- inject_mean(
+      df0, scenario_num=scenario_num, signal=input$signal
+    )
+    tibble(
+      Scenario = scenario_num,
+      X1_X2 = ece.test(
+        scenario_df$X1, 
+        scenario_df$X2
+      )$estimate,
+      X1_X3 = ece.test(
+        scenario_df$X1, 
+        scenario_df$X3
+      )$estimate,
+      X2_X3 = ece.test(
+        scenario_df$X2, 
+        scenario_df$X3
+      )$estimate
+    )
+  })
+
+  res_long <- res %>%
+    pivot_longer(
+      cols = c(X1_X2, X1_X3, X2_X3),
+      names_to = "Pair",
+      values_to = "Correlation"
+    )
+
+  # plot box-plot
+  ggplot(res_long, aes(x = Pair, y = Correlation, color = factor(Scenario))) +
+    geom_boxplot(
+      outlier.shape = NA, 
+      fill = "lightgray", 
+      alpha = 0.4, 
+      color = "black",
+      width = 0.4
+    ) +
+    geom_point(size = 2, alpha = 0.8) +
+    theme_minimal() +
+    coord_flip() + 
+    labs(
+      title = "Distribution of Correlations by Matrix",
+      x = "Variable Pair",
+      y = "Correlation",
+      color = "Scenario"
+    )
+})
+```
+
+```{R}
+plotOutput("boxplot")
+```
