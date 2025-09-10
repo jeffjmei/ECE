@@ -343,6 +343,29 @@ output$longsim_covariance <- renderPlot({
     )   # replace with your known values
   )
 
+  # MSEs per method/element
+  mse_df <- df %>%
+    left_join(ref_vals, by = "element") %>%
+    group_by(method, element) %>%
+    summarise(mse = mean((value - true_val)^2), .groups = "drop")
+
+  # tallest bin height per facet
+  ymax_df <- df %>%
+    group_by(element) %>%
+    summarise(
+      ymax = max(hist(value, plot = FALSE, breaks = 40)$counts),
+      .groups = "drop"
+    )
+
+  # combine and stagger y by method
+  mse_df <- mse_df %>%
+    left_join(ymax_df, by = "element") %>%
+    mutate(
+      xpos  = -Inf,   # roughly center labels
+      ypos  = ifelse(method == "ece", 0.9*ymax, 0.8*ymax),
+      label = paste0("MSE = ", round(mse, 4))
+    )
+
   ggplot(df, aes(x = value, fill = method)) +
     geom_histogram(alpha = 0.5, position = "identity", bins = 40) +
     geom_vline(
@@ -359,6 +382,12 @@ output$longsim_covariance <- renderPlot({
       linetype = "solid",
       inherit.aes = FALSE
     ) +
+    geom_text(
+      data = mse_df,
+      aes(x = xpos, y = ypos, label = label, color = method),
+      inherit.aes = FALSE,
+      vjust = 1
+    ) + 
     facet_wrap(~ element, scales = "free") +
     scale_fill_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
     scale_color_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
@@ -395,6 +424,12 @@ output$longsim_correlation <- renderPlot({
       aes(xintercept = m, color = method),
       linetype = "dashed"
     ) +
+    geom_vline(
+      xintercept = input$rho / sqrt(input$sx * input$sy),
+      color = "black",
+      linetype = "solid",
+      inherit.aes = FALSE
+    ) + 
     facet_wrap(~ element, scales = "free") +
     scale_fill_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
     scale_color_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
@@ -443,6 +478,8 @@ In all of these examples, **segmentation yields better results**. Both estimator
 We observe modest **negative biasedness in segmentation**. The ACF and residual plots demonstrate that the segmentation method cannot capture the systematic effects of the sin wave. This is unsurprising since sin waves are not constant anywhere. 
 
 This biasedness gets mistranslated into some correlation between the inputs.
+
+**ECE outperforms segmentation for large correlation**. We see that in this setting,segmentation is negatively biased. 
 ::: 
 
 ::: {.callout-note collapse="true"}
@@ -481,6 +518,13 @@ Interestingly enough, while the variance estimates are poor, the **ECE covarianc
 **ECE regression-plot has a sharp slope.** This slope is very accurate in hitting 1 at the intercept. 
 
 **ECE variance is often near 0.** As a consequence, the correlation matrix is often NA or correlation is often greater than 1. 
+:::
+
+::: {.callout-note collapse="true"}
+## Scenario 14: Yearly Variation
+
+This is similar to Scenario 8, but I adjusted the frequency of the mean to roughly correspond to yearly variations. Since the frequency of changes are less drastic, we see the bias is still prevalent, but is mitigated. 
+
 :::
 
 ---
