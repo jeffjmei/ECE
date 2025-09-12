@@ -305,6 +305,8 @@ methods_list <- list(
 ```{R}
 #| context: server
 largesim_data <- eventReactive(input$longsim_button, {
+
+  # Set Parameters
   params <- scenario(
     input$scenario_num, 
     sx=sqrt(input$sx),
@@ -312,11 +314,33 @@ largesim_data <- eventReactive(input$longsim_button, {
     sxy=input$rho, 
     n=input$n
   )
+
+  # Run Simulations on User-Selected Methods
   sim_data <- map(1:input$n_sims, ~{
     X <- generate_data(params)
     selected <- methods_list[input$methods]
     purrr::map(selected, ~ .x(X)) 
   })
+
+  # Organize Results for Plotting
+  df_all <- map_dfr(sim_data, function(sim) {
+    imap_dfr(sim, function(covmat, m) {
+      tibble(
+        method  = m,
+        element = c("Var(X1)", "Var(X2)", "Cov(X1,X2)", "Cor(X1,X2)"),
+        value   = c(
+          covmat[1,1],
+          covmat[2,2],
+          covmat[1,2],
+          covmat[1,2] / sqrt(covmat[1,1] * covmat[2,2])
+        )
+      )
+    })
+  })
+
+  df_cov <- df_all %>% filter(element != "Cor(X1,X2)")
+  df_cor <- df_all %>% filter(element == "Cor(X1,X2)")
+  list(cov = df_cov, cor = df_cor)
 })
 ```
 
@@ -324,18 +348,7 @@ largesim_data <- eventReactive(input$longsim_button, {
 #| context: server
 
 output$longsim_covariance <- renderPlot({
-  sim_data <- largesim_data()
-
-  df <- map_dfr(sim_data, function(sim) {
-    map_dfr(input$methods, function(m) {
-      covmat <- sim[[m]]
-      tibble(
-        method  = m,
-        element = c("Var(X1)", "Var(X2)", "Cov(X1,X2)"),
-        value   = c(covmat[1,1], covmat[2,2], covmat[1,2])
-      )
-    })
-  })
+  df <- largesim_data()$cov
 
   ref_vals <- tibble(
     element = c("Var(X1)", "Var(X2)", "Cov(X1,X2)"),
@@ -404,14 +417,7 @@ output$longsim_covariance <- renderPlot({
 
 
 output$longsim_correlation <- renderPlot({
-  sim_data <- largesim_data()
-  df_cor <- map_dfr(sim_data, function(sim) {
-    map_dfr(input$methods, function(m) {
-      covmat <- sim[[m]]
-      corval <- covmat[1,2] / sqrt(covmat[1,1] * covmat[2,2])
-      tibble(method = m, element = "Cor(X1, X2)", value = corval)
-    })
-  })
+  df_cor <- largesim_data()$cor
 
   ggplot(df_cor, aes(x = value, fill = method)) +
     geom_histogram(alpha = 0.5, position = "identity", bins = 40) +
@@ -524,15 +530,4 @@ Interestingly enough, while the variance estimates are poor, the **ECE covarianc
 This is similar to Scenario 8, but I adjusted the frequency of the mean to roughly correspond to yearly variations. Since the frequency of changes are less drastic, we see the bias is still prevalent, but is mitigated. 
 
 :::
-
----
-
-# To Do
-
-- [x] run simulations for mean-segmentation
-  - might explain why ECE produces smaller values for correlation
-- [ ] produce statistics for long simulations
-  - number NA
-- [ ] report ratio: $\hat{\beta}_1 / \hat{\beta}_0$ 
-- [ ] modify `equiv.cov` to produce $\|\theta\|$
 
