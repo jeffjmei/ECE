@@ -145,6 +145,44 @@ output$ece_regression <- renderPlot({
 
 ```
 
+```{R} 
+#| context: server
+running_ece <- function(x, y, start = 1000) {
+  n <- length(x)
+  map_dbl(start:n, ~ equiv.cov(x[1:.x], y[1:.x]))
+}
+
+output$ece_run <- renderPlot({
+  df <- sim_data()
+  X1_X1 <- running_ece(
+    df$X1, df$X1, 
+    start=round(0.9 * length(df$X1))
+  )
+  X1_X2 <- running_ece(
+    df$X1, df$X2, 
+    start=round(0.9 * length(df$X1))
+  )
+  X2_X2 <- running_ece(
+    df$X2, df$X2, 
+    start=round(0.9 * length(df$X1))
+  )
+  df <- cbind(
+    index = round(0.9 * length(df$X1)):length(df$X1), 
+    X1_X1, 
+    X1_X2, 
+    X2_X2
+  )
+  ggplot(data=df) + 
+    geom_line(aes(x=index, y=X1_X1, color="red")) + 
+    geom_line(aes(x=index, y=X1_X2, color="blue")) + 
+    geom_line(aes(x=index, y=X2_X2, color="green")) + 
+    geom_hline(yintercept=-1) + 
+    geom_hline(yintercept= 1) + 
+    ylab("Covariance") + 
+    theme_minimal()
+})
+```
+
 ```{R}
 #| context: server
 output$ece_cov <- renderPrint({
@@ -188,7 +226,6 @@ output$ece_cor <- renderPrint({
 })
 ```
 
-
 ::: {layout="[ [1,1] ]"}
 
 ::: {.panel-tabset}
@@ -217,6 +254,12 @@ plotOutput("acf")
 plotOutput("ece_regression")
 ```
 
+## Stability
+```{R}
+#| panel: fill
+plotOutput("ece_run")
+```
+
 :::
 
 ::: {.panel-tabset}
@@ -232,49 +275,6 @@ verbatimTextOutput("ece_cov")
 ```
 :::
 :::
-
-```{R} 
-#| context: server
-running_ece <- function(x, y, start = 1000) {
-  n <- length(x)
-  map_dbl(start:n, ~ equiv.cov(x[1:.x], y[1:.x]))
-}
-
-output$ece_run <- renderPlot({
-  df <- sim_data()
-  X1_X1 <- running_ece(
-    df$X1, df$X1, 
-    start=round(0.9 * length(df$X1))
-  )
-  X1_X2 <- running_ece(
-    df$X1, df$X2, 
-    start=round(0.9 * length(df$X1))
-  )
-  X2_X2 <- running_ece(
-    df$X2, df$X2, 
-    start=round(0.9 * length(df$X1))
-  )
-  df <- cbind(
-    index = round(0.9 * length(df$X1)):length(df$X1), 
-    X1_X1, 
-    X1_X2, 
-    X2_X2
-  )
-  ggplot(data=df) + 
-    geom_line(aes(x=index, y=X1_X1, color="red")) + 
-    geom_line(aes(x=index, y=X1_X2, color="blue")) + 
-    geom_line(aes(x=index, y=X2_X2, color="green")) + 
-    geom_hline(yintercept=-1) + 
-    geom_hline(yintercept= 1) + 
-    ylab("Covariance") + 
-    theme_minimal()
-})
-```
-
-```{R}
-#| panel: fill
-plotOutput("ece_run")
-```
 
 
 # Long Simulations
@@ -298,6 +298,9 @@ methods_list <- list(
   segment = function(X) {
     X_segment <- segment_mean(X)
     cov(X - X_segment)
+  },
+  pearson = function(X){
+    cov(X)
   }
 )
 ```
@@ -347,6 +350,12 @@ largesim_data <- eventReactive(input$longsim_button, {
 ```{R}
 #| context: server
 
+method_colors <- c(
+  "ece"     = "steelblue",
+  "segment" = "orange",
+  "pearson" = "gray"
+)
+
 output$longsim_covariance <- renderPlot({
   df <- largesim_data()$cov
 
@@ -376,11 +385,15 @@ output$longsim_covariance <- renderPlot({
   # combine and stagger y by method
   mse_df <- mse_df %>%
     left_join(ymax_df, by = "element") %>%
+    group_by(element) %>%
+    arrange(method) %>%                        # consistent ordering
     mutate(
-      xpos  = -Inf,   # roughly center labels
-      ypos  = ifelse(method == "ece", 0.9*ymax, 0.8*ymax),
+      xpos  = -Inf,
+      ypos  = seq(0.9, 0.6, length.out = n()), # spread labels evenly
+      ypos  = ypos * ymax,
       label = paste0("MSE = ", round(mse, 4))
-    )
+    ) %>%
+    ungroup()
 
   ggplot(df, aes(x = value, fill = method)) +
     geom_histogram(alpha = 0.5, position = "identity", bins = 40) +
@@ -404,8 +417,8 @@ output$longsim_covariance <- renderPlot({
       vjust = 1
     ) + 
     facet_wrap(~ element, scales = "free") +
-    scale_fill_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
-    scale_color_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
+    scale_fill_manual(values = method_colors) +
+    scale_color_manual(values = method_colors) +
     labs(
       x = "Estimated value",
       y = "Count",
@@ -435,8 +448,8 @@ output$longsim_correlation <- renderPlot({
       inherit.aes = FALSE
     ) + 
     facet_wrap(~ element, scales = "free") +
-    scale_fill_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
-    scale_color_manual(values = c("ece" = "steelblue", "segment" = "orange")) +
+    scale_fill_manual(values = method_colors) +
+    scale_color_manual(values = method_colors) +
     labs(
       x = "Estimated correlation",
       y = "Count",
