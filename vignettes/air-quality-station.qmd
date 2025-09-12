@@ -1,0 +1,371 @@
+---
+title: Air Quality - Station
+output: html_document
+author: Jeffrey Mei
+date: 2025-08-26
+link: https://aqs.epa.gov/aqsweb/airdata/download_files.html
+server: shiny
+---
+
+
+```{R}
+#| echo: false 
+#| context: setup
+#| message: false
+#| warning: false
+
+# Load Packages
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(tidyverse)
+library(changepoint)
+```
+
+We collect air-quality data from the [EPA](https://aqs.epa.gov/aqsweb/airdata/download_files.html). For more information, [look here](https://www.epa.gov/outdoor-air-quality-data/about-air-data-reports). In this analysis, we compare the **ozone levels** of three metropolitan areas at a time.  
+
+We can get daily reports from [this website](https://www.epa.gov/outdoor-air-quality-data/air-quality-index-daily-values-report), which has seems to have complete data, but the user must specify what location to choose. In this case, we've gathered data from Pima County. 
+
+```{R}
+#| context: server
+
+# Daily Reports (Pima County)
+#files <- c(
+#  "~/Documents/Research/Code/ECE/data/air-quality/aqidaily2023-pima.csv", 
+#  "~/Documents/Research/Code/ECE/data/air-quality/aqidaily2024-pima.csv", 
+#  "~/Documents/Research/Code/ECE/data/air-quality/aqidaily2025-pima.csv"
+#)
+
+# --- 
+#county <- "maricopa"
+#files <- paste0(
+#  "~/Documents/Research/Code/ECE/data/air-quality/", 
+#  paste0("aqidaily", 2023:2025), 
+#  paste0("-", county),
+#  ".csv"
+#)
+#
+#raw_df <- map_dfr(
+#  files, ~ read_csv(.x, col_types = cols(.default = "c"))
+#)
+
+```
+
+```{R}
+#| panel: sidebar
+selectInput(
+  "pollutant1", "Pollutant 1:",
+  choices = c("co", "ozone", "pm10", "pm25", "no2"),
+  selected = "ozone"
+)
+
+selectInput(
+  "pollutant2", "Pollutant 2:",
+  choices = c("co", "ozone", "pm10", "pm25", "no2"),
+  selected = "co"
+)
+
+selectInput(
+  "pollutant3", "Pollutant 3:",
+  choices = c("co", "ozone", "pm10", "pm25", "no2"),
+  selected = "pm10"
+)
+
+dateRangeInput("daterange", "Choose dates:",
+               start = "2020-01-01",
+               end   = "2025-09-01",
+               min   = "2020-01-01",
+               max   = Sys.Date())
+
+selectInput(
+  "county", "County:",
+  choices = c("pima", "maricopa", "harris", "la", "clark"),
+  selected = "pima"
+)
+```
+
+```{R}
+#| context: server
+
+df_reactive <- reactive({
+
+  files <- paste0(
+    "~/Documents/Research/Code/ECE/data/air-quality/", 
+    paste0("aqidaily", 2023:2025), 
+    paste0("-", input$county),
+    ".csv"
+  )
+  raw_df <- map_dfr(
+    files, ~ read_csv(.x, col_types = cols(.default = "c"))
+  )
+
+  # Process Data
+  df <- raw_df %>% 
+    janitor::clean_names() %>% 
+    dplyr::select(
+      date,
+      all_of(c(
+        input$pollutant1, 
+        input$pollutant2, 
+        input$pollutant3
+      ))
+    ) %>%
+    mutate(across(-date, as.numeric)) %>% 
+    rename(
+      index = date, 
+      X1 = !!sym(as.character(input$pollutant1)),
+      X2 = !!sym(as.character(input$pollutant2)),
+      X3 = !!sym(as.character(input$pollutant3))
+    ) %>% 
+    drop_na() %>% 
+    mutate(
+      index = lubridate::mdy(index),
+      X1_mean = segment_mean(X1),
+      X2_mean = segment_mean(X2),
+      X3_mean = segment_mean(X3)
+    )
+})
+
+#| context: server
+output$stockPlot <- renderPlot({
+  df <- df_reactive()
+  ggplot(df, aes(x=index)) +
+    geom_line(aes(y=X1), color="red") +
+    geom_line(aes(y=X2), color="blue") +
+    geom_line(aes(y=X3), color="green") +
+    geom_line(aes(y=X1_mean), color="red", linetype="dashed") +
+    geom_line(aes(y=X2_mean), color="blue", linetype="dashed") +
+    geom_line(aes(y=X3_mean), color="green", linetype="dashed") +
+    labs(title="Change Point Segmentation", x="", y="") +
+    theme_minimal()
+})
+
+output$residualPlot <- renderPlot({
+  df <- df_reactive()
+  ggplot(df, aes(x=index)) +
+    geom_hline(yintercept=0) +
+    geom_line(aes(y=X1 - X1_mean), color="red") +
+    geom_line(aes(y=X2 - X2_mean), color="blue") +
+    geom_line(aes(y=X3 - X3_mean), color="green") +
+    labs(title="Segmentation Residuals", x="", y="") +
+    theme_minimal()
+})
+
+output$acfPlots <- renderPlot({
+  df <- df_reactive()
+  par(mfrow=c(1,3))
+  acf(df$X1 - df$X1_mean, main="X1")
+  acf(df$X2 - df$X2_mean, main="X2")
+  acf(df$X3 - df$X3_mean, main="X3")
+  par(mfrow=c(1,1))
+})
+
+running_ece <- function(x, y, start = 1000) {
+  n <- length(x)
+  map_dbl(start:n, ~ ece.test(x[1:.x], y[1:.x])$estimate)
+}
+
+output$running_ece <- renderPlot({
+  df <- df_reactive()
+  X1_X2 <- running_ece(df$X1, df$X2)
+  X1_X3 <- running_ece(df$X1, df$X3)
+  X2_X3 <- running_ece(df$X2, df$X3)
+
+  df <- cbind(index=70:length(df$X1), X1_X2, X1_X3, X2_X3)
+  ggplot(data=df) + 
+    geom_line(aes(x=index, y=X1_X2, color="X1 vs X2")) + 
+    geom_line(aes(x=index, y=X1_X3, color="X1 vs X3")) + 
+    geom_line(aes(x=index, y=X2_X3, color="X2 vs X3")) + 
+    geom_hline(yintercept=-1) + 
+    geom_hline(yintercept= 1) + 
+    scale_color_manual(values = c(
+      "X1 vs X2" = "red",
+      "X1 vs X3" = "blue",
+      "X2 vs X3" = "green"
+    )) +
+    ylab("Correlation") + 
+    theme_minimal()
+})
+
+output$ece_regression <- renderPlot({
+  df <- df_reactive()
+  plot.ece(data.frame(X1=df$X1, X2=df$X2))
+})
+
+#| context: server
+output$ece_cov <- renderPrint({
+  df <- df_reactive()
+  demean_cov <- cov(cbind(
+    df$X1 - df$X1_mean,
+    df$X2 - df$X2_mean,
+    df$X3 - df$X3_mean
+  ))
+  colnames(demean_cov) <- rownames(demean_cov) <- c("X1","X2","X3")
+
+  ece_cov <- matrix(c(
+    equiv.cov(df$X1, df$X1),
+    equiv.cov(df$X1, df$X2),
+    equiv.cov(df$X1, df$X3),
+    equiv.cov(df$X2, df$X1),
+    equiv.cov(df$X2, df$X2),
+    equiv.cov(df$X2, df$X3),
+    equiv.cov(df$X3, df$X1),
+    equiv.cov(df$X3, df$X2),
+    equiv.cov(df$X3, df$X3)
+  ), nrow=3, byrow=TRUE)
+  colnames(ece_cov) <- rownames(ece_cov) <- c("X1","X2","X3")
+
+  cat("Demean Covariance:\n")
+  print(demean_cov)
+  cat("\nECE Covariance:\n")
+  print(ece_cov)
+})
+
+output$ece_cor <- renderPrint({
+  df <- df_reactive()
+  demean_cor <- cor(cbind(
+    df$X1 - df$X1_mean,
+    df$X2 - df$X2_mean,
+    df$X3 - df$X3_mean
+  ))
+  colnames(demean_cor) <- rownames(demean_cor) <- c("X1","X2","X3")
+
+  ece_cor <- matrix(c(
+    ece.test(df$X1, df$X1)$estimate,
+    ece.test(df$X1, df$X2)$estimate,
+    ece.test(df$X1, df$X3)$estimate,
+    ece.test(df$X2, df$X1)$estimate,
+    ece.test(df$X2, df$X2)$estimate,
+    ece.test(df$X2, df$X3)$estimate,
+    ece.test(df$X3, df$X1)$estimate,
+    ece.test(df$X3, df$X2)$estimate,
+    ece.test(df$X3, df$X3)$estimate
+  ), nrow=3, byrow=TRUE)
+  colnames(ece_cor) <- rownames(ece_cor) <- c("X1","X2","X3")
+
+  cat("Demean Correlation:\n")
+  print(demean_cor)
+  cat("\nECE Correlation:\n")
+  print(ece_cor)
+})
+```
+
+
+
+::: {.panel-tabset}
+
+## Plot
+```{R}
+#| panel: fill
+plotOutput("stockPlot")
+```
+
+
+## Residuals
+```{R}
+#| panel: fill
+plotOutput("residualPlot")
+```
+
+We see a little bit of heteroscedasticity. Whatever variance/covariance we estimate, it will be the average across this time interval.
+
+## ACF
+```{R}
+#| panel: fill
+plotOutput("acfPlots")
+```
+
+Given this segmentation, it looks like there's still some auto-correlation. It's hard to claim this is due to inadequate fitting since it the fit is already so tight. This intrinsic auto-correlation deflates the estimated correlation. This means our estimated correlation will be deflated from the true value. 
+
+## Stability
+```{R}
+#| panel: fill
+plotOutput("running_ece")
+```
+
+## ECE-Regression
+```{R}
+#| panel: fill
+plotOutput("ece_regression")
+```
+
+:::
+
+
+
+::: {.panel-tabset}
+
+## Correlation
+```{R}
+verbatimTextOutput("ece_cor")
+```
+
+## Covariance
+```{R}
+verbatimTextOutput("ece_cov")
+```
+
+:::
+
+
+---
+
+::: {.callout-note collapse="true"}
+## Ozone and PM10 have Inverse Relationships
+In Harris County, segmentation does not seem to show this relationship. Generally speaking, segmentation produces more muted negative correlations. 
+
+::: 
+
+# Related Literature
+
+::: {.callout-note collapse="true"}
+## Correlation Between Ozone and Particles
+Source: [Correlation Between Ozone and Particles](https://www.sciencedirect.com/science/article/pii/S1309104223001927)
+
+This paper studies the relationship between Ozone (O3) and particulate matter (e.g. PM10 and PM2.5) in Tehran. Tehran suffers from dust storms, which create an uptick in particulate matter. 
+
+They essentially show that the interactions between O3 and PM25/PM10 are related to their relative levels. For example, O3 is more correlated with high levels of PM25/PM10, whereas it is less correlated with low levels of PM25/PM10. 
+
+> Surface O3 formation is suppressed under high particulate matter (PM) levels in the atmosphere, in particular PM2.5, likely due to weakened photochemical reactions (lower solar radiation and air temperature), dilution effect, and heterogeneous chemical processes occurring onto the PM2.5 surface (reactive uptake of nitrogen oxides, NOx, and hydrogen oxide radicals, HOx). 
+::: 
+
+
+::: {.callout-note collapse="true"}
+## COVID Stringency Index Correlation with Pollution
+Source: [COVID Stringency Index Correlation with Pollution](https://pmc.ncbi.nlm.nih.gov/articles/PMC10542101/)
+
+The COVID stringency index roughly corresponds to how strict a lock down is (e.g. school closures, etc.). This study evaluates how the stringency index correlates with air pollution. That is, do stricter lock down policies correspond to less pollution?
+
+The interesting thing here is that the stringency index they use is not stochastic. It is essentially a constant piecewise function. ECE would evaluate 0 correlation. Worse, it would produce a degenerate correlation matrix. 
+
+![Stringency Matrix](https://cdn.ncbi.nlm.nih.gov/pmc/blobs/429a/10542101/d91ad7f57af0/trp-24-5-253_f002.jpg){width=75%}
+::: 
+
+::: {.callout-note collapse="true"}
+## Correlations Between Pollutants in China
+Source: [Correlations Between Pollutants in China](https://www.mdpi.com/2073-4433/10/7/352)
+
+The authors observe different levels of correlation between O3 and PM2.5. They investigate it throughout time and space. 
+
+![Bivariate-Plots](https://pub.mdpi-res.com/atmosphere/atmosphere-10-00352/article_deploy/html/images/atmosphere-10-00352-g002.png?1564734333){width=75%}
+
+![Time-Series](https://pub.mdpi-res.com/atmosphere/atmosphere-10-00352/article_deploy/html/images/atmosphere-10-00352-g003.png?1564734332){width=75%}
+
+I'm not sure if it makes sense to apply our method to this work. The authors report correlation between pollutants to support the argument that some chemical effect is taking place that inhibits the production of Ozone. 
+
+::: 
+
+::: {.callout-note collapse="true"}
+Source: [Co-occurrence of extremes in surface ozone, particulate matter, and temperature over eastern North America](https://www.pnas.org/doi/abs/10.1073/pnas.1614453114)
+
+They get the correlation between pollutants after de-trending. It is not a good comparison with our method because de-trending tends to remove any change points. 
+![](https://www.pnas.org/cms/10.1073/pnas.1614453114/asset/b0183e17-1a43-495a-aa46-c7df69f4e8d4/assets/graphic/pnas.1614453114fig01.jpeg){width=75%}
+
+::: 
+
+
+# Thoughts
+The way correlation is often used is in a regression context. $X$ is high, so $Y$ is high. 
+
+What scientists care about is whether a high value of $X$ is associated with a high value of $Y$. When they talk about correlation, they are not interested in measuring the noise. They are interested in providing evidence that there is a systematic relationship between the two variables. 
+
+Instead, our method aims to remove the systematic relationship and estimate the correlation in the noise. This may be helpful in determining that there remains unexplained variation. 
+
