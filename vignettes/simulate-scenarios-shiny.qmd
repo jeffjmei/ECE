@@ -47,6 +47,17 @@ library(MASS)
 numericInput("scenario_num", "Scenario", value=2)
 numericInput("n", "Sample Size (n)", value=1000)
 actionButton("resim", "Simulate", class = "btn-primary")
+
+checkboxGroupInput(
+  inputId = "methods",
+  label = "Select methods to compare:",
+  choices = c(
+    "ECE" = "ece", 
+    "Segment" = "segment", 
+    "Pearson" = "pearson"
+  ),
+  selected = c("ece", "segment") # default
+)
 ```
 
 ```{R}
@@ -280,6 +291,19 @@ actionButton("longsim_button", "Simulate", class = "btn-primary")
 
 ```{R}
 #| context: server
+methods_list <- list(
+  ece = function(X) {
+    equiv.cov(X)
+  },
+  segment = function(X) {
+    X_segment <- segment_mean(X)
+    cov(X - X_segment)
+  }
+)
+```
+
+```{R}
+#| context: server
 largesim_data <- eventReactive(input$longsim_button, {
   params <- scenario(
     input$scenario_num, 
@@ -290,19 +314,8 @@ largesim_data <- eventReactive(input$longsim_button, {
   )
   sim_data <- map(1:input$n_sims, ~{
     X <- generate_data(params)
-    X_segment <- segment_mean(X)
-    segment_cov <- cov(X - X_segment)
-    segment_cor <- cor(X - X_segment)
-    list(
-      ece_cov_11 = equiv.cov(X[,1], X[,1]),
-      ece_cov_12 = equiv.cov(X[,1], X[,2]),
-      ece_cov_22 = equiv.cov(X[,2], X[,2]),
-      ece_cor_12 = ece.test(X[,1], X[,2])$estimate,
-      segment_cov_11 = segment_cov[1, 1],
-      segment_cov_12 = segment_cov[1, 2],
-      segment_cov_22 = segment_cov[2, 2],
-      segment_cor_12 = segment_cor[1, 2]
-    )
+    selected <- methods_list[input$methods]
+    purrr::map(selected, ~ .x(X)) 
   })
 })
 ```
@@ -313,26 +326,16 @@ largesim_data <- eventReactive(input$longsim_button, {
 output$longsim_covariance <- renderPlot({
   sim_data <- largesim_data()
 
-  df <- tibble(
-    ece_cov_11      = map_dbl(sim_data, "ece_cov_11"),
-    ece_cov_22      = map_dbl(sim_data, "ece_cov_22"),
-    ece_cov_12      = map_dbl(sim_data, "ece_cov_12"),
-    segment_cov_11  = map_dbl(sim_data, "segment_cov_11"),
-    segment_cov_22  = map_dbl(sim_data, "segment_cov_22"),
-    segment_cov_12  = map_dbl(sim_data, "segment_cov_12")
-  ) %>%
-    pivot_longer(
-      everything(),
-      names_to = c("method", "element"),
-      names_pattern = "(ece|segment)_cov_(.*)",
-      values_to = "value"
-    ) %>%
-    mutate(
-      element = recode(element,
-                      "11" = "Var(X1)",
-                      "22" = "Var(X2)",
-                      "12" = "Cov(X1,X2)")
-    )
+  df <- map_dfr(sim_data, function(sim) {
+    map_dfr(input$methods, function(m) {
+      covmat <- sim[[m]]
+      tibble(
+        method  = m,
+        element = c("Var(X1)", "Var(X2)", "Cov(X1,X2)"),
+        value   = c(covmat[1,1], covmat[2,2], covmat[1,2])
+      )
+    })
+  })
 
   ref_vals <- tibble(
     element = c("Var(X1)", "Var(X2)", "Cov(X1,X2)"),
@@ -379,8 +382,7 @@ output$longsim_covariance <- renderPlot({
       data = ref_vals,
       aes(xintercept = true_val),
       color = "black",
-      linetype = "solid",
-      inherit.aes = FALSE
+      linetype = "solid"
     ) +
     geom_text(
       data = mse_df,
@@ -403,17 +405,13 @@ output$longsim_covariance <- renderPlot({
 
 output$longsim_correlation <- renderPlot({
   sim_data <- largesim_data()
-  df_cor <- tibble(
-    ece_cor_12     = map_dbl(sim_data, "ece_cor_12"),
-    segment_cor_12 = map_dbl(sim_data, "segment_cor_12")
-  ) %>%
-    pivot_longer(
-      everything(),
-      names_to = c("method", "element"),
-      names_pattern = "(ece|segment)_cor_(.*)",
-      values_to = "value"
-    ) %>%
-    mutate(element = "Cor(X1, X2)")
+  df_cor <- map_dfr(sim_data, function(sim) {
+    map_dfr(input$methods, function(m) {
+      covmat <- sim[[m]]
+      corval <- covmat[1,2] / sqrt(covmat[1,1] * covmat[2,2])
+      tibble(method = m, element = "Cor(X1, X2)", value = corval)
+    })
+  })
 
   ggplot(df_cor, aes(x = value, fill = method)) +
     geom_histogram(alpha = 0.5, position = "identity", bins = 40) +
