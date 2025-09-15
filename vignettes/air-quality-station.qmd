@@ -70,14 +70,14 @@ selectInput(
 )
 
 dateRangeInput("daterange", "Choose dates:",
-               start = "2020-01-01",
+               start = "2017-01-01",
                end   = "2025-09-01",
                min   = "2020-01-01",
                max   = Sys.Date())
 
 selectInput(
   "county", "County:",
-  choices = c("pima", "maricopa", "harris", "la", "clark"),
+  choices = c("pima", "maricopa", "harris", "la", "clark", "butte"),
   selected = "pima"
 )
 ```
@@ -85,14 +85,22 @@ selectInput(
 ```{R}
 #| context: server
 
+
+
 df_reactive <- reactive({
 
-  files <- paste0(
-    "~/Documents/Research/Code/ECE/data/air-quality/", 
-    paste0("aqidaily", 2023:2025), 
-    paste0("-", input$county),
-    ".csv"
+  data_dir <- "~/Documents/Research/Code/ECE/data/air-quality/"
+  files <- list.files(
+    path = data_dir,
+    pattern = paste0("aqidaily.*", input$county, ".*\\.csv$"),
+    full.names = TRUE
   )
+  #files <- paste0(
+  #  "~/Documents/Research/Code/ECE/data/air-quality/", 
+  #  paste0("aqidaily", 2023:2025), 
+  #  paste0("-", input$county),
+  #  ".csv"
+  #)
   raw_df <- map_dfr(
     files, ~ read_csv(.x, col_types = cols(.default = "c"))
   )
