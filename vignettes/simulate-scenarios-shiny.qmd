@@ -54,7 +54,8 @@ checkboxGroupInput(
   choices = c(
     "ECE" = "ece", 
     "Segment" = "segment", 
-    "Pearson" = "pearson"
+    "Pearson" = "pearson", 
+    "Detrend" = "detrend"
   ),
   selected = c("ece", "segment") # default
 )
@@ -301,6 +302,9 @@ methods_list <- list(
   },
   pearson = function(X){
     cov(X)
+  },
+  detrend = function(X){
+    cov(X - rotate(X)) / 2
   }
 )
 ```
@@ -353,7 +357,8 @@ largesim_data <- eventReactive(input$longsim_button, {
 method_colors <- c(
   "ece"     = "steelblue",
   "segment" = "orange",
-  "pearson" = "gray"
+  "pearson" = "gray", 
+  "detrend" = "pink"
 )
 
 output$longsim_covariance <- renderPlot({
