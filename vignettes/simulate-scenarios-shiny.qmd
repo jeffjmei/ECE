@@ -36,6 +36,7 @@ library(MASS)
 - **Scenario 11**: random mean - random change point ($K = 0.1 \cdot n$)
 - **Scenario 12**: linear (misspecified)
 - **Scenario 13**: random walk (misspecified)
+- **Scenario 14**: sin yearly variation (misspecified)
 :::
 
 ::: {layout="[ [1,1] ]"}
@@ -129,6 +130,28 @@ output$residuals <- renderPlot({
 ```{R}
 #| context: server
 
+output$detrendPlot <- renderPlot({
+  df <- sim_data()
+  X <- df %>% dplyr::select(X1, X2)
+
+  # Detrend by subtracting the rotated (lagged) version
+  X_detrended <- as.matrix(X) - rotate(as.matrix(X))
+
+  # Bind the detrended data back with the index
+  df_detrended <- dplyr::bind_cols(index=1:input$n, X_detrended)
+
+  ggplot(df_detrended, aes(x = index)) +
+    geom_hline(yintercept = 0) +
+    geom_line(aes(y = X1), color = "red") +
+    geom_line(aes(y = X2), color = "blue") +
+    labs(title="Detrended Data", x="", y="") +
+    theme_minimal()
+})
+```
+
+```{R}
+#| context: server
+
 output$acf <- renderPlot({
   df <- sim_data()
   par(mfrow=c(1,2))
@@ -190,11 +213,24 @@ output$ece_run <- renderPlot({
 #| context: server
 output$ece_cov <- renderPrint({
   df <- sim_data()
+  X <- df %>% 
+    dplyr::select(X1, X2) %>% 
+    as.matrix()
+
+  # segmentation covariance
   demean_cov <- cov(cbind(
     df$X1 - df$X1_mean,
     df$X2 - df$X2_mean
   ))
 
+  # pearson covariance
+  pearson_cov <- cov(X)    
+
+  # detrend covariance
+  detrend_cov <- cov((X - rotate(X))[-nrow(X),]) / 2    
+
+  # ece covariance
+  ece_cov <- equiv.cov(as.matrix(X))
   ece_cov <- matrix(c(
     equiv.cov(df$X1, df$X1),
     equiv.cov(df$X1, df$X2),
@@ -202,7 +238,11 @@ output$ece_cov <- renderPrint({
     equiv.cov(df$X2, df$X2)
   ), nrow=2, byrow=TRUE)
 
-  cat("Demean Covariance:\n")
+  cat("\nPearson Covariance:\n")
+  print(round(pearson_cov, 3))
+  cat("\nDetrend Covariance:\n")
+  print(round(detrend_cov, 3))
+  cat("\nDemean Covariance:\n")
   print(round(demean_cov, 3))
   cat("\nECE Covariance:\n")
   print(round(ece_cov, 3))
@@ -210,19 +250,31 @@ output$ece_cov <- renderPrint({
 
 output$ece_cor <- renderPrint({
   df <- sim_data()
+  X <- df %>% 
+    dplyr::select(X1, X2) %>% 
+    as.matrix()
+
+  # demean correlation
   demean_cor <- cor(cbind(
     df$X1 - df$X1_mean,
     df$X2 - df$X2_mean
   ))
 
-  ece_cor <- matrix(c(
-    ece.test(df$X1, df$X1)$estimate,
-    ece.test(df$X1, df$X2)$estimate,
-    ece.test(df$X2, df$X1)$estimate,
-    ece.test(df$X2, df$X2)$estimate
-  ), nrow=2, byrow=TRUE)
+  # Pearson
+  pearson_cor <- cor(X)    
 
-  cat("Demean Correlation:\n")
+  # Detrend
+  detrend_cor <- cov2cor(cov((X - rotate(X))[-nrow(X),]) / 2)
+
+  # ece correlation
+  ece_cor <- cov2cor(equiv.cov(as.matrix(X)))
+
+
+  cat("\nPearson Correlation:\n")
+  print(round(pearson_cor, 3))
+  cat("\nDetrend Correlation:\n")
+  print(round(detrend_cor, 3))
+  cat("\nDemean Correlation:\n")
   print(round(demean_cor, 3))
   cat("\nECE Correlation:\n")
   print(round(ece_cor, 3))
@@ -243,6 +295,12 @@ plotOutput("plot")
 ```{R}
 #| panel: fill
 plotOutput("residuals")
+```
+
+## Detrend
+```{R}
+#| panel: fill
+plotOutput("detrendPlot")
 ```
 
 ## ACF
@@ -306,7 +364,7 @@ methods_list <- list(
     cov(X)
   },
   detrend = function(X){
-    cov(X - rotate(X)) / 2
+    cov((X - rotate(X))[-nrow(X),]) / 2
   }
 )
 ```
@@ -394,10 +452,10 @@ output$longsim_covariance <- renderPlot({
   mse_df <- mse_df %>%
     left_join(ymax_df, by = "element") %>%
     group_by(element) %>%
-    arrange(method) %>%                        # consistent ordering
+    arrange(method) %>%
     mutate(
       xpos  = -Inf,
-      ypos  = seq(0.9, 0.6, length.out = n()), # spread labels evenly
+      ypos  = seq(0.9, 0.6, length.out = n()),
       ypos  = ypos * ymax,
       label = paste0("MSE = ", round(mse, 4))
     ) %>%
@@ -521,11 +579,15 @@ Of course, ECE is unbiased, but it's worth noting that this example highlights t
 
 **ECE regression-plot has a steep slope**. This is unsurprising because the mean shifts are so frequent. The regression slope is a function of $\|\theta\|$, which is the lagged difference of the mean-vector.
 
+**This is the one scenario where ECE does better than both detrend and segmentation.** This is true for any covariance. 
+
 ::: 
 
 ::: {.callout-note collapse="true"}
 ## Scenario 11: Random Mean - Random Change Point
 Segmentation produces **biased** results in all categories. This is due to it missing some change points. We can see this by the systematic pattern in the ACF plot. 
+
+**Detrend struggles in estimating variance and thus correlation**. If there is no correlation, the variance is still elevated, but correlation is still pretty close to 0. 
 ::: 
 
 ::: {.callout-note collapse="true"}
@@ -533,6 +595,8 @@ Segmentation produces **biased** results in all categories. This is due to it mi
 **ECE produces similar results as segmentation.** They are both terribly biased. Still, ECE estimates are more volatile than segmentation, so the comparison between the two is a wash. **Estimates of variance are largely inflated**. 
 
 Interestingly enough, while the variance estimates are poor, the **ECE covariance estimates tends to be accurate**. 
+
+Detrend WAS bad job here, but it's because the detrend algorithm was using an equivariant rotation, making a spike between the beginning and end of the time-series.
 ::: 
 
 ::: {.callout-note collapse="true"}
@@ -552,3 +616,8 @@ This is similar to Scenario 8, but I adjusted the frequency of the mean to rough
 
 :::
 
+::: {.callout-note collapse="true"}
+## Scenario 15: Yearly Variation with Spikes
+
+Detrend suffers when we increase the signal. As the spikes get bigger, detrend becomes increasingly biased. It's worth noting that both segmentation and detrend are biased, but ECE tends to be least biased. This is especially true for higher correlation. 
+:::
