@@ -66,6 +66,7 @@ checkboxGroupInput(
 numericInput("rho", "Covariance", value=0.25)
 numericInput("sx", "Variance(X)", value=1.5)
 numericInput("sy", "Variance(Y)", value=1.5)
+numericInput("signal", "Signal", value=1.0)
 ```
 
 :::
@@ -78,7 +79,8 @@ sim_data <- eventReactive(input$resim, {
     sx=sqrt(input$sx),
     sy=sqrt(input$sy),
     sxy=input$rho, 
-    n=input$n
+    n=input$n,
+    signal=input$signal
   )
   X <- generate_data(params)
   tibble(
@@ -319,7 +321,8 @@ largesim_data <- eventReactive(input$longsim_button, {
     sx=sqrt(input$sx),
     sy=sqrt(input$sy),
     sxy=input$rho, 
-    n=input$n
+    n=input$n,
+    signal=input$signal
   )
 
   # Run Simulations on User-Selected Methods
