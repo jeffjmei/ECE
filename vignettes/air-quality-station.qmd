@@ -25,31 +25,6 @@ We collect air-quality data from the [EPA](https://aqs.epa.gov/aqsweb/airdata/do
 We can get daily reports from [this website](https://www.epa.gov/outdoor-air-quality-data/air-quality-index-daily-values-report), which has seems to have complete data, but the user must specify what location to choose. In this case, we've gathered data from Pima County. 
 
 ```{R}
-#| context: server
-
-# Daily Reports (Pima County)
-#files <- c(
-#  "~/Documents/Research/Code/ECE/data/air-quality/aqidaily2023-pima.csv", 
-#  "~/Documents/Research/Code/ECE/data/air-quality/aqidaily2024-pima.csv", 
-#  "~/Documents/Research/Code/ECE/data/air-quality/aqidaily2025-pima.csv"
-#)
-
-# --- 
-#county <- "maricopa"
-#files <- paste0(
-#  "~/Documents/Research/Code/ECE/data/air-quality/", 
-#  paste0("aqidaily", 2023:2025), 
-#  paste0("-", county),
-#  ".csv"
-#)
-#
-#raw_df <- map_dfr(
-#  files, ~ read_csv(.x, col_types = cols(.default = "c"))
-#)
-
-```
-
-```{R}
 #| panel: sidebar
 selectInput(
   "pollutant1", "Pollutant 1:",
@@ -60,7 +35,7 @@ selectInput(
 selectInput(
   "pollutant2", "Pollutant 2:",
   choices = c("co", "ozone", "pm10", "pm25", "no2"),
-  selected = "co"
+  selected = "pm25"
 )
 
 selectInput(
@@ -77,15 +52,13 @@ dateRangeInput("daterange", "Choose dates:",
 
 selectInput(
   "county", "County:",
-  choices = c("pima", "maricopa", "harris", "la", "clark", "butte"),
+  choices = c("pima", "maricopa", "harris", "la", "clark", "butte", "kern"),
   selected = "pima"
 )
 ```
 
 ```{R}
 #| context: server
-
-
 
 df_reactive <- reactive({
 
@@ -95,12 +68,6 @@ df_reactive <- reactive({
     pattern = paste0("aqidaily.*", input$county, ".*\\.csv$"),
     full.names = TRUE
   )
-  #files <- paste0(
-  #  "~/Documents/Research/Code/ECE/data/air-quality/", 
-  #  paste0("aqidaily", 2023:2025), 
-  #  paste0("-", input$county),
-  #  ".csv"
-  #)
   raw_df <- map_dfr(
     files, ~ read_csv(.x, col_types = cols(.default = "c"))
   )
@@ -154,6 +121,27 @@ output$residualPlot <- renderPlot({
     geom_line(aes(y=X2 - X2_mean), color="blue") +
     geom_line(aes(y=X3 - X3_mean), color="green") +
     labs(title="Segmentation Residuals", x="", y="") +
+    theme_minimal()
+})
+
+output$detrendPlot <- renderPlot({
+  df <- df_reactive()
+
+  # Select the columns to detrend
+  X <- df %>% dplyr::select(X1, X2, X3)
+
+  # Detrend by subtracting the rotated (lagged) version
+  X_detrended <- as.matrix(X) - rotate(as.matrix(X))
+
+  # Bind the detrended data back with the index
+  df_detrended <- dplyr::bind_cols(df["index"], X_detrended)
+
+  ggplot(df_detrended, aes(x = index)) +
+    geom_hline(yintercept = 0) +
+    geom_line(aes(y = X1), color = "red") +
+    geom_line(aes(y = X2), color = "blue") +
+    geom_line(aes(y = X3), color = "green") + 
+    labs(title="Detrended Data", x="", y="") +
     theme_minimal()
 })
 
