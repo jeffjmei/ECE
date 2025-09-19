@@ -196,23 +196,30 @@ output$ece_cov <- renderPrint({
   ))
   colnames(demean_cov) <- rownames(demean_cov) <- c("X1","X2","X3")
 
-  ece_cov <- matrix(c(
-    equiv.cov(df$X1, df$X1),
-    equiv.cov(df$X1, df$X2),
-    equiv.cov(df$X1, df$X3),
-    equiv.cov(df$X2, df$X1),
-    equiv.cov(df$X2, df$X2),
-    equiv.cov(df$X2, df$X3),
-    equiv.cov(df$X3, df$X1),
-    equiv.cov(df$X3, df$X2),
-    equiv.cov(df$X3, df$X3)
-  ), nrow=3, byrow=TRUE)
+  X <- df %>% 
+    dplyr::select(X1, X2, X3) %>% 
+    as.matrix()
+
+  # Pearson
+  pearson_cov <- cov(X)    
+  colnames(pearson_cov) <- rownames(pearson_cov) <- c("X1","X2","X3")
+
+  # Detrend
+  detrend_cov <- cov((X - rotate(X))[-nrow(X),]) / 2    
+  colnames(detrend_cov) <- rownames(detrend_cov) <- c("X1","X2","X3")
+
+  # ECE
+  ece_cov <- equiv.cov(as.matrix(X))
   colnames(ece_cov) <- rownames(ece_cov) <- c("X1","X2","X3")
 
+  cat("Pearson Covariance:\n")
+  print(round(pearson_cov, 3))
+  cat("Detrend Covariance:\n")
+  print(round(detrend_cov, 3))
   cat("Demean Covariance:\n")
-  print(demean_cov)
+  print(round(demean_cov, 3))
   cat("\nECE Covariance:\n")
-  print(ece_cov)
+  print(round(ece_cov, 3))
 })
 
 output$ece_cor <- renderPrint({
@@ -224,23 +231,30 @@ output$ece_cor <- renderPrint({
   ))
   colnames(demean_cor) <- rownames(demean_cor) <- c("X1","X2","X3")
 
-  ece_cor <- matrix(c(
-    ece.test(df$X1, df$X1)$estimate,
-    ece.test(df$X1, df$X2)$estimate,
-    ece.test(df$X1, df$X3)$estimate,
-    ece.test(df$X2, df$X1)$estimate,
-    ece.test(df$X2, df$X2)$estimate,
-    ece.test(df$X2, df$X3)$estimate,
-    ece.test(df$X3, df$X1)$estimate,
-    ece.test(df$X3, df$X2)$estimate,
-    ece.test(df$X3, df$X3)$estimate
-  ), nrow=3, byrow=TRUE)
+  X <- df %>% 
+    dplyr::select(X1, X2, X3) %>%
+    as.matrix()
+
+  # Pearson
+  pearson_cor <- cor(X)    
+  colnames(pearson_cor) <- rownames(pearson_cor) <- c("X1","X2","X3")
+
+  # Detrend
+  detrend_cor <- cov2cor(cov((X - rotate(X))[-nrow(X),]) / 2)
+  colnames(detrend_cor) <- rownames(detrend_cor) <- c("X1","X2","X3")
+
+  # ECE
+  ece_cor <- cov2cor(equiv.cov(as.matrix(X)))
   colnames(ece_cor) <- rownames(ece_cor) <- c("X1","X2","X3")
 
+  cat("\nPearson Correlation:\n")
+  print(round(pearson_cor, 3))
+  cat("\nDetrend Correlation:\n")
+  print(round(detrend_cor, 3))
   cat("Demean Correlation:\n")
-  print(demean_cor)
+  print(round(demean_cor, 3))
   cat("\nECE Correlation:\n")
-  print(ece_cor)
+  print(round(ece_cor, 3))
 })
 ```
 
@@ -262,6 +276,12 @@ plotOutput("residualPlot")
 ```
 
 We see a little bit of heteroscedasticity. Whatever variance/covariance we estimate, it will be the average across this time interval.
+
+## Detrend
+```{R}
+#| panel: fill
+plotOutput("detrendPlot")
+```
 
 ## ACF
 ```{R}
@@ -365,3 +385,13 @@ What scientists care about is whether a high value of $X$ is associated with a h
 
 Instead, our method aims to remove the systematic relationship and estimate the correlation in the noise. This may be helpful in determining that there remains unexplained variation. 
 
+::: {.callout-note collapse="true"}
+## We expect detrend to be positively biased. 
+We should expect PM2.5 and PM10 to be positively correlated. However, because of wildfires that plague Butte county, there are obvious spikes in PM2.5 and PM10 counts. This is similar to scenario 15, where we see that detrend is positively biased in these cases. However, segmentation tends to be _negatively biased_ in scenario 15 simulations. In this example, we see that ECE is much lower than both of the estimates. 
+
+When we look at the "stability" plot, we see this dataset is fairly volatile. Nevertheless, the stability plot in the simulations are fairly healthy. Even when considering the range of correlations ECE explored, it doesn't fall right in the middle of the two. It's unreasonable to expect this to occur because this should only occur on average. 
+
+The story is this: detrending tends to be inflated, and ECE, while often somewhat volatile, is less biased. 
+
+**This is not true for Maricopa.** In this case, ECE estimates a much higher correlation. 
+::: 
