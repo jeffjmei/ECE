@@ -24,8 +24,10 @@ We collect air-quality data from the [EPA](https://aqs.epa.gov/aqsweb/airdata/do
 
 We can get daily reports from [this website](https://www.epa.gov/outdoor-air-quality-data/air-quality-index-daily-values-report), which has seems to have complete data, but the user must specify what location to choose. In this case, we've gathered data from Pima County. 
 
+::: columns
+
+::: {.column width=50%}
 ```{R}
-#| panel: sidebar
 selectInput(
   "pollutant1", "Pollutant 1:",
   choices = c("co", "ozone", "pm10", "pm25", "no2"),
@@ -44,6 +46,11 @@ selectInput(
   selected = "pm10"
 )
 
+```
+:::
+
+::: {.column width=50%}
+```{R}
 dateRangeInput("daterange", "Choose dates:",
                start = "2017-01-01",
                end   = "2025-09-01",
@@ -52,10 +59,14 @@ dateRangeInput("daterange", "Choose dates:",
 
 selectInput(
   "county", "County:",
-  choices = c("pima", "maricopa", "harris", "la", "clark", "butte", "kern"),
+  choices = c("pima", "maricopa", "harris", "la", "clark", "butte", "kern", "shasta"),
   selected = "pima"
 )
 ```
+:::
+
+:::
+
 
 ```{R}
 #| context: server
@@ -310,9 +321,22 @@ plotOutput("ece_regression")
 ::: {.panel-tabset}
 
 ## Correlation
+::: columns
+
+::: {.column width="50%"}
+
 ```{R}
 verbatimTextOutput("ece_cor")
 ```
+:::
+
+::: {.column width="50%"}
+```{R}
+verbatimTextOutput("ece_cor")
+```
+:::
+
+:::
 
 ## Covariance
 ```{R}
@@ -395,3 +419,8 @@ The story is this: detrending tends to be inflated, and ECE, while often somewha
 
 **This is not true for Maricopa.** In this case, ECE estimates a much higher correlation. 
 ::: 
+
+::: {.callout-note collapse="true"}
+## ECE consistently produces smaller correlation between PM2.5 and PM10 
+Part of this is that the variance estimates are extremely different. 
+:::
