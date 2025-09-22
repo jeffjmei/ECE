@@ -216,7 +216,7 @@ scenario13 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
 }
 
 scenario14 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
-  # Misspecified Harmonic Yearly
+  # Yearly Variation with Spikes
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -232,6 +232,26 @@ scenario14 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   return(obj)
 }
 
+scenario15 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Yearly Variation with Spikes
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+
+  # Mean Vector
+  h1 <- sin(2 * pi * (1:n) / 365)
+  h2 <- sin(2 * pi * (1:n) / 365)
+
+  spike_idx <- ((1:n - 90) %% 365) %in% 0:1
+  h1[spike_idx] <- 4 + h1[spike_idx] # double the height for spike days
+  h2[spike_idx] <- 4 + h2[spike_idx] # double the height for spike days
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(scenario = 8, n = n, S = S, h = h, signal = signal)
+  return(obj)
+}
 scenario <- function(
     scenario_num = 1,
     sxy = 0,
@@ -270,6 +290,8 @@ scenario <- function(
     params <- scenario13(sxy, n, signal, seed)
   } else if (scenario_num == 14) {
     params <- scenario14(sxy, n, signal, seed)
+  } else if (scenario_num == 15) {
+    params <- scenario15(sxy, n, signal, seed)
   } else {
     stop("No such scenario. Try again.")
   }
