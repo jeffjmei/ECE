@@ -104,13 +104,20 @@ df_reactive <- reactive({
       X2 = !!sym(as.character(input$index2)),
       X3 = !!sym(as.character(input$index3))
     ) %>% 
-    drop_na() %>% 
+    drop_na() 
+
+  # Apply Log-Transform
+  if (!is.null(input$log_vars)) {
+    df <- df %>%
+      mutate(across(all_of(input$log_vars), ~ ifelse(. > 0, log(.), NA)))
+  }
+  df <- df %>%
     mutate(
       X1_mean = segment_mean(X1),
       X2_mean = segment_mean(X2),
       X3_mean = segment_mean(X3)
     )
-
+    df
 })
 
 output$ts_plot <- renderPlot({
@@ -363,12 +370,6 @@ selectInput(
   selected = "S&P 500"
 )
 
-radioButtons(
-  "data_format", "Data Format:",
-  choices = c("Raw" = "raw", "Transformed" = "transformed"),
-  selected = "raw"
-)
-
 ```
 ::: 
 
@@ -379,6 +380,19 @@ dateRangeInput("daterange", "Choose dates:",
                end   = "2022-12-01",
                min   = "2000-01-01",
                max   = "2024-01-01")
+
+radioButtons(
+  "data_format", "Data Format:",
+  choices = c("Raw" = "raw", "Transformed" = "transformed"),
+  selected = "raw"
+)
+
+checkboxGroupInput(
+  "log_vars", "Apply log transformation to:",
+  choices = c("X1", "X2", "X3"),
+  selected = NULL
+)
+
 ```
 ::: 
 
