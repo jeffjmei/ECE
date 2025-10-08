@@ -167,6 +167,15 @@ output$bivariate <- renderPlot({
   p23 <- ggplot(df, aes(x=X2 - X2_mean, y=X3 - X3_mean)) +
     geom_hline(yintercept=0) +
     geom_vline(xintercept=0) +
+    geom_point() + 
+    geom_smooth(method="lm", se=FALSE, color="red") +
+    labs(title="X2 vs X3", x="X2", y="X3") + 
+    theme_minimal()
+
+  (p12 | p13) /
+    (plot_spacer() | p23)
+})
+
 output$detrendPlot <- renderPlot({
   df <- df_reactive()
 
@@ -438,6 +447,7 @@ plotOutput("ts_plot")
 ```{R}
 #| panel: fill
 plotOutput("residualPlot")
+plotOutput("bivariate")
 ```
 
 ## Detrend
