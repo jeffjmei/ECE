@@ -509,7 +509,164 @@ verbatimTextOutput("cov")
 --- 
 
 # Notes
-The FRED data comes with its own recommendations for the transformation. These transformations are designed to produce stationary series. Common techniques are log-detrending. 
 
-The problem with any kind of detrending is bias from sharp change points. 
+::: {.callout-note collapse="true"}
+## Transformations
+The FRED data comes with its own recommendations for the transformation. These transformations are designed to produce stationary series. The transformation codes can be found [here](https://www.tandfonline.com/doi/pdf/10.1080/07350015.2015.1086655):  
+1. no transformation  
+2. 1st difference  
+3. 2nd difference  
+4. log-transform  
+5. log-first difference  
+6. log-second difference  
+7. 1st ratio  
 
+Overall, while analyzing this dataset, I find that it runs into the same issue as stock data. ECE tends to estimate 0 variance, causing its correlation estimates to be extremely volatile. It is thus difficult to recommend its use in economic and financial applications. 
+
+In terms of interpretation, we are estimating how much variation is unexplained by systematic effects. Systematic effects can generally be removed via first differencing. However, if there are many jumps, or large jumps, we will observe bias in the correlation estimate. 
+::: 
+
+::: {.callout-note collapse="true"}
+## Change Point Are Ubiquitous Post-Transformation
+The reason why we use these recommended transformations is because they are meant to make the distribution roughly stationary. However, as we see, these transformations may still contain some change points. 
+
+Here are some examples:   
+- `UNRATE`  
+- `FEDFUNDS`  
+- `AAA`  
+- `RPI`  
+
+In fact, these are ubiquitous. 
+::: 
+
+::: {.callout-note collapse="true"}
+## Output and Income
+
+- `IPMAT` (log-first-difference): IP Materials
+- `IPMANSICS` (log-first-difference): IP Manufacturing
+- `INDPRO` (log-first-difference): IP Index
+
+Change points are more prevalent in this group. We see ECE produce slightly deflated values relative to Pearson. However, the conclusions are ultimately the same. 
+
+---
+
+- `RPI` (log-1st-difference): real personal income
+- `IPCONGD` (log-1st-difference): IP: consumer goods
+- `INDPRO` (log-1st-difference): industrial production index
+
+There are obvious signs of changes in the raw data, but there are no change points in the transformed data.
+
+Simulations should be conducted to evaluate the performance on this kind of data. 
+
+::: 
+
+::: {.callout-note collapse="true"}
+## Manufacturing
+- `IPMANSICS`: IP: Manufacturing
+- `MANEMP`: All Employees: Manufacturing
+- `CES3000000008`: Avg Hourly Earnings: Manufacturing
+
+There are some obvious jumps here. Unfortunately, there's no change in deciding which variables are correlated. 
+
+::: 
+
+::: {.callout-note collapse="true"}
+## Housing 
+- `HOUSTS` (log-transform): housing starts, south
+- `HOUSTW` (log-transform): housing starts, west
+- `HOUSTNE` (log-transform): housing starts, northeast
+
+There's an obvious change point around 2008. As a consequence, Pearson produces high correlation, whereas ECE basically has no correlation. This is a case where the difference with Pearson is obvious.
+
+The same can be said of 
+- `PERMITS` (log-transform): new housing, south  
+- `PERMITW` (log-transform): new housing, west  
+- `PERMITNE` (log-transform): new housing, northeast  
+
+::: 
+
+::: {.callout-note collapse="true"}
+## Money and Credit
+- `FEDFUNDS` (1st-difference): effective federal funds rate
+- `TB3MS` (1st-difference): 3 month treasury bill
+- `TB6MS` (1st-difference): 6 month treasury bill
+
+Here, even though we took the 1st difference, there are very obvious change points. This is a beautiful case. There is a difference between Pearson and this one. 
+
+It shows that FEDFUNDS are uncorrelated with the other two series, but the two series are correlated with each other. This is interesting, because just by looking at it, all three series appear to have the same systematic effect. 
+
+**Interpretation**: 
+
+
+::: 
+
+::: {.callout-note collapse="true"}
+## Interest Rate and Exchange Rates
+- `GS1` (1st-difference): 1 year treasury rate
+- `GS10` (1st-difference): 10 year treasury rate
+- `FEDFUNDS` (1st-difference): effective federal funds rate
+
+This is another good example. `FEDFUNDS` has change points, and this impacts the correlation with all the other cases. There is a difference with Pearson. It is very similar to the comparison with treasury bonds `TB3MS` and `TB6MS`. 
+::: 
+
+::: {.callout-note collapse="true"}
+## Exchange Rates
+- `EXSZUSx` (log-first-difference): Switzerland-US Foreign Exchange Rate
+- `EXCAUSx` (log-first-difference): Canada-US Foreign Exchange Rate
+- `EXJPUSx` (log-first-difference): Japan-US Foreign Exchange Rate
+- `EXUSUKx` (log-first-difference): US-UK Foreign Exchange Rate
+
+This is a good example, because it is difficult to identify the change points, but we still find there's a difference with Pearson.
+
+I'm not convinced there _is_ a change point here. When we change the sensitivity of PELT, it mostly seems to follow the noise. 
+::: 
+
+::: {.callout-note collapse="true"}
+## Interpretation 
+Generally speaking, most of these indices use some first-differencing. What we observe is that despite these recommendations for making the data stationary, we still observe the impact of structural breaks within the transformed data. Consequently, we argue the correlation between series are exaggerated when using Pearson correlation. 
+
+Why do these transformations fail to capture these change points? Consider the most common transformation: the first-difference of logs (lagged-log-ratios). They can represent periods of accelerated growth. 
+::: 
+
+::: {.callout-note collapse="true"}
+## How is correlation between indices used in practice?  
+Analysts often use correlation to measure co-variability of systematic effects. If two series vary together, then it is a sign that there is some systematic cause for their variation.
+
+In contrast, ECE estimates the correlation after accounting for systematic effects. 
+::: 
+
+::: {.callout-note collapse="true"}
+## Literature 
+Source: [Pesaran (2004)](https://docs.iza.org/dp1240.pdf?utm_source=chatgpt.com)
+
+In this paper, the author proposes a method for testing cross-sectional correlation. In their application, they apply a regression with response `log(per_capita_output)` on the intercept, a linear trend, $y_{t-1}$ and $y_{t-2}$ so the model is 
+$$
+y_{it} = \alpha_i + \beta_i t + \gamma_{1i} y_{i, t-1} + \gamma_{2i} y_{i, t-2} + u_{it}.
+$$
+We assume a simpler model where $\gamma_{1i} = \gamma_{2i} = 0$. 
+
+The author notes that the empirical growth literature had been analyzing the data assuming cross-sectional independence despite acknowledging that it is not true. 
+
+The author claims their method is robust to change points, but it is obvious that they may still be prevalent in the data even after a transformation. 
+
+It's worth noting that the approach is a little different than what we're doing. They are ultimately doing regression, and a response variable must be selected. They also write in their introduction a good piece about how spatial dependence is conditional on the kind of spatial structure you choose. This may not be entirely obvious for cases where there are political ramifications as well. 
+
+---
+
+Source: [Gao et al. (2019)](https://arxiv.org/pdf/1904.06843)  
+
+The authors aim to estimate high-dimensional cross-sectional correlation estimates. They note that it is unrealistic to expect no cross-sectional correlation, while acknowledging it is equally unrealistic to expect cross-sectional correlation among all components. They propose a **factor model** to model the latent structures. 
+
+---
+
+Source: [Rank-Based Tests of Cross-Sectional Dependence in Panel Data Models](https://www.sciencedirect.com/science/article/pii/S0167947320301614)
+
+Note: This paper's introduction is superb. 
+
+Cross-sectional correlation can represent a variety of things: interaction between cross-sectional units, unobservable common factors, or common shocks. This paper argues most papers in the literature rely on normality assumptions. In response, this paper introduces a non-parametric approach to solving the problem of estimating cross-sectional correlation. 
+
+--- 
+
+Source: [Forecasting using heterogeneous panels with cross-sectional dependence (2020)](https://www.sciencedirect.com/science/article/pii/S0169207019302687?utm_source=chatgpt.com)
+
+::: 
