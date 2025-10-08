@@ -213,9 +213,10 @@ running_ece <- function(x, y, start = 1000) {
 
 output$running_ece <- renderPlot({
   df <- df_reactive()
-  X1_X2 <- running_ece(df$X1, df$X2)
-  X1_X3 <- running_ece(df$X1, df$X3)
-  X2_X3 <- running_ece(df$X2, df$X3)
+  running_ece_start <- round(0.9 * nrow(df))
+  X1_X2 <- running_ece(df$X1, df$X2, start=running_ece_start)
+  X1_X3 <- running_ece(df$X1, df$X3, start=running_ece_start)
+  X2_X3 <- running_ece(df$X2, df$X3, start=running_ece_start)
 
   df <- cbind(index=70:length(df$X1), X1_X2, X1_X3, X2_X3)
   ggplot(data=df) + 
