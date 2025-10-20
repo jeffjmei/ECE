@@ -1,0 +1,125 @@
+---
+title: Long-Simulations
+format: html
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+
+# Load Packages
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(tidyverse)
+export_file <- "sim_results.csv"
+```
+
+```{R}
+#| eval: false
+
+# Parameters
+#n_seq <- c(400, 1000, 5000)
+n_seq <- c(400, 1000)
+#scenario_seq <- c(2, 10, 12, 14)
+scenario_seq <- c(11)
+method_seq <- c("segmentation")
+metric_seq <- c("power")
+sxy_seq <- c(0.05, 0.15, 0.25)
+#sxy_seq <- c(0)
+
+# Organize Parameters
+param_grid <- expand.grid(
+  scenario = scenario_seq,
+  method = method_seq,
+  sxy = sxy_seq,
+  sx = 1,
+  sy = 1,
+  n = n_seq,
+  signal = 1,
+  n_sim = 10000
+)
+
+# Run Simulation and Save Results
+simulate_grid(
+  param_grid = param_grid,
+  metric = "power",
+  export_file = export_file
+)
+
+```
+
+## Analysis
+
+```{R}
+# Read Results
+sim_results <- read.csv(export_file)
+```
+
+```{R}
+sim_results %>% 
+  filter(method=="segmentation", sxy!=0, scenario_num == 11) %>% 
+  dplyr::select(export_vals, method, metric, n, scenario_num, sxy) 
+```
+
+
+```{R}
+# Create Type I Error Table
+t1_error_tbl <- sim_results %>% 
+  filter(sxy == 0, metric == "power") %>%
+  group_by(n, method, scenario_num) %>% 
+  arrange(n, method, scenario_num) %>% 
+  mutate(
+    type1 = round(export_vals, 3)
+  ) %>% 
+  dplyr::select(
+    type1, n, scenario_num, method
+  ) %>% 
+  arrange(
+    n, scenario_num, method
+  )
+```
+
+```{R}
+# Create Power Table
+power_tbl <- sim_results %>% 
+  filter(sxy != 0, metric == "power") %>%
+  group_by(n, method, scenario_num) %>% 
+  arrange(n, method, scenario_num) %>% 
+  rename(
+    power = export_vals
+  ) %>% 
+  dplyr::select(
+    power, n, sxy, scenario_num, method
+  ) %>% 
+  arrange(
+    n, sxy, scenario_num, method
+  ) 
+
+power_tbl %>% 
+  filter(
+    method == "ECE", 
+    scenario_num==14,
+    sxy %in% c(0.05, 0.15, 0.25)
+  )
+```
+
+```{R}
+# Create Bias Table
+bias_tbl <- sim_results %>% 
+  filter(metric == "bias") %>%
+  arrange(n, method, scenario_num) %>% 
+  rename(
+    bias = export_vals
+  ) %>% 
+  dplyr::select(
+    bias, n, sxy, scenario_num, method
+  ) %>% 
+  arrange(
+    n, sxy, scenario_num, method
+  )
+```
+
+# Long Simulations
+
+
+
