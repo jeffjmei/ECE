@@ -229,7 +229,7 @@ scenario14 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 8, n = n, S = S, h = h, signal = signal)
+  obj <- list(scenario = 14, n = n, S = S, h = h, signal = signal)
   return(obj)
 }
 
@@ -250,7 +250,7 @@ scenario15 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 8, n = n, S = S, h = h, signal = signal)
+  obj <- list(scenario = 15, n = n, S = S, h = h, signal = signal)
   return(obj)
 }
 
@@ -271,7 +271,7 @@ scenario16 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 8, n = n, S = S, h = h, signal = signal)
+  obj <- list(scenario = 16, n = n, S = S, h = h, signal = signal)
   return(obj)
 }
 
