@@ -239,14 +239,14 @@ output$cov <- renderPrint({
   ece_cov <- equiv.cov(as.matrix(X))
   colnames(ece_cov) <- rownames(ece_cov) <- c("X1","X2","X3")
 
+  cat("\nECE Covariance:\n")
+  print(round(ece_cov, 3))
   cat("\nPearson Covariance:\n")
   print(round(pearson_cov, 3))
   cat("\nDetrend Covariance:\n")
   print(round(detrend_cov, 3))
   cat("\nDemean Covariance:\n")
   print(round(demean_cov, 3))
-  cat("\nECE Covariance:\n")
-  print(round(ece_cov, 3))
 })
 
 output$cor <- renderPrint({
@@ -274,14 +274,14 @@ output$cor <- renderPrint({
   ece_cor <- cov2cor(equiv.cov(as.matrix(X)))
   colnames(ece_cor) <- rownames(ece_cor) <- c("X1","X2","X3")
 
+  cat("\nECE Correlation:\n")
+  print(round(ece_cor, 3))
   cat("\nPearson Correlation:\n")
   print(round(pearson_cor, 3))
   cat("\nDetrend Correlation:\n")
   print(round(detrend_cor, 3))
   cat("\nDemean Correlation:\n")
   print(round(demean_cor, 3))
-  cat("\nECE Correlation:\n")
-  print(round(ece_cor, 3))
 })
 
 output$pvals <- renderPrint({
@@ -308,15 +308,14 @@ output$pvals <- renderPrint({
   ))
 
   # Output Results
+  cat("\nECE P-Values:\n")
+  print(round(ece_pval, 3))
   cat("\nPearson P-Values:\n")
   print(round(pearson_pval, 3))
   cat("\nDetrend P-Values:\n")
   print(round(detrend_pval, 3))
   cat("\nDemean P-Values:\n")
   print(round(demean_pval, 3))
-  cat("\nECE P-Values:\n")
-  print(round(ece_pval, 3))
-
 })
 
 ```
@@ -378,7 +377,7 @@ selectInput(
   selected = "FEDFUNDS"
 )
 
-textInput("penalty", "Segmentation Penalty:", value = 0.01)
+textInput("penalty", "Segmentation Penalty:", value = -1)
 ```
 ::: 
 
@@ -402,6 +401,13 @@ checkboxGroupInput(
   selected = NULL
 )
 
+checkboxGroupInput(
+  "rotate_vars", "Apply rotation transformation to:",
+  choices = c("X1", "X2", "X3"),
+  selected = NULL
+)
+
+numericInput("rotation", "Rotation:", value = 1)
 ```
 ::: 
 
@@ -643,5 +649,11 @@ Cross-sectional correlation can represent a variety of things: interaction betwe
 --- 
 
 Source: [Forecasting using heterogeneous panels with cross-sectional dependence (2020)](https://www.sciencedirect.com/science/article/pii/S0169207019302687?utm_source=chatgpt.com)
+
+---
+
+Source: [Macroeconomic Factors and the Correlation of Stock and Bond Returns](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=363641)
+
+This paper seems useful. It's highly cited, estimates correlation, talks about structural breaks and the like. It's meant to solve a long-standing mystery. They use a different dataset, but provide a source for where the data comes from. 
 
 ::: 
