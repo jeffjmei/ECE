@@ -275,6 +275,23 @@ scenario16 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   return(obj)
 }
 
+scenario17 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Misspecified Linear
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+
+  h1 <- signal * (1:n - n / 2) / 100 # divided arbitrarily
+  h2 <- -signal * (1:n - n / 2) / 100 # as a sensible default
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(scenario = 17, n = n, S = S, h = h, signal = signal)
+  return(obj)
+}
+
+
 
 scenario <- function(
     scenario_num = 1,
@@ -318,6 +335,8 @@ scenario <- function(
     params <- scenario15(sxy, n, signal, seed)
   } else if (scenario_num == 16) {
     params <- scenario16(sxy, n, signal, seed)
+  } else if (scenario_num == 17) {
+    params <- scenario17(sxy, n, signal, seed)
   } else {
     stop("No such scenario. Try again.")
   }
