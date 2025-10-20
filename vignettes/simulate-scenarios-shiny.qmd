@@ -362,6 +362,32 @@ methods_list <- list(
   }
 )
 
+methods_pval_list <- list(
+  ece = function(X) {
+    ece.test(X)
+  },
+  segment = function(X) {
+    X_segment <- segment_mean(X)
+    cor.test(X[,1] - X_segment[,1], X[,2] - X_segment[,2])
+  },
+  pearson = function(X){
+    cor.test(X[,1], X[,2])
+  },
+  detrend = function(X){
+    X_detrended <- (X - rotate(X))[-nrow(X),] / sqrt(2)
+    cor.test(
+      X_detrended[,1], 
+      X_detrended[,2]
+    )
+  },
+  oracle = function(X, params){
+    X_segment <- segment_mean_oracle(X, params)
+    cor.test(
+      X[,1] - X_segment[,1],
+      X[,2] - X_segment[,2]
+    )
+  }
+)
 ```
 
 ```{R}
@@ -409,6 +435,19 @@ largesim_data <- eventReactive(input$longsim_button, {
   df_cov <- df_all %>% filter(element != "Cor(X1,X2)")
   df_cor <- df_all %>% filter(element == "Cor(X1,X2)")
   list(cov = df_cov, cor = df_cor)
+})
+
+output$long_pvalue <- renderPrint({
+  df <- largesim_data()$cor
+  df %>% 
+    mutate(
+      tstat = value * sqrt((input$n - 2) / (1 - value^2)),
+      pval = 2 * pt(-abs(tstat), input$n - 2)
+    ) %>% 
+    group_by(method) %>%
+    summarize(
+      typeI_error = mean(pval < 0.05, na.rm = TRUE),
+    ) %>% print()
 })
 ```
 
