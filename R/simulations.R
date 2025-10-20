@@ -25,7 +25,10 @@ simulate_metric <- function(method, metric, params, n_sim = 1000, ...) {
     "demean",
     "desmooth",
     "oracle",
-    "oracle cp"
+    "oracle cp",
+    "segmentation",
+    "detrend",
+    "pearson"
   )
   if (!(method %in% available_methods)) {
     stop("No such property. Please choose from power, est, mse")
@@ -39,6 +42,23 @@ simulate_metric <- function(method, metric, params, n_sim = 1000, ...) {
     # apply correlation
     if (method == "ECE") {
       cor_obj <- ece.test(X[, 1], X[, 2])
+    } else if (method == "pearson") {
+      cor_obj <- cor.test(X[, 1], X[, 2])
+    } else if (method == "oracle") {
+      X_segment <- segment_mean_oracle(X, params)
+      cor_obj <- cor.test(
+        X[, 1] - X_segment[, 1],
+        X[, 2] - X_segment[, 2]
+      )
+    } else if (method == "segmentation") {
+      X_segment <- segment_mean(X)
+      cor.test(
+        X[, 1] - X_segment[, 1],
+        X[, 2] - X_segment[, 2]
+      )
+    } else if (method == "detrend") {
+      X_detrended <- X - rotate(X)
+      cor.test(X_detrended[, 1], X_detrended[, 2])
     } else {
       # HACK: demean missing ... because it causes conflicting
       #   names. `method` is being used for "loess" and "PELT"
@@ -58,6 +78,9 @@ simulate_metric <- function(method, metric, params, n_sim = 1000, ...) {
   } else if (metric == "mse") {
     rxy <- params$S[1, 2] / sqrt(params$S[1, 1] * params$S[2, 2])
     mean((est - rxy)^2)
+  } else if (metric == "bias") {
+    rxy <- params$S[1, 2] / sqrt(params$S[1, 1] * params$S[2, 2])
+    mean(est - rxy)
   } else if (metric == "type1") {
     list(
       type1 = mean(pval < 0.05),
@@ -66,10 +89,11 @@ simulate_metric <- function(method, metric, params, n_sim = 1000, ...) {
   }
 }
 
-export_simulations <- function(..., method, params, n_sims, export_file) {
+export_simulations <- function(..., method, metric, params, n_sims, export_file) {
   row <- data.frame(
     ...,
     method = method,
+    metric = metric,
     n = params$n,
     sx = sqrt(params$S[1, 1]),
     sy = sqrt(params$S[2, 2]),
@@ -120,6 +144,7 @@ simulate_grid <- function(param_grid, metric, export_file) {
       export_simulations(
         export_vals,
         method = method,
+        metric = metric,
         params = params,
         n_sims = n_sim,
         export_file = export_file
