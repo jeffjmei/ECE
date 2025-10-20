@@ -22,44 +22,6 @@ library(patchwork)
 devtools::load_all("~/Documents/Research/Code/ECE")
 ```
 
-
-```{R}
-#| echo: false
-#| message: false
-#| warning: false
-#| include: false
-#directory <- "~/Documents/Research/Code/ECE/data/FRED/"
-#df <- list.files(
-#  path = directory,
-#  pattern = "\\.csv$",   # only CSV files
-#  full.names = TRUE
-#) %>%
-#  map_dfr(read_csv, .id = "file")  # adds a column showing source file
-
-```
-
-```{R}
-# Load Data
-#filepath <- paste0(directory, "2023-08.csv")
-#data <- fredmd(filepath, date_start = NULL, date_end = NULL, transform = TRUE)
-#N <- ncol(data)
-#
-## Remove Outliers
-#data_clean <- rm_outliers.fredmd(data)
-#
-## Filter Time Period
-#df <- data_clean %>% 
-#  as_tibble() %>% 
-#  filter(
-#    date >= as.Date("2000-01-01"),
-#    date <= as.Date("2022-12-01")
-#  )
-  
-  #nrow(df)
-  #ncol(df)
-```
-
-
 ```{R}
 #| context: server
 df_reactive <- reactive({
@@ -112,13 +74,26 @@ df_reactive <- reactive({
     df <- df %>%
       mutate(across(all_of(input$log_vars), ~ ifelse(. > 0, log(.), NA)))
   }
-  df <- df %>%
-    mutate(
-      X1_mean = segment_mean(X1, penalty="Manual", pen.value=input$penalty),
-      X2_mean = segment_mean(X2, penalty="Manual", pen.value=input$penalty),
-      X3_mean = segment_mean(X3, penalty="Manual", pen.value=input$penalty)
-    )
-    df
+  if (!is.null(input$rotate_vars)) {
+    df <- df %>%
+      mutate(across(all_of(input$rotate_vars), ~ rotate(., k=input$rotation)))
+  }
+  if(input$penalty == -1){
+    df <- df %>%
+      mutate(
+        X1_mean = segment_mean(X1),
+        X2_mean = segment_mean(X2),
+        X3_mean = segment_mean(X3)
+      )
+  }else{
+    df <- df %>%
+      mutate(
+        X1_mean = segment_mean(X1, penalty="Manual", pen.value=input$penalty),
+        X2_mean = segment_mean(X2, penalty="Manual", pen.value=input$penalty),
+        X3_mean = segment_mean(X3, penalty="Manual", pen.value=input$penalty)
+      )
+  }
+  df
 
 })
 
