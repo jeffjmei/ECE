@@ -128,3 +128,7 @@ winsorize <- function(x, alpha = 0.01) {
   x[x > q[2]] <- q[2]
   return(x)
 }
+
+detrend <- function(X) {
+  (X - rotate(X))[-nrow(X), ] / 2
+}
