@@ -170,3 +170,18 @@ cor_pval <- function(X) {
   diag(pval_mat) <- 0
   pval_mat
 }
+
+ece_pval <- function(X) {
+  p <- ncol(X)
+  pval_mat <- matrix(NA, p, p)
+  colnames(pval_mat) <- rownames(pval_mat) <- colnames(X)
+  for (i in 1:(p - 1)) {
+    for (j in (i + 1):p) {
+      pval <- ece.test(X[, i], X[, j])$p.value
+      pval_mat[i, j] <- pval
+      pval_mat[j, i] <- pval
+    }
+  }
+  diag(pval_mat) <- 0
+  pval_mat
+}
