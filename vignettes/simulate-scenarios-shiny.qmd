@@ -56,9 +56,10 @@ checkboxGroupInput(
     "ECE" = "ece", 
     "Segment" = "segment", 
     "Pearson" = "pearson", 
-    "Detrend" = "detrend"
+    "Detrend" = "detrend", 
+    "Oracle" = "oracle"
   ),
-  selected = c("ece", "segment") # default
+  selected = c("ece", "oracle") # default
 )
 ```
 
@@ -219,35 +220,27 @@ output$ece_cov <- renderPrint({
     dplyr::select(X1, X2) %>% 
     as.matrix()
 
-  # segmentation covariance
-  demean_cov <- cov(cbind(
-    df$X1 - df$X1_mean,
-    df$X2 - df$X2_mean
-  ))
+  params <- scenario(
+    input$scenario_num, 
+    sx=sqrt(input$sx),
+    sy=sqrt(input$sy),
+    sxy=input$rho, 
+    n=input$n,
+    signal=input$signal
+  )
+  selected <- methods_list[input$methods]
 
-  # pearson covariance
-  pearson_cov <- cov(X)    
+  # Run each selected method on X
+  results <- imap(selected, function(f, name){
+    if (name == "oracle") f(as.matrix(X), params)
+    else f(as.matrix(X))
+  })
 
-  # detrend covariance
-  detrend_cov <- cov((X - rotate(X))[-nrow(X),]) / 2    
-
-  # ece covariance
-  ece_cov <- equiv.cov(as.matrix(X))
-  ece_cov <- matrix(c(
-    equiv.cov(df$X1, df$X1),
-    equiv.cov(df$X1, df$X2),
-    equiv.cov(df$X2, df$X1),
-    equiv.cov(df$X2, df$X2)
-  ), nrow=2, byrow=TRUE)
-
-  cat("\nPearson Covariance:\n")
-  print(round(pearson_cov, 3))
-  cat("\nDetrend Covariance:\n")
-  print(round(detrend_cov, 3))
-  cat("\nDemean Covariance:\n")
-  print(round(demean_cov, 3))
-  cat("\nECE Covariance:\n")
-  print(round(ece_cov, 3))
+  # Display results
+  purrr::iwalk(results, function(res, name) {
+    cat("\n", stringr::str_to_title(name), " Covariance:\n", sep = "")
+    print(round(res, 3))
+  })
 })
 
 output$ece_cor <- renderPrint({
@@ -256,30 +249,27 @@ output$ece_cor <- renderPrint({
     dplyr::select(X1, X2) %>% 
     as.matrix()
 
-  # demean correlation
-  demean_cor <- cor(cbind(
-    df$X1 - df$X1_mean,
-    df$X2 - df$X2_mean
-  ))
+  params <- scenario(
+    input$scenario_num, 
+    sx=sqrt(input$sx),
+    sy=sqrt(input$sy),
+    sxy=input$rho, 
+    n=input$n,
+    signal=input$signal
+  )
+  selected <- methods_list[input$methods]
 
-  # Pearson
-  pearson_cor <- cor(X)    
+  # Run each selected method on X
+  results <- imap(selected, function(f, name){
+    if (name == "oracle") cov2cor(f(as.matrix(X), params))
+    else cov2cor(f(as.matrix(X)))
+  })
 
-  # Detrend
-  detrend_cor <- cov2cor(cov((X - rotate(X))[-nrow(X),]) / 2)
-
-  # ece correlation
-  ece_cor <- cov2cor(equiv.cov(as.matrix(X)))
-
-
-  cat("\nPearson Correlation:\n")
-  print(round(pearson_cor, 3))
-  cat("\nDetrend Correlation:\n")
-  print(round(detrend_cor, 3))
-  cat("\nDemean Correlation:\n")
-  print(round(demean_cor, 3))
-  cat("\nECE Correlation:\n")
-  print(round(ece_cor, 3))
+  # Display results
+  purrr::iwalk(results, function(res, name) {
+    cat("\n", stringr::str_to_title(name), " Correlation:\n", sep = "")
+    print(round(res, 3))
+  })
 })
 ```
 
@@ -345,8 +335,6 @@ Here, we aggregate simulations in the traditional sense. This allows us to make 
 
 
 ```{R}
-#| panel: sidebar
-
 # UI controls
 numericInput("n_sims", "Number of Simulations (N)", value=1000)
 actionButton("longsim_button", "Simulate", class = "btn-primary")
@@ -367,8 +355,13 @@ methods_list <- list(
   },
   detrend = function(X){
     cov((X - rotate(X))[-nrow(X),]) / 2
+  },
+  oracle = function(X, params){
+    X_segment <- segment_mean_oracle(X, params)
+    cov(X - X_segment)
   }
 )
+
 ```
 
 ```{R}
@@ -390,7 +383,11 @@ largesim_data <- eventReactive(input$longsim_button, {
   sim_data <- map(1:input$n_sims, ~{
     X <- generate_data(params)
     selected <- methods_list[input$methods]
-    purrr::map(selected, ~ .x(X)) 
+    #map(selected, ~ .x(X)) 
+    imap(selected, function(f, name){
+      if (name == "oracle") f(as.matrix(X), params)
+      else f(as.matrix(X))
+    })
   })
 
   # Organize Results for Plotting
@@ -422,7 +419,8 @@ method_colors <- c(
   "ece"     = "steelblue",
   "segment" = "orange",
   "pearson" = "gray", 
-  "detrend" = "pink"
+  "detrend" = "pink",
+  "oracle" = "gold"
 )
 
 output$longsim_covariance <- renderPlot({
@@ -538,6 +536,10 @@ plotOutput("longsim_covariance")
 ```{R}
 #| panel: fill
 plotOutput("longsim_correlation")
+```
+
+```{R}
+verbatimTextOutput("long_pvalue")
 ```
 
 # Observations
