@@ -68,6 +68,7 @@ numericInput("rho", "Covariance", value=0.25)
 numericInput("sx", "Variance(X)", value=1.5)
 numericInput("sy", "Variance(Y)", value=1.5)
 numericInput("signal", "Signal", value=1.0)
+numericInput("rotation", "Rotate", value=0)
 ```
 
 :::
@@ -83,6 +84,7 @@ sim_data <- eventReactive(input$resim, {
     n=input$n,
     signal=input$signal
   )
+  params$h[,2] <- rotate(params$h[,2], k = input$rotation)
   X <- generate_data(params)
   tibble(
     index = 1:input$n,
@@ -382,6 +384,7 @@ largesim_data <- eventReactive(input$longsim_button, {
     n=input$n,
     signal=input$signal
   )
+  params$h[,2] <- rotate(params$h[,2], k = input$rotation)
 
   # Run Simulations on User-Selected Methods
   sim_data <- map(1:input$n_sims, ~{
