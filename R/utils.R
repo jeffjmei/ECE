@@ -132,3 +132,25 @@ winsorize <- function(x, alpha = 0.01) {
 detrend <- function(X) {
   (X - rotate(X))[-nrow(X), ] / 2
 }
+
+oracle_vec <- function(x, h) {
+  # identify change points in mean vector
+  cp <- c(0, which((h - rotate(h)) != 0), length(x)) %>%
+    unique() %>%
+    sort()
+  map(seq_along(cp[-1]), ~ {
+    rep(
+      mean(x[(cp[.x] + 1):cp[.x + 1]]), # segment average
+      cp[.x + 1] - cp[.x] # number of repetitions
+    )
+  }) %>% unlist()
+}
+
+segment_mean_oracle <- function(X, params) {
+  # apply to every column in matrix/df
+  map2_dfc(
+    as.data.frame(X),
+    as.data.frame(params$h),
+    oracle_vec
+  ) %>% as.matrix()
+}
