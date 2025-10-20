@@ -154,3 +154,19 @@ segment_mean_oracle <- function(X, params) {
     oracle_vec
   ) %>% as.matrix()
 }
+
+cor_pval <- function(X) {
+  # gets a matrix of p-values for various methods
+  p <- ncol(X)
+  pval_mat <- matrix(NA, p, p)
+  colnames(pval_mat) <- rownames(pval_mat) <- colnames(X)
+  for (i in 1:(p - 1)) {
+    for (j in (i + 1):p) {
+      pval <- cor.test(X[, i], X[, j])$p.value
+      pval_mat[i, j] <- pval
+      pval_mat[j, i] <- pval
+    }
+  }
+  diag(pval_mat) <- 0
+  pval_mat
+}
