@@ -267,6 +267,42 @@ output$ece_cor <- renderPrint({
   cat("\nECE Correlation:\n")
   print(round(ece_cor, 3))
 })
+
+output$pvals <- renderPrint({
+
+  df <- df_reactive()
+  X <- df %>% 
+    dplyr::select(X1, X2, X3) %>% 
+    as.matrix()
+
+  # Pearson
+  pearson_pval <- cor_pval(X)
+
+  # Detrend
+  detrend_pval <- cor_pval(detrend(X))
+
+  # ECE 
+  ece_pval <- ece_pval(X)
+
+  # Segmentation
+  demean_pval <- cor_pval(cbind(
+    df$X1 - df$X1_mean,
+    df$X2 - df$X2_mean,
+    df$X3 - df$X3_mean
+  ))
+
+  # Output Results
+  cat("\nPearson P-Values:\n")
+  print(round(pearson_pval, 3))
+  cat("\nDetrend P-Values:\n")
+  print(round(detrend_pval, 3))
+  cat("Demean P-Values:\n")
+  print(round(demean_pval, 3))
+  cat("\nECE P-Values:\n")
+  print(round(ece_pval, 3))
+
+})
+
 ```
 
 
@@ -332,7 +368,7 @@ verbatimTextOutput("ece_cor")
 
 ::: {.column width="50%"}
 ```{R}
-verbatimTextOutput("ece_cor")
+verbatimTextOutput("pvals")
 ```
 :::
 
@@ -400,6 +436,22 @@ They get the correlation between pollutants after de-trending. It is not a good 
 ![](https://www.pnas.org/cms/10.1073/pnas.1614453114/asset/b0183e17-1a43-495a-aa46-c7df69f4e8d4/assets/graphic/pnas.1614453114fig01.jpeg){width=75%}
 
 ::: 
+
+::: {.callout-note collapse="true"}
+## Wildfires and Global Trends
+Source: [Wildfires and Global Trends](https://link.springer.com/content/pdf/10.1186/s40562-022-00255-6.pdf)
+
+This paper compares global trends and incorporates change points for various indices to understand the changing environment for causes of wild fires around the world. 
+::: 
+
+::: {.callout-note collapse="true"}
+## Interannual Variations in PM2.5 due to Wildfires
+Source: [Interannual Variations in PM2.5 due to Wildfires](https://pubs.acs.org/doi/pdf/10.1021/es702755v)
+
+This paper analyzes wild fires in the Western United States and produces a correlation matrix between stations. They take the logarithm of 
+
+The authors use the correlations between regions to evaluate how much wild fires contribute to interannual variability in PM 2.5. 
+:::
 
 
 # Thoughts
