@@ -164,6 +164,7 @@ scenario10 <- function(s12 = 0, n = 100, signal = 1) {
 
 scenario11 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   # Wild Style
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
