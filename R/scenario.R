@@ -292,8 +292,211 @@ scenario17 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   return(obj)
 }
 
+scenario18 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Wild Style (Exponential)
+  set.seed(seed)
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+  K <- n / 10
+  cp1 <- 4 * sort(sample(1:(n / 4 - 1), K, replace = F))
+  cp1 <- c(0, cp1, n)
+  mu1 <- rexp(K + 1)
+  h1 <- unlist(sapply(1:(K + 1), function(i) rep(mu1[i], cp1[i + 1] - cp1[i])))
 
+  cp2 <- 4 * sort(sample(1:(n / 4 - 1), K, replace = F))
+  cp2 <- c(0, cp2, n)
+  mu2 <- rexp(K + 1)
+  h2 <- unlist(sapply(1:(K + 1), function(i) rep(mu2[i], cp2[i + 1] - cp2[i])))
+  h <- signal * cbind(h1, h2)
 
+  # Return Parameter Object
+  obj <- list(scenario = 18, n = n, S = S, h = h, signal = signal, seed = seed)
+  return(obj)
+}
+
+scenario19 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Wild Style (Random Walk)
+  set.seed(seed)
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+  K <- n / 10
+  cp1 <- 4 * sort(sample(1:(n / 4 - 1), K, replace = F))
+  cp1 <- c(0, cp1, n)
+  mu1 <- cumsum(rnorm(K + 1, 0, 1))
+  h1 <- unlist(sapply(1:(K + 1), function(i) rep(mu1[i], cp1[i + 1] - cp1[i])))
+
+  cp2 <- 4 * sort(sample(1:(n / 4 - 1), K, replace = F))
+  cp2 <- c(0, cp2, n)
+  mu2 <- cumsum(rnorm(K + 1, 0, 1))
+  h2 <- unlist(sapply(1:(K + 1), function(i) rep(mu2[i], cp2[i + 1] - cp2[i])))
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(scenario = 19, n = n, S = S, h = h, signal = signal, seed = seed)
+  return(obj)
+}
+
+scenario20 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Sinusoidal Daily Pattern (24 observations/period)
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+
+  # Mean Vector
+  h1 <- sin(2 * pi * (1:n) / 24)
+  h2 <- sin(2 * pi * (1:n) / 24)
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(scenario = 20, n = n, S = S, h = h, signal = signal)
+  return(obj)
+}
+
+scenario21 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Sinusoidal Daily Pattern (24 observations/period) (async)
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+
+  # Mean Vector
+  h1 <- sin(2 * pi * (1:n) / 24)
+  h2 <- sin(2 * pi * (1:n) / 24 + pi / 2)
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(scenario = 21, n = n, S = S, h = h, signal = signal)
+  return(obj)
+}
+
+scenario22 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Wild Style (Exponential) - Fewer CP
+  set.seed(seed)
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+  K <- n / 50
+  cp1 <- 4 * sort(sample(1:(n / 4 - 1), K, replace = F))
+  cp1 <- c(0, cp1, n)
+  mu1 <- rexp(K + 1)
+  h1 <- unlist(sapply(1:(K + 1), function(i) rep(mu1[i], cp1[i + 1] - cp1[i])))
+
+  cp2 <- 4 * sort(sample(1:(n / 4 - 1), K, replace = F))
+  cp2 <- c(0, cp2, n)
+  mu2 <- rexp(K + 1)
+  h2 <- unlist(sapply(1:(K + 1), function(i) rep(mu2[i], cp2[i + 1] - cp2[i])))
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(scenario = 22, n = n, S = S, h = h, signal = signal, seed = seed)
+  return(obj)
+}
+
+scenario23 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Yearly Variation
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+
+  # Mean Vector
+  h1 <- sin(2 * pi * (1:n) / 365)
+  h2 <- sin(2 * pi * (1:n) / 365 + pi / 2)
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(scenario = 23, n = n, S = S, h = h, signal = signal)
+  return(obj)
+}
+
+scenario24 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Sinusoidal Daily Pattern (24 observations/period)
+  # (async - half-cycle-shift)
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+
+  # Mean Vector
+  h1 <- sin(2 * pi * (1:n) / 24)
+  h2 <- sin(2 * pi * (1:n) / 24 + pi)
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(scenario = 24, n = n, S = S, h = h, signal = signal)
+  return(obj)
+}
+
+scenario25 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Yearly Variation (half-cycle shift)
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+
+  # Mean Vector
+  h1 <- sin(2 * pi * (1:n) / 365)
+  h2 <- sin(2 * pi * (1:n) / 365 + pi)
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(scenario = 25, n = n, S = S, h = h, signal = signal)
+  return(obj)
+}
+
+scenario26 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Wild Style (Random Walk - Exponential)
+  set.seed(seed)
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+  K <- n / 10
+  cp1 <- 4 * sort(sample(1:(n / 4 - 1), K, replace = F))
+  cp1 <- c(0, cp1, n)
+  mu1 <- cumsum(1 - rexp(K + 1))
+  h1 <- unlist(sapply(1:(K + 1), function(i) rep(mu1[i], cp1[i + 1] - cp1[i])))
+
+  cp2 <- 4 * sort(sample(1:(n / 4 - 1), K, replace = F))
+  cp2 <- c(0, cp2, n)
+  mu2 <- cumsum(1 - rexp(K + 1))
+  h2 <- unlist(sapply(1:(K + 1), function(i) rep(mu2[i], cp2[i + 1] - cp2[i])))
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(scenario = 26, n = n, S = S, h = h, signal = signal, seed = seed)
+  return(obj)
+}
+
+scenario27 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+  # Wild Style (Exponential - smaller lambda)
+  set.seed(seed)
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+  K <- n / 10
+  cp1 <- 4 * sort(sample(1:(n / 4 - 1), K, replace = F))
+  cp1 <- c(0, cp1, n)
+  mu1 <- rexp(K + 1, 2)
+  h1 <- unlist(sapply(1:(K + 1), function(i) rep(mu1[i], cp1[i + 1] - cp1[i])))
+
+  cp2 <- 4 * sort(sample(1:(n / 4 - 1), K, replace = F))
+  cp2 <- c(0, cp2, n)
+  mu2 <- rexp(K + 1, 2)
+  h2 <- unlist(sapply(1:(K + 1), function(i) rep(mu2[i], cp2[i + 1] - cp2[i])))
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(scenario = 27, n = n, S = S, h = h, signal = signal, seed = seed)
+  return(obj)
+}
 scenario <- function(
     scenario_num = 1,
     sxy = 0,
@@ -338,6 +541,26 @@ scenario <- function(
     params <- scenario16(sxy, n, signal, seed)
   } else if (scenario_num == 17) {
     params <- scenario17(sxy, n, signal, seed)
+  } else if (scenario_num == 18) {
+    params <- scenario18(sxy, n, signal, seed)
+  } else if (scenario_num == 19) {
+    params <- scenario19(sxy, n, signal, seed)
+  } else if (scenario_num == 20) {
+    params <- scenario20(sxy, n, signal, seed)
+  } else if (scenario_num == 21) {
+    params <- scenario21(sxy, n, signal, seed)
+  } else if (scenario_num == 22) {
+    params <- scenario22(sxy, n, signal, seed)
+  } else if (scenario_num == 23) {
+    params <- scenario23(sxy, n, signal, seed)
+  } else if (scenario_num == 24) {
+    params <- scenario24(sxy, n, signal, seed)
+  } else if (scenario_num == 25) {
+    params <- scenario25(sxy, n, signal, seed)
+  } else if (scenario_num == 26) {
+    params <- scenario26(sxy, n, signal, seed)
+  } else if (scenario_num == 27) {
+    params <- scenario27(sxy, n, signal, seed)
   } else {
     stop("No such scenario. Try again.")
   }
