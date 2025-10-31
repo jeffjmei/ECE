@@ -21,17 +21,20 @@ demean <- function(X, method, params, ...) {
 
 simulate_metric <- function(method, metric, params, n_sim = 1000, ...) {
   available_methods <- c(
-    "ECE",
+    "ECE", "ece",
     "demean",
     "desmooth",
     "oracle",
     "oracle cp",
     "segmentation",
+    "segment-AIC",
+    "segment-MBIC",
     "detrend",
-    "pearson"
+    "pearson",
+    "segment-ECE"
   )
   if (!(method %in% available_methods)) {
-    stop("No such property. Please choose from power, est, mse")
+    stop(paste("No such method:", method))
   }
 
   # simulate correlation
@@ -40,7 +43,7 @@ simulate_metric <- function(method, metric, params, n_sim = 1000, ...) {
     X <- generate_data(params)
 
     # apply correlation
-    if (method == "ECE") {
+    if (method == "ECE" | method == "ece") {
       cor_obj <- ece.test(X[, 1], X[, 2])
     } else if (method == "pearson") {
       cor_obj <- cor.test(X[, 1], X[, 2])
@@ -56,9 +59,27 @@ simulate_metric <- function(method, metric, params, n_sim = 1000, ...) {
         X[, 1] - X_segment[, 1],
         X[, 2] - X_segment[, 2]
       )
+    } else if (method == "segment-AIC") {
+      X_segment <- segment_mean(X, penalty = "AIC")
+      cor.test(
+        X[, 1] - X_segment[, 1],
+        X[, 2] - X_segment[, 2]
+      )
+    } else if (method == "segment-MBIC") {
+      X_segment <- segment_mean(X, penalty = "MBIC")
+      cor.test(
+        X[, 1] - X_segment[, 1],
+        X[, 2] - X_segment[, 2]
+      )
     } else if (method == "detrend") {
       X_detrended <- X - rotate(X)
       cor.test(X_detrended[, 1], X_detrended[, 2])
+    } else if (method == "segment-ECE") {
+      X_segment <- segment_mean(X)
+      cor_obj <- ece.test(
+        X[, 1] - X_segment[, 1],
+        X[, 2] - X_segment[, 2]
+      )
     } else {
       # HACK: demean missing ... because it causes conflicting
       #   names. `method` is being used for "loess" and "PELT"
@@ -101,7 +122,8 @@ export_simulations <- function(..., method, metric, params, n_sims, export_file)
     signal = params$signal,
     scenario_num = params$scenario,
     n_sims = n_sims,
-    datetime = Sys.time()
+    datetime = Sys.time(),
+    seed = params$seed
   )
 
   # If file doesn't exist, write with header
@@ -117,7 +139,7 @@ simulate_grid <- function(param_grid, metric, export_file) {
   progress_ct <- 0 # global counter
   sim <- pmap_dfr(
     param_grid,
-    function(scenario, method, sxy, sx, sy, n, signal, n_sim) {
+    function(scenario, method, sxy, sx, sy, n, signal, n_sim, seed) {
       # update counter
       progress_ct <<- progress_ct + 1
       message("Running: ", progress_ct, "/", nrow(param_grid))
@@ -129,7 +151,8 @@ simulate_grid <- function(param_grid, metric, export_file) {
         sx = sx,
         sy = sy,
         n = n,
-        signal = signal
+        signal = signal,
+        seed = seed
       )
 
       # run simulation
