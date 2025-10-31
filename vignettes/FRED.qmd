@@ -28,7 +28,8 @@ df_reactive <- reactive({
 
   # Load Data
   directory <- "~/Documents/Research/Code/ECE/data/FRED/"
-  filepath <- paste0(directory, "2023-08.csv")
+  #filepath <- paste0(directory, "2023-08.csv")
+  filepath <- paste0(directory, "2024-02.csv")
 
   # Apply Transformation
   if(input$data_format == "raw"){
@@ -386,7 +387,7 @@ textInput("penalty", "Segmentation Penalty:", value = -1)
 dateRangeInput("daterange", "Choose dates:",
                start = "2000-01-01",
                end   = "2022-12-01",
-               min   = "2000-01-01",
+               min   = "1959-01-01",
                max   = "2024-01-01")
 
 radioButtons(
