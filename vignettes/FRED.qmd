@@ -240,8 +240,18 @@ output$cov <- renderPrint({
   ece_cov <- equiv.cov(as.matrix(X))
   colnames(ece_cov) <- rownames(ece_cov) <- c("X1","X2","X3")
 
+  # ECE-Segmentation
+  segment_ece_cov <- equiv.cov(cbind(
+    df$X1 - df$X1_mean,
+    df$X2 - df$X2_mean,
+    df$X3 - df$X3_mean
+  ))
+  colnames(segment_ece_cov) <- rownames(segment_ece_cov) <- c("X1","X2","X3")
+
   cat("\nECE Covariance:\n")
   print(round(ece_cov, 3))
+  cat("\nSegment-ECE Covariance:\n")
+  print(round(segment_ece_cov, 3))
   cat("\nPearson Covariance:\n")
   print(round(pearson_cov, 3))
   cat("\nDetrend Covariance:\n")
@@ -275,8 +285,18 @@ output$cor <- renderPrint({
   ece_cor <- cov2cor(equiv.cov(as.matrix(X)))
   colnames(ece_cor) <- rownames(ece_cor) <- c("X1","X2","X3")
 
+  # ECE-Segment
+  segment_ece_cor <- cov2cor(equiv.cov(cbind(
+    df$X1 - df$X1_mean,
+    df$X2 - df$X2_mean,
+    df$X3 - df$X3_mean
+  )))
+  colnames(segment_ece_cor) <- rownames(segment_ece_cor) <- c("X1","X2","X3")
+
   cat("\nECE Correlation:\n")
   print(round(ece_cor, 3))
+  cat("\nSegment-ECE Correlation:\n")
+  print(round(segment_ece_cor, 3))
   cat("\nPearson Correlation:\n")
   print(round(pearson_cor, 3))
   cat("\nDetrend Correlation:\n")
@@ -308,9 +328,18 @@ output$pvals <- renderPrint({
     df$X3 - df$X3_mean
   ))
 
+  # Segmentation
+  segment_ece_pval <- ece_pval(cbind(
+    df$X1 - df$X1_mean,
+    df$X2 - df$X2_mean,
+    df$X3 - df$X3_mean
+  ))
+
   # Output Results
   cat("\nECE P-Values:\n")
   print(round(ece_pval, 3))
+  cat("\nSegment-ECE P-Values:\n")
+  print(round(segment_ece_pval, 3))
   cat("\nPearson P-Values:\n")
   print(round(pearson_pval, 3))
   cat("\nDetrend P-Values:\n")
