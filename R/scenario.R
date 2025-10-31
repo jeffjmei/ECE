@@ -182,7 +182,7 @@ scenario11 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 11, n = n, S = S, h = h, signal = signal)
+  obj <- list(scenario = 11, n = n, S = S, h = h, signal = signal, seed = seed)
   return(obj)
 }
 
@@ -204,6 +204,7 @@ scenario12 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
 
 scenario13 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   # Misspecified Random Walk
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -212,12 +213,12 @@ scenario13 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- NA
 
   # Return Parameter Object
-  obj <- list(scenario = 13, n = n, S = S, h = h, signal = signal)
+  obj <- list(scenario = 13, n = n, S = S, h = h, signal = signal, seed = seed)
   return(obj)
 }
 
 scenario14 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
-  # Yearly Variation with Spikes
+  # Yearly Variation
   S <- matrix(c(
     1, s12,
     s12, 1
