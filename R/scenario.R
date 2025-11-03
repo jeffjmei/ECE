@@ -862,6 +862,95 @@ scenario27 <- function(
   )
   return(obj)
 }
+
+scenario28 <- function(
+    s12 = 0, # NOTE: this is an unnecessary parameter
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = 0) {
+  # random change points (same between hx & hy) with
+  #   random log-normal mean (correlated)
+  set.seed(seed)
+  S <- matrix(c( # NOTE: irrelevant: gets overwritten later
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+
+  K <- n / 10
+  cp <- 4 * sort(sample(1:(n / 4 - 1), K, replace = F))
+  cp <- c(0, cp, n)
+
+  # log-normal transformation
+  mu_S <- diag(2)
+  mu_S[1, 2] <- mu_S[2, 1] <- opt.param
+  mu <- exp(MASS::mvrnorm(K + 1, c(0, 0), mu_S))
+  h1 <- map(
+    1:(K + 1),
+    ~ rep(mu[.x, 1], cp[.x + 1] - cp[.x])
+  ) %>% unlist()
+  h2 <- map(
+    1:(K + 1),
+    ~ rep(mu[.x, 2], cp[.x + 1] - cp[.x])
+  ) %>% unlist()
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(
+    scenario = 28,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
+  return(obj)
+}
+
+scenario29 <- function(
+    s12 = 0, # NOTE: this is an unnecessary parameter
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = 0) {
+  # quasi-random walk with correlated means
+  set.seed(seed)
+  S <- matrix(c( # NOTE: irrelevant: gets overwritten later
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+
+  K <- n / 10
+  cp <- 4 * sort(sample(1:(n / 4 - 1), K, replace = F))
+  cp <- c(0, cp, n)
+
+  mu_S <- diag(2)
+  mu_S[1, 2] <- mu_S[2, 1] <- opt.param
+  mu <- apply(MASS::mvrnorm(K + 1, c(0, 0), mu_S), 2, cumsum)
+  h1 <- map(
+    1:(K + 1),
+    ~ rep(mu[.x, 1], cp[.x + 1] - cp[.x])
+  ) %>% unlist()
+  h2 <- map(
+    1:(K + 1),
+    ~ rep(mu[.x, 2], cp[.x + 1] - cp[.x])
+  ) %>% unlist()
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(
+    scenario = 29,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
+  return(obj)
+}
+
 scenario <- function(
     scenario_num = 1,
     sxy = 0,
@@ -869,7 +958,8 @@ scenario <- function(
     sy = 1,
     n = 100,
     signal = 1,
-    seed = 321) {
+    seed = 321,
+    ...) {
   # used to select simulation scenario
 
   if (scenario_num == 1) {
@@ -926,6 +1016,10 @@ scenario <- function(
     params <- scenario26(sxy, n, signal, seed)
   } else if (scenario_num == 27) {
     params <- scenario27(sxy, n, signal, seed)
+  } else if (scenario_num == 28) {
+    params <- scenario28(sxy, n, signal, seed, ...)
+  } else if (scenario_num == 29) {
+    params <- scenario29(sxy, n, signal, seed, ...)
   } else {
     stop("No such scenario. Try again.")
   }
