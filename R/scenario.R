@@ -1,5 +1,11 @@
-scenario1 <- function(s12 = 0, n = 100, signal = 1) {
+scenario1 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # No Change Point
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -11,12 +17,26 @@ scenario1 <- function(s12 = 0, n = 100, signal = 1) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 1, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 1,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario2 <- function(s12 = 0, n = 100, signal = 1) {
+scenario2 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Single Change Point (Unison)
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -27,12 +47,21 @@ scenario2 <- function(s12 = 0, n = 100, signal = 1) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 2, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 2,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario3 <- function(s12 = 0, n = 100, signal = 1) {
+scenario3 <- function(s12 = 0, n = 100, signal = 1, seed = 321, opt.param = NA) {
   # Single Change Point (Mirrored)
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -43,13 +72,27 @@ scenario3 <- function(s12 = 0, n = 100, signal = 1) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 3, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 3,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
 
-scenario4 <- function(s12 = 0, n = 100, signal = 1) {
+scenario4 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Flip-Flop (Unison)
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -60,12 +103,26 @@ scenario4 <- function(s12 = 0, n = 100, signal = 1) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 4, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 4,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario5 <- function(s12 = 0, n = 100, signal = 1) {
+scenario5 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Flip-Flop (Mirrored)
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -76,12 +133,26 @@ scenario5 <- function(s12 = 0, n = 100, signal = 1) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 5, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 5,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario6 <- function(s12 = 0, n = 100, signal = 1) {
+scenario6 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Progression
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -92,12 +163,26 @@ scenario6 <- function(s12 = 0, n = 100, signal = 1) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 6, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 6,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario7 <- function(s12 = 0, n = 100, signal = 1) {
+scenario7 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Progression (Mirrored)
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -108,12 +193,26 @@ scenario7 <- function(s12 = 0, n = 100, signal = 1) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 7, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 7,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario8 <- function(s12 = 0, n = 100, signal = 1) {
+scenario8 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Misspecified Sin (Unison)
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -125,12 +224,26 @@ scenario8 <- function(s12 = 0, n = 100, signal = 1) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 8, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 8,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario9 <- function(s12 = 0, n = 100, signal = 1) {
+scenario9 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Misspecified Sin (Asynchronous)
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -142,12 +255,26 @@ scenario9 <- function(s12 = 0, n = 100, signal = 1) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 9, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 9,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario10 <- function(s12 = 0, n = 100, signal = 1) {
+scenario10 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Ultra Flip-Flop (Unison)
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -158,11 +285,24 @@ scenario10 <- function(s12 = 0, n = 100, signal = 1) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 10, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 10,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario11 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario11 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Wild Style
   set.seed(seed)
   S <- matrix(c(
@@ -182,12 +322,26 @@ scenario11 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 11, n = n, S = S, h = h, signal = signal, seed = seed)
+  obj <- list(
+    scenario = 11,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario12 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario12 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Misspecified Linear
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -198,11 +352,23 @@ scenario12 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 12, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 12,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario13 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario13 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Misspecified Random Walk
   set.seed(seed)
   S <- matrix(c(
@@ -213,12 +379,26 @@ scenario13 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- NA
 
   # Return Parameter Object
-  obj <- list(scenario = 13, n = n, S = S, h = h, signal = signal, seed = seed)
+  obj <- list(
+    scenario = 13,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario14 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario14 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Yearly Variation
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -230,12 +410,26 @@ scenario14 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 14, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 14,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario15 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario15 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Yearly Variation with Spikes
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -251,12 +445,26 @@ scenario15 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 15, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 15,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario16 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario16 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Yearly Variation with Spikes
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -272,12 +480,26 @@ scenario16 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 16, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 16,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario17 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario17 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Misspecified Linear
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -288,11 +510,24 @@ scenario17 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 17, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 17,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario18 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario18 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Wild Style (Exponential)
   set.seed(seed)
   S <- matrix(c(
@@ -312,11 +547,24 @@ scenario18 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 18, n = n, S = S, h = h, signal = signal, seed = seed)
+  obj <- list(
+    scenario = 18,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario19 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario19 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Wild Style (Random Walk)
   set.seed(seed)
   S <- matrix(c(
@@ -336,12 +584,26 @@ scenario19 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 19, n = n, S = S, h = h, signal = signal, seed = seed)
+  obj <- list(
+    scenario = 19,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario20 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario20 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Sinusoidal Daily Pattern (24 observations/period)
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -353,12 +615,26 @@ scenario20 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 20, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 20,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario21 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario21 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Sinusoidal Daily Pattern (24 observations/period) (async)
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -370,11 +646,24 @@ scenario21 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 21, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 21,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario22 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario22 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Wild Style (Exponential) - Fewer CP
   set.seed(seed)
   S <- matrix(c(
@@ -394,12 +683,26 @@ scenario22 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 22, n = n, S = S, h = h, signal = signal, seed = seed)
+  obj <- list(
+    scenario = 22,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario23 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario23 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Yearly Variation
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -411,13 +714,27 @@ scenario23 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 23, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 23,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario24 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario24 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Sinusoidal Daily Pattern (24 observations/period)
   # (async - half-cycle-shift)
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -429,12 +746,26 @@ scenario24 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 24, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 24,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario25 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario25 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Yearly Variation (half-cycle shift)
+  set.seed(seed)
   S <- matrix(c(
     1, s12,
     s12, 1
@@ -446,11 +777,24 @@ scenario25 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 25, n = n, S = S, h = h, signal = signal)
+  obj <- list(
+    scenario = 25,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario26 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario26 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Wild Style (Random Walk - Exponential)
   set.seed(seed)
   S <- matrix(c(
@@ -470,11 +814,24 @@ scenario26 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 26, n = n, S = S, h = h, signal = signal, seed = seed)
+  obj <- list(
+    scenario = 26,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 
-scenario27 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
+scenario27 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
   # Wild Style (Exponential - smaller lambda)
   set.seed(seed)
   S <- matrix(c(
@@ -494,7 +851,15 @@ scenario27 <- function(s12 = 0, n = 100, signal = 1, seed = 321) {
   h <- signal * cbind(h1, h2)
 
   # Return Parameter Object
-  obj <- list(scenario = 27, n = n, S = S, h = h, signal = signal, seed = seed)
+  obj <- list(
+    scenario = 27,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
   return(obj)
 }
 scenario <- function(
