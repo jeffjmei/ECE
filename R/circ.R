@@ -54,3 +54,28 @@ lag_mat <- function(n, k) {
   2 * diag(n) - Ck - t(Ck)
 }
 
+#' Block Sum Constraint Matrix
+#'
+#' Builds the constraint matrix \eqn{G} whose rows encode \eqn{g(\ell) = 0}
+#' for \eqn{\ell = L, \ldots, \lfloor n/2 \rfloor}. Columns correspond to
+#' the unknowns \eqn{(a_0, a_1, \ldots, a_{\lfloor n/2 \rfloor})}.
+#'
+#' @param n A positive integer giving the series length.
+#' @param L A positive integer giving the minimum segment length.
+#'
+#' @return A numeric matrix of size \eqn{(\lfloor n/2 \rfloor - L + 1) \times (\lfloor n/2 \rfloor + 1)}.
+#'
+#' @examples
+#' constraint_matrix(10, 2)
+#'
+#' @export
+constraint_matrix <- function(n, L) {
+  half <- floor(n / 2)
+  G <- matrix(0, nrow = half - L + 1, ncol = half + 1)
+  for (row in seq_len(nrow(G))) {
+    l          <- row + L - 1
+    G[row, 1]  <- l                              # coefficient of a_0 is l
+    G[row, -1] <- pmax(0, 2 * (l - 1:half))     # coefficient of a_i is 2(l - i)
+  }
+  G
+}
