@@ -1,0 +1,7 @@
+---
+title: "Preface"
+---
+
+These notes accompany the Equivariant Covariance Estimator (ECE) project. The goal is to estimate and test for contemporaneous correlation between two time series in the presence of unknown mean shifts, without requiring explicit changepoint detection.
+
+The notes combine theoretical derivations with R computations that verify the theory.
