@@ -123,7 +123,8 @@ export_simulations <- function(..., method, metric, params, n_sims, export_file)
     scenario_num = params$scenario,
     n_sims = n_sims,
     datetime = Sys.time(),
-    seed = params$seed
+    seed = params$seed,
+    opt.param = params$opt.param
   )
 
   # If file doesn't exist, write with header
@@ -139,7 +140,16 @@ simulate_grid <- function(param_grid, metric, export_file) {
   progress_ct <- 0 # global counter
   sim <- pmap_dfr(
     param_grid,
-    function(scenario, method, sxy, sx, sy, n, signal, n_sim, seed) {
+    function(scenario,
+             method,
+             sxy,
+             sx,
+             sy,
+             n,
+             signal,
+             n_sim,
+             seed,
+             opt.param) {
       # update counter
       progress_ct <<- progress_ct + 1
       message("Running: ", progress_ct, "/", nrow(param_grid))
@@ -152,7 +162,8 @@ simulate_grid <- function(param_grid, metric, export_file) {
         sy = sy,
         n = n,
         signal = signal,
-        seed = seed
+        seed = seed,
+        opt.param = opt.param
       )
 
       # run simulation
