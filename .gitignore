@@ -1,2 +1,9 @@
 inst/doc
 docs
+data
+dev
+man
+*_files/
+*_cache/
+*.html
+*.knit.md
