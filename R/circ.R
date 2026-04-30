@@ -180,3 +180,18 @@ ece_min_norm <- function(n, L) {
   expand_sym(a_half, n)
 }
 
+solve_ece <- function(n, L, tol = 1e-10) {
+  cm <- constraint_matrix(n, L) # list(G, b)
+  G_aug <- cm$G
+  G_raw <- G_aug[-1, ] # remove a0=1 row
+
+  # Particular solution: null vector of G_raw normalized to a0 = 1
+  ns <- null_space(G_raw, tol)
+  j <- which(abs(ns[1, ]) > tol)[1]
+  x_p <- ns[, j] / ns[1, j]
+
+  # Free parameters: what's left after fixing a0 = 1
+  ns_free <- null_space(G_aug, tol)
+
+  if (ncol(ns_free) == 0) expand_sym(x_p, n) else list(particular = x_p, free = ns_free)
+}
