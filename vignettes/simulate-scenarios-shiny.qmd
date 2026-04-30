@@ -37,6 +37,9 @@ library(MASS)
 - **Scenario 12**: linear (misspecified)
 - **Scenario 13**: random walk (misspecified)
 - **Scenario 14**: sin yearly variation (misspecified)
+- **Scenario 15**: sin yearly variation with 3 day spike
+- **Scenario 16**: sin yearly variation with 1 day spike
+- **Scenario 17**: inverted linear (X-shaped)
 :::
 
 ::: {layout="[ [1,1] ]"}
@@ -57,7 +60,8 @@ checkboxGroupInput(
     "Segment" = "segment", 
     "Pearson" = "pearson", 
     "Detrend" = "detrend", 
-    "Oracle" = "oracle"
+    "Oracle" = "oracle",
+    "Segment-ECE" = "segment_ece"
   ),
   selected = c("ece", "oracle") # default
 )
@@ -70,6 +74,12 @@ numericInput("sx", "Variance(X)", value=1.5)
 numericInput("sy", "Variance(Y)", value=1.5)
 numericInput("signal", "Signal", value=1.0)
 numericInput("rotation", "Rotate", value=0)
+numericInput("seed", "Seed", value=321)
+selectInput(
+  "penalty", "Penalty", 
+  choices = c("BIC", "MBIC", "AIC"),
+  selected="BIC"
+)
 ```
 
 :::
@@ -83,7 +93,8 @@ sim_data <- eventReactive(input$resim, {
     sy=sqrt(input$sy),
     sxy=input$rho, 
     n=input$n,
-    signal=input$signal
+    signal=input$signal, 
+    seed = input$seed
   )
   params$h[,2] <- rotate(params$h[,2], k = input$rotation)
   X <- generate_data(params)
@@ -93,8 +104,8 @@ sim_data <- eventReactive(input$resim, {
     X2 = X[,2]
   ) %>%
   mutate(
-    X1_mean = segment_mean(X1),
-    X2_mean = segment_mean(X2)
+    X1_mean = segment_mean(X1, penalty=input$penalty),
+    X2_mean = segment_mean(X2, penalty=input$penalty)
   )
 })
 
@@ -107,8 +118,8 @@ sim_data <- eventReactive(input$resim, {
 output$plot <- renderPlot({
   df <- sim_data()
   ggplot(df, aes(x=index)) +
-    geom_line(aes(y=X1), color="red") +
-    geom_line(aes(y=X2), color="blue") +
+    geom_line(aes(y=X1), color="red", alpha=0.25) +
+    geom_line(aes(y=X2), color="blue", alpha=0.25) +
     geom_line(aes(y=X1_mean), color="red", linewidth=1.5) +
     geom_line(aes(y=X2_mean), color="blue", linewidth=1.5) +
     labs(title="Change Point Segmentation", x="", y="") +
@@ -226,7 +237,8 @@ output$ece_cov <- renderPrint({
     sy=sqrt(input$sy),
     sxy=input$rho, 
     n=input$n,
-    signal=input$signal
+    signal=input$signal,
+    seed=input$seed
   )
   selected <- methods_list[input$methods]
 
@@ -255,7 +267,8 @@ output$ece_cor <- renderPrint({
     sy=sqrt(input$sy),
     sxy=input$rho, 
     n=input$n,
-    signal=input$signal
+    signal=input$signal,
+    seed=input$seed
   )
   selected <- methods_list[input$methods]
 
@@ -359,6 +372,10 @@ methods_list <- list(
   oracle = function(X, params){
     X_segment <- segment_mean_oracle(X, params)
     cov(X - X_segment)
+  },
+  segment_ece = function(X){
+    X_segment <- segment_mean(X)
+    equiv.cov(X - X_segment)
   }
 )
 
@@ -386,6 +403,10 @@ methods_pval_list <- list(
       X[,1] - X_segment[,1],
       X[,2] - X_segment[,2]
     )
+  },
+  segment_ece = function(X){
+    X_segment <- segment_mean(X)
+    ece.test(X - X_segment)
   }
 )
 ```
@@ -401,7 +422,8 @@ largesim_data <- eventReactive(input$longsim_button, {
     sy=sqrt(input$sy),
     sxy=input$rho, 
     n=input$n,
-    signal=input$signal
+    signal=input$signal, 
+    seed = input$seed
   )
   params$h[,2] <- rotate(params$h[,2], k = input$rotation)
 
@@ -409,7 +431,6 @@ largesim_data <- eventReactive(input$longsim_button, {
   sim_data <- map(1:input$n_sims, ~{
     X <- generate_data(params)
     selected <- methods_list[input$methods]
-    #map(selected, ~ .x(X)) 
     imap(selected, function(f, name){
       if (name == "oracle") f(as.matrix(X), params)
       else f(as.matrix(X))
@@ -459,7 +480,8 @@ method_colors <- c(
   "segment" = "orange",
   "pearson" = "gray", 
   "detrend" = "pink",
-  "oracle" = "gold"
+  "oracle" = "gold",
+  "segment_ece" = "red"
 )
 
 output$longsim_covariance <- renderPlot({
