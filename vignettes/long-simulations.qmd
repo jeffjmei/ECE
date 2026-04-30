@@ -11,32 +11,53 @@ format: html
 # Load Packages
 devtools::load_all("~/Documents/Research/Code/ECE")
 library(tidyverse)
-export_file <- "sim_results.csv"
+export_file <- "~/Documents/Research/Code/ECE/vignettes/sim_results.csv"
 ```
+
+Methods:   
+- `segmentation`
+- `segment-AIC` 
+- `segment-MBIC` 
+- `ECE`
+- `segment-ECE`
+- `oracle`
+- `pearson`
+- `detrend`
 
 ```{R}
 #| eval: false
 
 # Parameters
-#n_seq <- c(400, 1000, 5000)
-n_seq <- c(400, 1000)
+n_seq <- c(400, 1000, 5000)
 #scenario_seq <- c(2, 10, 12, 14)
-scenario_seq <- c(11)
-method_seq <- c("segmentation")
-metric_seq <- c("power")
-sxy_seq <- c(0.05, 0.15, 0.25)
-#sxy_seq <- c(0)
+#scenario_seq <- c(26, 27)
+#scenario_seq <- c(11, 18, 19, 26, 26, 22, 27)
+#scenario_seq <- c(29)
+scenario_seq <- c(29)
+#method_seq <- c("segmentation", "segment-AIC", "segment-MBIC", "ECE", "segment-ECE", "oracle")
+method_seq <- c(
+  #"segmentation", 
+  #"segment-AIC", 
+  #"segment-MBIC", 
+  #"oracle", 
+  "segment-ECE",
+  "ECE"
+  #"segment-ECE"
+)
+#sxy_seq <- c(0, 0.05, 0.15, 0.25)
 
 # Organize Parameters
 param_grid <- expand.grid(
   scenario = scenario_seq,
   method = method_seq,
-  sxy = sxy_seq,
+  sxy = c(0.05, 0.15, 0.25),
   sx = 1,
   sy = 1,
   n = n_seq,
   signal = 1,
-  n_sim = 10000
+  n_sim = 10000,
+  seed = c(111, 123, 321), # 321, 123, 111
+  opt.param = 0.75 # 0.0, 0.5, 0.75, 1.0
 )
 
 # Run Simulation and Save Results
@@ -45,20 +66,50 @@ simulate_grid(
   metric = "power",
   export_file = export_file
 )
-
 ```
 
 ## Analysis
 
 ```{R}
 # Read Results
-sim_results <- read.csv(export_file)
+sim_results <- read_csv(export_file) 
 ```
 
 ```{R}
+# rows: n
+# cols: method
+# vals: export_vals
+
 sim_results %>% 
-  filter(method=="segmentation", sxy!=0, scenario_num == 11) %>% 
-  dplyr::select(export_vals, method, metric, n, scenario_num, sxy) 
+  filter(
+    scenario_num == 10, 
+    sxy == 0,
+    signal == 1, 
+  )
+
+s <- 10
+t1_tbl <- sim_results %>%
+  filter(
+    sxy == 0, 
+    signal == 1,
+    scenario_num == s,
+    metric == "power"
+    #method %in% c("segmentation", "segmentation-ece", "ece")
+  ) %>% 
+  # remove duplicates
+  group_by(n, method) %>%
+  summarise(
+    export_vals = mean(export_vals), 
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from=method,
+    values_from=export_vals
+  ) %>% 
+  round(3) %>% 
+  janitor::clean_names()
+t1_tbl
+print(paste("scenario_num:", s))
 ```
 
 
