@@ -1,0 +1,56 @@
+---
+title: "Lagged Differences"
+---
+
+## $k$-Lagged Estimator
+
+Using circular indexing $i := [(i-1) \bmod n] + 1$, define the $k$-lagged cross-product sum
+
+$$
+T_k(X, Y) = \sum_{i=1}^n (X_i - X_{i+k})(Y_i - Y_{i+k}).
+$$
+
+We abbreviate $T_k(X) := T_k(X,X)$ and similarly for $Y$.
+
+## Circular Version
+
+A practical issue with $T_k$ is that the number of terms $n - k$ shrinks as $k$ grows, making comparisons across lags unequal. To fix this, we embed the index set on a circle by redefining
+
+$$
+i \;:=\; [(i - 1) \bmod n] + 1,
+$$
+
+so that index $n+1$ wraps back to $1$. Under this convention every lag uses exactly $n$ differences. The circular $k$-lagged covariance estimator is
+
+$$
+\hat{\sigma}_k(X, Y) = \frac{1}{2n}\, T_k(X, Y).
+$$
+
+Like the non-circular version, $\hat{\sigma}_k$ is unbiased for $\sigma_{xy}$ whenever $1 \le k < n$ and there are no mean shifts. It is slightly more efficient because it uses all $n$ differences at every lag.
+
+## Bias Under Mean Shifts
+
+When mean shifts are present the estimator is no longer unbiased. To see why, expand a single lagged difference:
+
+$$
+X_i - X_{i+k} = (\theta_{x,i} - \theta_{x,i+k}) + (\varepsilon_{x,i} - \varepsilon_{x,i+k}).
+$$
+
+Whenever $i$ and $i+k$ straddle a change point, the mean difference $\theta_{x,i} - \theta_{x,i+k}$ is nonzero and contaminates the cross-product. The resulting bias in $T_k$ is
+
+$$
+\mathbb{E}[T_k(X, Y)] = 2n\sigma_{xy} + k\,\omega_{xy},
+\qquad \omega_{xy} = T_1(\theta_x, \theta_y),
+$$
+
+so the bias of $\hat{\sigma}_k$ grows linearly in $k$.
+
+## Equivariant Covariance Estimator (ECE)
+
+Since $\mathbb{E}[T_k(X,Y)/2n] = \sigma_{xy} + k\,\omega_{xy}/2n$, the quantity $\sigma_{xy}$ is the intercept of a line in $k$. Fitting this line at $k=1,2$ and extracting the intercept gives the ECE:
+
+$$
+\hat{\sigma}_{xy} = \frac{1}{2n}\bigl(2T_1(X,Y) - T_2(X,Y)\bigr).
+$$
+
+By linearity of expectation, $\mathbb{E}[\hat{\sigma}_{xy}] = \sigma_{xy}$, so ECE is unbiased under the piecewise-constant mean model.
