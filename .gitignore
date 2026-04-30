@@ -7,3 +7,5 @@ man
 *_cache/
 *.html
 *.knit.md
+_book/
+.quarto/
