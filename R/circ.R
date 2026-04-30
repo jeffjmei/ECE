@@ -33,3 +33,24 @@ circ_shift <- function(n, k) {
   e_k <- as.numeric(seq_len(n) - 1 == k %% n)
   circ(e_k)
 }
+
+#' Lag Matrix
+#'
+#' Constructs the \eqn{n \times n} matrix \eqn{A_k = 2I - C_k - C_k^T},
+#' the matrix form of the \eqn{k}-lagged circular difference operator,
+#' so that \eqn{T_k(X, Y) = X^T A_k Y}.
+#'
+#' @param n A positive integer giving the matrix dimension.
+#' @param k A positive integer giving the lag.
+#'
+#' @return An \eqn{n \times n} symmetric matrix.
+#'
+#' @examples
+#' lag_mat(4, 1)
+#'
+#' @export
+lag_mat <- function(n, k) {
+  Ck <- circ_shift(n, k)
+  2 * diag(n) - Ck - t(Ck)
+}
+
