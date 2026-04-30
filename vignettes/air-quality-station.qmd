@@ -30,19 +30,19 @@ We can get daily reports from [this website](https://www.epa.gov/outdoor-air-qua
 ```{R}
 selectInput(
   "pollutant1", "Pollutant 1:",
-  choices = c("co", "ozone", "pm10", "pm25", "no2"),
+  choices = c("co", "ozone", "pm10", "pm25", "no2", "temp"),
   selected = "ozone"
 )
 
 selectInput(
   "pollutant2", "Pollutant 2:",
-  choices = c("co", "ozone", "pm10", "pm25", "no2"),
+  choices = c("co", "ozone", "pm10", "pm25", "no2", "temp"),
   selected = "pm25"
 )
 
 selectInput(
   "pollutant3", "Pollutant 3:",
-  choices = c("co", "ozone", "pm10", "pm25", "no2"),
+  choices = c("co", "ozone", "pm10", "pm25", "no2", "temp"),
   selected = "pm10"
 )
 
@@ -81,11 +81,35 @@ df_reactive <- reactive({
   )
   raw_df <- map_dfr(
     files, ~ read_csv(.x, col_types = cols(.default = "c"))
+  ) %>% janitor::clean_names()
+
+  # Read Temperature Data
+  temp_files <- list.files(
+    path = data_dir,
+    pattern = "^daily_TEMP_\\d{4}\\.csv$",
+    full.names = TRUE
   )
+  raw_temp_df <- map_dfr(
+    temp_files, ~ read_csv(.x, col_types = cols(.default = "c"))
+  ) %>% janitor::clean_names()
+
+  # Clean Temperature Data
+  temp_df <- raw_temp_df %>% 
+    filter(toupper(county_name) == toupper(input$county)) %>%
+    mutate(
+      temp = as.numeric(arithmetic_mean),
+      date = format(as.Date(date_local), "%m/%d/%Y")
+    ) %>%
+    group_by(date, county_name) %>% 
+    summarize(
+      temp = mean(temp, na.rm=TRUE),
+      n_sites = n(),
+      .groups = "drop"
+    ) 
 
   # Process Data
   df <- raw_df %>% 
-    janitor::clean_names() %>% 
+    left_join(temp_df, by="date") %>%
     dplyr::select(
       date,
       all_of(c(
@@ -211,6 +235,10 @@ output$ece_cov <- renderPrint({
     dplyr::select(X1, X2, X3) %>% 
     as.matrix()
 
+  X_mean <- df %>%
+    dplyr::select(X1_mean, X2_mean, X3_mean) %>%
+    as.matrix()
+
   # Pearson
   pearson_cov <- cov(X)    
   colnames(pearson_cov) <- rownames(pearson_cov) <- c("X1","X2","X3")
@@ -223,6 +251,11 @@ output$ece_cov <- renderPrint({
   ece_cov <- equiv.cov(as.matrix(X))
   colnames(ece_cov) <- rownames(ece_cov) <- c("X1","X2","X3")
 
+  # Segment-ECE 
+  segment_ece_cov <- equiv.cov(X - X_mean)
+  colnames(segment_ece_cov) <- 
+    rownames(segment_ece_cov) <- c("X1","X2","X3")
+
   cat("Pearson Covariance:\n")
   print(round(pearson_cov, 3))
   cat("Detrend Covariance:\n")
@@ -231,6 +264,8 @@ output$ece_cov <- renderPrint({
   print(round(demean_cov, 3))
   cat("\nECE Covariance:\n")
   print(round(ece_cov, 3))
+  cat("\nSegment-ECE Covariance:\n")
+  print(round(segment_ece_cov, 3))
 })
 
 output$ece_cor <- renderPrint({
@@ -245,6 +280,9 @@ output$ece_cor <- renderPrint({
   X <- df %>% 
     dplyr::select(X1, X2, X3) %>%
     as.matrix()
+  X_mean <- df %>% 
+    dplyr::select(X1_mean, X2_mean, X3_mean) %>%
+    as.matrix()
 
   # Pearson
   pearson_cor <- cor(X)    
@@ -258,6 +296,11 @@ output$ece_cor <- renderPrint({
   ece_cor <- cov2cor(equiv.cov(as.matrix(X)))
   colnames(ece_cor) <- rownames(ece_cor) <- c("X1","X2","X3")
 
+  # Segment-ECE
+  segment_ece_cor <- cov2cor(equiv.cov(X - X_mean))
+  colnames(segment_ece_cor) <- 
+    rownames(segment_ece_cor) <- c("X1","X2","X3")
+
   cat("\nPearson Correlation:\n")
   print(round(pearson_cor, 3))
   cat("\nDetrend Correlation:\n")
@@ -266,6 +309,8 @@ output$ece_cor <- renderPrint({
   print(round(demean_cor, 3))
   cat("\nECE Correlation:\n")
   print(round(ece_cor, 3))
+  cat("\nSegment-ECE Correlation:\n")
+  print(round(segment_ece_cor, 3))
 })
 
 output$pvals <- renderPrint({
@@ -273,6 +318,9 @@ output$pvals <- renderPrint({
   df <- df_reactive()
   X <- df %>% 
     dplyr::select(X1, X2, X3) %>% 
+    as.matrix()
+  X_mean <- df %>% 
+    dplyr::select(X1_mean, X2_mean, X3_mean) %>% 
     as.matrix()
 
   # Pearson
@@ -283,6 +331,9 @@ output$pvals <- renderPrint({
 
   # ECE 
   ece_pval <- ece_pval(X)
+
+  # Segment-ECE 
+  segment_ece_pval <- ece_pval(X - X_mean)
 
   # Segmentation
   demean_pval <- cor_pval(cbind(
@@ -300,6 +351,8 @@ output$pvals <- renderPrint({
   print(round(demean_pval, 3))
   cat("\nECE P-Values:\n")
   print(round(ece_pval, 3))
+  cat("\nSegment-ECE P-Values:\n")
+  print(round(segment_ece_pval, 3))
 
 })
 
