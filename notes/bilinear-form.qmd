@@ -1,0 +1,329 @@
+---
+title: "Bilinear Form"
+---
+
+**Definition.** An estimator $\tilde{s}(X, Y) = X^T A Y$ for $A \in \mathbb{R}^{n \times n}$ is called *bilinear*.
+
+Expanding using $X = \theta_x + \varepsilon_x$ and $Y = \theta_y + \varepsilon_y$ and taking expectations gives
+
+$$
+\mathbb{E}[\tilde{s}(X, Y)] = \theta_x^T A \theta_y + \operatorname{tr}(A)\, \sigma_{xy}.
+$$
+
+For unbiasedness, $A$ must satisfy 
+
+1. $\theta_x^T A \theta_y = 0$ for all $\theta_x, \theta_y \in \Theta_L$, and   
+2. $\operatorname{tr}(A) = 1$.
+
+To reduce the search space, we impose a symmetry condition. Let $C_k$ be the circulant shift matrix, which shifts a vector $k$ positions to the right circularly.
+
+**Definition.** A bilinear estimator is *equivariant* if $\tilde{s}(C_k X, C_k Y) = \tilde{s}(X, Y)$ for all $k$.
+
+**Lemma (Equivariant $\Leftrightarrow$ Symmetric Circulant).** *Since $\tilde{s}$ is a covariance estimator, $A$ must be symmetric. The bilinear estimator $X^T A Y$ is equivariant if and only if $A$ is a symmetric circulant:*
+$$
+A = \operatorname{circ}(a_0, a_1, \ldots, a_{\lfloor n/2 \rfloor}, \ldots, a_1) = \begin{bmatrix}
+a_0    & a_1    & \cdots & a_1    \\
+a_1    & a_0    & \cdots & \vdots \\
+\vdots & \vdots & \ddots & \vdots \\
+a_1    & \cdots & a_1    & a_0
+\end{bmatrix},
+$$
+*where $a_k = a_{n-k}$ for all $k$.*
+
+*Proof.* Since $\tilde{s}(C_k X, C_k Y) = X^T(C_k^T A C_k)Y$, equivariance holds iff $A = C_k^T A C_k$ for all $k$, which is equivalent to $A$ being circulant. Symmetry of $A$ further requires $a_k = a_{n-k}$, so $A$ is a symmetric circulant. $\square$
+
+This reduces the $n^2$ free parameters of $A$ to the $n$ entries of its first row. Applying the unbiasedness constraints then uniquely determines $A$, and the resulting estimator is exactly $\hat{\sigma}_{xy}$.
+
+## Properties of Circulant Matrices
+
+Let $C_1 = \operatorname{circ}(0, 1, 0, \ldots, 0)$ be the elementary shift-by-one matrix, so $C_1^k = C_k$. The following facts hold:
+
+1. **Power.** $C_k = C_1^k$, so applying a shift of $k$ is the same as applying a shift of 1 exactly $k$ times. As a consequence, every circulant matrix is a polynomial in $C_1$: $\operatorname{circ}(a_0, \ldots, a_{n-1}) = \sum_{k=0}^{n-1} a_k C_1^k$.
+
+2. **Transpose.** $C_k^T = C_{n-k} = C_k^{-1}$, since $C_k$ is a permutation matrix.
+
+3. **Circulant form.** $C_k = \operatorname{circ}(e_k)$, where $e_k$ is the standard basis vector with a 1 in position $k$ and 0s elsewhere. That is, $C_k$ is the circulant matrix whose first row has a single 1 on the $k$-th band.
+
+```{r}
+#| message: false
+#| warning: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(testthat)
+
+n <- 6
+k <- 2
+C1 <- circ(c(0, 1, rep(0, n - 2)))
+Ck <- circ(c(rep(0, k), 1, rep(0, n - k - 1)))
+
+test_that("circ constructs correct circulant matrix", {
+  a <- c(2, -1, 0, -1)
+  A <- circ(a)
+  expect_equal(A[1, ], a)
+  expect_equal(A[2, ], c(-1, 2, -1, 0))
+  expect_equal(A[3, ], c(0, -1, 2, -1))
+  expect_equal(A[4, ], c(-1, 0, -1, 2))
+})
+
+test_that("C_k = C_1^k", {
+  C1_power_k <- Reduce("%*%", rep(list(C1), k))
+  expect_equal(Ck, C1_power_k)
+})
+
+test_that("C_k^T = C_{n-k}", {
+  Cnk <- circ(c(rep(0, n - k), 1, rep(0, k - 1)))
+  expect_equal(t(Ck), Cnk)
+})
+
+test_that("C_k = circ(e_k)", {
+  for (k in 0:(n - 1)) {
+    e_k <- as.numeric(seq_len(n) - 1 == k)
+    Ck  <- circ(c(rep(0, k), 1, rep(0, n - k - 1)))
+    expect_equal(circ(e_k), Ck)
+  }
+})
+```
+
+## Solving for $A$
+
+Since $A$ is a symmetric circulant, it is determined by $(a_0, \ldots, a_{\lfloor n/2 \rfloor})$. The unbiasedness conditions reduce to a linear system in these entries.
+
+For a circulant $A$, the condition $\theta_x^T A \theta_y = 0$ for all piecewise-constant $\theta_x, \theta_y \in \Theta_L$ is equivalent to requiring that the sum of all entries of every $\ell \times \ell$ contiguous submatrix of $A$ is zero, for $\ell = L, \ldots, \lfloor n/2 \rfloor$. Denoting by $A_\ell$ such a submatrix, this reads
+
+$$
+\|A_\ell\|_1 = 0, \qquad \ell = L, \ldots, \lfloor n/2 \rfloor.
+$$
+
+For a symmetric circulant, this sum depends only on $(a_0, \ldots, a_{\lfloor n/2 \rfloor})$ and takes the explicit form
+
+$$
+g(\ell) = \ell\, a_0 + \sum_{i=1}^{\min\{\lfloor n/2 \rfloor,\, \ell\}} 2(\ell - i)\, a_i + \sum_{i=\lfloor n/2 \rfloor + 1}^{\ell} 2(\ell - i)\, a_{n-i}.
+$$
+
+For $L = 2$, setting $g(\ell) = 0$ for $\ell = 2, 3$ and using $a_0 = 1/n$ gives
+
+$$
+g(2) = 2a_0 + 2a_1 = 0 \implies a_1 = -a_0,
+$$
+$$
+g(3) = 3a_0 + 4a_1 + 2a_2 = 0 \implies a_2 = \tfrac{a_0}{2},
+$$
+
+and for $\ell \geq 4$ one shows by induction that $a_{\ell - 1} = 0$. Together with $a_0 = 1/n$, this uniquely determines $A$.
+
+```{r}
+#| message: false
+#| warning: false
+
+n <- 10
+L <- 2
+
+G  <- constraint_matrix(n, L)
+G
+
+ns <- null_space(G)
+ns <- ns / ns[1, 1]
+ns |> round(3)
+
+a_full <- ece_first_row(n, L)
+
+test_that("null space solution matches expected a for L = 2", {
+  a_expected <- c(1, -1, 1/2, rep(0, n - 5), 1/2, -1)
+  expect_equal(a_full, a_expected)
+})
+```
+
+## Matrix Form of ECE
+
+**Proposition.** For $L = 2$, the ECE $\hat{\sigma}_{xy} = X^T A Y$ where $A = \frac{1}{n}\operatorname{circ}(a)$ and
+
+$$
+a = \left(1,\; -1,\; \tfrac{1}{2},\; 0,\; \ldots,\; 0,\; \tfrac{1}{2},\; -1\right).
+$$
+
+*Proof.* Since $T_k(X,Y) = ((I-C_k)X)^T((I-C_k)Y)$, we have $T_k(X,Y) = X^T A_k Y$ where
+
+$$
+A_k = (I - C_k)^T(I - C_k) = 2I - C_k - C_k^T.
+$$
+
+Substituting into $\hat{\sigma}_{xy} = \frac{1}{2n}(2T_1 - T_2)$,
+
+$$
+A = \frac{1}{2n}(2A_1 - A_2) = \frac{1}{2n}\bigl(2(2I - C_1 - C_1^T) - (2I - C_2 - C_2^T)\bigr) = \frac{1}{n}\operatorname{circ}(a). \quad\square
+$$
+
+```{r}
+#| message: false
+#| warning: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+
+set.seed(1)
+n <- 10
+X <- rnorm(n)
+Y <- rnorm(n)
+
+# Construct A = (1/n) circ(a)
+a <- c(1, -1, 1/2, rep(0, n - 5), 1/2, -1)
+A <- circ(a) / n
+
+# Verify A_k = 2I - C_k - C_k^T matches lag_diff
+A1 <- lag_mat(n, 1)
+A2 <- lag_mat(n, 2)
+
+test_that("A_k matches lag_diff", {
+  expect_equal(as.numeric(X %*% A1 %*% Y), lag_diff(X, Y, k = 1))
+  expect_equal(as.numeric(X %*% A2 %*% Y), lag_diff(X, Y, k = 2))
+})
+
+test_that("X^T A Y matches equiv.cov", {
+  expect_equal(as.numeric(X %*% A %*% Y), equiv.cov(X, Y))
+})
+```
+
+## Derivation of $\mathbb{E}[X^T A Y]$
+
+Substituting $X = \theta_x + \varepsilon_x$ and $Y = \theta_y + \varepsilon_y$,
+
+$$
+X^T A Y = (\theta_x + \varepsilon_x)^T A (\theta_y + \varepsilon_y)
+= \theta_x^T A \theta_y + \theta_x^T A \varepsilon_y + \varepsilon_x^T A \theta_y + \varepsilon_x^T A \varepsilon_y.
+$$
+
+Taking expectations and using $\mathbb{E}[\varepsilon_x] = \mathbb{E}[\varepsilon_y] = 0$,
+
+$$
+\mathbb{E}[X^T A Y] = \theta_x^T A \theta_y + \theta_x^T A \mathbb{E}[\varepsilon_y] + \mathbb{E}[\varepsilon_x]^T A \theta_y + \mathbb{E}[\varepsilon_x^T A \varepsilon_y]
+= \theta_x^T A \theta_y + \mathbb{E}[\varepsilon_x^T A \varepsilon_y].
+$$
+
+For the remaining term, since $\varepsilon_x^T A \varepsilon_y$ is a scalar,
+
+$$
+\varepsilon_x^T A \varepsilon_y = \operatorname{tr}(\varepsilon_x^T A \varepsilon_y).
+$$
+
+By the cyclic property of trace, $\operatorname{tr}(\varepsilon_x^T A \varepsilon_y) = \operatorname{tr}(A \varepsilon_y \varepsilon_x^T)$. Taking the expectation and applying linearity,
+
+$$
+\mathbb{E}[\varepsilon_x^T A \varepsilon_y] = \operatorname{tr}(A\, \mathbb{E}[\varepsilon_y \varepsilon_x^T]) = \operatorname{tr}(A \cdot \sigma_{xy} I) = \sigma_{xy}\operatorname{tr}(A),
+$$
+
+where we used $\mathbb{E}[\varepsilon_y \varepsilon_x^T] = \sigma_{xy} I$.
+
+Therefore,
+
+$$
+\mathbb{E}[X^T A Y] = \theta_x^T A \theta_y + \sigma_{xy}\operatorname{tr}(A). \qquad \square
+$$
+
+## Derivation of $\operatorname{Var}(X^T A Y)$
+
+Using the same decomposition, write $X^T A Y = \theta_x^T A \theta_y + \theta_x^T A \varepsilon_y + \varepsilon_x^T A \theta_y + \varepsilon_x^T A \varepsilon_y$. Since the first term is a constant, it does not contribute to the variance, so
+
+$$
+\operatorname{Var}(X^T A Y) = \operatorname{Var}(\theta_x^T A \varepsilon_y + \varepsilon_x^T A \theta_y + \varepsilon_x^T A \varepsilon_y).
+$$
+
+Expanding,
+
+\begin{align*}
+\operatorname{Var}(X^T A Y) &= \operatorname{Var}(\theta_x^T A \varepsilon_y) + \operatorname{Var}(\varepsilon_x^T A \theta_y) + \operatorname{Var}(\varepsilon_x^T A \varepsilon_y) \\
+&\quad + 2\operatorname{Cov}(\theta_x^T A \varepsilon_y,\, \varepsilon_x^T A \theta_y) \\
+&\quad + 2\operatorname{Cov}(\theta_x^T A \varepsilon_y,\, \varepsilon_x^T A \varepsilon_y) \\
+&\quad + 2\operatorname{Cov}(\varepsilon_x^T A \theta_y,\, \varepsilon_x^T A \varepsilon_y).
+\end{align*}
+
+::: {.callout-note collapse="true"}
+## Derivation of each term
+
+**Term 1: $\operatorname{Var}(\theta_x^T A \varepsilon_y)$.**
+Since $\theta_x^T A$ is a fixed row vector, this is the variance of a linear form in $\varepsilon_y$:
+
+$$
+\operatorname{Var}(\theta_x^T A \varepsilon_y) = \theta_x^T A \operatorname{Var}(\varepsilon_y) A^T \theta_x = \sigma_y^2\, \theta_x^T A A^T \theta_x = \sigma_y^2\, \theta_x^T A^2 \theta_x,
+$$
+
+where the last equality uses symmetry of $A$.
+
+**Term 2: $\operatorname{Var}(\varepsilon_x^T A \theta_y)$.**
+By the same argument, $A \theta_y$ is a fixed vector, so
+
+$$
+\operatorname{Var}(\varepsilon_x^T A \theta_y) = \theta_y^T A^T \operatorname{Var}(\varepsilon_x) A \theta_y = \sigma_x^2\, \theta_y^T A^2 \theta_y.
+$$
+
+**Term 3: $\operatorname{Var}(\varepsilon_x^T A \varepsilon_y)$.**
+Apply the eigendecomposition $A = Q\Lambda Q^T$ and let $z_x = Q^T \varepsilon_x / \sigma_x$, $z_y = Q^T \varepsilon_y / \sigma_y$, so that $z_x, z_y \sim \mathcal{N}(0, I)$ with $\operatorname{Cov}(z_x, z_y) = \rho I$ where $\rho = \sigma_{xy}/(\sigma_x \sigma_y)$. Applying the eigendecomposition,
+
+$$
+\varepsilon_x^T A \varepsilon_y = \sigma_x \sigma_y\, z_x^T \Lambda z_y = \sigma_x \sigma_y \sum_i \lambda_i z_{x,i} z_{y,i}.
+$$
+
+Since $\operatorname{Cov}(z_x, z_y) = \rho I$ is diagonal, the pairs $(z_{x,i}, z_{y,i})$ are independent across $i$, so
+
+$$
+\operatorname{Var}(\varepsilon_x^T A \varepsilon_y) = \sigma_x^2 \sigma_y^2 \sum_i \lambda_i^2\, \operatorname{Var}(z_{x,i} z_{y,i}).
+$$
+
+For each $i$, $(z_{x,i}, z_{y,i})$ is a standard bivariate Gaussian with correlation $\rho$, so $\operatorname{Var}(z_{x,i} z_{y,i}) = 1 + \rho^2$ (see Appendix). Therefore,
+
+$$
+\operatorname{Var}(\varepsilon_x^T A \varepsilon_y) = \sigma_x^2 \sigma_y^2 (1 + \rho^2)\operatorname{tr}(A^2) = (\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2).
+$$
+
+**Term 4: $\operatorname{Cov}(\theta_x^T A \varepsilon_y,\, \varepsilon_x^T A \theta_y)$.**
+Since $\mathbb{E}[\varepsilon_x] = \mathbb{E}[\varepsilon_y] = 0$, both terms have zero expectation, so the covariance reduces to
+
+$$
+\operatorname{Cov}(\theta_x^T A \varepsilon_y,\, \varepsilon_x^T A \theta_y) = \mathbb{E}[(\theta_x^T A \varepsilon_y)(\varepsilon_x^T A \theta_y)] = \theta_x^T A\, \mathbb{E}[\varepsilon_y \varepsilon_x^T]\, A^T \theta_y = \sigma_{xy}\, \theta_x^T A^2 \theta_y,
+$$
+
+where we used $\mathbb{E}[\varepsilon_y \varepsilon_x^T] = \sigma_{xy} I$ and symmetry of $A$.
+
+**Terms 5 and 6: $\operatorname{Cov}(\theta_x^T A \varepsilon_y,\, \varepsilon_x^T A \varepsilon_y)$ and $\operatorname{Cov}(\varepsilon_x^T A \theta_y,\, \varepsilon_x^T A \varepsilon_y)$.**
+Since all terms have zero expectation, both covariances reduce to expectations of products involving one linear and one bilinear form in $(\varepsilon_x, \varepsilon_y)$. These are third-order moments of the zero-mean jointly Gaussian vector $(\varepsilon_x, \varepsilon_y)$, and all odd-order moments of a zero-mean Gaussian vanish. Therefore,
+
+$$
+\operatorname{Cov}(\theta_x^T A \varepsilon_y,\, \varepsilon_x^T A \varepsilon_y) = 0, \qquad \operatorname{Cov}(\varepsilon_x^T A \theta_y,\, \varepsilon_x^T A \varepsilon_y) = 0.
+$$
+
+:::
+
+Collecting all terms,
+
+$$
+\operatorname{Var}(X^T A Y) = \sigma_y^2\, \theta_x^T A^2 \theta_x + \sigma_x^2\, \theta_y^T A^2 \theta_y + 2\sigma_{xy}\, \theta_x^T A^2 \theta_y + (\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2).
+$$
+
+The noise contribution $(\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2) = O(1/n)$ by the lower bound on $\operatorname{tr}(A^2)$ (see Appendix B), which shows the estimator is consistent.
+
+## Solving for $A$ ($L > 2$)
+
+For $L > 2$, the unbiasedness constraints leave a multi-dimensional solution space for $a$, so we have freedom to optimize. The full variance is
+
+$$
+\operatorname{Var}(X^T A Y) = \sigma_y^2\, \theta_x^T A^2 \theta_x + \sigma_x^2\, \theta_y^T A^2 \theta_y + 2\sigma_{xy}\, \theta_x^T A^2 \theta_y + (\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2).
+$$
+
+Since $\theta_x$ and $\theta_y$ are unknown, the signal-dependent terms cannot be minimized directly. The only term we can control is the noise term $(\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2)$, which for fixed noise levels reduces to minimizing $\operatorname{tr}(A^2)$. This gives the optimization problem
+
+$$
+\min_{a \in \mathbb{R}^n} \operatorname{tr}(A^2) \quad \text{subject to} \quad \|A_\ell\|_1 = 0,\ \ell = L, \ldots, \lfloor n/2 \rfloor, n, \quad \operatorname{tr}(A) = 1,
+$$
+
+where $A = \operatorname{circ}(a)$.
+
+**Reducing to a norm minimization.** Since $A = \operatorname{circ}(a)$ is a circulant, every row of $A$ is a cyclic permutation of $a$ and therefore has the same squared norm $\|a\|^2$. The Frobenius norm of $A$ is thus
+
+$$
+\|A\|_F^2 = n\|a\|^2.
+$$
+
+Since $A$ is symmetric, $\operatorname{tr}(A^2) = \operatorname{tr}(A^T A) = \|A\|_F^2 = n\|a\|^2$. Minimizing $\operatorname{tr}(A^2)$ is therefore equivalent to minimizing $\|a\|^2$. Because the unbiasedness constraints are linear in $a$, the problem reduces to
+
+$$
+\min_{a \in \mathbb{R}^n} \|a\|^2 \quad \text{subject to} \quad \|A_\ell\|_1 = 0,\ \ell = L, \ldots, \lfloor n/2 \rfloor, n, \quad \operatorname{tr}(A) = 1,
+$$
+
+where $A = \operatorname{circ}(a)$. Both sets of constraints are linear in $a$, so this is a quadratic program with a unique solution — the minimum-norm point in the feasible affine subspace.
+
