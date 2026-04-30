@@ -32,6 +32,7 @@ We compare ECE against a segmentation method -- i.e., PELT with BIC penalty with
 textInput("ticker1", "Ticker 1:", value = "MSFT")
 textInput("ticker2", "Ticker 2:", value = "META")
 textInput("ticker3", "Ticker 3:", value = "NVDA")
+textInput("penalty", "Segmentation Penalty:", value = 0.01)
 ```
 ::: 
 
@@ -87,9 +88,9 @@ df_reactive <- reactive({
       X3 = X3 + params$h[,2]
     ) %>% 
     mutate(
-      X1_mean = segment_mean(X1),
-      X2_mean = segment_mean(X2),
-      X3_mean = segment_mean(X3)
+      X1_mean = segment_mean(X1, penalty="Manual", pen.value=input$penalty),
+      X2_mean = segment_mean(X2, penalty="Manual", pen.value=input$penalty),
+      X3_mean = segment_mean(X3, penalty="Manual", pen.value=input$penalty)
     )
 })
 
@@ -367,7 +368,7 @@ X3 0.002 0.146 1.000
 
 ```{R}
 #| context: server
-inject_mean <- function(df_init, scenario_num, signal=1){
+inject_mean <- function(df_init, scenario_num, signal=1, penalty="BIC", pen.value=NULL){
   params <- scenario(
     scenario_num, 
     n=nrow(df_init), 
@@ -382,9 +383,9 @@ inject_mean <- function(df_init, scenario_num, signal=1){
     ) %>% 
     # re-fit segmentation
     mutate(
-      X1_mean = segment_mean(X1),
-      X2_mean = segment_mean(X2),
-      X3_mean = segment_mean(X3)
+      X1_mean = segment_mean(X1, penalty=penalty, pen.value=pen.value),
+      X2_mean = segment_mean(X2, penalty=penalty, pen.value=pen.value),
+      X3_mean = segment_mean(X3, penalty=penalty, pen.value=pen.value)
     )
   return(df)
 }
@@ -411,48 +412,77 @@ output$boxplot <- renderPlot({
 
   res <- map_dfr(1:12, function(scenario_num) {
     scenario_df <- inject_mean(
-      df0, scenario_num=scenario_num, signal=input$signal
+      df0, scenario_num=scenario_num, signal=input$signal, 
+      penalty="Manual", pen.value= input$penalty
     )
     tibble(
       Scenario = scenario_num,
-      X1_X2 = ece.test(
+      X1_X2_ece = ece.test(
         scenario_df$X1, 
         scenario_df$X2
       )$estimate,
-      X1_X3 = ece.test(
+      X1_X3_ece = ece.test(
         scenario_df$X1, 
         scenario_df$X3
       )$estimate,
-      X2_X3 = ece.test(
+      X2_X3_ece = ece.test(
         scenario_df$X2, 
         scenario_df$X3
-      )$estimate
+      )$estimate,
+      X1_X2_pearson = cor(
+        scenario_df$X1 - scenario_df$X1_mean, 
+        scenario_df$X2 - scenario_df$X2_mean
+      ),
+      X1_X3_pearson = cor(
+        scenario_df$X1 - scenario_df$X1_mean, 
+        scenario_df$X3 - scenario_df$X3_mean
+      ),
+      X2_X3_pearson = cor(
+        scenario_df$X2 - scenario_df$X2_mean, 
+        scenario_df$X3 - scenario_df$X3_mean
+      ),
     )
   })
 
   res_long <- res %>%
     pivot_longer(
-      cols = c(X1_X2, X1_X3, X2_X3),
-      names_to = "Pair",
+      cols = c(
+        X1_X2_ece, X1_X3_ece, X2_X3_ece, 
+        X1_X2_pearson, X1_X3_pearson, X2_X3_pearson
+      ),
+      names_to = c("Pair", "Method"),
+      names_pattern = "(X[0-9]_X[0-9])_(.*)",
       values_to = "Correlation"
     )
 
   # plot box-plot
-  ggplot(res_long, aes(x = Pair, y = Correlation, color = factor(Scenario))) +
-    geom_boxplot(
+  ggplot(
+    res_long, 
+    aes(
+      x = Pair, y = Correlation, 
+      color = factor(Scenario), 
+      fill = Method,
+      group = interaction(Pair, Method)
+    )
+  ) + 
+    geom_boxplot( 
       outlier.shape = NA, 
-      fill = "lightgray", 
       alpha = 0.4, 
-      color = "black",
-      width = 0.4
-    ) +
-    geom_point(size = 2, alpha = 0.8) +
-    theme_minimal() +
+      color = "black", 
+      width = 0.4 
+    ) + 
+    geom_point(size = 2, alpha = 0.8, 
+      position = position_jitterdodge(
+        dodge.width = 0.6,  # same dodge width as boxplot
+        jitter.width = 0.15 # spread within each box
+      )
+    ) + 
+    theme_minimal() + 
     coord_flip() + 
-    labs(
-      title = "Distribution of Correlations by Matrix",
-      x = "Variable Pair",
-      y = "Correlation",
+    labs( 
+      title = "Distribution of Correlations by Matrix", 
+      x = "Variable Pair", 
+      y = "Correlation", 
       color = "Scenario"
     )
 })
@@ -461,3 +491,27 @@ output$boxplot <- renderPlot({
 ```{R}
 plotOutput("boxplot")
 ```
+
+::: {.callout-note collapse="true"}
+## Extreme Scenarios Are Volatile
+**Scenario 9**: Discordant Sin 
+This one is surprisingly volatile. Simulations show our estimator is unbiased, but the swings are maybe not so extreme. 
+
+**Scenario 10**: High-Frequency Square Wave
+This is a scenario that simulations indicate ECE is unbiased and does much better than segmentation. However, when we inject the mean into the stock data, it seems to make the estimates much more volatile. 
+
+**Scenario 11**
+It's worth noting that Scenario 11 doesn't show well on the box-plot because it is intrinsically random. 
+::: 
+
+::: {.callout-note collapse="true"}
+## Signal Strength Matters
+This is generally true for any of the stock combinations considered. 
+
+If the signal is easy to detect, segmentation is less volatile than ECE. This is somewhat expected. Recall that simulations tend to indicate that ECE is more variable than segmentation.
+
+When the signal strength is weak, `var(ECE) < var(segmentation)` 
+When the signal strength is strong, `var(ECE) > var(segmentation)` 
+::: 
+
+
