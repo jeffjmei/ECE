@@ -104,3 +104,49 @@ null_space <- function(G, tol = 1e-10) {
   ns <- sv$v[, (rank_G + 1):ncol(G), drop = FALSE]
 }
 
+#' Expand a Symmetric Half-Vector to a Full Circulant First Row
+#'
+#' Given the \eqn{\lfloor n/2 \rfloor + 1} unique entries
+#' \eqn{(a_0, a_1, \ldots, a_{\lfloor n/2 \rfloor})} of a symmetric circulant,
+#' reconstructs the full length-\eqn{n} first row using \eqn{a_{n-i} = a_i}.
+#'
+#' @param a_half A numeric vector of length \eqn{\lfloor n/2 \rfloor + 1}.
+#' @param n A positive integer giving the full vector length.
+#'
+#' @return A numeric vector of length \eqn{n}.
+#'
+#' @examples
+#' expand_sym(c(1, -1, 0.5), 4)
+#'
+#' @export
+expand_sym <- function(a_half, n) {
+  c(a_half, rev(a_half[2:(n - length(a_half) + 1)]))
+}
+
+#' ECE Circulant First Row
+#'
+#' Computes the first row of the ECE matrix \eqn{A = \frac{1}{n}\operatorname{circ}(a)}
+#' by solving the unbiasedness constraints via the null space of the constraint matrix.
+#' Returns the normalized half-vector expanded to the full first row.
+#'
+#' For \eqn{L = 2} the solution is unique. For \eqn{L > 2} the null space may be
+#' higher-dimensional; this function returns the first basis vector with \eqn{a_0 \neq 0}.
+#'
+#' @param n A positive integer giving the series length.
+#' @param L A positive integer giving the minimum segment length.
+#'
+#' @return A numeric vector of length \eqn{n}, the first row of \eqn{n \cdot A}.
+#'
+#' @examples
+#' ece_first_row(10, 2)
+#'
+#' @export
+ece_first_row <- function(n, L) {
+  G <- constraint_matrix(n, L)
+  ns <- null_space(G)
+  keep <- apply(ns, 2, function(v) abs(v[1]) > 1e-10)
+  a_half <- ns[, keep, drop = FALSE][, 1]
+  a_half <- a_half / a_half[1]
+  expand_sym(a_half, n)
+}
+
