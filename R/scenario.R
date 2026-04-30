@@ -951,6 +951,36 @@ scenario29 <- function(
   return(obj)
 }
 
+scenario30 <- function(
+    s12 = 0,
+    n = 100,
+    signal = 1,
+    seed = 321,
+    opt.param = NA) {
+  # Ultra Flip-Flop (Unison)
+  set.seed(seed)
+  S <- matrix(c(
+    1, s12,
+    s12, 1
+  ), byrow = T, ncol = 2)
+
+  h1 <- rep(c(1, 1, -1, -1), n / 4)
+  h2 <- rep(c(1, 1, -1, -1), n / 4)
+  h <- signal * cbind(h1, h2)
+
+  # Return Parameter Object
+  obj <- list(
+    scenario = 30,
+    n = n,
+    S = S,
+    h = h,
+    signal = signal,
+    seed = seed,
+    opt.param = opt.param
+  )
+  return(obj)
+}
+
 scenario <- function(
     scenario_num = 1,
     sxy = 0,
@@ -1020,6 +1050,8 @@ scenario <- function(
     params <- scenario28(sxy, n, signal, seed, ...)
   } else if (scenario_num == 29) {
     params <- scenario29(sxy, n, signal, seed, ...)
+  } else if (scenario_num == 30) {
+    params <- scenario30(sxy, n, signal, seed, ...)
   } else {
     stop("No such scenario. Try again.")
   }
