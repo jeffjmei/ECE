@@ -24,6 +24,7 @@ directory <- "~/Documents/Research/Code/ECE/dev/"
 export_power_file <- paste0(directory, "power-sims.csv")
 export_est_file <- paste0(directory, "est-sims.csv")
 export_mse_file <- paste0(directory, "mse-sims.csv")
+export_type1_file <- paste0(directory, "type1-sims.csv")
 ```
 
 # Simulate Scenarios
@@ -40,24 +41,26 @@ We consider a variety of simulations, which have varying levels of mean structur
 
 We simulate the results and store them in a csv file. This way, we reduce our computational burden and we can conveniently call plots to provide different views of the data. 
 
-```{R, echo=FALSE}
+To begin, we produce our simulations by first producing a grid of parameters we want to simulate. Then, they are simulated using `simulate_grid`. 
+
+```{R, echo=FALSE, eval=FALSE}
 # Set Simulation Parameters
 param_grid <- expand.grid(
-  scenario = 1:11,
-  method = c("ECE", "demean", "desmooth"),
-  sxy = seq(0, 0.5, 0.05),
+  scenario = 12,
+  method = c("demean", "desmooth", "ECE", "oracle"),
+  sxy = 0,
   sx = 1,
   sy = 1,
   n = c(200, 1000),
-  n_sim = 1000
+  signal = c(5, 10),
+  n_sim = 5000
 )
-```
 
-```{R, echo=FALSE, warning=FALSE, message=FALSE, eval=FALSE}
 # Run Simulations
 simulate_grid(param_grid, "power", export_power_file)
 simulate_grid(param_grid, "est", export_est_file)
 simulate_grid(param_grid, "mse", export_mse_file)
+simulate_grid(param_grid, "type1", export_type1_file)
 ```
 
 ## Analyze Results
@@ -67,63 +70,108 @@ simulate_grid(param_grid, "mse", export_mse_file)
 sim_power <- readr::read_csv(export_power_file)
 sim_est <- readr::read_csv(export_est_file)
 sim_mse <- readr::read_csv(export_mse_file)
+sim_type1 <- readr::read_csv(export_type1_file)
 ```
 
 ```{R, echo=FALSE, message=FALSE, warning=FALSE}
 # Produce Plots for Metrics
-scenarios   <- 1:12
-n_sim       <- 1000
-sample_size <- 1000
+scenarios <- 1:12
+n_sim <- 1000
+sample_size <- 200
 
 # scenario instance
 scenario_plots <- map(
   scenarios,
   ~ plot_scenario(
-      scenario(.x, n=sample_size)
-    )
+    scenario(.x, n = sample_size)
+  )
 )
 # metrics
 power_plots <- map(
   scenarios,
   ~ plot_power(
-      sim_power,
-      sample_size   = sample_size,
-      scenario      = .x,
-      n_simulations = n_sim
-    )
+    sim_power,
+    sample_size   = sample_size,
+    scenario      = .x,
+    n_simulations = n_sim
+  )
 )
 est_plots <- map(
   scenarios,
   ~ plot_est(
-      sim_est,
-      sample_size   = sample_size,
-      scenario      = .x,
-      n_simulations = n_sim
-    )
+    sim_est,
+    sample_size   = sample_size,
+    scenario      = .x,
+    n_simulations = n_sim
+  )
 )
 mse_plots <- map(
   scenarios,
   ~ plot_mse(
-      sim_mse,
-      sample_size   = sample_size,
-      scenario      = .x,
-      n_simulations = n_sim
-    )
+    sim_mse,
+    sample_size   = sample_size,
+    scenario      = .x,
+    n_simulations = n_sim
+  )
 )
 # aggregate plots
 combined_plots <- map(
   seq_along(scenarios),
   function(i) {
     (scenario_plots[[i]] | est_plots[[i]]) /
-    (power_plots[[i]] | mse_plots[[i]])
+      (power_plots[[i]] | mse_plots[[i]])
   }
 )
 combined_plots
 ```
 
-
-
 In all simulations considered, ECE is unbiased, even in misspecified cases like scenario 8 and 9, maximally frequent change point scenarios like 10, and in randomly distributed changes as in 11. While the mean-removing strategies are reasonably effective in many simple cases, they struggle once the changes become too erratic such as in scenario 8. 
+
+## Type 1 Error
+
+```{R, echo=FALSE, message=FALSE, warning=FALSE}
+type1_plots <- map(
+  scenarios,
+  ~ plot_type1(
+    sim_type1,
+    sample_size   = sample_size,
+    scenario      = .x,
+    n_simulations = 5000
+  )
+)
+# aggregate plots
+combined_type1_plots <- map(
+  seq_along(scenarios),
+  function(i) {
+    (scenario_plots[[i]] | type1_plots[[i]])
+  }
+)
+combined_type1_plots
+```
+
+###  Misspecified Linear
+
+Is ECE still unbiased in the misspecified-linear case? 
+
+We analyze the type 1 error 
+
+```{R, echo=FALSE, warning=FALSE}
+type1_s12_plots <- map(
+  c(1, 2, 3, 5, 10),
+  ~ plot_type1(
+    sim_type1,
+    sample_size   = sample_size,
+    scenario      = 12,
+    n_simulations = 5000,
+    signal_val = .x
+  ) + labs(title=glue::glue("Scenario 12 (n = {sample_size}, signal_val = {.x})"))
+)
+type1_s12_plots
+```
+
+When we consider `signal_val` > 3, we see that ECE tends to produce NA values. 
+
+--- 
 
 ```{R, echo=FALSE, message=FALSE, warning=FALSE}
 plot_segment <- function(X, params) {
@@ -160,12 +208,12 @@ bias <- sim_est %>%
   geom_hline(yintercept = 0) +
   geom_line() +
   geom_point() +
-  xlab("signal strength") + 
-  ylab("correlation estimate") + 
-  ggtitle("Mean-Removing Techniques are Biased (n=200, scenario=4)") + 
+  xlab("signal strength") +
+  ylab("correlation estimate") +
+  ggtitle("Mean-Removing Techniques are Biased (n=200, scenario=4)") +
   theme_minimal()
 
-params <- scenario(4, n=200, sxy=0, signal=0.25)
+params <- scenario(4, n = 200, sxy = 0, signal = 0.25)
 plot_segment(generate_data(params), params) | bias
 ```
 
@@ -184,13 +232,13 @@ power <- sim_power %>%
   geom_line() +
   geom_point() +
   labs(
-    x="signal",
-    y="power",
-    title="Power Reflects Bias (n=200, scenario=4)"
-  ) + 
+    x = "signal",
+    y = "power",
+    title = "Power Reflects Bias (n=200, scenario=4)"
+  ) +
   theme_minimal()
 
-params <- scenario(4, n=200, sxy=0, signal=0.25)
+params <- scenario(4, n = 200, sxy = 0, signal = 0.25)
 plot_segment(generate_data(params), params) | power
 ```
 
