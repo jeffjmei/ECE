@@ -1,0 +1,13 @@
+---
+title: "Other Mathematical Results"
+---
+
+## Lower Bound on $\operatorname{tr}(A^2)$
+
+Since $\operatorname{tr}(A) = \sum_i \lambda_i = 1$ and $\operatorname{tr}(A^2) = \sum_i \lambda_i^2$, Jensen's inequality gives
+
+$$
+\operatorname{tr}(A^2) = \sum_i \lambda_i^2 \geq \frac{\left(\sum_i \lambda_i\right)^2}{n} = \frac{1}{n},
+$$
+
+with equality when all eigenvalues are equal. Thus the noise contribution $(\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2) = O(1/n)$, which shows the estimator is consistent.
