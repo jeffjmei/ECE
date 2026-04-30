@@ -1,0 +1,19 @@
+project:
+  type: book
+
+book:
+  title: "ECE Notes"
+  author: "Jeff Mei"
+  date: today
+  chapters:
+    - index.qmd
+    - model-assumptions.qmd
+    - lagged-differences.qmd
+    - bilinear-form.qmd
+  appendices:
+    - math-background.qmd
+    - math-results.qmd
+
+format:
+  html:
+    theme: cosmo
