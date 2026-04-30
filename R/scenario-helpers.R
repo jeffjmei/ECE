@@ -136,3 +136,42 @@ plot.ece <- function(X) {
   }
   par(mfrow = c(1, 1))
 }
+
+plot_scenario_n <- function(sim_results, sample_size, scenario, sdx = 1, sdy = 1, opt.param = NA) {
+  sim_results %>%
+    filter(
+      n == sample_size,
+      method %in% c(
+        "oracle",
+        "ECE",
+        "segment-ECE",
+        "segmentation",
+        "segment-MBIC",
+        "segment-AIC"
+      ),
+      scenario_num == scenario,
+      metric == "power",
+      sx == sdx, sy == sdy, sxy == 0
+    ) %>%
+    mutate(method = factor(
+      method,
+      levels = c(
+        "segment-AIC",
+        "segment-MBIC",
+        "segmentation",
+        "segment-ECE",
+        "ECE",
+        "oracle"
+      )
+    )) %>%
+    ggplot(aes(x = export_vals, y = method, color = method), alpha = 0.5) +
+    geom_vline(xintercept = 0.05) +
+    geom_point() +
+    labs(title = paste("n =", sample_size)) +
+    # xlim(0, 0.1) +
+    coord_cartesian(xlim = c(0, 0.1)) +
+    xlab("Type I Error") +
+    ylab("Method") +
+    theme_minimal() +
+    theme(legend.position = "none")
+}
