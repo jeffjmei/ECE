@@ -150,3 +150,33 @@ ece_first_row <- function(n, L) {
   expand_sym(a_half, n)
 }
 
+#' Minimum-Norm ECE First Row
+#'
+#' Finds the first row \eqn{a} of the ECE matrix \eqn{A = \frac{1}{n}\operatorname{circ}(a)}
+#' with minimum \eqn{\|a\|^2}, subject to the unbiasedness constraints
+#' \eqn{\|A_\ell\|_1 = 0} for \eqn{\ell = L, \ldots, \lfloor n/2 \rfloor, n} and
+#' \eqn{\operatorname{tr}(A) = 1}. This minimizes \eqn{\operatorname{tr}(A^2)} and
+#' hence the noise term of \eqn{\operatorname{Var}(X^T A Y)}.
+#'
+#' For \eqn{L = 2} the solution coincides with \code{ece_first_row}. For \eqn{L > 2}
+#' the constraint set is larger and the minimum-norm solution is strictly shorter
+#' than an arbitrary null-space element.
+#'
+#' @param n A positive integer giving the series length.
+#' @param L A positive integer giving the minimum segment length.
+#'
+#' @return A numeric vector of length \eqn{n}, the first row of \eqn{n \cdot A}.
+#'
+#' @examples
+#' ece_min_norm(10, 2)
+#' ece_min_norm(10, 3)
+#'
+#' @export
+ece_min_norm <- function(n, L) {
+  G <- constraint_matrix(n, L)
+  G_aug <- rbind(c(1, rep(0, ncol(G) - 1)), G)
+  b_aug <- c(1, rep(0, nrow(G)))
+  a_half <- crossprod(G_aug, solve(tcrossprod(G_aug), b_aug))
+  expand_sym(a_half, n)
+}
+
