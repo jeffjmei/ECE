@@ -1,0 +1,38 @@
+---
+title: "Model Assumptions"
+---
+
+## Error Structure
+
+We observe input data sequences $X = (X_1, \ldots, X_n)$ and $Y = (Y_1, \ldots, Y_n)$. Each observation decomposes into a mean component and an error component:
+
+$$
+X_i = \theta_{x,i} + \varepsilon_{x,i}, \qquad Y_i = \theta_{y,i} + \varepsilon_{y,i}.
+$$
+
+The error terms $(\varepsilon_{x,i}, \varepsilon_{y,i})$ have zero mean and covariance matrix
+
+$$
+\Sigma = \begin{bmatrix} \sigma_x^2 & \sigma_{xy} \\ \sigma_{xy} & \sigma_y^2 \end{bmatrix}.
+$$
+
+We assume there is no autocorrelation: for $i \neq j$,
+
+$$
+\operatorname{Cov}(\varepsilon_{x,i}, \varepsilon_{x,j})
+= \operatorname{Cov}(\varepsilon_{y,i}, \varepsilon_{y,j})
+= \operatorname{Cov}(\varepsilon_{x,i}, \varepsilon_{y,j})
+= 0.
+$$
+
+Contemporaneous dependence between $X$ and $Y$ is captured by $\sigma_{xy} = \operatorname{Cov}(\varepsilon_{x,i}, \varepsilon_{y,i})$, the main quantity of interest in these notes.
+
+## Mean Structure
+
+The mean components $\theta_x = (\theta_{x,1}, \ldots, \theta_{x,n})$ and $\theta_y = (\theta_{y,1}, \ldots, \theta_{y,n})$ are assumed to be piecewise constant. We call index $i$ a change point when $\theta_i \neq \theta_{i+1}$, and collect all change points in $\tau = (\tau_1, \ldots, \tau_J)$ in ascending order. With $\tau_0 = 0$ and $\tau_{J+1} = n$, the shortest segment length is
+
+$$
+\mathcal{L}(\theta) = \min_{0 \le j \le J} \{\tau_{j+1} - \tau_j\}, \qquad \Theta_L = \{\theta : \mathcal{L}(\theta) \ge L\}.
+$$
+
+This allows frequent mean shifts while ensuring a minimum spacing $L$ between consecutive change points.
