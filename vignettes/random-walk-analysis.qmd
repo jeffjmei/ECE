@@ -104,15 +104,13 @@ sim_data <- eventReactive(input$resim, {
 
   tibble(
     index = 1:input$n,
-    #X1 = input$hx + ex,
-    #X2 = input$hy + ey
     X1 = ex,
     X2 = ey
   ) %>%
-    mutate(
-      X1_mean = segment_mean(X1),
-      X2_mean = segment_mean(X2)
-    )
+  mutate(
+    X1_mean = segment_mean(X1),
+    X2_mean = segment_mean(X2)
+  )
 })
 
 ```
@@ -270,12 +268,14 @@ We apply mean-segmentation using PELT with default BIC penalty and `minseglen = 
 
 Notice that the **ECE estimates for variance are extremely deflated**. It should come as no surprise that there's an excess of negative estimates for variance. As a consequence, **NA values are often produced in the ECE correlation matrix**. 
 
+Overall, this analysis supports the notion that ECE may not be well-equipped to handle random-walk time series such as stock data. 
 
 # More Work
 - simulate whether the residual consistently estimates the true variance
 - histogram of the covariance matrix 
-- strategy: take first difference as pre-processing step
-- compare this against a model that is not misspecified
+- [x] strategy: take first difference as pre-processing step
+  - Doesn't work. No longer a change point problem
+- [x] compare this against a model that is not misspecified
 - [x] plot ECE regression plot
 
 
