@@ -79,3 +79,28 @@ constraint_matrix <- function(n, L) {
   }
   G
 }
+
+#' Null Space of a Matrix
+#'
+#' Computes the null space of a matrix via SVD.
+#'
+#' @param G A numeric matrix.
+#' @param tol Tolerance for identifying zero singular values.
+#'
+#' @return A matrix whose columns form a basis for the null space of \eqn{G}.
+#'
+#' @examples
+#' null_space(constraint_matrix(10, 2))
+#'
+#' @export
+null_space <- function(G, tol = 1e-10) {
+  # Apply Singular Value Decomposition
+  sv <- svd(G, nu = 0, nv = ncol(G))
+
+  # Find Nonzero Singular Values
+  rank_G <- sum(sv$d > tol)
+
+  # Nullspace = Columns Associated with Trivial Singular Values
+  ns <- sv$v[, (rank_G + 1):ncol(G), drop = FALSE]
+}
+
