@@ -79,8 +79,20 @@ segment_mean_vec <- function(x, method = "PELT", penalty = "BIC", minseglen = 2,
   segmented_mean(x, cp)
 }
 
-segment_mean_mat <- function(x, method = "PELT", penalty = "BIC", minseglen = 2, pen.value = NULL) {
-  map(as.data.frame(x), segment_mean_vec) %>%
+segment_mean_mat <- function(
+    x,
+    method = "PELT",
+    penalty = "BIC",
+    minseglen = 2,
+    pen.value = NULL) {
+  map(as.data.frame(x), ~
+    segment_mean_vec(
+      .x,
+      method = method,
+      penalty = penalty,
+      minseglen = minseglen,
+      pen.value = pen.value
+    )) %>%
     do.call(what = cbind)
 }
 
