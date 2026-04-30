@@ -88,3 +88,45 @@ plot_type1 <- function(sim_type1, sample_size, scenario, n_simulations, signal_v
     ) +
     theme_minimal()
 }
+
+t1_table <- function(df, scenario) {
+  # Enforce method order
+  desired <- c(
+    "Oracle",
+    "ECE",
+    "Segment-ECE",
+    "Segment (BIC)",
+    "Segment (MBIC)",
+    "Segment (AIC)"
+  )
+  tbl <- df %>%
+    filter(scenario_num == scenario) %>%
+    mutate(
+      # Clean up method names
+      method = recode(
+        method,
+        "segment-ECE" = "Segment-ECE",
+        "segmentation" = "Segment (BIC)",
+        "ECE" = "ECE",
+        "segment-AIC" = "Segment (AIC)",
+        "segment-MBIC" = "Segment (MBIC)",
+        "oracle" = "Oracle"
+      )
+    ) %>%
+    select(
+      n,
+      method,
+      export_vals
+    ) %>%
+    pivot_wider(
+      names_from = method,
+      values_from = export_vals
+    ) %>%
+    round(3) %>%
+    # enforce order
+    dplyr::relocate(
+      dplyr::any_of(desired),
+      .after = n
+    )
+  return(tbl)
+}
