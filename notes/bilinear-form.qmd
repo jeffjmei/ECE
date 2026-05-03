@@ -395,3 +395,84 @@ For $\ell \geq L$, $g(\ell) = 2\sum_k c_k k$. Applying the Gaussian sums $\sum_{
 $$\sum_{k=1}^L c_k k = \frac{1}{nL(L-1)}\left[(2L+1)\frac{L(L+1)}{2} - \frac{3L(L+1)(2L+1)}{6}\right] = \frac{(2L+1)L(L+1)}{nL(L-1)}\left[\frac{1}{2} - \frac{1}{2}\right] = 0.$$
 Therefore $g(\ell) = 0$ for all $\ell \geq L$. $\square$
 
+## The Regression Estimator is the Minimum-Norm Estimator
+
+Having established feasibility, it remains to show that $\tilde{a}_{\mathrm{reg}}$ is the minimum-norm feasible solution.
+
+**Setup.** Since the unbiasedness constraints are homogeneous ($Ga = 0$), every feasible $a$ lies in $\mathrm{null}(G)$. The trace constraint $\mathrm{tr}(A) = 1$ is the only inhomogeneous condition, cutting out an affine hyperplane within $\mathrm{null}(G)$:
+$$F = \{a \in \mathrm{null}(G) : \mathrm{tr}(A) = 1\}.$$
+Let $a^* \in F$ be the minimum-norm feasible solution. We will show $a^* = \tilde{a}_{\mathrm{reg}}$ by writing $a^* = \tilde{a}_{\mathrm{reg}} + v$ with $v = a^* - \tilde{a}_{\mathrm{reg}}$ and expanding:
+$$\|a^*\|^2 = \|\tilde{a}_{\mathrm{reg}}\|^2 + \|v\|^2 + 2\langle\tilde{a}_{\mathrm{reg}}, v\rangle.$$
+Steps 1 and 2 below show $\langle\tilde{a}_{\mathrm{reg}}, v\rangle = 0$, so the expansion reduces to
+$$\|a^*\|^2 = \|\tilde{a}_{\mathrm{reg}}\|^2 + \|v\|^2.$$
+Since $a^*$ is optimal and $\tilde{a}_{\mathrm{reg}}$ is feasible, $\|a^*\|^2 \leq \|\tilde{a}_{\mathrm{reg}}\|^2$, so
+$$\|a^*\|^2 = \|\tilde{a}_{\mathrm{reg}}\|^2 + \|v\|^2 \leq \|\tilde{a}_{\mathrm{reg}}\|^2 \implies \|v\|^2 \leq 0.$$
+Therefore $v = 0$ and $a^* = \tilde{a}_{\mathrm{reg}}$.
+
+**Step 1: Characterize vectors satisfying $(*)$.**
+
+Since both $a^*, \tilde{a}_{\mathrm{reg}} \in F$, the difference $v = a^* - \tilde{a}_{\mathrm{reg}}$ satisfies $Gv = 0$ (as both $Ga^* = 0$ and $G\tilde{a}_{\mathrm{reg}} = 0$) and $\mathrm{tr}(\mathrm{circ}(v)) = \mathrm{tr}(\mathrm{circ}(a^*)) - \mathrm{tr}(\mathrm{circ}(\tilde{a}_{\mathrm{reg}})) = 1 - 1 = 0$. Since $\mathrm{tr}(\mathrm{circ}(v)) = nv_0$, we have $v_0 = 0$. So $v$ satisfies
+$$Gv = 0, \quad v_0 = 0. \tag{$*$}$$
+
+Let $v$ satisfy $(*)$. The constraint matrix $G$ has entries $G_{\ell,0} = \ell$ and $G_{\ell,k} = 2(\ell-k)^+$ for $k \geq 1$, so $Gv = 0$ requires for each $\ell = L, \ldots, \lfloor n/2 \rfloor$:
+
+$$\ell\, v_0 + \sum_{k=1}^{\lfloor n/2 \rfloor} 2(\ell - k)^+\, v_k = 0.$$
+
+We analyze this system by applying the first-difference matrix $M$ twice. If $G$ has $m$ rows, $M$ is the $(m-1) \times m$ bidiagonal Toeplitz matrix
+
+$$M = \begin{pmatrix} -1 & 1 & 0 & \cdots & 0 \\ 0 & -1 & 1 & \cdots & 0 \\ \vdots & & \ddots & \ddots & \vdots \\ 0 & 0 & \cdots & -1 & 1 \end{pmatrix},$$
+
+so that $(MG)_\ell = G_{\ell+1} - G_\ell$. Since $Gv = 0$ implies $MGv = 0$ and $M^2Gv = 0$, each application yields simpler conditions.
+
+**Step 1a: Show $v_k = 0$ for $k > L$.**
+
+*First application ($MGv = 0$).* Subtracting the $\ell$-th row from the $(\ell+1)$-th gives
+
+$$v_0 + 2\sum_{k=1}^{\ell} v_k = 0, \qquad \ell = L, \ldots, \lfloor n/2 \rfloor - 1.$$
+
+The resulting matrix $MG$ has a column of $1$s in position $k=0$ and $2$s in positions $k = 1, \ldots, \ell$ (filling in one more entry per row):
+
+$$MG = \begin{pmatrix} 1 & 2 & \cdots & 2 & 0 & 0 & \cdots \\ 1 & 2 & \cdots & 2 & 2 & 0 & \cdots \\ 1 & 2 & \cdots & 2 & 2 & 2 & \cdots \\ \vdots & & & & & & \ddots \end{pmatrix}.$$
+
+*Second application ($M^2Gv = 0$).* Subtracting consecutive equations from $MGv = 0$ gives $2v_{\ell+1} = 0$ for each $\ell = L, \ldots, \lfloor n/2 \rfloor - 2$, so $v_k = 0$ for all $k > L$.
+
+The matrix $M^2G$ has exactly one nonzero entry per row — a $2$ in column $\ell + 1$ — making the zero conditions on each $v_k$ explicit:
+
+$$M^2G = \begin{pmatrix} 0 & \cdots & 0 & 2 & 0 & 0 & \cdots \\ 0 & \cdots & 0 & 0 & 2 & 0 & \cdots \\ 0 & \cdots & 0 & 0 & 0 & 2 & \cdots \\ \vdots & & & & & & \ddots \end{pmatrix}.$$
+
+**Step 1b: Characterize $(v_1, \ldots, v_L)$.**
+
+Having zeroed out $v_k$ for $k > L$, we need two conditions on the remaining entries $(v_1, \ldots, v_L)$. We obtain these by working back through $MGv = 0$ and $Gv = 0$ at $\ell = L$ — each provides one independent condition, and no further applications of $M$ are needed to characterize the null space.
+
+Recall from Step 1a that $MGv = 0$ gives
+$$v_0 + 2\sum_{k=1}^{\ell} v_k = 0, \qquad \ell = L, \ldots, \lfloor n/2 \rfloor - 1.$$
+Setting $\ell = L$ and substituting $v_k = 0$ for $k > L$ gives $v_0 + 2\sum_{k=1}^L v_k = 0$. Since $v_0 = 0$ by $(*)$, this forces $\sum_{k=1}^L v_k = 0$.
+
+Similarly, recall from Step 1a that $Gv = 0$ gives $\ell\, v_0 + \sum_{k=1}^{\lfloor n/2 \rfloor} 2(\ell-k)^+\, v_k = 0$. Setting $\ell = L$ and splitting the sum:
+$$L\, v_0 + \sum_{k=1}^{L} 2(L-k)^+\, v_k + \sum_{k=L+1}^{\lfloor n/2 \rfloor} 2(L-k)^+\, v_k = 0.$$
+The second sum vanishes since $(L-k)^+ = 0$ for $k > L$, and $v_0 = 0$ by $(*)$, leaving $\sum_{k=1}^L 2(L-k)\, v_k = 0$. Expanding and applying $\sum_{k=1}^L v_k = 0$ gives $\sum_{k=1}^L k\, v_k = 0$.
+
+Therefore the vectors satisfying $(*)$ are exactly those with $v_0 = 0$, $v_k = 0$ for $k > L$, and $(v_1, \ldots, v_L)$ satisfying
+
+$$\sum_{k=1}^L v_k = 0, \qquad \sum_{k=1}^L k\,v_k = 0.$$
+
+To summarize, each level of differentiation contributes one layer of structure:
+
+| Equation | Conclusion |
+|---|---|
+| $M^2Gv = 0$ | $v_k = 0$ for $k > L$ |
+| $MGv = 0$ at $\ell = L$ | $\sum_{k=1}^L v_k = 0$ |
+| $Gv = 0$ at $\ell = L$ | $\sum_{k=1}^L k\, v_k = 0$ |
+
+**Step 2: Show $\tilde{a}_{\mathrm{reg}} \perp v$.**
+
+Since $v_0 = 0$ and $v_k = 0$ for $k > L$, and $(\tilde{a}_{\mathrm{reg}})_k = -c_k$ for $k = 1, \ldots, L$ and $0$ otherwise,
+
+$$\tilde{a}_{\mathrm{reg}} \cdot v = -\sum_{k=1}^L c_k\, v_k.$$
+
+Since $c_k = \frac{2L+1-3k}{nL(L-1)}$, we can write $c_k = \alpha + \beta k$ with $\alpha = \frac{2L+1}{nL(L-1)}$ and $\beta = \frac{-3}{nL(L-1)}$,
+
+$$\sum_{k=1}^L c_k\, v_k = \alpha \sum_{k=1}^L v_k + \beta \sum_{k=1}^L k\,v_k = 0,$$
+
+where both sums vanish by Step 1. Therefore $\tilde{a}_{\mathrm{reg}} \cdot v = 0$ for all $v$ satisfying $(*)$. $\square$
+
