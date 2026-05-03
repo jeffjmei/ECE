@@ -376,3 +376,22 @@ $$
 Since each $A_k = 2I - C_k - C_k^T$ is a symmetric circulant, $A$ is also a symmetric circulant, determined by its first row $a \in \mathbb{R}^n$.
 
 **Conjecture.** The first row $a$ of the regression matrix $A$ is the minimum-norm solution described in the previous section. That is, the regression approach and the Frobenius-norm minimization produce the same estimator.
+
+## Feasibility of the Regression Estimator
+
+To show that $\tilde{a}_{\mathrm{reg}}$ is the minimum-norm solution, we must verify it is feasible, i.e., that it satisfies the trace and unbiasedness constraints.
+
+The regression estimator is the bilinear form $X^T A Y$ with $A = \sum_{k=1}^L c_k A_k$, where $c_k = H_{1,k} = \frac{2L+1-3k}{nL(L-1)}$. Since we evaluate $g(\ell)$ only for $\ell \geq L$, every $k \leq L$ satisfies $k \leq \ell$, so the Lemma (see Other Mathematical Results) gives $\mathbf{1}_\ell^T A_k \mathbf{1}_\ell = 2k$. By linearity,
+$$g(\ell) = \mathbf{1}_\ell^T A\, \mathbf{1}_\ell = 2\sum_{k=1}^L c_k k,$$
+which is independent of $\ell$. Both constraints then reduce to evaluating $\sum_k c_k$ and $\sum_k c_k k$ via the closed form of $c_k$.
+
+**Trace constraint: $\operatorname{tr}(A) = 1$.**
+Since $\operatorname{tr}(A_k) = \operatorname{tr}(2I - C_k - C_k^T) = 2n$ (as $C_k$ has no fixed points for $k \geq 1$), we have $\operatorname{tr}(A) = 2n\sum_k c_k$. Applying the Gaussian sum $\sum_{k=1}^L k = \frac{L(L+1)}{2}$,
+$$\sum_{k=1}^L c_k = \frac{1}{nL(L-1)}\left[(2L+1)L - \frac{3L(L+1)}{2}\right] = \frac{1}{n(L-1)}\cdot\frac{L-1}{2} = \frac{1}{2n}.$$
+Therefore $\operatorname{tr}(A) = 2n \cdot \frac{1}{2n} = 1$. $\square$
+
+**Unbiasedness: $g(\ell) = 0$ for $\ell = L, \ldots, \lfloor n/2 \rfloor$.**
+For $\ell \geq L$, $g(\ell) = 2\sum_k c_k k$. Applying the Gaussian sums $\sum_{k=1}^L k = \frac{L(L+1)}{2}$ and $\sum_{k=1}^L k^2 = \frac{L(L+1)(2L+1)}{6}$,
+$$\sum_{k=1}^L c_k k = \frac{1}{nL(L-1)}\left[(2L+1)\frac{L(L+1)}{2} - \frac{3L(L+1)(2L+1)}{6}\right] = \frac{(2L+1)L(L+1)}{nL(L-1)}\left[\frac{1}{2} - \frac{1}{2}\right] = 0.$$
+Therefore $g(\ell) = 0$ for all $\ell \geq L$. $\square$
+
