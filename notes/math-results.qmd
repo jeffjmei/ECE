@@ -37,3 +37,48 @@ $$
 $$
 
 with equality when all eigenvalues are equal. Thus the noise contribution $(\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2) = O(1/n)$, which shows the estimator is consistent.
+
+## Closed Form of $(K^TK)^{-1}K^T$
+
+The design matrix is $K \in \mathbb{R}^{L \times 2}$ with $K_{k,1} = 1$ and $K_{k,2} = k$ for $k = 1, \ldots, L$. We use the Gaussian sum identities
+
+$$\sum_{k=1}^L 1 = L, \qquad \sum_{k=1}^L k = \frac{L(L+1)}{2}, \qquad \sum_{k=1}^L k^2 = \frac{L(L+1)(2L+1)}{6}.$$
+
+**Step 1: Compute $K^TK$.**
+
+$$K^TK = \begin{bmatrix} L & \dfrac{L(L+1)}{2} \\[6pt] \dfrac{L(L+1)}{2} & \dfrac{L(L+1)(2L+1)}{6} \end{bmatrix}.$$
+
+**Step 2: Compute $\det(K^TK)$.**
+
+$$\det(K^TK) = \frac{L^2(L+1)(2L+1)}{6} - \frac{L^2(L+1)^2}{4} = L^2(L+1)\cdot\frac{2(2L+1) - 3(L+1)}{12} = \frac{L^2(L^2-1)}{12}.$$
+
+**Step 3: Invert $K^TK$.**
+
+Applying the $2\times 2$ inverse formula and simplifying,
+
+$$
+(K^TK)^{-1} = \frac{12}{L^2(L^2-1)}\begin{bmatrix} \dfrac{L(L+1)(2L+1)}{6} & -\dfrac{L(L+1)}{2} \\[6pt] -\dfrac{L(L+1)}{2} & L \end{bmatrix} = \begin{bmatrix} \dfrac{2(2L+1)}{L(L-1)} & \dfrac{-6}{L(L-1)} \\[6pt] \dfrac{-6}{L(L-1)} & \dfrac{12}{L(L-1)(L+1)} \end{bmatrix}.
+$$
+
+**Step 4: Multiply by $K^T$.**
+
+The $j$-th column of $(K^TK)^{-1}K^T$ is $(K^TK)^{-1}(1,j)^T$. Computing each row,
+
+$$
+\bigl((K^TK)^{-1}K^T\bigr)_{1,j} = \frac{2(2L+1)}{L(L-1)} - \frac{6j}{L(L-1)} = \frac{2(2L+1-3j)}{L(L-1)},
+$$
+$$
+\bigl((K^TK)^{-1}K^T\bigr)_{2,j} = \frac{-6}{L(L-1)} + \frac{12j}{L(L-1)(L+1)} = \frac{6(2j - L - 1)}{L(L-1)(L+1)}.
+$$
+
+Therefore,
+
+$$
+(K^TK)^{-1}K^T = \frac{1}{L(L-1)}\begin{bmatrix} 2(2L+1-3j) \\[4pt] \dfrac{6(2j-L-1)}{L+1} \end{bmatrix}_{j=1}^{L}.
+$$
+
+Since $H = \frac{1}{2n}(K^TK)^{-1}K^T$, the first row is
+
+$$H_{1,j} = \frac{2L+1-3j}{nL(L-1)},$$
+
+which is linear in $j$.
