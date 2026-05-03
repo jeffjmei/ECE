@@ -327,3 +327,52 @@ $$
 
 where $A = \operatorname{circ}(a)$. Both sets of constraints are linear in $a$, so this is a quadratic program with a unique solution — the minimum-norm point in the feasible affine subspace.
 
+## Regression Approach
+
+A natural way to estimate $\sigma_{xy}$ is to exploit the linear relationship $\mathbb{E}[T_k(X,Y)] = 2n\sigma_{xy} + k\,\omega_{xy}$ (established in the Lagged Differences chapter). Stacking $k = 1, \ldots, L$ gives a linear model
+
+$$
+\mathbb{E}[R] = K\beta,
+\qquad
+K = \begin{bmatrix} 1 & 1 \\ 1 & 2 \\ \vdots & \vdots \\ 1 & L \end{bmatrix} \in \mathbb{R}^{L \times 2},
+\quad
+\beta = \begin{pmatrix} 2n\sigma_{xy} \\ \omega_{xy} \end{pmatrix},
+$$
+
+where $R_k = T_k(X,Y)$. The OLS estimate is $\hat\beta = (K^TK)^{-1}K^T R$, and the regression estimator of $\sigma_{xy}$ is its first component rescaled:
+
+$$
+\hat\sigma_{\mathrm{reg}} = \frac{1}{2n}\, e_1^T(K^TK)^{-1}K^T R = H_{1\cdot} R,
+\quad
+H = \frac{1}{2n}(K^TK)^{-1}K^T \in \mathbb{R}^{2 \times L},
+$$
+
+where $H_{1\cdot}$ denotes the first row of $H$.
+
+**Relationship $T_k(X,Y) = X^T A_k Y$.** Since
+
+$$
+T_k(X,Y) = \sum_{i=1}^n (X_i - X_{i+k})(Y_i - Y_{i+k}) = \bigl((I - C_k)X\bigr)^T\bigl((I - C_k)Y\bigr),
+$$
+
+we have $T_k(X,Y) = X^T A_k Y$ with
+
+$$
+A_k = (I - C_k)^T(I - C_k) = 2I - C_k - C_k^T.
+$$
+
+Substituting $R_k = X^T A_k Y$ into the regression estimator,
+
+$$
+\hat\sigma_{\mathrm{reg}} = H_{1\cdot} R = X^T A Y,
+$$
+
+so the regression estimator is a bilinear form $X^T A Y$ with
+
+$$
+A = \sum_{k=1}^L H_{1,k}\, A_k.
+$$
+
+Since each $A_k = 2I - C_k - C_k^T$ is a symmetric circulant, $A$ is also a symmetric circulant, determined by its first row $a \in \mathbb{R}^n$.
+
+**Conjecture.** The first row $a$ of the regression matrix $A$ is the minimum-norm solution described in the previous section. That is, the regression approach and the Frobenius-norm minimization produce the same estimator.
