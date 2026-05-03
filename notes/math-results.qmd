@@ -2,6 +2,32 @@
 title: "Other Mathematical Results"
 ---
 
+## Properties of $A^2$
+
+Let $A$ be a symmetric circulant with first row $(a_0, a_1, \ldots, a_{n-1})$ and eigenvalues $\lambda_0, \ldots, \lambda_{n-1}$.
+
+**Structure.** Since the product of two circulants is circulant and $(A^2)^T = (A^T)^2 = A^2$, $A^2$ is also a symmetric circulant. Its first row has $j$-th entry given by the autocorrelation
+
+$$
+(A^2)_j = \sum_{k=0}^{n-1} a_k\, a_{j - k \bmod n}.
+$$
+
+**Positive semidefiniteness.** For any vector $x$, $x^T A^2 x = \|Ax\|^2 \geq 0$, so $A^2 \succeq 0$.
+
+**Eigenvalues.** The eigenvalues of $A^2$ are $\lambda_k^2$, so
+
+$$
+\operatorname{tr}(A^2) = \sum_k \lambda_k^2 = \|A\|_F^2.
+$$
+
+**Explicit trace formula.** Since every row of a circulant is a cyclic permutation of the first row, each row has the same squared norm, giving
+
+$$
+\operatorname{tr}(A^2) = \|A\|_F^2 = n \sum_{k=0}^{n-1} a_k^2 = n\!\left(a_0^2 + 2\sum_{k=1}^{\lfloor n/2 \rfloor} a_k^2\right),
+$$
+
+where the last equality uses the symmetry $a_k = a_{n-k}$.
+
 ## Lower Bound on $\operatorname{tr}(A^2)$
 
 Since $\operatorname{tr}(A) = \sum_i \lambda_i = 1$ and $\operatorname{tr}(A^2) = \sum_i \lambda_i^2$, Jensen's inequality gives
