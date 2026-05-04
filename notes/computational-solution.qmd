@@ -1,0 +1,29 @@
+# Computational Solution
+
+## Introduction
+
+TODO: Add content for computational results chapter.
+
+## SVD for Identifying the Null Space
+
+Given a matrix $A \in \mathbb{R}^{m \times n}$, the singular value decomposition is:
+$$A = U \Sigma V^T$$
+where $U \in \mathbb{R}^{m \times m}$ and $V \in \mathbb{R}^{n \times n}$ are orthogonal matrices, and $\Sigma$ is a diagonal matrix with singular values $\sigma_1 \geq \sigma_2 \geq \cdots \geq \sigma_{\min(m,n)} \geq 0$.
+
+### Connection to the Null Space
+
+The null space of $A$ (also called the kernel) is:
+$$\text{null}(A) = \{x \in \mathbb{R}^n : Ax = 0\}$$
+
+The key insight is that the null space of $A$ is spanned by the right singular vectors corresponding to zero singular values. More precisely, if $A$ has rank $r < n$, then:
+$$\text{null}(A) = \text{span}\{v_{r+1}, v_{r+2}, \ldots, v_n\}$$
+where $v_i$ are the columns of $V$ (the right singular vectors) and $v_{r+1}, \ldots, v_n$ correspond to the zero singular values.
+
+### Computational Advantage
+
+Using SVD to identify the null space is numerically stable because:
+1. SVD is computed via robust algorithms (typically using Householder reflections or Jacobi rotations)
+2. Zero singular values can be detected with high precision
+3. The corresponding right singular vectors form an orthonormal basis for the null space
+
+This is more stable than directly solving $Ax = 0$ using other methods, especially when $A$ is nearly singular or poorly conditioned.

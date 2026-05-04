@@ -10,6 +10,7 @@ book:
     - model-assumptions.qmd
     - lagged-differences.qmd
     - bilinear-form.qmd
+    - computational-solution.qmd
   appendices:
     - math-background.qmd
     - math-results.qmd
