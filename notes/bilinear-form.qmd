@@ -418,15 +418,15 @@ Let $v$ satisfy $(*)$. The constraint matrix $G$ has entries $G_{\ell,0} = \ell$
 
 $$\ell\, v_0 + \sum_{k=1}^{\lfloor n/2 \rfloor} 2(\ell - k)^+\, v_k = 0.$$
 
-We analyze this system by applying the first-difference matrix $M$ twice. If $G$ has $m$ rows, $M$ is the $(m-1) \times m$ bidiagonal Toeplitz matrix
+We analyze this system by applying a first-difference operator twice. For any matrix $B$ with $r$ rows, define $M(B)$ as the $(r-1) \times r$ bidiagonal matrix applied to $B$:
 
-$$M = \begin{pmatrix} -1 & 1 & 0 & \cdots & 0 \\ 0 & -1 & 1 & \cdots & 0 \\ \vdots & & \ddots & \ddots & \vdots \\ 0 & 0 & \cdots & -1 & 1 \end{pmatrix},$$
+$$M(B) = \begin{pmatrix} -1 & 1 & 0 & \cdots & 0 \\ 0 & -1 & 1 & \cdots & 0 \\ \vdots & & \ddots & \ddots & \vdots \\ 0 & 0 & \cdots & -1 & 1 \end{pmatrix} B,$$
 
-so that $(MG)_\ell = G_{\ell+1} - G_\ell$. Since $Gv = 0$ implies $MGv = 0$ and $M^2Gv = 0$, each application yields simpler conditions.
+so that $M(B)_\ell = B_{\ell+1} - B_\ell$. We write $M^2G$ as shorthand for $M(M(G))$ — applying the operator twice sequentially, each time with a smaller matrix of appropriate dimensions. Since $Gv = 0$ implies $M(G)v = 0$ and $M(M(G))v = 0$, each application yields simpler conditions.
 
 **Step 1a: Show $v_k = 0$ for $k > L$.**
 
-*First application ($MGv = 0$).* Subtracting the $\ell$-th row from the $(\ell+1)$-th gives
+*First application ($M(G)v = 0$).* Subtracting the $\ell$-th row from the $(\ell+1)$-th gives
 
 $$v_0 + 2\sum_{k=1}^{\ell} v_k = 0, \qquad \ell = L, \ldots, \lfloor n/2 \rfloor - 1.$$
 
@@ -434,17 +434,17 @@ The resulting matrix $MG$ has a column of $1$s in position $k=0$ and $2$s in pos
 
 $$MG = \begin{pmatrix} 1 & 2 & \cdots & 2 & 0 & 0 & \cdots \\ 1 & 2 & \cdots & 2 & 2 & 0 & \cdots \\ 1 & 2 & \cdots & 2 & 2 & 2 & \cdots \\ \vdots & & & & & & \ddots \end{pmatrix}.$$
 
-*Second application ($M^2Gv = 0$).* Subtracting consecutive equations from $MGv = 0$ gives $2v_{\ell+1} = 0$ for each $\ell = L, \ldots, \lfloor n/2 \rfloor - 2$, so $v_k = 0$ for all $k > L$.
+*Second application ($M(M(G))v = 0$).* Subtracting consecutive equations from $M(G)v = 0$ gives $2v_{\ell+1} = 0$ for each $\ell = L, \ldots, \lfloor n/2 \rfloor - 2$, so $v_k = 0$ for all $k > L$.
 
-The matrix $M^2G$ has exactly one nonzero entry per row — a $2$ in column $\ell + 1$ — making the zero conditions on each $v_k$ explicit:
+The matrix $M(M(G))$ has exactly one nonzero entry per row — a $2$ in column $\ell + 1$ — making the zero conditions on each $v_k$ explicit:
 
-$$M^2G = \begin{pmatrix} 0 & \cdots & 0 & 2 & 0 & 0 & \cdots \\ 0 & \cdots & 0 & 0 & 2 & 0 & \cdots \\ 0 & \cdots & 0 & 0 & 0 & 2 & \cdots \\ \vdots & & & & & & \ddots \end{pmatrix}.$$
+$$M(M(G)) = \begin{pmatrix} 0 & \cdots & 0 & 2 & 0 & 0 & \cdots \\ 0 & \cdots & 0 & 0 & 2 & 0 & \cdots \\ 0 & \cdots & 0 & 0 & 0 & 2 & \cdots \\ \vdots & & & & & & \ddots \end{pmatrix}.$$
 
 **Step 1b: Characterize $(v_1, \ldots, v_L)$.**
 
 Having zeroed out $v_k$ for $k > L$, we need two conditions on the remaining entries $(v_1, \ldots, v_L)$. We obtain these by working back through $MGv = 0$ and $Gv = 0$ at $\ell = L$ — each provides one independent condition, and no further applications of $M$ are needed to characterize the null space.
 
-Recall from Step 1a that $MGv = 0$ gives
+Recall from Step 1a that $M(G)v = 0$ gives
 $$v_0 + 2\sum_{k=1}^{\ell} v_k = 0, \qquad \ell = L, \ldots, \lfloor n/2 \rfloor - 1.$$
 Setting $\ell = L$ and substituting $v_k = 0$ for $k > L$ gives $v_0 + 2\sum_{k=1}^L v_k = 0$. Since $v_0 = 0$ by $(*)$, this forces $\sum_{k=1}^L v_k = 0$.
 
@@ -460,8 +460,8 @@ To summarize, each level of differentiation contributes one layer of structure:
 
 | Equation | Conclusion |
 |---|---|
-| $M^2Gv = 0$ | $v_k = 0$ for $k > L$ |
-| $MGv = 0$ at $\ell = L$ | $\sum_{k=1}^L v_k = 0$ |
+| $M(M(G))v = 0$ | $v_k = 0$ for $k > L$ |
+| $M(G)v = 0$ at $\ell = L$ | $\sum_{k=1}^L v_k = 0$ |
 | $Gv = 0$ at $\ell = L$ | $\sum_{k=1}^L k\, v_k = 0$ |
 
 **Step 2: Show $\tilde{a}_{\mathrm{reg}} \perp v$.**
