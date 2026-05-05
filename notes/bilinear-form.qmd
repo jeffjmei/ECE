@@ -476,3 +476,16 @@ $$\sum_{k=1}^L c_k\, v_k = \alpha \sum_{k=1}^L v_k + \beta \sum_{k=1}^L k\,v_k =
 
 where both sums vanish by Step 1. Therefore $\tilde{a}_{\mathrm{reg}} \cdot v = 0$ for all $v$ satisfying $(*)$. $\square$
 
+```{r}
+#| message: false
+#| warning: false
+
+# Computationally Verifying Regression Solution is Min-Norm Solution 
+n <- 100
+for (L in 2:49) {
+  test_that(paste0("regression and optim first rows agree for L = ", L), {
+    expect_equal(ece_reg_row(n, L), ece_optim(n, L), tolerance = 1e-4)
+  })
+}
+```
+
