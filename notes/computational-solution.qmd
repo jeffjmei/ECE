@@ -6,24 +6,35 @@ TODO: Add content for computational results chapter.
 
 ## SVD for Identifying the Null Space
 
-Given a matrix $A \in \mathbb{R}^{m \times n}$, the singular value decomposition is:
-$$A = U \Sigma V^T$$
+Given the constraint matrix $G \in \mathbb{R}^{m \times n}$, the singular value decomposition is:
+$$G = U \Sigma V^T$$
 where $U \in \mathbb{R}^{m \times m}$ and $V \in \mathbb{R}^{n \times n}$ are orthogonal matrices, and $\Sigma$ is a diagonal matrix with singular values $\sigma_1 \geq \sigma_2 \geq \cdots \geq \sigma_{\min(m,n)} \geq 0$.
 
 ### Connection to the Null Space
 
-The null space of $A$ (also called the kernel) is:
-$$\text{null}(A) = \{x \in \mathbb{R}^n : Ax = 0\}$$
+The null space of $G$ is:
+$$\text{null}(G) = \{a \in \mathbb{R}^n : Ga = 0\}$$
 
-The key insight is that the null space of $A$ is spanned by the right singular vectors corresponding to zero singular values. More precisely, if $A$ has rank $r < n$, then:
-$$\text{null}(A) = \text{span}\{v_{r+1}, v_{r+2}, \ldots, v_n\}$$
-where $v_i$ are the columns of $V$ (the right singular vectors) and $v_{r+1}, \ldots, v_n$ correspond to the zero singular values.
+If $G$ has rank $r < n$, the right singular vectors corresponding to zero singular values span the null space:
+$$\text{null}(G) = \text{span}\{v_{r+1}, v_{r+2}, \ldots, v_n\}$$
+where $v_i$ are the columns of $V$.
 
-### Computational Advantage
+### Steps to Identify the Null Space
 
-Using SVD to identify the null space is numerically stable because:
-1. SVD is computed via robust algorithms (typically using Householder reflections or Jacobi rotations)
-2. Zero singular values can be detected with high precision
-3. The corresponding right singular vectors form an orthonormal basis for the null space
+1. Compute the SVD: $G = U \Sigma V^T$
+2. Identify the rank $r$ as the number of non-zero singular values
+3. Extract the right singular vectors $v_{r+1}, \ldots, v_n$ corresponding to the zero singular values
+4. The null space basis is $\text{null}(G) = \text{span}\{v_{r+1}, \ldots, v_n\}$
 
-This is more stable than directly solving $Ax = 0$ using other methods, especially when $A$ is nearly singular or poorly conditioned.
+## Pseudoinverse and Min-Norm Solution
+
+The Moore-Penrose pseudoinverse $G^+$ is defined via SVD as:
+$$G^+ = V \Sigma^+ U^T$$
+where $\Sigma^+$ is obtained by taking reciprocals of the non-zero singular values and transposing.
+
+For a system $Ga = b$, the general solution is:
+$$a = G^+ b + \sum_{i=r+1}^{n} c_i v_i$$
+where the second term spans $\text{null}(G)$. The norm of the general solution is:
+$$\|a\|^2 = \|G^+ b\|^2 + \sum_{i=r+1}^{n} c_i^2$$
+since $G^+ b$ lies in the row space of $G$, which is orthogonal to $\text{null}(G)$. This is minimized by setting all $c_i = 0$, giving the minimum-norm solution:
+$$a^* = G^+ b$$
