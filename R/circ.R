@@ -73,10 +73,14 @@ constraint_matrix <- function(n, L) {
   half <- floor(n / 2)
   G <- matrix(0, nrow = half - L + 1, ncol = half + 1)
   for (row in seq_len(nrow(G))) {
-    l          <- row + L - 1
-    G[row, 1]  <- l                              # coefficient of a_0 is l
-    G[row, -1] <- pmax(0, 2 * (l - 1:half))     # coefficient of a_i is 2(l - i)
+    l <- row + L - 1
+    G[row, 1] <- l # coefficient of a_0 is l
+    G[row, -1] <- pmax(0, 2 * (l - 1:half)) # coefficient of a_i is 2(l - i)
   }
+
+  # Add Constraint that a0 = 1
+  # G_aug <- rbind(c(1, rep(0, ncol(G) - 1)), G)
+  # list(G = G_aug, b = c(1, rep(0, nrow(G))))
   G
 }
 
@@ -150,6 +154,32 @@ ece_first_row <- function(n, L) {
   expand_sym(a_half, n)
 }
 
+#' Regression ECE First Row
+#'
+#' Computes the first row of the ECE matrix \eqn{A = \frac{1}{n}\operatorname{circ}(a)}
+#' using the closed-form regression weights
+#' \eqn{c_k = \frac{2L+1-3k}{nL(L-1)}} for \eqn{k = 1, \ldots, L},
+#' derived from the OLS estimator \eqn{\hat\sigma_{\mathrm{reg}} = H_{1\cdot} R}.
+#'
+#' @param n A positive integer giving the series length.
+#' @param L A positive integer giving the minimum segment length (\eqn{L \geq 2}).
+#'
+#' @return A numeric vector of length \eqn{n}, the first row of \eqn{n \cdot A}.
+#'
+#' @examples
+#' ece_reg_row(10, 2)
+#' ece_reg_row(10, 3)
+#'
+#' @export
+ece_reg_row <- function(n, L) {
+  half <- floor(n / 2)
+  c_k <- (2 * L + 1 - 3 * seq_len(L)) / (n * L * (L - 1))
+  a_half <- numeric(half + 1)
+  a_half[1] <- 1
+  a_half[seq_len(L) + 1] <- -n * c_k
+  expand_sym(a_half, n)
+}
+
 #' Minimum-Norm ECE First Row
 #'
 #' Finds the first row \eqn{a} of the ECE matrix \eqn{A = \frac{1}{n}\operatorname{circ}(a)}
@@ -178,6 +208,46 @@ ece_min_norm <- function(n, L) {
   b_aug <- c(1, rep(0, nrow(G)))
   a_half <- crossprod(G_aug, solve(tcrossprod(G_aug), b_aug))
   expand_sym(a_half, n)
+}
+
+#' Optimization-Based ECE First Row
+#'
+#' Finds the first row of the ECE matrix by minimizing a user-supplied objective
+#' subject to the unbiasedness constraints and \eqn{a_0 = 1}, using a quadratic
+#' penalty to enforce the linear equality constraints \eqn{G a = b}.
+#'
+#' @param n A positive integer giving the series length.
+#' @param L A positive integer giving the minimum segment length.
+#' @param objective A function of the half-vector \eqn{a} returning a scalar to
+#'   minimize. Defaults to \eqn{\|a\|^2}, recovering \code{ece_min_norm}.
+#' @param method Optimization method passed to \code{\link[stats]{optim}}.
+#'   Defaults to \code{"BFGS"}.
+#' @param lambda Penalty weight on constraint violation.
+#' @param control A list of control parameters passed to \code{\link[stats]{optim}}.
+#'
+#' @return A numeric vector of length \eqn{n}, the first row of \eqn{n \cdot A}.
+#'
+#' @examples
+#' ece_optim(10, 2)
+#' ece_optim(10, 3, objective = function(a) sum(abs(a)), method = "Nelder-Mead")
+#'
+#' @export
+ece_optim <- function(n, L,
+                      objective = function(a) sum(a^2),
+                      method = "BFGS",
+                      lambda = 1e6,
+                      control = list()) {
+  G_aug <- rbind(
+    c(1, rep(0, floor(n / 2))),
+    constraint_matrix(n, L)
+  )
+  b_aug <- c(1, rep(0, nrow(G_aug) - 1))
+
+  penalized <- function(a) objective(a) + lambda * sum((G_aug %*% a - b_aug)^2)
+
+  a0 <- rep(0, floor(n / 2) + 1)
+  fit <- optim(a0, penalized, method = method, control = control)
+  expand_sym(fit$par, n)
 }
 
 solve_ece <- function(n, L, tol = 1e-10) {
