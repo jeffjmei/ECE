@@ -146,6 +146,8 @@ $$
 A_k = (I - C_k)^T(I - C_k) = 2I - C_k - C_k^T.
 $$
 
+Since $C_k = \operatorname{circ}(e_k)$, we have $A_k = \operatorname{circ}(\tilde{a}_k)$ where the first row $\tilde{a}_k$ has $+2$ at position $0$, $-1$ at position $k$, $-1$ at position $n-k$, and $0$ elsewhere.
+
 Substituting into $\hat{\sigma}_{xy} = \frac{1}{2n}(2T_1 - T_2)$,
 
 $$
@@ -466,8 +468,15 @@ To summarize, each level of differentiation contributes one layer of structure:
 
 **Step 2: Show $\tilde{a} \perp w$.**
 
-Since $w_0 = 0$ and $w_k = 0$ for $k > L$, and $\tilde{a}_k = -c_k$ for $k = 1, \ldots, L$ and $0$ otherwise,
+By definition,
+$$\langle \tilde{a}, w \rangle = \sum_{k=0}^{n-1} \tilde{a}_k\, w_k.$$
 
+From Step 1, $w_0 = 0$ and $w_k = 0$ for all $k > L$, so only positions $k = 1, \ldots, L$ contribute:
+$$\langle \tilde{a}, w \rangle = \sum_{k=1}^L \tilde{a}_k\, w_k.$$
+
+Using the decomposition $\tilde{a} = \sum_{\ell=1}^L c_\ell \tilde{a}_\ell$ and $\tilde{a}_\ell = 2e_0 - e_\ell - e_{n-\ell}$, the entry at position $k \in \{1, \ldots, L\}$ is
+$$\tilde{a}_k = \sum_{\ell=1}^L c_\ell (\tilde{a}_\ell)_k.$$
+Since $(\tilde{a}_\ell)_k = -1$ only when $\ell = k$ (the case $\ell = n - k$ cannot occur as $n - k > L$ when $2L < n$), this gives $\tilde{a}_k = -c_k$. Therefore,
 $$\langle \tilde{a}, w \rangle = -\sum_{k=1}^L c_k\, w_k.$$
 
 Since $c_k = \frac{2L+1-3k}{nL(L-1)}$, we can write $c_k = \alpha + \beta k$ with $\alpha = \frac{2L+1}{nL(L-1)}$ and $\beta = \frac{-3}{nL(L-1)}$,
