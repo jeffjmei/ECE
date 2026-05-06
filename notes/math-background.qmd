@@ -36,6 +36,81 @@ $$
 \mathbb{E}[\varepsilon_x^T A \varepsilon_y] = \operatorname{tr}(A \Sigma_{xy}).
 $$
 
+## Properties of Circulant Matrices
+
+Let $C_1 = \operatorname{circ}(0, 1, 0, \ldots, 0)$ be the elementary shift-by-one matrix, so $C_1^k = C_k$. The following facts hold:
+
+1. **Power.** $C_k = C_1^k$, so applying a shift of $k$ is the same as applying a shift of 1 exactly $k$ times. As a consequence, every circulant matrix is a polynomial in $C_1$: $\operatorname{circ}(a_0, \ldots, a_{n-1}) = \sum_{k=0}^{n-1} a_k C_1^k$.
+
+2. **Transpose.** $C_k^T = C_{n-k} = C_k^{-1}$, since $C_k$ is a permutation matrix.
+
+3. **Circulant form.** $C_k = \operatorname{circ}(e_k)$, where $e_k$ is the standard basis vector with a 1 in position $k$ and 0s elsewhere. That is, $C_k$ is the circulant matrix whose first row has a single 1 on the $k$-th band.
+
+```{r}
+#| message: false
+#| warning: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(testthat)
+
+n <- 6
+k <- 2
+C1 <- circ(c(0, 1, rep(0, n - 2)))
+Ck <- circ(c(rep(0, k), 1, rep(0, n - k - 1)))
+
+test_that("circ constructs correct circulant matrix", {
+  a <- c(2, -1, 0, -1)
+  A <- circ(a)
+  expect_equal(A[1, ], a)
+  expect_equal(A[2, ], c(-1, 2, -1, 0))
+  expect_equal(A[3, ], c(0, -1, 2, -1))
+  expect_equal(A[4, ], c(-1, 0, -1, 2))
+})
+
+test_that("C_k = C_1^k", {
+  C1_power_k <- Reduce("%*%", rep(list(C1), k))
+  expect_equal(Ck, C1_power_k)
+})
+
+test_that("C_k^T = C_{n-k}", {
+  Cnk <- circ(c(rep(0, n - k), 1, rep(0, k - 1)))
+  expect_equal(t(Ck), Cnk)
+})
+
+test_that("C_k = circ(e_k)", {
+  for (k in 0:(n - 1)) {
+    e_k <- as.numeric(seq_len(n) - 1 == k)
+    Ck  <- circ(c(rep(0, k), 1, rep(0, n - k - 1)))
+    expect_equal(circ(e_k), Ck)
+  }
+})
+```
+
+## Spectral Properties of Circulant Matrices
+
+Every circulant matrix $A = \operatorname{circ}(a_0, \ldots, a_{n-1})$ is diagonalized by the DFT matrix $F$,
+
+$$
+A = F^* \Lambda F, \qquad F_{jk} = \frac{1}{\sqrt{n}}\,\omega^{jk}, \quad \omega = e^{-2\pi i/n},
+$$
+
+where indices $j, k$ run from $0$ to $n-1$. Since $F$ is unitary ($FF^* = I$), this is the eigendecomposition $A = Q\Lambda Q^{-1}$ with $Q = F^*$.
+
+**Eigenvalues.** The $j$-th eigenvalue is the DFT of the first row evaluated at frequency $j$:
+
+$$
+\lambda_j = \sum_{k=0}^{n-1} a_k\,\omega^{jk}.
+$$
+
+**Eigenvectors.** The columns of $Q = F^*$ are the eigenvectors. The $j$-th eigenvector is
+
+$$
+q_j = \frac{1}{\sqrt{n}}\bigl(1,\, \omega^{-j},\, \omega^{-2j},\, \ldots,\, \omega^{-(n-1)j}\bigr)^T,
+$$
+
+a complex sinusoid at frequency $j/n$.
+
+**Real symmetric case.** When $A$ is real and symmetric (i.e.\ $a_k = a_{n-k}$), the eigenvalues are real and come in symmetric pairs: $\lambda_j = \lambda_{n-j}$.
+
 ## Variance of a Product of Correlated Standard Normals
 
 Let $(z_x, z_y)$ be a standard bivariate Gaussian with zero mean, unit variances, and correlation $\rho$. Then
