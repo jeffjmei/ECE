@@ -1,0 +1,129 @@
+---
+title: "Positive Semidefinite"
+---
+
+The ECE is not guaranteed to be positive semidefinite. In particular, when applied to estimate a variance ($X = Y$), the estimator $\hat{\sigma}_{xx} = X^T A X$ can return negative values, since the matrix $A$ itself is not positive semidefinite.
+
+## Existence of an Unbiased PSD Estimator
+
+If $A \succeq 0$ and $\theta_x^T A \theta_y = 0$ for all $\theta_x, \theta_y \in \Theta_L$, then in particular $\theta^T A \theta = 0$ for all $\theta \in \Theta_L$. Since $A \succeq 0$, all eigenvalues are non-negative. Using the eigendecomposition $A = Q\Lambda Q^*$ with $\lambda_j \geq 0$,
+
+$$\theta^T A \theta = \sum_j \lambda_j |\tilde\theta_j|^2 = 0.$$
+
+Since every term is non-negative, each must vanish individually: $\lambda_j |\tilde\theta_j|^2 = 0$ for all $j$, so $\lambda_j \tilde\theta_j = 0$ for all $j$. Therefore $A\theta = Q\Lambda\tilde\theta = 0$. This shows that any unbiased PSD estimator must satisfy $A\theta = 0$ for all $\theta \in \Theta_L$. If $\operatorname{span}(\Theta_L) = \mathbb{R}^n$, this forces $A = 0$, contradicting $\operatorname{tr}(A) = 1$. Whether $\Theta_L$ spans $\mathbb{R}^n$ depends on $n$ and $L$ and is not established here.
+
+## PSD Projection via Eigenvalue Clipping
+
+The closest positive semidefinite matrix to $A$ in Frobenius norm is obtained by replacing negative eigenvalues with zero. Given the eigendecomposition $A = Q\Lambda Q^*$, define
+
+$$\Lambda_+ = \operatorname{diag}(\max(\lambda_0, 0), \ldots, \max(\lambda_{n-1}, 0))$$
+
+and form
+
+$$A_+ = Q\Lambda_+ Q^*.$$
+
+The resulting estimator $\hat{\sigma}_{xy}^+ = X^T A_+ Y$ is guaranteed to be non-negative when $X = Y$, since $A_+ \succeq 0$. The cost is that $A_+$ no longer satisfies the unbiasedness constraints.
+
+## Bias Analysis of the PSD Projection
+
+The bias of $\hat{\sigma}_{xy}^+ = X^T A_+ Y$ is
+
+$$
+\mathbb{E}[\hat{\sigma}_{xy}^+] = \theta_x^T A_+ \theta_y + \sigma_{xy} \operatorname{tr}(A_+).
+$$
+
+By clipping negative eigenvalues, we have $\operatorname{tr}(A_+) = \sum_{j: \lambda_j \geq 0} \lambda_j < \operatorname{tr}(A) = 1$. The bias is therefore
+
+$$
+\text{Bias}(A_+) = \theta_x^T A_+ \theta_y + \sigma_{xy} \left(\operatorname{tr}(A_+) - 1\right).
+$$
+
+The second term $\sigma_{xy}(\operatorname{tr}(A_+) - 1)$ is always negative (when $\sigma_{xy} > 0$), introducing systematic downward bias. By clipping, we lose the negative eigenvalue contributions that canceled the positive ones under correct specification. For $\theta_x, \theta_y \in \Theta_L$, the original cancellation $\sum_j \lambda_j |\tilde\theta_j|^2 = 0$ becomes a non-cancellation $\sum_j \lambda_j^+ |\tilde\theta_j|^2 \geq 0$ after clipping, introducing an additional positive spectral bias. The total bias is thus driven by both the trace loss and the broken cancellation, and its magnitude depends on the size and location of the negative eigenvalues in the spectrum.
+
+```{r}
+#| message: false
+#| warning: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(testthat)
+
+n <- 40; L <- 2
+a      <- ece_reg_row(n, L)
+A_mat  <- circ(a) / n
+lambda <- Re(fft(a) / n)
+
+# Clipped eigenvalues: lambda_+ = max(lambda, 0)
+lambda_clipped <- pmax(lambda, 0)
+
+# Construct clipped matrix via eigendecomposition: A_+ = Q Λ_+ Q*
+j <- 0:(n - 1)
+k <- 0:(n - 1)
+F_mat <- exp(-2i * pi * outer(j, k) / n) / sqrt(n)
+Q <- Conj(t(F_mat))
+A_clipped <- Re(Q %*% diag(lambda_clipped) %*% t(Conj(Q)))
+
+tr_A <- sum(lambda)
+tr_A_clipped <- sum(lambda_clipped)
+trace_loss <- tr_A - tr_A_clipped
+
+# Test different mean vectors
+theta_const <- rep(1, n)
+theta_pw    <- c(rep(1, n/2), rep(-1, n/2))
+f <- 5
+theta_sin <- sin(2 * pi * f * (0:(n-1)) / n)
+set.seed(123)
+theta_rw <- cumsum(rnorm(n))
+theta_rw <- theta_rw - mean(theta_rw)
+
+# Spectral biases
+spectral_orig <- c(
+  as.numeric(t(theta_const) %*% A_mat %*% theta_const),
+  as.numeric(t(theta_pw) %*% A_mat %*% theta_pw),
+  as.numeric(t(theta_sin) %*% A_mat %*% theta_sin),
+  as.numeric(t(theta_rw) %*% A_mat %*% theta_rw)
+)
+
+spectral_clipped <- c(
+  as.numeric(t(theta_const) %*% A_clipped %*% theta_const),
+  as.numeric(t(theta_pw) %*% A_clipped %*% theta_pw),
+  as.numeric(t(theta_sin) %*% A_clipped %*% theta_sin),
+  as.numeric(t(theta_rw) %*% A_clipped %*% theta_rw)
+)
+
+# Noise bias (with sigma_xy = 1)
+sigma_xy <- 1
+noise_bias <- sigma_xy * (tr_A_clipped - 1)
+
+biases <- data.frame(
+  Vector = c("Constant", "Piecewise (2 seg)", "Sinusoid (f=5)", "Random walk"),
+  Spectral_orig = spectral_orig,
+  Spectral_clipped = spectral_clipped,
+  Noise_bias = noise_bias,
+  Total_clipped = spectral_clipped + noise_bias
+)
+
+cat("Trace loss: ", round(trace_loss, 4), "\n")
+cat("Noise bias contribution: ", round(noise_bias, 4), "\n\n")
+biases_rounded <- biases
+biases_rounded[-1] <- round(biases[-1], 6)
+print(biases_rounded)
+
+# Bias vs frequency for sinusoids
+freqs <- 1:(n/2 - 1)
+bias_orig_sin <- sapply(freqs, function(f) {
+  theta <- sin(2 * pi * f * (0:(n-1)) / n)
+  as.numeric(t(theta) %*% A_mat %*% theta)
+})
+bias_clipped_sin <- sapply(freqs, function(f) {
+  theta <- sin(2 * pi * f * (0:(n-1)) / n)
+  as.numeric(t(theta) %*% A_clipped %*% theta)
+})
+
+plot(freqs, bias_orig_sin, type = "l", lwd = 2, col = "steelblue",
+  xlab = "Frequency f", ylab = "Spectral bias",
+  main = "PSD clipping breaks cancellation under correct specification"
+)
+lines(freqs, bias_clipped_sin, lwd = 2, col = "coral", lty = 2)
+abline(h = 0, col = "grey60", lty = 3)
+legend("topright", legend = c("Original A", "Clipped A+"),
+  col = c("steelblue", "coral"), lwd = 2, lty = c(1, 2))
+```

@@ -11,6 +11,8 @@ book:
     - lagged-differences.qmd
     - bilinear-form.qmd
     - computational-solution.qmd
+    - model-misspecification.qmd
+    - positive-semidefinite.qmd
   appendices:
     - math-background.qmd
     - math-results.qmd
