@@ -297,12 +297,10 @@ $$
 where $R_k = T_k(X,Y)$. The OLS estimate is $\hat\beta = (K^TK)^{-1}K^T R$, and the regression estimator of $\sigma_{xy}$ is its first component rescaled:
 
 $$
-\hat\sigma_{\mathrm{reg}} = \frac{1}{2n}\, e_1^T(K^TK)^{-1}K^T R = H_{1\cdot} R,
-\quad
-H = \frac{1}{2n}(K^TK)^{-1}K^T \in \mathbb{R}^{2 \times L},
+\tilde\sigma_{xy} = \frac{1}{2n}\, e_1^T(K^TK)^{-1}K^T R = \sum_{k=1}^L c_k R_k,
 $$
 
-where $H_{1\cdot}$ denotes the first row of $H$.
+where $c_k = \frac{1}{2n}\bigl[(K^TK)^{-1}K^T\bigr]_{1k}$ are the coefficients from the first row of $\frac{1}{2n}(K^TK)^{-1}K^T$.
 
 **Relationship $T_k(X,Y) = X^T A_k Y$.** Since
 
@@ -319,18 +317,24 @@ $$
 Substituting $R_k = X^T A_k Y$ into the regression estimator,
 
 $$
-\hat\sigma_{\mathrm{reg}} = H_{1\cdot} R = X^T A Y,
+\tilde\sigma_{xy} = \sum_{k=1}^L c_k R_k = X^T A Y,
 $$
 
 so the regression estimator is a bilinear form $X^T A Y$ with
 
 $$
-A = \sum_{k=1}^L H_{1,k}\, A_k.
+A = \sum_{k=1}^L c_k\, A_k.
 $$
 
 Since each $A_k = 2I - C_k - C_k^T$ is a symmetric circulant, $A$ is also a symmetric circulant, determined by its first row $\tilde{a} \in \mathbb{R}^n$.
 
-**Conjecture.** The first row $\tilde{a}$ of the regression matrix $A$ is the minimum-norm solution described in the previous section. That is, the regression approach and the Frobenius-norm minimization produce the same estimator.
+**First row of the regression matrix.** Writing $A_k = \operatorname{circ}(a_k)$ where $a_k$ denotes the first row of $A_k$, linearity of the circulant map gives
+
+$$
+A = \operatorname{circ}(\tilde{a}), \qquad \tilde{a} = \sum_{k=1}^L c_k\, a_k.
+$$
+
+From $A_k = 2I - C_k - C_k^T$ and the circulant form of $C_k$ (see Mathematical Background), the first row is $a_k = 2e_0 - e_k - e_{n-k}$, where $e_j$ denotes the $j$-th standard basis vector.
 
 ## Feasibility of the Regression Estimator
 
@@ -421,20 +425,18 @@ To summarize, each level of differentiation contributes one layer of structure:
 
 **Step 2: Show $\tilde{a} \perp w$.**
 
-By definition,
-$$\langle \tilde{a}, w \rangle = \sum_{k=0}^{n-1} \tilde{a}_k\, w_k.$$
+Since $\tilde{a} = \sum_{k=1}^L c_k \tilde{a}_k$, by linearity of the inner product:
+$$\langle \tilde{a}, w \rangle = \sum_{k=1}^L c_k \langle \tilde{a}_k, w \rangle.$$
 
-From Step 1, $w_0 = 0$ and $w_k = 0$ for all $k > L$, so only positions $k = 1, \ldots, L$ contribute:
-$$\langle \tilde{a}, w \rangle = \sum_{k=1}^L \tilde{a}_k\, w_k.$$
+Since $\tilde{a}_k = 2e_0 - e_k - e_{n-k}$,
+$$\langle \tilde{a}_k, w \rangle = 2w_0 - w_k - w_{n-k}.$$
 
-Using the decomposition $\tilde{a} = \sum_{\ell=1}^L c_\ell \tilde{a}_\ell$ and $\tilde{a}_\ell = 2e_0 - e_\ell - e_{n-\ell}$, the entry at position $k \in \{1, \ldots, L\}$ is
-$$\tilde{a}_k = \sum_{\ell=1}^L c_\ell (\tilde{a}_\ell)_k.$$
-Since $(\tilde{a}_\ell)_k = -1$ only when $\ell = k$ (the case $\ell = n - k$ cannot occur as $n - k > L$ when $2L < n$), this gives $\tilde{a}_k = -c_k$. Therefore,
+From Step 1: $w_0 = 0$, and for $k \in \{1, \ldots, L\}$ we have $n - k > L$, so $w_{n-k} = 0$. Therefore $\langle \tilde{a}_k, w \rangle = -w_k$, and
 $$\langle \tilde{a}, w \rangle = -\sum_{k=1}^L c_k\, w_k.$$
 
-Since $c_k = \frac{2L+1-3k}{nL(L-1)}$, we can write $c_k = \alpha + \beta k$ with $\alpha = \frac{2L+1}{nL(L-1)}$ and $\beta = \frac{-3}{nL(L-1)}$,
+Since $c_k = \frac{2L+1-3k}{nL(L-1)}$ is affine in $k$,
 
-$$\sum_{k=1}^L c_k\, w_k = \alpha \sum_{k=1}^L w_k + \beta \sum_{k=1}^L k\,w_k = 0,$$
+$$\sum_{k=1}^L c_k\, w_k = \frac{2L+1}{nL(L-1)} \sum_{k=1}^L w_k - \frac{3}{nL(L-1)} \sum_{k=1}^L k\,w_k = 0,$$
 
 where both sums vanish by Step 1. Therefore $\langle \tilde{a}, w \rangle = 0$ for all $w$ satisfying $(*)$. $\square$
 
