@@ -373,13 +373,13 @@ $$
 A = \sum_{k=1}^L H_{1,k}\, A_k.
 $$
 
-Since each $A_k = 2I - C_k - C_k^T$ is a symmetric circulant, $A$ is also a symmetric circulant, determined by its first row $a \in \mathbb{R}^n$.
+Since each $A_k = 2I - C_k - C_k^T$ is a symmetric circulant, $A$ is also a symmetric circulant, determined by its first row $\tilde{a} \in \mathbb{R}^n$.
 
-**Conjecture.** The first row $a$ of the regression matrix $A$ is the minimum-norm solution described in the previous section. That is, the regression approach and the Frobenius-norm minimization produce the same estimator.
+**Conjecture.** The first row $\tilde{a}$ of the regression matrix $A$ is the minimum-norm solution described in the previous section. That is, the regression approach and the Frobenius-norm minimization produce the same estimator.
 
 ## Feasibility of the Regression Estimator
 
-To show that $\tilde{a}_{\mathrm{reg}}$ is the minimum-norm solution, we must verify it is feasible, i.e., that it satisfies the trace and unbiasedness constraints.
+To show that $\tilde{a}$ is the minimum-norm solution, we must verify it is feasible, i.e., that it satisfies the trace and unbiasedness constraints.
 
 The regression estimator is the bilinear form $X^T A Y$ with $A = \sum_{k=1}^L c_k A_k$, where $c_k = H_{1,k} = \frac{2L+1-3k}{nL(L-1)}$. Since we evaluate $g(\ell)$ only for $\ell \geq L$, every $k \leq L$ satisfies $k \leq \ell$, so the Lemma (see Other Mathematical Results) gives $\mathbf{1}_\ell^T A_k \mathbf{1}_\ell = 2k$. By linearity,
 $$g(\ell) = \mathbf{1}_\ell^T A\, \mathbf{1}_\ell = 2\sum_{k=1}^L c_k k,$$
@@ -397,84 +397,84 @@ Therefore $g(\ell) = 0$ for all $\ell \geq L$. $\square$
 
 ## The Regression Estimator is the Minimum-Norm Estimator
 
-Having established feasibility, it remains to show that $\tilde{a}_{\mathrm{reg}}$ is the minimum-norm feasible solution.
+Having established feasibility, it remains to show that $\tilde{a}$ is the minimum-norm feasible solution.
 
 **Setup.** Since the unbiasedness constraints are homogeneous ($Ga = 0$), every feasible $a$ lies in $\mathrm{null}(G)$. The trace constraint $\mathrm{tr}(A) = 1$ is the only inhomogeneous condition, cutting out an affine hyperplane within $\mathrm{null}(G)$:
 $$F = \{a \in \mathrm{null}(G) : \mathrm{tr}(A) = 1\}.$$
-Let $a^* \in F$ be the minimum-norm feasible solution. We will show $a^* = \tilde{a}_{\mathrm{reg}}$ by writing $a^* = \tilde{a}_{\mathrm{reg}} + v$ with $v = a^* - \tilde{a}_{\mathrm{reg}}$ and expanding:
-$$\|a^*\|^2 = \|\tilde{a}_{\mathrm{reg}}\|^2 + \|v\|^2 + 2\langle\tilde{a}_{\mathrm{reg}}, v\rangle.$$
-Steps 1 and 2 below show $\langle\tilde{a}_{\mathrm{reg}}, v\rangle = 0$, so the expansion reduces to
-$$\|a^*\|^2 = \|\tilde{a}_{\mathrm{reg}}\|^2 + \|v\|^2.$$
-Since $a^*$ is optimal and $\tilde{a}_{\mathrm{reg}}$ is feasible, $\|a^*\|^2 \leq \|\tilde{a}_{\mathrm{reg}}\|^2$, so
-$$\|a^*\|^2 = \|\tilde{a}_{\mathrm{reg}}\|^2 + \|v\|^2 \leq \|\tilde{a}_{\mathrm{reg}}\|^2 \implies \|v\|^2 \leq 0.$$
-Therefore $v = 0$ and $a^* = \tilde{a}_{\mathrm{reg}}$.
+Let $a^* \in F$ be the minimum-norm feasible solution. We will show $a^* = \tilde{a}$ by writing $a^* = \tilde{a} + w$ with $w = a^* - \tilde{a}$ and expanding:
+$$\|a^*\|^2 = \|\tilde{a}\|^2 + \|w\|^2 + 2\langle\tilde{a}, w\rangle.$$
+Steps 1 and 2 below show $\langle\tilde{a}, w\rangle = 0$, so the expansion reduces to
+$$\|a^*\|^2 = \|\tilde{a}\|^2 + \|w\|^2.$$
+Since $a^*$ is optimal and $\tilde{a}$ is feasible, $\|a^*\|^2 \leq \|\tilde{a}\|^2$, so
+$$\|a^*\|^2 = \|\tilde{a}\|^2 + \|w\|^2 \leq \|\tilde{a}\|^2 \implies \|w\|^2 \leq 0.$$
+Therefore $w = 0$ and $a^* = \tilde{a}$.
 
 **Step 1: Characterize vectors satisfying $(*)$.**
 
-Since both $a^*, \tilde{a}_{\mathrm{reg}} \in F$, the difference $v = a^* - \tilde{a}_{\mathrm{reg}}$ satisfies $Gv = 0$ (as both $Ga^* = 0$ and $G\tilde{a}_{\mathrm{reg}} = 0$) and $\mathrm{tr}(\mathrm{circ}(v)) = \mathrm{tr}(\mathrm{circ}(a^*)) - \mathrm{tr}(\mathrm{circ}(\tilde{a}_{\mathrm{reg}})) = 1 - 1 = 0$. Since $\mathrm{tr}(\mathrm{circ}(v)) = nv_0$, we have $v_0 = 0$. So $v$ satisfies
-$$Gv = 0, \quad v_0 = 0. \tag{$*$}$$
+Since both $a^*, \tilde{a} \in F$, the difference $w = a^* - \tilde{a}$ satisfies $Gw = 0$ (as both $Ga^* = 0$ and $G\tilde{a} = 0$) and $\mathrm{tr}(\mathrm{circ}(w)) = \mathrm{tr}(\mathrm{circ}(a^*)) - \mathrm{tr}(\mathrm{circ}(\tilde{a})) = 1 - 1 = 0$. Since $\mathrm{tr}(\mathrm{circ}(w)) = nw_0$, we have $w_0 = 0$. So $w$ satisfies
+$$Gw = 0, \quad w_0 = 0. \tag{$*$}$$
 
-Let $v$ satisfy $(*)$. The constraint matrix $G$ has entries $G_{\ell,0} = \ell$ and $G_{\ell,k} = 2(\ell-k)^+$ for $k \geq 1$, so $Gv = 0$ requires for each $\ell = L, \ldots, \lfloor n/2 \rfloor$:
+Let $w$ satisfy $(*)$. The constraint matrix $G$ has entries $G_{\ell,0} = \ell$ and $G_{\ell,k} = 2(\ell-k)^+$ for $k \geq 1$, so $Gw = 0$ requires for each $\ell = L, \ldots, \lfloor n/2 \rfloor$:
 
-$$\ell\, v_0 + \sum_{k=1}^{\lfloor n/2 \rfloor} 2(\ell - k)^+\, v_k = 0.$$
+$$\ell\, w_0 + \sum_{k=1}^{\lfloor n/2 \rfloor} 2(\ell - k)^+\, w_k = 0.$$
 
 We analyze this system by applying a first-difference operator twice. For any matrix $B$ with $r$ rows, define $M(B)$ as the $(r-1) \times r$ bidiagonal matrix applied to $B$:
 
 $$M(B) = \begin{pmatrix} -1 & 1 & 0 & \cdots & 0 \\ 0 & -1 & 1 & \cdots & 0 \\ \vdots & & \ddots & \ddots & \vdots \\ 0 & 0 & \cdots & -1 & 1 \end{pmatrix} B,$$
 
-so that $M(B)_\ell = B_{\ell+1} - B_\ell$. We write $M^2G$ as shorthand for $M(M(G))$ — applying the operator twice sequentially, each time with a smaller matrix of appropriate dimensions. Since $Gv = 0$ implies $M(G)v = 0$ and $M(M(G))v = 0$, each application yields simpler conditions.
+so that $M(B)_\ell = B_{\ell+1} - B_\ell$. We write $M^2G$ as shorthand for $M(M(G))$ — applying the operator twice sequentially, each time with a smaller matrix of appropriate dimensions. Since $Gw = 0$ implies $M(G)w = 0$ and $M(M(G))w = 0$, each application yields simpler conditions.
 
-**Step 1a: Show $v_k = 0$ for $k > L$.**
+**Step 1a: Show $w_k = 0$ for $k > L$.**
 
-*First application ($M(G)v = 0$).* Subtracting the $\ell$-th row from the $(\ell+1)$-th gives
+*First application ($M(G)w = 0$).* Subtracting the $\ell$-th row from the $(\ell+1)$-th gives
 
-$$v_0 + 2\sum_{k=1}^{\ell} v_k = 0, \qquad \ell = L, \ldots, \lfloor n/2 \rfloor - 1.$$
+$$w_0 + 2\sum_{k=1}^{\ell} w_k = 0, \qquad \ell = L, \ldots, \lfloor n/2 \rfloor - 1.$$
 
 The resulting matrix $MG$ has a column of $1$s in position $k=0$ and $2$s in positions $k = 1, \ldots, \ell$ (filling in one more entry per row):
 
 $$MG = \begin{pmatrix} 1 & 2 & \cdots & 2 & 0 & 0 & \cdots \\ 1 & 2 & \cdots & 2 & 2 & 0 & \cdots \\ 1 & 2 & \cdots & 2 & 2 & 2 & \cdots \\ \vdots & & & & & & \ddots \end{pmatrix}.$$
 
-*Second application ($M(M(G))v = 0$).* Subtracting consecutive equations from $M(G)v = 0$ gives $2v_{\ell+1} = 0$ for each $\ell = L, \ldots, \lfloor n/2 \rfloor - 2$, so $v_k = 0$ for all $k > L$.
+*Second application ($M(M(G))w = 0$).* Subtracting consecutive equations from $M(G)w = 0$ gives $2w_{\ell+1} = 0$ for each $\ell = L, \ldots, \lfloor n/2 \rfloor - 2$, so $w_k = 0$ for all $k > L$.
 
-The matrix $M(M(G))$ has exactly one nonzero entry per row — a $2$ in column $\ell + 1$ — making the zero conditions on each $v_k$ explicit:
+The matrix $M(M(G))$ has exactly one nonzero entry per row — a $2$ in column $\ell + 1$ — making the zero conditions on each $w_k$ explicit:
 
 $$M(M(G)) = \begin{pmatrix} 0 & \cdots & 0 & 2 & 0 & 0 & \cdots \\ 0 & \cdots & 0 & 0 & 2 & 0 & \cdots \\ 0 & \cdots & 0 & 0 & 0 & 2 & \cdots \\ \vdots & & & & & & \ddots \end{pmatrix}.$$
 
-**Step 1b: Characterize $(v_1, \ldots, v_L)$.**
+**Step 1b: Characterize $(w_1, \ldots, w_L)$.**
 
-Having zeroed out $v_k$ for $k > L$, we need two conditions on the remaining entries $(v_1, \ldots, v_L)$. We obtain these by working back through $MGv = 0$ and $Gv = 0$ at $\ell = L$ — each provides one independent condition, and no further applications of $M$ are needed to characterize the null space.
+Having zeroed out $w_k$ for $k > L$, we need two conditions on the remaining entries $(w_1, \ldots, w_L)$. We obtain these by working back through $MGw = 0$ and $Gw = 0$ at $\ell = L$ — each provides one independent condition, and no further applications of $M$ are needed to characterize the null space.
 
-Recall from Step 1a that $M(G)v = 0$ gives
-$$v_0 + 2\sum_{k=1}^{\ell} v_k = 0, \qquad \ell = L, \ldots, \lfloor n/2 \rfloor - 1.$$
-Setting $\ell = L$ and substituting $v_k = 0$ for $k > L$ gives $v_0 + 2\sum_{k=1}^L v_k = 0$. Since $v_0 = 0$ by $(*)$, this forces $\sum_{k=1}^L v_k = 0$.
+Recall from Step 1a that $M(G)w = 0$ gives
+$$w_0 + 2\sum_{k=1}^{\ell} w_k = 0, \qquad \ell = L, \ldots, \lfloor n/2 \rfloor - 1.$$
+Setting $\ell = L$ and substituting $w_k = 0$ for $k > L$ gives $w_0 + 2\sum_{k=1}^L w_k = 0$. Since $w_0 = 0$ by $(*)$, this forces $\sum_{k=1}^L w_k = 0$.
 
-Similarly, recall from Step 1a that $Gv = 0$ gives $\ell\, v_0 + \sum_{k=1}^{\lfloor n/2 \rfloor} 2(\ell-k)^+\, v_k = 0$. Setting $\ell = L$ and splitting the sum:
-$$L\, v_0 + \sum_{k=1}^{L} 2(L-k)^+\, v_k + \sum_{k=L+1}^{\lfloor n/2 \rfloor} 2(L-k)^+\, v_k = 0.$$
-The second sum vanishes since $(L-k)^+ = 0$ for $k > L$, and $v_0 = 0$ by $(*)$, leaving $\sum_{k=1}^L 2(L-k)\, v_k = 0$. Expanding and applying $\sum_{k=1}^L v_k = 0$ gives $\sum_{k=1}^L k\, v_k = 0$.
+Similarly, recall from Step 1a that $Gw = 0$ gives $\ell\, w_0 + \sum_{k=1}^{\lfloor n/2 \rfloor} 2(\ell-k)^+\, w_k = 0$. Setting $\ell = L$ and splitting the sum:
+$$L\, w_0 + \sum_{k=1}^{L} 2(L-k)^+\, w_k + \sum_{k=L+1}^{\lfloor n/2 \rfloor} 2(L-k)^+\, w_k = 0.$$
+The second sum vanishes since $(L-k)^+ = 0$ for $k > L$, and $w_0 = 0$ by $(*)$, leaving $\sum_{k=1}^L 2(L-k)\, w_k = 0$. Expanding and applying $\sum_{k=1}^L w_k = 0$ gives $\sum_{k=1}^L k\, w_k = 0$.
 
-Therefore the vectors satisfying $(*)$ are exactly those with $v_0 = 0$, $v_k = 0$ for $k > L$, and $(v_1, \ldots, v_L)$ satisfying
+Therefore the vectors satisfying $(*)$ are exactly those with $w_0 = 0$, $w_k = 0$ for $k > L$, and $(w_1, \ldots, w_L)$ satisfying
 
-$$\sum_{k=1}^L v_k = 0, \qquad \sum_{k=1}^L k\,v_k = 0.$$
+$$\sum_{k=1}^L w_k = 0, \qquad \sum_{k=1}^L k\,w_k = 0.$$
 
 To summarize, each level of differentiation contributes one layer of structure:
 
 | Equation | Conclusion |
 |---|---|
-| $M(M(G))v = 0$ | $v_k = 0$ for $k > L$ |
-| $M(G)v = 0$ at $\ell = L$ | $\sum_{k=1}^L v_k = 0$ |
-| $Gv = 0$ at $\ell = L$ | $\sum_{k=1}^L k\, v_k = 0$ |
+| $M(M(G))w = 0$ | $w_k = 0$ for $k > L$ |
+| $M(G)w = 0$ at $\ell = L$ | $\sum_{k=1}^L w_k = 0$ |
+| $Gw = 0$ at $\ell = L$ | $\sum_{k=1}^L k\, w_k = 0$ |
 
-**Step 2: Show $\tilde{a}_{\mathrm{reg}} \perp v$.**
+**Step 2: Show $\tilde{a} \perp w$.**
 
-Since $v_0 = 0$ and $v_k = 0$ for $k > L$, and $(\tilde{a}_{\mathrm{reg}})_k = -c_k$ for $k = 1, \ldots, L$ and $0$ otherwise,
+Since $w_0 = 0$ and $w_k = 0$ for $k > L$, and $\tilde{a}_k = -c_k$ for $k = 1, \ldots, L$ and $0$ otherwise,
 
-$$\tilde{a}_{\mathrm{reg}} \cdot v = -\sum_{k=1}^L c_k\, v_k.$$
+$$\langle \tilde{a}, w \rangle = -\sum_{k=1}^L c_k\, w_k.$$
 
 Since $c_k = \frac{2L+1-3k}{nL(L-1)}$, we can write $c_k = \alpha + \beta k$ with $\alpha = \frac{2L+1}{nL(L-1)}$ and $\beta = \frac{-3}{nL(L-1)}$,
 
-$$\sum_{k=1}^L c_k\, v_k = \alpha \sum_{k=1}^L v_k + \beta \sum_{k=1}^L k\,v_k = 0,$$
+$$\sum_{k=1}^L c_k\, w_k = \alpha \sum_{k=1}^L w_k + \beta \sum_{k=1}^L k\,w_k = 0,$$
 
-where both sums vanish by Step 1. Therefore $\tilde{a}_{\mathrm{reg}} \cdot v = 0$ for all $v$ satisfying $(*)$. $\square$
+where both sums vanish by Step 1. Therefore $\langle \tilde{a}, w \rangle = 0$ for all $w$ satisfying $(*)$. $\square$
 
 ```{r}
 #| message: false
