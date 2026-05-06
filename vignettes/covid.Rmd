@@ -1,0 +1,512 @@
+---
+title: "COVID"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{covid}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{R setup, message=FALSE, warning=FALSE, echo=FALSE}
+# Load Libraries
+# library(ECE)
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(changepoint)
+library(tidyverse)
+library(patchwork) # for advanced plot placement 
+```
+
+```{R, message=FALSE, warning=FALSE, echo=FALSE, cache=TRUE}
+# Load Data
+url <- "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
+raw_data <- read_csv(url)
+```
+
+We study the number of COVID cases between Maricopa (`X1`; red) and Pima (`X2`; blue) counties. We track the log of the number of new cases: `log(1 + new_cases)`. Due to the geographic proximity, we can assume a moderate level of correlation. Even with a moderately sophisticated model, the noise component is likely to compensate for some of the unexplained variation. 
+
+```{R, echo=FALSE}
+# Clean Data (output n x 2: matrix)
+data <- raw_data %>%
+  # reduce dataset size
+  filter(("2020-04-01" < date) & (date < "2022-01-01")) %>%
+  filter(county %in% c("Pima", "Maricopa")) %>%
+  # organize into time series
+  group_by(county) %>%
+  arrange(date) %>%
+  mutate(new_cases = cases - lag(cases)) %>%
+  filter(new_cases > 0) %>%
+  mutate(log_new_cases = log(1 + new_cases)) %>%
+  ungroup() %>%
+  #
+  dplyr::select(date, county, log_new_cases) %>%
+  pivot_wider(
+    names_from = county,
+    values_from = log_new_cases
+  ) %>%
+  drop_na() %>%
+  # rename
+  rename(
+    index = date,
+    X1 = Maricopa,
+    X2 = Pima
+  ) %>%
+  # get piecewise constant means
+  mutate(
+    X1_mean = segment_mean(X1),
+    X2_mean = segment_mean(X2)
+  )
+```
+
+```{R, echo=FALSE}
+# Plot Segmentation
+plot_segmentation <- ggplot(data) +
+  geom_line(aes(x = index, y = X1), color = "red") +
+  geom_line(aes(x = index, y = X2), color = "blue") +
+  geom_line(aes(x = index, y = X1_mean), color = "red") +
+  geom_line(aes(x = index, y = X2_mean), color = "blue") +
+  labs(
+    title = "Change Point Segmentation",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal()
+
+# Plot Residual
+plot_residual <- ggplot(data) + 
+  geom_line(aes(x = index, y = X1 - X1_mean), color = "red") +
+  geom_line(aes(x = index, y = X2 - X2_mean), color = "blue") +
+  geom_vline(
+    xintercept = data$index[cpts(get_cp(data$X1))], 
+    color = "red", linewidth = 0.5, linetype="dashed"
+  ) +
+  geom_vline(
+    xintercept = data$index[cpts(get_cp(data$X2))], 
+    color = "blue", linewidth = 0.5, linetype="dashed"
+  ) +
+  labs(
+    title = "Segmentation Residuals",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal()
+
+
+plot_residual_hist <- ggplot(data) + 
+  geom_histogram(aes(x=X1 - X1_mean, y= after_stat(density)), 
+    fill="red", color="black", bins=40, alpha=0.5) + 
+  geom_histogram(aes(x=X2 - X2_mean, y=after_stat(density)), 
+    fill="blue", color="black", bins=40, alpha=0.5) + 
+  labs(
+    title = "Histogram of Residuals",
+    x = "",
+    y = ""
+  ) +
+  stat_function(fun = dnorm, args = list(
+    mean = mean(data$X1 - data$X1_mean), 
+    sd = sd(data$X1 - data$X1_mean)
+  ), color = "red", linewidth = 1) +
+  stat_function(
+    fun = dnorm, args = list(
+    mean = mean(data$X2 - data$X2_mean), 
+    sd = sd(data$X2 - data$X2_mean)
+  ), color = "blue", linewidth = 1) +
+  theme_minimal()
+
+
+plot_bivariate <- ggplot(data) + 
+  geom_hline(yintercept = 0, color = "gray50", linewidth = 0.5) +
+  geom_vline(xintercept = 0, color = "gray50", linewidth = 0.5) +
+  geom_point(aes(x=X1 - X1_mean, y=X2 - X2_mean)) + 
+  labs(
+    title = "Bivariate Distribution",
+    x = "X1",
+    y = "X2"
+  ) +
+  theme_minimal()
+
+# Plot Segmentation
+plot_segmentation 
+plot_residual
+```
+
+```{R, echo=FALSE}
+# Plot Diagnostics
+plot_residual_hist
+```
+
+```{R, echo=FALSE}
+# Plot Bivariate Residuals
+df <- data %>% mutate(
+  X1_demeaned = X1 - X1_mean,
+  X2_demeaned = X2 - X2_mean
+) 
+corr <- cor(df$X1_demeaned, df$X2_demeaned)
+ggplot(df, aes(x = X1_demeaned, y = X2_demeaned)) +
+  geom_point(alpha = 0.3) +
+  stat_ellipse(
+    type = "norm", 
+    level = 0.95, 
+    color = "blue", 
+    size = 1
+  ) + 
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray") +
+  coord_equal() +
+  theme_minimal() +
+  labs(
+    title = paste0("Centered Bivariate Scatterplot (Correlation = ", round(corr, 2), ")"),
+    x = "X1 (demeaned)",
+    y = "X2 (demeaned)"
+  )
+```
+
+The residual plot illustrates that the segmentation does a reasonable job of fitting the data. Nevertheless, there are some regions where the constant piecewise function is misspecified (e.g. where there are long periods of increases and decreases). This likely produces some auto-correlation since low values of `X1` are likely to correspond to low values of `X2` and high values of `X1` are likely to correspond to high values of `X2`. We can see this clearly near the break points (illustrated by dashed vertical lines). 
+
+Moreover, the histogram of the residuals shows the existence of some outliers. We also see the distribution deviates from a normal distribution since it has fatter tails. Nevertheless, the segmentation appears to produce a fit that results in a "normal"-looking residual plot. 
+
+```{R, echo=FALSE}
+# Check Autocorrelation
+X1 <- data$X1
+X2 <- data$X2
+X1_demeaned <- data$X1 - data$X1_mean
+X2_demeaned <- data$X2 - data$X2_mean
+
+par(mfrow = c(1, 2))
+acf(X1_demeaned)
+acf(X2_demeaned)
+par(mfrow = c(1, 1))
+```
+
+
+
+After the segmentation, there is some concern for auto-correlation. This is likely due to model misspecification. For example, there is a ramping number of COVID cases around October of 2020. It does not increase so quickly that we can neatly separate the counts from the bottom to the top of the trough. Instead, the mean is used throughout the ramp so the two time series are heavily auto-correlated. 
+
+```{R}
+# =================
+# Compare Estimates
+# =================
+
+# calculate correlation
+ece_obj <- ece.test(X1, X2)
+pearson_obj <- cor.test(X1, X2)
+pearson_demeaned_obj <- cor.test(X1_demeaned, X2_demeaned)
+```
+
+
+```{R, echo=FALSE}
+# organize data
+row_names <- c("ECE", "Pearson (classical)", "Pearson (demeaned)")
+col_names <- c("method", "estimate", "p.val")
+
+estimate <- c(ece_obj$estimate, pearson_obj$estimate, pearson_demeaned_obj$estimate)
+pval <- c(ece_obj$p.val, pearson_obj$p.val, pearson_demeaned_obj$p.val)
+ci_lower <- c(
+  ece_obj$conf.int[1],
+  pearson_obj$conf.int[1],
+  pearson_demeaned_obj$conf.int[1]
+)
+ci_upper <- c(
+  ece_obj$conf.int[2],
+  pearson_obj$conf.int[2],
+  pearson_demeaned_obj$conf.int[2]
+)
+
+# Print Results
+#results <- cbind(estimate, pval, ci_lower, ci_upper)
+method <- c("ECE", "Pearson (classical)", "Pearson (demeaned)")
+results <- cbind(method, round(estimate, 3), pval)
+rownames(results) <- NULL
+colnames(results) <- col_names
+knitr::kable(results)
+```
+
+# Other Analysis Approaches
+
+```{R, echo=FALSE, message=FALSE, warning=FALSE}
+# Exponential Smoothing
+X1_smooth <- forecast::ses(ts(X1), alpha=0.1)$fit
+X2_smooth <- forecast::ses(ts(X2), alpha=0.1)$fit
+
+# Robust Loess Smoothing
+X1_smooth <- stats::loess(X1 ~ time(X1), span = 0.3, family = "symmetric")$fitted
+X2_smooth <- stats::loess(X2 ~ time(X2), span = 0.3, family = "symmetric")$fitted
+
+X1_desmoothed <- X1 - X1_smooth
+X2_desmoothed <- X2 - X2_smooth
+```
+
+We use robust loess smoothing and find that it fits quite naturally with the data. 
+
+```{R, echo=FALSE}
+data_smooth <- data %>% 
+  mutate(
+    X1_smooth = stats::loess(X1 ~ time(X1), span = 0.1, family = "symmetric")$fitted,
+    X2_smooth = stats::loess(X2 ~ time(X2), span = 0.1, family = "symmetric")$fitted
+  )
+
+plot_smoothed <-  ggplot(data_smooth, aes(x = index)) +
+  geom_line(aes(y = X1), color = "red") +
+  geom_line(aes(y = X2), color = "blue") +
+  geom_line(aes(y = X1_smooth), color = "red") +
+  geom_line(aes(y = X2_smooth), color = "blue") +
+  labs(title = "Smoothed Time Series", x = "Time", y = "") +
+  theme_minimal()
+
+plot_smoothed_residual <- ggplot(data_smooth, aes(x = index)) +
+  geom_line(aes(y = X1 - X1_smooth), color = "red") +
+  geom_line(aes(y = X2 - X2_smooth), color = "blue") +
+  geom_hline(yintercept = 0, color = "gray50", linewidth = 0.5) +
+  labs(title = "Demeaned Residuals", x = "Time", y = "") +
+  theme_minimal()
+
+plot_smoothed_residual_hist <- ggplot(data_smooth, aes(x = index)) + 
+  geom_histogram(aes(x=X1 - X1_smooth), fill="red", color="black", bins=40, alpha=0.5) + 
+  geom_histogram(aes(x=X2 - X2_smooth), fill="blue", color="black", bins=40, alpha=0.5) + 
+  labs(
+    title = "Histogram of Residuals",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal()
+
+plot_smoothed 
+plot_smoothed_residual 
+plot_residual_hist
+```
+
+```{R, echo=FALSE}
+# Plot Bivariate Residuals
+df <- data %>% mutate(
+  X1_desmoothed = X1 - X1_smooth,
+  X2_desmoothed = X2 - X2_smooth
+) 
+corr <- cor(df$X1_desmoothed, df$X2_desmoothed)
+ggplot(df, aes(x = X1_desmoothed, y = X2_desmoothed)) +
+  geom_point(alpha = 0.3) +
+  stat_ellipse(
+    type = "norm", 
+    level = 0.95, 
+    color = "blue", 
+    size = 1
+  ) + 
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray") +
+  coord_equal() +
+  theme_minimal() +
+  labs(
+    title = paste0("Centered Bivariate Scatterplot (Correlation = ", round(corr, 2), ")"),
+    x = "X1 (desmoothed)",
+    y = "X2 (desmoothed)"
+  )
+```
+
+```{R}
+par(mfrow = c(1, 2))
+acf(X1_desmoothed)
+acf(X2_desmoothed)
+par(mfrow = c(1, 1))
+```
+
+The ACF plot illustrates even larger auto-correlation. This is because of the poor fit at the beginning of the sequence (before 07/2020). 
+
+```{R}
+par(mfrow = c(1, 2))
+acf(X1_desmoothed[100:length(X1_desmoothed)])
+acf(X2_desmoothed[100:length(X2_desmoothed)])
+par(mfrow = c(1, 1))
+```
+
+We see that by removing a few months, the corresponding ACF plot does not exhibit the excessive auto-correlation. 
+
+```{R, echo=FALSE}
+# Test Estimators
+ece_obj_exclude100 <- ece.test(X1[100:length(X1)], X2[100:length(X2)])
+pearson_desmoothed_obj <- cor.test(X1_desmoothed, X2_desmoothed) 
+pearson_desmoothed_exclude100 <- cor.test(
+  X1_desmoothed[100:length(X1_desmoothed)], 
+  X2_desmoothed[100:length(X2_desmoothed)]
+) 
+pearson_demeaned_exclude100 <- cor.test(
+  X1_demeaned[100:length(X1_demeaned)], 
+  X2_demeaned[100:length(X2_demeaned)]
+)
+
+method <- c(
+  "ECE",
+  "Pearson (demeaned)",
+  "Pearson (desmoothed)"
+)
+estimate <- c(
+  ece_obj$estimate,
+  pearson_demeaned_obj$estimate,
+  pearson_desmoothed_obj$estimate
+)
+pval <- c(
+  ece_obj$p.val,
+  pearson_demeaned_obj$p.val,
+  pearson_desmoothed_obj$p.val
+)
+
+results <- cbind(method, round(estimate, 3), pval)
+rownames(results) <- NULL
+colnames(results) <- col_names
+knitr::kable(results)
+```
+
+```{R, echo=FALSE}
+method <- c(
+  "ECE (exclude 100)",
+  "Pearson (demeaned; exclude 100)",
+  "Pearson (desmoothed; exclude 100)"
+)
+estimate <- c(
+  ece_obj_exclude100$estimate, 
+  pearson_demeaned_exclude100$estimate,
+  pearson_desmoothed_exclude100$estimate
+)
+pval <- c(
+  ece_obj_exclude100$p.val, 
+  pearson_demeaned_exclude100$p.val,
+  pearson_desmoothed_exclude100$p.val
+)
+
+results <- cbind(method, round(estimate, 3), pval)
+rownames(results) <- NULL
+colnames(results) <- col_names
+knitr::kable(results)
+```
+
+--- 
+
+# Correlation Homogeneity
+
+```{R, echo=FALSE}
+rolling_cor <- function(X, window) {
+  n <- nrow(X)
+  corr <- rep(NA, n) # initialize result vector
+
+  for (i in seq(window, n)) {
+    window_data <- X[(i - window + 1):i, , drop = FALSE]
+    corr[i] <- cor(window_data[, 1], window_data[, 2])
+  }
+
+  return(corr)
+}
+```
+
+```{R, echo=FALSE, message=FALSE, warning=FALSE}
+local_cor <- rolling_cor(cbind(data$X1, data$X2), window = 10)
+
+# Plot Local Correlation
+local_cor_df <- data.frame(local_cor) %>% 
+  mutate(
+    index = data$index, 
+    mean = c(rep(NA, 9), segment_mean(local_cor[!is.na(local_cor)]))
+  )
+
+plot_local_cor <- ggplot(data=local_cor_df) + 
+  geom_line(aes(x = index, y=local_cor)) + 
+  geom_line(aes(x = index, y=mean)) + 
+  labs(
+    title = "Rolling Correlation (bandwidth=10)",
+    x = "",
+    y = "correlation"
+  ) +
+  theme_minimal()
+
+plot_segmentation / plot_local_cor
+```
+
+Here, we take the rolling correlation over the raw data. Overall, it looks like there's some heterogeneity in the correlation. It decreases within the middle section. 
+
+```{R}
+mean(local_cor, na.rm=TRUE)
+ece.test(X1, X2)$estimate
+```
+
+Why is the demeaned correlation the lowest? 
+
+```{R, echo=FALSE, warning=FALSE, message=FALSE}
+# SCRATCH 
+foo <- cor.test(
+  X1 - segment_mean(X1, penalty="Manual", pen.value=20),
+  X2 - segment_mean(X2, penalty="Manual", pen.value=20)
+)$estimate
+bar <- cor.test(
+  X1 - segment_mean(X1),
+  X2 - segment_mean(X2)
+)$estimate
+data %>% 
+  mutate(
+    X1_mean = segment_mean(X1, penalty="Manual", pen.value=19),
+    X2_mean = segment_mean(X2, penalty="Manual", pen.value=19)
+  ) %>% 
+  mutate(
+    X1_mean2 = segment_mean(X1),
+    X2_mean2 = segment_mean(X2)
+  ) %>% 
+  ggplot() + 
+  geom_line(aes(x=index, y=X1), color="red") + 
+  geom_line(aes(x=index, y=X2), color="blue") +
+  geom_line(aes(x=index, y=X1_mean), color="red") +
+  geom_line(aes(x=index, y=X2_mean), color="blue") + 
+  geom_line(aes(x=index, y=X1_mean2), color="red", linetype="dashed") +
+  geom_line(aes(x=index, y=X2_mean2), color="blue", linetype="dashed") + 
+  geom_text(aes(x=as.Date("2020-11-29"), y=1), label=paste("segmentation (solid)", round(foo, 3))) +
+  geom_text(aes(x=as.Date("2020-11-29"), y=2), label=paste("segmentation (dashed)", round(bar, 3))) +
+  theme_minimal() 
+
+```
+```{R, echo=FALSE}
+clark <- raw_data %>%
+  # reduce dataset size
+  filter(("2020-04-01" < date) & (date < "2022-01-01")) %>%
+  filter(county == "Clark", state == "Nevada") %>%
+  # organize into time series
+  group_by(county) %>%
+  arrange(date) %>%
+  mutate(new_cases = cases - lag(cases)) %>%
+  filter(new_cases > 0) %>%
+  mutate(log_new_cases = log(1 + new_cases)) %>%
+  ungroup() %>%
+  #
+  dplyr::select(date, county, log_new_cases) %>%
+  pivot_wider(
+    names_from = county,
+    values_from = log_new_cases
+  ) %>%
+  drop_na() %>%
+  # rename
+  rename(
+    index = date,
+    X3 = Clark
+  ) %>%
+  # get piecewise constant means
+  mutate(
+    X3_mean = segment_mean(X3)
+  )
+```
+
+```{R, echo=FALSE, warning=FALSE, message=FALSE}
+left_join(data, clark) %>% 
+  ggplot() +
+  geom_line(aes(x = index, y = X1), color = "red") +
+  geom_line(aes(x = index, y = X2), color = "blue") +
+  geom_line(aes(x = index, y = X3), color = "green") +
+  geom_line(aes(x = index, y = X1_mean), color = "red") +
+  geom_line(aes(x = index, y = X2_mean), color = "blue") +
+  geom_line(aes(x = index, y = X3_mean), color = "green") +
+  labs(
+    title = "Change Point Segmentation",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal()
+```

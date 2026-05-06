@@ -1,0 +1,249 @@
+---
+title: "simulate-scenarios"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{simulate-scenarios}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup, message=FALSE, warning=FALSE, echo=FALSE}
+# Load Libraries
+devtools::load_all()
+library(patchwork) #
+library(tidyverse)
+
+directory <- "~/Documents/Research/Code/ECE/dev/"
+export_power_file <- paste0(directory, "power-sims.csv")
+export_est_file <- paste0(directory, "est-sims.csv")
+export_mse_file <- paste0(directory, "mse-sims.csv")
+export_type1_file <- paste0(directory, "type1-sims.csv")
+```
+
+# Simulate Scenarios
+In this vignette, we will compare the _equivariant covariance estimator_ against some mean-removing alternatives. 
+
+1. `demean`: estimate change points, estimate the segment means, remove means, and estimate Pearson correlation
+2. `desmooth`: apply loess smoothing, remove estimated mean, estimate Pearson correlation
+3. `oracle`: the true mean is completely known -- both change point and mean value.
+4. `oracle_cp`: change points are known, and the means are estimated using a simple sample mean. 
+
+We consider a variety of simulations, which have varying levels of mean structure complexity. All of them have minimum segment length of 4. 
+
+## Simulate Data
+
+We simulate the results and store them in a csv file. This way, we reduce our computational burden and we can conveniently call plots to provide different views of the data. 
+
+To begin, we produce our simulations by first producing a grid of parameters we want to simulate. Then, they are simulated using `simulate_grid`. 
+
+```{R, echo=FALSE, eval=FALSE}
+# Set Simulation Parameters
+param_grid <- expand.grid(
+  scenario = 12,
+  method = c("demean", "desmooth", "ECE", "oracle"),
+  sxy = 0,
+  sx = 1,
+  sy = 1,
+  n = c(200, 1000),
+  signal = c(5, 10),
+  n_sim = 5000
+)
+
+# Run Simulations
+simulate_grid(param_grid, "power", export_power_file)
+simulate_grid(param_grid, "est", export_est_file)
+simulate_grid(param_grid, "mse", export_mse_file)
+simulate_grid(param_grid, "type1", export_type1_file)
+```
+
+## Analyze Results
+
+```{R, message=FALSE, warning=FALSE}
+# Read CSV
+sim_power <- readr::read_csv(export_power_file)
+sim_est <- readr::read_csv(export_est_file)
+sim_mse <- readr::read_csv(export_mse_file)
+sim_type1 <- readr::read_csv(export_type1_file)
+```
+
+```{R, echo=FALSE, message=FALSE, warning=FALSE}
+# Produce Plots for Metrics
+scenarios <- 1:12
+n_sim <- 1000
+sample_size <- 200
+
+# scenario instance
+scenario_plots <- map(
+  scenarios,
+  ~ plot_scenario(
+    scenario(.x, n = sample_size)
+  )
+)
+# metrics
+power_plots <- map(
+  scenarios,
+  ~ plot_power(
+    sim_power,
+    sample_size   = sample_size,
+    scenario      = .x,
+    n_simulations = n_sim
+  )
+)
+est_plots <- map(
+  scenarios,
+  ~ plot_est(
+    sim_est,
+    sample_size   = sample_size,
+    scenario      = .x,
+    n_simulations = n_sim
+  )
+)
+mse_plots <- map(
+  scenarios,
+  ~ plot_mse(
+    sim_mse,
+    sample_size   = sample_size,
+    scenario      = .x,
+    n_simulations = n_sim
+  )
+)
+# aggregate plots
+combined_plots <- map(
+  seq_along(scenarios),
+  function(i) {
+    (scenario_plots[[i]] | est_plots[[i]]) /
+      (power_plots[[i]] | mse_plots[[i]])
+  }
+)
+combined_plots
+```
+
+In all simulations considered, ECE is unbiased, even in misspecified cases like scenario 8 and 9, maximally frequent change point scenarios like 10, and in randomly distributed changes as in 11. While the mean-removing strategies are reasonably effective in many simple cases, they struggle once the changes become too erratic such as in scenario 8. 
+
+## Type 1 Error
+
+```{R, echo=FALSE, message=FALSE, warning=FALSE}
+type1_plots <- map(
+  scenarios,
+  ~ plot_type1(
+    sim_type1,
+    sample_size   = sample_size,
+    scenario      = .x,
+    n_simulations = 5000
+  )
+)
+# aggregate plots
+combined_type1_plots <- map(
+  seq_along(scenarios),
+  function(i) {
+    (scenario_plots[[i]] | type1_plots[[i]])
+  }
+)
+combined_type1_plots
+```
+
+###  Misspecified Linear
+
+Is ECE still unbiased in the misspecified-linear case? 
+
+We analyze the type 1 error 
+
+```{R, echo=FALSE, warning=FALSE}
+type1_s12_plots <- map(
+  c(1, 2, 3, 5, 10),
+  ~ plot_type1(
+    sim_type1,
+    sample_size   = sample_size,
+    scenario      = 12,
+    n_simulations = 5000,
+    signal_val = .x
+  ) + labs(title=glue::glue("Scenario 12 (n = {sample_size}, signal_val = {.x})"))
+)
+type1_s12_plots
+```
+
+When we consider `signal_val` > 3, we see that ECE tends to produce NA values. 
+
+--- 
+
+```{R, echo=FALSE, message=FALSE, warning=FALSE}
+plot_segment <- function(X, params) {
+  # Combine
+  df <- as.data.frame(X)
+  colnames(df) <- c("X1", "X2")
+  X_mean <- segment_mean(X)
+  df$X1_mean <- X_mean[, 1]
+  df$X2_mean <- X_mean[, 2]
+  df$h1 <- params$h[, 1]
+  df$h2 <- params$h[, 2]
+  df$index <- seq_len(nrow(X))
+
+  ggplot(df, aes(x = index)) +
+    geom_line(aes(y = X1), color = "red", alpha = 0.5) +
+    geom_line(aes(y = X2), color = "blue", alpha = 0.5) +
+    geom_line(aes(y = h1), color = "red", linewidth = 1.5) +
+    geom_line(aes(y = h2), color = "blue", linewidth = 1.5) +
+    geom_line(aes(y = X1_mean), color = "red") +
+    geom_line(aes(y = X2_mean), color = "blue") +
+    theme_minimal()
+}
+```
+
+```{R, warning=FALSE, message=FALSE, echo=FALSE}
+bias <- sim_est %>%
+  dplyr::filter(
+    n == 200,
+    sxy == 0,
+    scenario_num == 4,
+    n_sims == 10000
+  ) %>%
+  ggplot(aes(x = signal, y = val, color = method)) +
+  geom_hline(yintercept = 0) +
+  geom_line() +
+  geom_point() +
+  xlab("signal strength") +
+  ylab("correlation estimate") +
+  ggtitle("Mean-Removing Techniques are Biased (n=200, scenario=4)") +
+  theme_minimal()
+
+params <- scenario(4, n = 200, sxy = 0, signal = 0.25)
+plot_segment(generate_data(params), params) | bias
+```
+
+We see that mean-removing strategies are biased for small mean shifts. If the strategies are unable to control for Type I error, the corresponding power curves are somewhat meaningless. Strategies unable to control for Type I error will have inflated power and will look superior to techniques that can control for Type I error. 
+
+```{R, warning=FALSE, message=FALSE, echo=FALSE}
+power <- sim_power %>%
+  dplyr::filter(
+    n == 200,
+    sxy == 0,
+    scenario_num == 4,
+    n_sims == 10000
+  ) %>%
+  ggplot(aes(x = signal, y = val, color = method)) +
+  geom_hline(yintercept = 0.05) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "signal",
+    y = "power",
+    title = "Power Reflects Bias (n=200, scenario=4)"
+  ) +
+  theme_minimal()
+
+params <- scenario(4, n = 200, sxy = 0, signal = 0.25)
+plot_segment(generate_data(params), params) | power
+```
+
+## Future Simulations
+The general story is this: desmoothing is always biased since it can't handle the abrupt changes. Segmentation does really well if the segments can be found. However, it is challenging to identify the changes when they are 1.) too frequent/sporadic, 2.) too small and cannot be detected. ECE is unbiased, but suffers from very high variance. Because of this, it tends to have a worse MSE than the competing methods. 
+
+The simulations I ran have fairly large mean shifts, which paints a fairly pessimistic perspective of our estimator. However, we see quite plainly that when the mean structure is complicated, ECE dominates performance. 
+
