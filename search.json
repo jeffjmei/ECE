@@ -1,0 +1,379 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "ECE Notes",
+    "section": "",
+    "text": "These notes accompany the Equivariant Covariance Estimator (ECE) project. The goal is to estimate and test for contemporaneous correlation between two time series in the presence of unknown mean shifts, without requiring explicit changepoint detection.\nThe notes combine theoretical derivations with R computations that verify the theory.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Preface</span>"
+    ]
+  },
+  {
+    "objectID": "model-assumptions.html",
+    "href": "model-assumptions.html",
+    "title": "2  Model Assumptions",
+    "section": "",
+    "text": "2.1 Error Structure\nWe observe input data sequences \\(X = (X_1, \\ldots, X_n)\\) and \\(Y = (Y_1, \\ldots, Y_n)\\). Each observation decomposes into a mean component and an error component:\n\\[\nX_i = \\theta_{x,i} + \\varepsilon_{x,i}, \\qquad Y_i = \\theta_{y,i} + \\varepsilon_{y,i}.\n\\]\nThe error terms \\((\\varepsilon_{x,i}, \\varepsilon_{y,i})\\) have zero mean and covariance matrix\n\\[\n\\Sigma = \\begin{bmatrix} \\sigma_x^2 & \\sigma_{xy} \\\\ \\sigma_{xy} & \\sigma_y^2 \\end{bmatrix}.\n\\]\nWe assume there is no autocorrelation: for \\(i \\neq j\\),\n\\[\n\\operatorname{Cov}(\\varepsilon_{x,i}, \\varepsilon_{x,j})\n= \\operatorname{Cov}(\\varepsilon_{y,i}, \\varepsilon_{y,j})\n= \\operatorname{Cov}(\\varepsilon_{x,i}, \\varepsilon_{y,j})\n= 0.\n\\]\nContemporaneous dependence between \\(X\\) and \\(Y\\) is captured by \\(\\sigma_{xy} = \\operatorname{Cov}(\\varepsilon_{x,i}, \\varepsilon_{y,i})\\), the main quantity of interest in these notes.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Model Assumptions</span>"
+    ]
+  },
+  {
+    "objectID": "model-assumptions.html#mean-structure",
+    "href": "model-assumptions.html#mean-structure",
+    "title": "2  Model Assumptions",
+    "section": "2.2 Mean Structure",
+    "text": "2.2 Mean Structure\nThe mean components \\(\\theta_x = (\\theta_{x,1}, \\ldots, \\theta_{x,n})\\) and \\(\\theta_y = (\\theta_{y,1}, \\ldots, \\theta_{y,n})\\) are assumed to be piecewise constant. We call index \\(i\\) a change point when \\(\\theta_i \\neq \\theta_{i+1}\\), and collect all change points in \\(\\tau = (\\tau_1, \\ldots, \\tau_J)\\) in ascending order. With \\(\\tau_0 = 0\\) and \\(\\tau_{J+1} = n\\), the shortest segment length is\n\\[\n\\mathcal{L}(\\theta) = \\min_{0 \\le j \\le J} \\{\\tau_{j+1} - \\tau_j\\}, \\qquad \\Theta_L = \\{\\theta : \\mathcal{L}(\\theta) \\ge L\\}.\n\\]\nThis allows frequent mean shifts while ensuring a minimum spacing \\(L\\) between consecutive change points.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Model Assumptions</span>"
+    ]
+  },
+  {
+    "objectID": "lagged-differences.html",
+    "href": "lagged-differences.html",
+    "title": "3  Lagged Differences",
+    "section": "",
+    "text": "3.1 \\(k\\)-Lagged Estimator\nUsing circular indexing \\(i := [(i-1) \\bmod n] + 1\\), define the \\(k\\)-lagged cross-product sum\n\\[\nT_k(X, Y) = \\sum_{i=1}^n (X_i - X_{i+k})(Y_i - Y_{i+k}).\n\\]\nWe abbreviate \\(T_k(X) := T_k(X,X)\\) and similarly for \\(Y\\).",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Lagged Differences</span>"
+    ]
+  },
+  {
+    "objectID": "lagged-differences.html#circular-version",
+    "href": "lagged-differences.html#circular-version",
+    "title": "3  Lagged Differences",
+    "section": "3.2 Circular Version",
+    "text": "3.2 Circular Version\nA practical issue with \\(T_k\\) is that the number of terms \\(n - k\\) shrinks as \\(k\\) grows, making comparisons across lags unequal. To fix this, we embed the index set on a circle by redefining\n\\[\ni \\;:=\\; [(i - 1) \\bmod n] + 1,\n\\]\nso that index \\(n+1\\) wraps back to \\(1\\). Under this convention every lag uses exactly \\(n\\) differences. The circular \\(k\\)-lagged covariance estimator is\n\\[\n\\hat{\\sigma}_k(X, Y) = \\frac{1}{2n}\\, T_k(X, Y).\n\\]\nLike the non-circular version, \\(\\hat{\\sigma}_k\\) is unbiased for \\(\\sigma_{xy}\\) whenever \\(1 \\le k &lt; n\\) and there are no mean shifts. It is slightly more efficient because it uses all \\(n\\) differences at every lag.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Lagged Differences</span>"
+    ]
+  },
+  {
+    "objectID": "lagged-differences.html#bias-under-mean-shifts",
+    "href": "lagged-differences.html#bias-under-mean-shifts",
+    "title": "3  Lagged Differences",
+    "section": "3.3 Bias Under Mean Shifts",
+    "text": "3.3 Bias Under Mean Shifts\nWhen mean shifts are present the estimator is no longer unbiased. To see why, expand a single lagged difference:\n\\[\nX_i - X_{i+k} = (\\theta_{x,i} - \\theta_{x,i+k}) + (\\varepsilon_{x,i} - \\varepsilon_{x,i+k}).\n\\]\nWhenever \\(i\\) and \\(i+k\\) straddle a change point, the mean difference \\(\\theta_{x,i} - \\theta_{x,i+k}\\) is nonzero and contaminates the cross-product. The resulting bias in \\(T_k\\) is\n\\[\n\\mathbb{E}[T_k(X, Y)] = 2n\\sigma_{xy} + k\\,\\omega_{xy},\n\\qquad \\omega_{xy} = T_1(\\theta_x, \\theta_y),\n\\]\nso the bias of \\(\\hat{\\sigma}_k\\) grows linearly in \\(k\\).",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Lagged Differences</span>"
+    ]
+  },
+  {
+    "objectID": "lagged-differences.html#equivariant-covariance-estimator-ece",
+    "href": "lagged-differences.html#equivariant-covariance-estimator-ece",
+    "title": "3  Lagged Differences",
+    "section": "3.4 Equivariant Covariance Estimator (ECE)",
+    "text": "3.4 Equivariant Covariance Estimator (ECE)\nSince \\(\\mathbb{E}[T_k(X,Y)/2n] = \\sigma_{xy} + k\\,\\omega_{xy}/2n\\), the quantity \\(\\sigma_{xy}\\) is the intercept of a line in \\(k\\). Fitting this line at \\(k=1,2\\) and extracting the intercept gives the ECE:\n\\[\n\\hat{\\sigma}_{xy} = \\frac{1}{2n}\\bigl(2T_1(X,Y) - T_2(X,Y)\\bigr).\n\\]\nBy linearity of expectation, \\(\\mathbb{E}[\\hat{\\sigma}_{xy}] = \\sigma_{xy}\\), so ECE is unbiased under the piecewise-constant mean model.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Lagged Differences</span>"
+    ]
+  },
+  {
+    "objectID": "bilinear-form.html",
+    "href": "bilinear-form.html",
+    "title": "4  Bilinear Form",
+    "section": "",
+    "text": "4.1 Properties of Circulant Matrices\nDefinition. An estimator \\(\\tilde{s}(X, Y) = X^T A Y\\) for \\(A \\in \\mathbb{R}^{n \\times n}\\) is called bilinear.\nExpanding using \\(X = \\theta_x + \\varepsilon_x\\) and \\(Y = \\theta_y + \\varepsilon_y\\) and taking expectations gives\n\\[\n\\mathbb{E}[\\tilde{s}(X, Y)] = \\theta_x^T A \\theta_y + \\operatorname{tr}(A)\\, \\sigma_{xy}.\n\\]\nFor unbiasedness, \\(A\\) must satisfy\nTo reduce the search space, we impose a symmetry condition. Let \\(C_k\\) be the circulant shift matrix, which shifts a vector \\(k\\) positions to the right circularly.\nDefinition. A bilinear estimator is equivariant if \\(\\tilde{s}(C_k X, C_k Y) = \\tilde{s}(X, Y)\\) for all \\(k\\).\nLemma (Equivariant \\(\\Leftrightarrow\\) Symmetric Circulant). Since \\(\\tilde{s}\\) is a covariance estimator, \\(A\\) must be symmetric. The bilinear estimator \\(X^T A Y\\) is equivariant if and only if \\(A\\) is a symmetric circulant: \\[\nA = \\operatorname{circ}(a_0, a_1, \\ldots, a_{\\lfloor n/2 \\rfloor}, \\ldots, a_1) = \\begin{bmatrix}\na_0    & a_1    & \\cdots & a_1    \\\\\na_1    & a_0    & \\cdots & \\vdots \\\\\n\\vdots & \\vdots & \\ddots & \\vdots \\\\\na_1    & \\cdots & a_1    & a_0\n\\end{bmatrix},\n\\] where \\(a_k = a_{n-k}\\) for all \\(k\\).\nProof. Since \\(\\tilde{s}(C_k X, C_k Y) = X^T(C_k^T A C_k)Y\\), equivariance holds iff \\(A = C_k^T A C_k\\) for all \\(k\\), which is equivalent to \\(A\\) being circulant. Symmetry of \\(A\\) further requires \\(a_k = a_{n-k}\\), so \\(A\\) is a symmetric circulant. \\(\\square\\)\nThis reduces the \\(n^2\\) free parameters of \\(A\\) to the \\(n\\) entries of its first row. Applying the unbiasedness constraints then uniquely determines \\(A\\), and the resulting estimator is exactly \\(\\hat{\\sigma}_{xy}\\).\nLet \\(C_1 = \\operatorname{circ}(0, 1, 0, \\ldots, 0)\\) be the elementary shift-by-one matrix, so \\(C_1^k = C_k\\). The following facts hold:\ndevtools::load_all(\"~/Documents/Research/Code/ECE\")\nlibrary(testthat)\n\nn &lt;- 6\nk &lt;- 2\nC1 &lt;- circ(c(0, 1, rep(0, n - 2)))\nCk &lt;- circ(c(rep(0, k), 1, rep(0, n - k - 1)))\n\ntest_that(\"circ constructs correct circulant matrix\", {\n  a &lt;- c(2, -1, 0, -1)\n  A &lt;- circ(a)\n  expect_equal(A[1, ], a)\n  expect_equal(A[2, ], c(-1, 2, -1, 0))\n  expect_equal(A[3, ], c(0, -1, 2, -1))\n  expect_equal(A[4, ], c(-1, 0, -1, 2))\n})\n\nTest passed 😸\n\ntest_that(\"C_k = C_1^k\", {\n  C1_power_k &lt;- Reduce(\"%*%\", rep(list(C1), k))\n  expect_equal(Ck, C1_power_k)\n})\n\nTest passed 😸\n\ntest_that(\"C_k^T = C_{n-k}\", {\n  Cnk &lt;- circ(c(rep(0, n - k), 1, rep(0, k - 1)))\n  expect_equal(t(Ck), Cnk)\n})\n\nTest passed 🎊\n\ntest_that(\"C_k = circ(e_k)\", {\n  for (k in 0:(n - 1)) {\n    e_k &lt;- as.numeric(seq_len(n) - 1 == k)\n    Ck  &lt;- circ(c(rep(0, k), 1, rep(0, n - k - 1)))\n    expect_equal(circ(e_k), Ck)\n  }\n})\n\nTest passed 😀",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Bilinear Form</span>"
+    ]
+  },
+  {
+    "objectID": "bilinear-form.html#properties-of-circulant-matrices",
+    "href": "bilinear-form.html#properties-of-circulant-matrices",
+    "title": "4  Bilinear Form",
+    "section": "",
+    "text": "Power. \\(C_k = C_1^k\\), so applying a shift of \\(k\\) is the same as applying a shift of 1 exactly \\(k\\) times. As a consequence, every circulant matrix is a polynomial in \\(C_1\\): \\(\\operatorname{circ}(a_0, \\ldots, a_{n-1}) = \\sum_{k=0}^{n-1} a_k C_1^k\\).\nTranspose. \\(C_k^T = C_{n-k} = C_k^{-1}\\), since \\(C_k\\) is a permutation matrix.\nCirculant form. \\(C_k = \\operatorname{circ}(e_k)\\), where \\(e_k\\) is the standard basis vector with a 1 in position \\(k\\) and 0s elsewhere. That is, \\(C_k\\) is the circulant matrix whose first row has a single 1 on the \\(k\\)-th band.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Bilinear Form</span>"
+    ]
+  },
+  {
+    "objectID": "bilinear-form.html#solving-for-a",
+    "href": "bilinear-form.html#solving-for-a",
+    "title": "4  Bilinear Form",
+    "section": "4.2 Solving for \\(A\\)",
+    "text": "4.2 Solving for \\(A\\)\nSince \\(A\\) is a symmetric circulant, it is determined by \\((a_0, \\ldots, a_{\\lfloor n/2 \\rfloor})\\). The unbiasedness conditions reduce to a linear system in these entries.\nFor a circulant \\(A\\), the condition \\(\\theta_x^T A \\theta_y = 0\\) for all piecewise-constant \\(\\theta_x, \\theta_y \\in \\Theta_L\\) is equivalent to requiring that the sum of all entries of every \\(\\ell \\times \\ell\\) contiguous submatrix of \\(A\\) is zero, for \\(\\ell = L, \\ldots, \\lfloor n/2 \\rfloor\\). Denoting by \\(A_\\ell\\) such a submatrix, this reads\n\\[\n\\|A_\\ell\\|_1 = 0, \\qquad \\ell = L, \\ldots, \\lfloor n/2 \\rfloor.\n\\]\nFor a symmetric circulant, this sum depends only on \\((a_0, \\ldots, a_{\\lfloor n/2 \\rfloor})\\) and takes the explicit form\n\\[\ng(\\ell) = \\ell\\, a_0 + \\sum_{i=1}^{\\min\\{\\lfloor n/2 \\rfloor,\\, \\ell\\}} 2(\\ell - i)\\, a_i + \\sum_{i=\\lfloor n/2 \\rfloor + 1}^{\\ell} 2(\\ell - i)\\, a_{n-i}.\n\\]\nFor \\(L = 2\\), setting \\(g(\\ell) = 0\\) for \\(\\ell = 2, 3\\) and using \\(a_0 = 1/n\\) gives\n\\[\ng(2) = 2a_0 + 2a_1 = 0 \\implies a_1 = -a_0,\n\\] \\[\ng(3) = 3a_0 + 4a_1 + 2a_2 = 0 \\implies a_2 = \\tfrac{a_0}{2},\n\\]\nand for \\(\\ell \\geq 4\\) one shows by induction that \\(a_{\\ell - 1} = 0\\). Together with \\(a_0 = 1/n\\), this uniquely determines \\(A\\).\n\nn &lt;- 10\nL &lt;- 2\n\nG  &lt;- constraint_matrix(n, L)\nG\n\n     [,1] [,2] [,3] [,4] [,5] [,6]\n[1,]    2    2    0    0    0    0\n[2,]    3    4    2    0    0    0\n[3,]    4    6    4    2    0    0\n[4,]    5    8    6    4    2    0\n\nns &lt;- null_space(G)\nns &lt;- ns / ns[1, 1]\nns |&gt; round(3)\n\n     [,1] [,2]\n[1,]  1.0  0.0\n[2,] -1.0  0.0\n[3,]  0.5  0.0\n[4,]  0.0  0.0\n[5,]  0.0  0.0\n[6,]  0.0  1.5\n\na_full &lt;- ece_first_row(n, L)\n\ntest_that(\"null space solution matches expected a for L = 2\", {\n  a_expected &lt;- c(1, -1, 1/2, rep(0, n - 5), 1/2, -1)\n  expect_equal(a_full, a_expected)\n})\n\nTest passed 😸",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Bilinear Form</span>"
+    ]
+  },
+  {
+    "objectID": "bilinear-form.html#matrix-form-of-ece",
+    "href": "bilinear-form.html#matrix-form-of-ece",
+    "title": "4  Bilinear Form",
+    "section": "4.3 Matrix Form of ECE",
+    "text": "4.3 Matrix Form of ECE\nProposition. For \\(L = 2\\), the ECE \\(\\hat{\\sigma}_{xy} = X^T A Y\\) where \\(A = \\frac{1}{n}\\operatorname{circ}(a)\\) and\n\\[\na = \\left(1,\\; -1,\\; \\tfrac{1}{2},\\; 0,\\; \\ldots,\\; 0,\\; \\tfrac{1}{2},\\; -1\\right).\n\\]\nProof. Since \\(T_k(X,Y) = ((I-C_k)X)^T((I-C_k)Y)\\), we have \\(T_k(X,Y) = X^T A_k Y\\) where\n\\[\nA_k = (I - C_k)^T(I - C_k) = 2I - C_k - C_k^T.\n\\]\nSince \\(C_k = \\operatorname{circ}(e_k)\\), we have \\(A_k = \\operatorname{circ}(\\tilde{a}_k)\\) where the first row \\(\\tilde{a}_k\\) has \\(+2\\) at position \\(0\\), \\(-1\\) at position \\(k\\), \\(-1\\) at position \\(n-k\\), and \\(0\\) elsewhere.\nSubstituting into \\(\\hat{\\sigma}_{xy} = \\frac{1}{2n}(2T_1 - T_2)\\),\n\\[\nA = \\frac{1}{2n}(2A_1 - A_2) = \\frac{1}{2n}\\bigl(2(2I - C_1 - C_1^T) - (2I - C_2 - C_2^T)\\bigr) = \\frac{1}{n}\\operatorname{circ}(a). \\quad\\square\n\\]\n\ndevtools::load_all(\"~/Documents/Research/Code/ECE\")\n\nset.seed(1)\nn &lt;- 10\nX &lt;- rnorm(n)\nY &lt;- rnorm(n)\n\n# Construct A = (1/n) circ(a)\na &lt;- c(1, -1, 1/2, rep(0, n - 5), 1/2, -1)\nA &lt;- circ(a) / n\n\n# Verify A_k = 2I - C_k - C_k^T matches lag_diff\nA1 &lt;- lag_mat(n, 1)\nA2 &lt;- lag_mat(n, 2)\n\ntest_that(\"A_k matches lag_diff\", {\n  expect_equal(as.numeric(X %*% A1 %*% Y), lag_diff(X, Y, k = 1))\n  expect_equal(as.numeric(X %*% A2 %*% Y), lag_diff(X, Y, k = 2))\n})\n\nTest passed 🥳\n\ntest_that(\"X^T A Y matches equiv.cov\", {\n  expect_equal(as.numeric(X %*% A %*% Y), equiv.cov(X, Y))\n})\n\nTest passed 🎉",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Bilinear Form</span>"
+    ]
+  },
+  {
+    "objectID": "bilinear-form.html#derivation-of-mathbbext-a-y",
+    "href": "bilinear-form.html#derivation-of-mathbbext-a-y",
+    "title": "4  Bilinear Form",
+    "section": "4.4 Derivation of \\(\\mathbb{E}[X^T A Y]\\)",
+    "text": "4.4 Derivation of \\(\\mathbb{E}[X^T A Y]\\)\nSubstituting \\(X = \\theta_x + \\varepsilon_x\\) and \\(Y = \\theta_y + \\varepsilon_y\\),\n\\[\nX^T A Y = (\\theta_x + \\varepsilon_x)^T A (\\theta_y + \\varepsilon_y)\n= \\theta_x^T A \\theta_y + \\theta_x^T A \\varepsilon_y + \\varepsilon_x^T A \\theta_y + \\varepsilon_x^T A \\varepsilon_y.\n\\]\nTaking expectations and using \\(\\mathbb{E}[\\varepsilon_x] = \\mathbb{E}[\\varepsilon_y] = 0\\),\n\\[\n\\mathbb{E}[X^T A Y] = \\theta_x^T A \\theta_y + \\theta_x^T A \\mathbb{E}[\\varepsilon_y] + \\mathbb{E}[\\varepsilon_x]^T A \\theta_y + \\mathbb{E}[\\varepsilon_x^T A \\varepsilon_y]\n= \\theta_x^T A \\theta_y + \\mathbb{E}[\\varepsilon_x^T A \\varepsilon_y].\n\\]\nFor the remaining term, since \\(\\varepsilon_x^T A \\varepsilon_y\\) is a scalar,\n\\[\n\\varepsilon_x^T A \\varepsilon_y = \\operatorname{tr}(\\varepsilon_x^T A \\varepsilon_y).\n\\]\nBy the cyclic property of trace, \\(\\operatorname{tr}(\\varepsilon_x^T A \\varepsilon_y) = \\operatorname{tr}(A \\varepsilon_y \\varepsilon_x^T)\\). Taking the expectation and applying linearity,\n\\[\n\\mathbb{E}[\\varepsilon_x^T A \\varepsilon_y] = \\operatorname{tr}(A\\, \\mathbb{E}[\\varepsilon_y \\varepsilon_x^T]) = \\operatorname{tr}(A \\cdot \\sigma_{xy} I) = \\sigma_{xy}\\operatorname{tr}(A),\n\\]\nwhere we used \\(\\mathbb{E}[\\varepsilon_y \\varepsilon_x^T] = \\sigma_{xy} I\\).\nTherefore,\n\\[\n\\mathbb{E}[X^T A Y] = \\theta_x^T A \\theta_y + \\sigma_{xy}\\operatorname{tr}(A). \\qquad \\square\n\\]",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Bilinear Form</span>"
+    ]
+  },
+  {
+    "objectID": "bilinear-form.html#derivation-of-operatornamevarxt-a-y",
+    "href": "bilinear-form.html#derivation-of-operatornamevarxt-a-y",
+    "title": "4  Bilinear Form",
+    "section": "4.5 Derivation of \\(\\operatorname{Var}(X^T A Y)\\)",
+    "text": "4.5 Derivation of \\(\\operatorname{Var}(X^T A Y)\\)\nUsing the same decomposition, write \\(X^T A Y = \\theta_x^T A \\theta_y + \\theta_x^T A \\varepsilon_y + \\varepsilon_x^T A \\theta_y + \\varepsilon_x^T A \\varepsilon_y\\). Since the first term is a constant, it does not contribute to the variance, so\n\\[\n\\operatorname{Var}(X^T A Y) = \\operatorname{Var}(\\theta_x^T A \\varepsilon_y + \\varepsilon_x^T A \\theta_y + \\varepsilon_x^T A \\varepsilon_y).\n\\]\nExpanding,\n\\[\\begin{align*}\n\\operatorname{Var}(X^T A Y) &= \\operatorname{Var}(\\theta_x^T A \\varepsilon_y) + \\operatorname{Var}(\\varepsilon_x^T A \\theta_y) + \\operatorname{Var}(\\varepsilon_x^T A \\varepsilon_y) \\\\\n&\\quad + 2\\operatorname{Cov}(\\theta_x^T A \\varepsilon_y,\\, \\varepsilon_x^T A \\theta_y) \\\\\n&\\quad + 2\\operatorname{Cov}(\\theta_x^T A \\varepsilon_y,\\, \\varepsilon_x^T A \\varepsilon_y) \\\\\n&\\quad + 2\\operatorname{Cov}(\\varepsilon_x^T A \\theta_y,\\, \\varepsilon_x^T A \\varepsilon_y).\n\\end{align*}\\]\n\n\n\n\n\n\nDerivation of each term\n\n\n\n\n\nTerm 1: \\(\\operatorname{Var}(\\theta_x^T A \\varepsilon_y)\\). Since \\(\\theta_x^T A\\) is a fixed row vector, this is the variance of a linear form in \\(\\varepsilon_y\\):\n\\[\n\\operatorname{Var}(\\theta_x^T A \\varepsilon_y) = \\theta_x^T A \\operatorname{Var}(\\varepsilon_y) A^T \\theta_x = \\sigma_y^2\\, \\theta_x^T A A^T \\theta_x = \\sigma_y^2\\, \\theta_x^T A^2 \\theta_x,\n\\]\nwhere the last equality uses symmetry of \\(A\\).\nTerm 2: \\(\\operatorname{Var}(\\varepsilon_x^T A \\theta_y)\\). By the same argument, \\(A \\theta_y\\) is a fixed vector, so\n\\[\n\\operatorname{Var}(\\varepsilon_x^T A \\theta_y) = \\theta_y^T A^T \\operatorname{Var}(\\varepsilon_x) A \\theta_y = \\sigma_x^2\\, \\theta_y^T A^2 \\theta_y.\n\\]\nTerm 3: \\(\\operatorname{Var}(\\varepsilon_x^T A \\varepsilon_y)\\). Apply the eigendecomposition \\(A = Q\\Lambda Q^T\\) and let \\(z_x = Q^T \\varepsilon_x / \\sigma_x\\), \\(z_y = Q^T \\varepsilon_y / \\sigma_y\\), so that \\(z_x, z_y \\sim \\mathcal{N}(0, I)\\) with \\(\\operatorname{Cov}(z_x, z_y) = \\rho I\\) where \\(\\rho = \\sigma_{xy}/(\\sigma_x \\sigma_y)\\). Applying the eigendecomposition,\n\\[\n\\varepsilon_x^T A \\varepsilon_y = \\sigma_x \\sigma_y\\, z_x^T \\Lambda z_y = \\sigma_x \\sigma_y \\sum_i \\lambda_i z_{x,i} z_{y,i}.\n\\]\nSince \\(\\operatorname{Cov}(z_x, z_y) = \\rho I\\) is diagonal, the pairs \\((z_{x,i}, z_{y,i})\\) are independent across \\(i\\), so\n\\[\n\\operatorname{Var}(\\varepsilon_x^T A \\varepsilon_y) = \\sigma_x^2 \\sigma_y^2 \\sum_i \\lambda_i^2\\, \\operatorname{Var}(z_{x,i} z_{y,i}).\n\\]\nFor each \\(i\\), \\((z_{x,i}, z_{y,i})\\) is a standard bivariate Gaussian with correlation \\(\\rho\\), so \\(\\operatorname{Var}(z_{x,i} z_{y,i}) = 1 + \\rho^2\\) (see Appendix). Therefore,\n\\[\n\\operatorname{Var}(\\varepsilon_x^T A \\varepsilon_y) = \\sigma_x^2 \\sigma_y^2 (1 + \\rho^2)\\operatorname{tr}(A^2) = (\\sigma_x^2\\sigma_y^2 + \\sigma_{xy}^2)\\operatorname{tr}(A^2).\n\\]\nTerm 4: \\(\\operatorname{Cov}(\\theta_x^T A \\varepsilon_y,\\, \\varepsilon_x^T A \\theta_y)\\). Since \\(\\mathbb{E}[\\varepsilon_x] = \\mathbb{E}[\\varepsilon_y] = 0\\), both terms have zero expectation, so the covariance reduces to\n\\[\n\\operatorname{Cov}(\\theta_x^T A \\varepsilon_y,\\, \\varepsilon_x^T A \\theta_y) = \\mathbb{E}[(\\theta_x^T A \\varepsilon_y)(\\varepsilon_x^T A \\theta_y)] = \\theta_x^T A\\, \\mathbb{E}[\\varepsilon_y \\varepsilon_x^T]\\, A^T \\theta_y = \\sigma_{xy}\\, \\theta_x^T A^2 \\theta_y,\n\\]\nwhere we used \\(\\mathbb{E}[\\varepsilon_y \\varepsilon_x^T] = \\sigma_{xy} I\\) and symmetry of \\(A\\).\nTerms 5 and 6: \\(\\operatorname{Cov}(\\theta_x^T A \\varepsilon_y,\\, \\varepsilon_x^T A \\varepsilon_y)\\) and \\(\\operatorname{Cov}(\\varepsilon_x^T A \\theta_y,\\, \\varepsilon_x^T A \\varepsilon_y)\\). Since all terms have zero expectation, both covariances reduce to expectations of products involving one linear and one bilinear form in \\((\\varepsilon_x, \\varepsilon_y)\\). These are third-order moments of the zero-mean jointly Gaussian vector \\((\\varepsilon_x, \\varepsilon_y)\\), and all odd-order moments of a zero-mean Gaussian vanish. Therefore,\n\\[\n\\operatorname{Cov}(\\theta_x^T A \\varepsilon_y,\\, \\varepsilon_x^T A \\varepsilon_y) = 0, \\qquad \\operatorname{Cov}(\\varepsilon_x^T A \\theta_y,\\, \\varepsilon_x^T A \\varepsilon_y) = 0.\n\\]\n\n\n\nCollecting all terms,\n\\[\n\\operatorname{Var}(X^T A Y) = \\sigma_y^2\\, \\theta_x^T A^2 \\theta_x + \\sigma_x^2\\, \\theta_y^T A^2 \\theta_y + 2\\sigma_{xy}\\, \\theta_x^T A^2 \\theta_y + (\\sigma_x^2\\sigma_y^2 + \\sigma_{xy}^2)\\operatorname{tr}(A^2).\n\\]\nThe noise contribution \\((\\sigma_x^2\\sigma_y^2 + \\sigma_{xy}^2)\\operatorname{tr}(A^2) = O(1/n)\\) by the lower bound on \\(\\operatorname{tr}(A^2)\\) (see Appendix B), which shows the estimator is consistent.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Bilinear Form</span>"
+    ]
+  },
+  {
+    "objectID": "bilinear-form.html#solving-for-a-l-2",
+    "href": "bilinear-form.html#solving-for-a-l-2",
+    "title": "4  Bilinear Form",
+    "section": "4.6 Solving for \\(A\\) (\\(L > 2\\))",
+    "text": "4.6 Solving for \\(A\\) (\\(L &gt; 2\\))\nFor \\(L &gt; 2\\), the unbiasedness constraints leave a multi-dimensional solution space for \\(a\\), so we have freedom to optimize. The full variance is\n\\[\n\\operatorname{Var}(X^T A Y) = \\sigma_y^2\\, \\theta_x^T A^2 \\theta_x + \\sigma_x^2\\, \\theta_y^T A^2 \\theta_y + 2\\sigma_{xy}\\, \\theta_x^T A^2 \\theta_y + (\\sigma_x^2\\sigma_y^2 + \\sigma_{xy}^2)\\operatorname{tr}(A^2).\n\\]\nSince \\(\\theta_x\\) and \\(\\theta_y\\) are unknown, the signal-dependent terms cannot be minimized directly. The only term we can control is the noise term \\((\\sigma_x^2\\sigma_y^2 + \\sigma_{xy}^2)\\operatorname{tr}(A^2)\\), which for fixed noise levels reduces to minimizing \\(\\operatorname{tr}(A^2)\\). This gives the optimization problem\n\\[\n\\min_{a \\in \\mathbb{R}^n} \\operatorname{tr}(A^2) \\quad \\text{subject to} \\quad \\|A_\\ell\\|_1 = 0,\\ \\ell = L, \\ldots, \\lfloor n/2 \\rfloor, n, \\quad \\operatorname{tr}(A) = 1,\n\\]\nwhere \\(A = \\operatorname{circ}(a)\\).\nReducing to a norm minimization. Since \\(A = \\operatorname{circ}(a)\\) is a circulant, every row of \\(A\\) is a cyclic permutation of \\(a\\) and therefore has the same squared norm \\(\\|a\\|^2\\). The Frobenius norm of \\(A\\) is thus\n\\[\n\\|A\\|_F^2 = n\\|a\\|^2.\n\\]\nSince \\(A\\) is symmetric, \\(\\operatorname{tr}(A^2) = \\operatorname{tr}(A^T A) = \\|A\\|_F^2 = n\\|a\\|^2\\). Minimizing \\(\\operatorname{tr}(A^2)\\) is therefore equivalent to minimizing \\(\\|a\\|^2\\). Because the unbiasedness constraints are linear in \\(a\\), the problem reduces to\n\\[\n\\min_{a \\in \\mathbb{R}^n} \\|a\\|^2 \\quad \\text{subject to} \\quad \\|A_\\ell\\|_1 = 0,\\ \\ell = L, \\ldots, \\lfloor n/2 \\rfloor, n, \\quad \\operatorname{tr}(A) = 1,\n\\]\nwhere \\(A = \\operatorname{circ}(a)\\). Both sets of constraints are linear in \\(a\\), so this is a quadratic program with a unique solution — the minimum-norm point in the feasible affine subspace.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Bilinear Form</span>"
+    ]
+  },
+  {
+    "objectID": "bilinear-form.html#regression-approach",
+    "href": "bilinear-form.html#regression-approach",
+    "title": "4  Bilinear Form",
+    "section": "4.7 Regression Approach",
+    "text": "4.7 Regression Approach\nA natural way to estimate \\(\\sigma_{xy}\\) is to exploit the linear relationship \\(\\mathbb{E}[T_k(X,Y)] = 2n\\sigma_{xy} + k\\,\\omega_{xy}\\) (established in the Lagged Differences chapter). Stacking \\(k = 1, \\ldots, L\\) gives a linear model\n\\[\n\\mathbb{E}[R] = K\\beta,\n\\qquad\nK = \\begin{bmatrix} 1 & 1 \\\\ 1 & 2 \\\\ \\vdots & \\vdots \\\\ 1 & L \\end{bmatrix} \\in \\mathbb{R}^{L \\times 2},\n\\quad\n\\beta = \\begin{pmatrix} 2n\\sigma_{xy} \\\\ \\omega_{xy} \\end{pmatrix},\n\\]\nwhere \\(R_k = T_k(X,Y)\\). The OLS estimate is \\(\\hat\\beta = (K^TK)^{-1}K^T R\\), and the regression estimator of \\(\\sigma_{xy}\\) is its first component rescaled:\n\\[\n\\hat\\sigma_{\\mathrm{reg}} = \\frac{1}{2n}\\, e_1^T(K^TK)^{-1}K^T R = H_{1\\cdot} R,\n\\quad\nH = \\frac{1}{2n}(K^TK)^{-1}K^T \\in \\mathbb{R}^{2 \\times L},\n\\]\nwhere \\(H_{1\\cdot}\\) denotes the first row of \\(H\\).\nRelationship \\(T_k(X,Y) = X^T A_k Y\\). Since\n\\[\nT_k(X,Y) = \\sum_{i=1}^n (X_i - X_{i+k})(Y_i - Y_{i+k}) = \\bigl((I - C_k)X\\bigr)^T\\bigl((I - C_k)Y\\bigr),\n\\]\nwe have \\(T_k(X,Y) = X^T A_k Y\\) with\n\\[\nA_k = (I - C_k)^T(I - C_k) = 2I - C_k - C_k^T.\n\\]\nSubstituting \\(R_k = X^T A_k Y\\) into the regression estimator,\n\\[\n\\hat\\sigma_{\\mathrm{reg}} = H_{1\\cdot} R = X^T A Y,\n\\]\nso the regression estimator is a bilinear form \\(X^T A Y\\) with\n\\[\nA = \\sum_{k=1}^L H_{1,k}\\, A_k.\n\\]\nSince each \\(A_k = 2I - C_k - C_k^T\\) is a symmetric circulant, \\(A\\) is also a symmetric circulant, determined by its first row \\(\\tilde{a} \\in \\mathbb{R}^n\\).\nConjecture. The first row \\(\\tilde{a}\\) of the regression matrix \\(A\\) is the minimum-norm solution described in the previous section. That is, the regression approach and the Frobenius-norm minimization produce the same estimator.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Bilinear Form</span>"
+    ]
+  },
+  {
+    "objectID": "bilinear-form.html#feasibility-of-the-regression-estimator",
+    "href": "bilinear-form.html#feasibility-of-the-regression-estimator",
+    "title": "4  Bilinear Form",
+    "section": "4.8 Feasibility of the Regression Estimator",
+    "text": "4.8 Feasibility of the Regression Estimator\nTo show that \\(\\tilde{a}\\) is the minimum-norm solution, we must verify it is feasible, i.e., that it satisfies the trace and unbiasedness constraints.\nThe regression estimator is the bilinear form \\(X^T A Y\\) with \\(A = \\sum_{k=1}^L c_k A_k\\), where \\(c_k = H_{1,k} = \\frac{2L+1-3k}{nL(L-1)}\\). Since we evaluate \\(g(\\ell)\\) only for \\(\\ell \\geq L\\), every \\(k \\leq L\\) satisfies \\(k \\leq \\ell\\), so the Lemma (see Other Mathematical Results) gives \\(\\mathbf{1}_\\ell^T A_k \\mathbf{1}_\\ell = 2k\\). By linearity, \\[g(\\ell) = \\mathbf{1}_\\ell^T A\\, \\mathbf{1}_\\ell = 2\\sum_{k=1}^L c_k k,\\] which is independent of \\(\\ell\\). Both constraints then reduce to evaluating \\(\\sum_k c_k\\) and \\(\\sum_k c_k k\\) via the closed form of \\(c_k\\).\nTrace constraint: \\(\\operatorname{tr}(A) = 1\\). Since \\(\\operatorname{tr}(A_k) = \\operatorname{tr}(2I - C_k - C_k^T) = 2n\\) (as \\(C_k\\) has no fixed points for \\(k \\geq 1\\)), we have \\(\\operatorname{tr}(A) = 2n\\sum_k c_k\\). Applying the Gaussian sum \\(\\sum_{k=1}^L k = \\frac{L(L+1)}{2}\\), \\[\\sum_{k=1}^L c_k = \\frac{1}{nL(L-1)}\\left[(2L+1)L - \\frac{3L(L+1)}{2}\\right] = \\frac{1}{n(L-1)}\\cdot\\frac{L-1}{2} = \\frac{1}{2n}.\\] Therefore \\(\\operatorname{tr}(A) = 2n \\cdot \\frac{1}{2n} = 1\\). \\(\\square\\)\nUnbiasedness: \\(g(\\ell) = 0\\) for \\(\\ell = L, \\ldots, \\lfloor n/2 \\rfloor\\). For \\(\\ell \\geq L\\), \\(g(\\ell) = 2\\sum_k c_k k\\). Applying the Gaussian sums \\(\\sum_{k=1}^L k = \\frac{L(L+1)}{2}\\) and \\(\\sum_{k=1}^L k^2 = \\frac{L(L+1)(2L+1)}{6}\\), \\[\\sum_{k=1}^L c_k k = \\frac{1}{nL(L-1)}\\left[(2L+1)\\frac{L(L+1)}{2} - \\frac{3L(L+1)(2L+1)}{6}\\right] = \\frac{(2L+1)L(L+1)}{nL(L-1)}\\left[\\frac{1}{2} - \\frac{1}{2}\\right] = 0.\\] Therefore \\(g(\\ell) = 0\\) for all \\(\\ell \\geq L\\). \\(\\square\\)",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Bilinear Form</span>"
+    ]
+  },
+  {
+    "objectID": "bilinear-form.html#the-regression-estimator-is-the-minimum-norm-estimator",
+    "href": "bilinear-form.html#the-regression-estimator-is-the-minimum-norm-estimator",
+    "title": "4  Bilinear Form",
+    "section": "4.9 The Regression Estimator is the Minimum-Norm Estimator",
+    "text": "4.9 The Regression Estimator is the Minimum-Norm Estimator\nHaving established feasibility, it remains to show that \\(\\tilde{a}\\) is the minimum-norm feasible solution.\nSetup. Since the unbiasedness constraints are homogeneous (\\(Ga = 0\\)), every feasible \\(a\\) lies in \\(\\mathrm{null}(G)\\). The trace constraint \\(\\mathrm{tr}(A) = 1\\) is the only inhomogeneous condition, cutting out an affine hyperplane within \\(\\mathrm{null}(G)\\): \\[F = \\{a \\in \\mathrm{null}(G) : \\mathrm{tr}(A) = 1\\}.\\] Let \\(a^* \\in F\\) be the minimum-norm feasible solution. We will show \\(a^* = \\tilde{a}\\) by writing \\(a^* = \\tilde{a} + w\\) with \\(w = a^* - \\tilde{a}\\) and expanding: \\[\\|a^*\\|^2 = \\|\\tilde{a}\\|^2 + \\|w\\|^2 + 2\\langle\\tilde{a}, w\\rangle.\\] Steps 1 and 2 below show \\(\\langle\\tilde{a}, w\\rangle = 0\\), so the expansion reduces to \\[\\|a^*\\|^2 = \\|\\tilde{a}\\|^2 + \\|w\\|^2.\\] Since \\(a^*\\) is optimal and \\(\\tilde{a}\\) is feasible, \\(\\|a^*\\|^2 \\leq \\|\\tilde{a}\\|^2\\), so \\[\\|a^*\\|^2 = \\|\\tilde{a}\\|^2 + \\|w\\|^2 \\leq \\|\\tilde{a}\\|^2 \\implies \\|w\\|^2 \\leq 0.\\] Therefore \\(w = 0\\) and \\(a^* = \\tilde{a}\\).\nStep 1: Characterize vectors satisfying \\((*)\\).\nSince both \\(a^*, \\tilde{a} \\in F\\), the difference \\(w = a^* - \\tilde{a}\\) satisfies \\(Gw = 0\\) (as both \\(Ga^* = 0\\) and \\(G\\tilde{a} = 0\\)) and \\(\\mathrm{tr}(\\mathrm{circ}(w)) = \\mathrm{tr}(\\mathrm{circ}(a^*)) - \\mathrm{tr}(\\mathrm{circ}(\\tilde{a})) = 1 - 1 = 0\\). Since \\(\\mathrm{tr}(\\mathrm{circ}(w)) = nw_0\\), we have \\(w_0 = 0\\). So \\(w\\) satisfies \\[Gw = 0, \\quad w_0 = 0. \\tag{$*$}\\]\nLet \\(w\\) satisfy \\((*)\\). The constraint matrix \\(G\\) has entries \\(G_{\\ell,0} = \\ell\\) and \\(G_{\\ell,k} = 2(\\ell-k)^+\\) for \\(k \\geq 1\\), so \\(Gw = 0\\) requires for each \\(\\ell = L, \\ldots, \\lfloor n/2 \\rfloor\\):\n\\[\\ell\\, w_0 + \\sum_{k=1}^{\\lfloor n/2 \\rfloor} 2(\\ell - k)^+\\, w_k = 0.\\]\nWe analyze this system by applying a first-difference operator twice. For any matrix \\(B\\) with \\(r\\) rows, define \\(M(B)\\) as the \\((r-1) \\times r\\) bidiagonal matrix applied to \\(B\\):\n\\[M(B) = \\begin{pmatrix} -1 & 1 & 0 & \\cdots & 0 \\\\ 0 & -1 & 1 & \\cdots & 0 \\\\ \\vdots & & \\ddots & \\ddots & \\vdots \\\\ 0 & 0 & \\cdots & -1 & 1 \\end{pmatrix} B,\\]\nso that \\(M(B)_\\ell = B_{\\ell+1} - B_\\ell\\). We write \\(M^2G\\) as shorthand for \\(M(M(G))\\) — applying the operator twice sequentially, each time with a smaller matrix of appropriate dimensions. Since \\(Gw = 0\\) implies \\(M(G)w = 0\\) and \\(M(M(G))w = 0\\), each application yields simpler conditions.\nStep 1a: Show \\(w_k = 0\\) for \\(k &gt; L\\).\nFirst application (\\(M(G)w = 0\\)). Subtracting the \\(\\ell\\)-th row from the \\((\\ell+1)\\)-th gives\n\\[w_0 + 2\\sum_{k=1}^{\\ell} w_k = 0, \\qquad \\ell = L, \\ldots, \\lfloor n/2 \\rfloor - 1.\\]\nThe resulting matrix \\(MG\\) has a column of \\(1\\)s in position \\(k=0\\) and \\(2\\)s in positions \\(k = 1, \\ldots, \\ell\\) (filling in one more entry per row):\n\\[MG = \\begin{pmatrix} 1 & 2 & \\cdots & 2 & 0 & 0 & \\cdots \\\\ 1 & 2 & \\cdots & 2 & 2 & 0 & \\cdots \\\\ 1 & 2 & \\cdots & 2 & 2 & 2 & \\cdots \\\\ \\vdots & & & & & & \\ddots \\end{pmatrix}.\\]\nSecond application (\\(M(M(G))w = 0\\)). Subtracting consecutive equations from \\(M(G)w = 0\\) gives \\(2w_{\\ell+1} = 0\\) for each \\(\\ell = L, \\ldots, \\lfloor n/2 \\rfloor - 2\\), so \\(w_k = 0\\) for all \\(k &gt; L\\).\nThe matrix \\(M(M(G))\\) has exactly one nonzero entry per row — a \\(2\\) in column \\(\\ell + 1\\) — making the zero conditions on each \\(w_k\\) explicit:\n\\[M(M(G)) = \\begin{pmatrix} 0 & \\cdots & 0 & 2 & 0 & 0 & \\cdots \\\\ 0 & \\cdots & 0 & 0 & 2 & 0 & \\cdots \\\\ 0 & \\cdots & 0 & 0 & 0 & 2 & \\cdots \\\\ \\vdots & & & & & & \\ddots \\end{pmatrix}.\\]\nStep 1b: Characterize \\((w_1, \\ldots, w_L)\\).\nHaving zeroed out \\(w_k\\) for \\(k &gt; L\\), we need two conditions on the remaining entries \\((w_1, \\ldots, w_L)\\). We obtain these by working back through \\(MGw = 0\\) and \\(Gw = 0\\) at \\(\\ell = L\\) — each provides one independent condition, and no further applications of \\(M\\) are needed to characterize the null space.\nRecall from Step 1a that \\(M(G)w = 0\\) gives \\[w_0 + 2\\sum_{k=1}^{\\ell} w_k = 0, \\qquad \\ell = L, \\ldots, \\lfloor n/2 \\rfloor - 1.\\] Setting \\(\\ell = L\\) and substituting \\(w_k = 0\\) for \\(k &gt; L\\) gives \\(w_0 + 2\\sum_{k=1}^L w_k = 0\\). Since \\(w_0 = 0\\) by \\((*)\\), this forces \\(\\sum_{k=1}^L w_k = 0\\).\nSimilarly, recall from Step 1a that \\(Gw = 0\\) gives \\(\\ell\\, w_0 + \\sum_{k=1}^{\\lfloor n/2 \\rfloor} 2(\\ell-k)^+\\, w_k = 0\\). Setting \\(\\ell = L\\) and splitting the sum: \\[L\\, w_0 + \\sum_{k=1}^{L} 2(L-k)^+\\, w_k + \\sum_{k=L+1}^{\\lfloor n/2 \\rfloor} 2(L-k)^+\\, w_k = 0.\\] The second sum vanishes since \\((L-k)^+ = 0\\) for \\(k &gt; L\\), and \\(w_0 = 0\\) by \\((*)\\), leaving \\(\\sum_{k=1}^L 2(L-k)\\, w_k = 0\\). Expanding and applying \\(\\sum_{k=1}^L w_k = 0\\) gives \\(\\sum_{k=1}^L k\\, w_k = 0\\).\nTherefore the vectors satisfying \\((*)\\) are exactly those with \\(w_0 = 0\\), \\(w_k = 0\\) for \\(k &gt; L\\), and \\((w_1, \\ldots, w_L)\\) satisfying\n\\[\\sum_{k=1}^L w_k = 0, \\qquad \\sum_{k=1}^L k\\,w_k = 0.\\]\nTo summarize, each level of differentiation contributes one layer of structure:\n\n\n\nEquation\nConclusion\n\n\n\n\n\\(M(M(G))w = 0\\)\n\\(w_k = 0\\) for \\(k &gt; L\\)\n\n\n\\(M(G)w = 0\\) at \\(\\ell = L\\)\n\\(\\sum_{k=1}^L w_k = 0\\)\n\n\n\\(Gw = 0\\) at \\(\\ell = L\\)\n\\(\\sum_{k=1}^L k\\, w_k = 0\\)\n\n\n\nStep 2: Show \\(\\tilde{a} \\perp w\\).\nSince \\(\\tilde{a} = \\sum_{k=1}^L c_k \\tilde{a}_k\\), by linearity of the inner product: \\[\\langle \\tilde{a}, w \\rangle = \\sum_{k=1}^L c_k \\langle \\tilde{a}_k, w \\rangle.\\]\nSince \\(\\tilde{a}_k = 2e_0 - e_k - e_{n-k}\\), \\[\\langle \\tilde{a}_k, w \\rangle = 2w_0 - w_k - w_{n-k}.\\]\nFrom Step 1: \\(w_0 = 0\\), and for \\(k \\in \\{1, \\ldots, L\\}\\) we have \\(n - k &gt; L\\), so \\(w_{n-k} = 0\\). Therefore \\(\\langle \\tilde{a}_k, w \\rangle = -w_k\\), and \\[\\langle \\tilde{a}, w \\rangle = -\\sum_{k=1}^L c_k\\, w_k.\\]\nSince \\(c_k = \\frac{2L+1-3k}{nL(L-1)}\\) is affine in \\(k\\),\n\\[\\sum_{k=1}^L c_k\\, w_k = \\frac{2L+1}{nL(L-1)} \\sum_{k=1}^L w_k - \\frac{3}{nL(L-1)} \\sum_{k=1}^L k\\,w_k = 0,\\]\nwhere both sums vanish by Step 1. Therefore \\(\\langle \\tilde{a}, w \\rangle = 0\\) for all \\(w\\) satisfying \\((*)\\). \\(\\square\\)\n\n# Computationally Verifying Regression Solution is Min-Norm Solution \nn &lt;- 100\nfor (L in 2:49) {\n  test_that(paste0(\"regression and optim first rows agree for L = \", L), {\n    expect_equal(ece_reg_row(n, L), ece_optim(n, L), tolerance = 1e-4)\n  })\n}\n\nTest passed 🎊\nTest passed 🌈\nTest passed 🌈\nTest passed 🌈\nTest passed 🥳\nTest passed 🌈\nTest passed 😀\nTest passed 🎊\nTest passed 🎉\nTest passed 😀\nTest passed 🌈\nTest passed 😀\nTest passed 🎊\nTest passed 🎉\nTest passed 🥳\nTest passed 🎊\nTest passed 😸\nTest passed 🥳\nTest passed 🎉\nTest passed 🎉\nTest passed 🥳\nTest passed 🥇\nTest passed 🥳\nTest passed 🎉\nTest passed 🎉\nTest passed 🎉\nTest passed 😀\nTest passed 😸\nTest passed 😸\nTest passed 🎉\nTest passed 🎊\nTest passed 🎊\nTest passed 🌈\nTest passed 🎉\nTest passed 🎊\nTest passed 😸\nTest passed 😀\nTest passed 🌈\nTest passed 🥇\nTest passed 😀\nTest passed 😀\nTest passed 🎊\nTest passed 🎉\nTest passed 🌈\nTest passed 🎊\nTest passed 🥇\nTest passed 🥇\nTest passed 🌈",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Bilinear Form</span>"
+    ]
+  },
+  {
+    "objectID": "computational-solution.html",
+    "href": "computational-solution.html",
+    "title": "5  Computational Solution",
+    "section": "",
+    "text": "5.1 Introduction\nTODO: Add content for computational results chapter.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Computational Solution</span>"
+    ]
+  },
+  {
+    "objectID": "computational-solution.html#svd-for-identifying-the-null-space",
+    "href": "computational-solution.html#svd-for-identifying-the-null-space",
+    "title": "5  Computational Solution",
+    "section": "5.2 SVD for Identifying the Null Space",
+    "text": "5.2 SVD for Identifying the Null Space\nGiven the constraint matrix \\(G \\in \\mathbb{R}^{m \\times n}\\), the singular value decomposition is: \\[G = U \\Sigma V^T\\] where \\(U \\in \\mathbb{R}^{m \\times m}\\) and \\(V \\in \\mathbb{R}^{n \\times n}\\) are orthogonal matrices, and \\(\\Sigma\\) is a diagonal matrix with singular values \\(\\sigma_1 \\geq \\sigma_2 \\geq \\cdots \\geq \\sigma_{\\min(m,n)} \\geq 0\\).\n\n5.2.1 Connection to the Null Space\nThe null space of \\(G\\) is: \\[\\text{null}(G) = \\{a \\in \\mathbb{R}^n : Ga = 0\\}\\]\nIf \\(G\\) has rank \\(r &lt; n\\), the right singular vectors corresponding to zero singular values span the null space: \\[\\text{null}(G) = \\text{span}\\{v_{r+1}, v_{r+2}, \\ldots, v_n\\}\\] where \\(v_i\\) are the columns of \\(V\\).\n\n\n5.2.2 Steps to Identify the Null Space\n\nCompute the SVD: \\(G = U \\Sigma V^T\\)\nIdentify the rank \\(r\\) as the number of non-zero singular values\nExtract the right singular vectors \\(v_{r+1}, \\ldots, v_n\\) corresponding to the zero singular values\nThe null space basis is \\(\\text{null}(G) = \\text{span}\\{v_{r+1}, \\ldots, v_n\\}\\)",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Computational Solution</span>"
+    ]
+  },
+  {
+    "objectID": "computational-solution.html#pseudoinverse-and-min-norm-solution",
+    "href": "computational-solution.html#pseudoinverse-and-min-norm-solution",
+    "title": "5  Computational Solution",
+    "section": "5.3 Pseudoinverse and Min-Norm Solution",
+    "text": "5.3 Pseudoinverse and Min-Norm Solution\nThe Moore-Penrose pseudoinverse \\(G^+\\) is defined via SVD as: \\[G^+ = V \\Sigma^+ U^T\\] where \\(\\Sigma^+\\) is obtained by taking reciprocals of the non-zero singular values and transposing.\nFor a system \\(Ga = b\\), the general solution is: \\[a = G^+ b + \\sum_{i=r+1}^{n} c_i v_i\\] where the second term spans \\(\\text{null}(G)\\). The norm of the general solution is: \\[\\|a\\|^2 = \\|G^+ b\\|^2 + \\sum_{i=r+1}^{n} c_i^2\\] since \\(G^+ b\\) lies in the row space of \\(G\\), which is orthogonal to \\(\\text{null}(G)\\). This is minimized by setting all \\(c_i = 0\\), giving the minimum-norm solution: \\[a^* = G^+ b\\]",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Computational Solution</span>"
+    ]
+  },
+  {
+    "objectID": "model-misspecification.html",
+    "href": "model-misspecification.html",
+    "title": "6  Model Misspecification",
+    "section": "",
+    "text": "6.1 Circulant Matrices and the DFT\nEvery symmetric circulant \\(A = \\operatorname{circ}(a)\\) is diagonalized by the DFT matrix \\(F \\in \\mathbb{C}^{n \\times n}\\),\n\\[\nA = F^* \\Lambda F,\n\\]\nwhere \\(F_{jk} = \\frac{1}{\\sqrt{n}} \\omega^{jk}\\), \\(\\omega = e^{-2\\pi i/n}\\), and \\(\\Lambda = \\operatorname{diag}(\\lambda_0, \\ldots, \\lambda_{n-1})\\). The eigenvalues are the DFT of the first row:\n\\[\n\\lambda_j = \\sum_{k=0}^{n-1} a_k\\, \\omega^{jk} = (\\mathcal{F} a)_j.\n\\]\nSince \\(A\\) is real and symmetric, the eigenvalues are real and satisfy \\(\\lambda_j = \\lambda_{n-j}\\).\nBecause \\(F\\) is unitary (\\(F F^* = I\\)), the decomposition \\(A = F^* \\Lambda F\\) is exactly the eigendecomposition \\(A = Q \\Lambda Q^{-1}\\) with \\(Q = F^*\\). The columns of \\(F^*\\) are the eigenvectors of \\(A\\): the \\(j\\)-th eigenvector is \\(f_j = \\frac{1}{\\sqrt{n}}(1, \\omega^{-j}, \\omega^{-2j}, \\ldots, \\omega^{-(n-1)j})^T\\), a complex sinusoid at frequency \\(j/n\\).\nSpectral representation of the bias. Using the eigendecomposition \\(A = Q\\Lambda Q^*\\) with \\(Q = F^*\\),\n\\[\n\\theta_x^T A \\theta_y = \\theta_x^T Q \\Lambda Q^* \\theta_y = (Q^*\\theta_x)^* \\Lambda (Q^*\\theta_y) = \\sum_{j=0}^{n-1} \\lambda_j\\, \\tilde{\\theta}_{x,j}^*\\, \\tilde{\\theta}_{y,j},\n\\]\nwhere \\(\\tilde{\\theta} = Q^*\\theta\\) are the coordinates of \\(\\theta\\) in the eigenbasis.\nUnder correct specification (\\(\\theta \\in \\Theta_L\\)), the \\(j = 0\\) term vanishes because \\(\\lambda_0 = 0\\) always — the DC eigenvalue is zero since \\(\\sum_k a_k = 0\\) by the block-sum constraints. For \\(j &gt; 0\\), neither \\(\\lambda_j\\) nor \\(\\tilde{\\theta}_j\\) is zero in general; the sum cancels through structured pairwise cancellation across frequencies, a consequence of the block-sum constraints rather than anything visible in \\(\\lambda\\) or \\(\\tilde{\\theta}\\) individually.\nThe spectral representation is most useful under misspecification. When \\(\\theta \\notin \\Theta_L\\), the pairwise cancellation breaks down and the bias\n\\[\n\\theta_x^T A \\theta_y = \\sum_{j=0}^{n-1} \\lambda_j\\, \\tilde{\\theta}_{x,j}^*\\, \\tilde{\\theta}_{y,j}\n\\]\nis nonzero. Its magnitude depends on which eigenvalues \\(\\lambda_j\\) are large and how much energy \\(\\tilde{\\theta}_x\\), \\(\\tilde{\\theta}_y\\) place at the corresponding frequencies.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Model Misspecification</span>"
+    ]
+  },
+  {
+    "objectID": "model-misspecification.html#circulant-matrices-and-the-dft",
+    "href": "model-misspecification.html#circulant-matrices-and-the-dft",
+    "title": "6  Model Misspecification",
+    "section": "",
+    "text": "DFT and eigendecomposition are the same thing for circulants\n\n\n\n\n\n\ndevtools::load_all(\"~/Documents/Research/Code/ECE\")\nlibrary(testthat)\n\nn &lt;- 8\na &lt;- ece_first_row(n, L = 2)\nA &lt;- circ(a) / n\n\n# Eigendecomposition\ned  &lt;- eigen(A)\n\n# DFT matrix: F[j,k] = (1/sqrt(n)) * exp(-2*pi*i*j*k/n), 0-indexed\nj &lt;- 0:(n - 1)\nk &lt;- 0:(n - 1)\nF_mat &lt;- exp(-2i * pi * outer(j, k) / n) / sqrt(n)\n\ntest_that(\"columns of F* are eigenvectors of A\", {\n  # A = F* Lambda F  =&gt;  A F* = F* Lambda\n  # Each column of F* should satisfy A v = lambda v\n  Q  &lt;- Conj(t(F_mat))           # F*, columns are eigenvectors\n  AQ &lt;- A %*% Q\n  QD &lt;- Q %*% diag(fft(a) / n)  # eigenvalues = fft(a)/n for scaled A\n  expect_equal(Re(AQ), Re(QD), tolerance = 1e-10)\n  expect_equal(Im(AQ), Im(QD), tolerance = 1e-10)\n})\n\nTest passed 🎊\n\ntest_that(\"eigenvalues of A equal fft(a)/n\", {\n  lambda_fft  &lt;- sort(Re(fft(a) / n))\n  lambda_eig  &lt;- sort(Re(ed$values))\n  expect_equal(lambda_fft, lambda_eig, tolerance = 1e-10)\n})\n\nTest passed 😸",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Model Misspecification</span>"
+    ]
+  },
+  {
+    "objectID": "model-misspecification.html#closed-form-bias",
+    "href": "model-misspecification.html#closed-form-bias",
+    "title": "6  Model Misspecification",
+    "section": "6.2 Closed-Form Bias",
+    "text": "6.2 Closed-Form Bias\nSince \\(A = \\sum_{k=1}^L c_k A_k\\) with \\(c_k = H_{1,k} = \\frac{2L+1-3k}{nL(L-1)}\\) (see Other Mathematical Results), the bias decomposes as\n\\[\n\\theta_x^T A \\theta_y = \\sum_{k=1}^L c_k\\, T_k(\\theta_x, \\theta_y),\n\\]\nwhere \\(T_k(\\theta_x, \\theta_y) = \\sum_{i=1}^n (\\theta_{x,i} - \\theta_{x,i+k})(\\theta_{y,i} - \\theta_{y,i+k})\\) is the \\(k\\)-lagged cross-product of the mean vectors. For \\(L = 2\\) this reduces to\n\\[\n\\theta_x^T A \\theta_y = \\frac{1}{2n}\\bigl(2T_1(\\theta_x, \\theta_y) - T_2(\\theta_x, \\theta_y)\\bigr).\n\\]\nSpectral form of \\(\\lambda_j\\). Applying the eigendecomposition of \\(A_k\\) — whose eigenvalues are \\(4\\sin^2(\\pi jk/n)\\) — gives a closed form for the eigenvalues of \\(A\\):\n\\[\n\\lambda_j = \\sum_{k=1}^L c_k \\cdot 4\\sin^2\\!\\left(\\frac{\\pi jk}{n}\\right) = \\frac{4}{nL(L-1)}\\sum_{k=1}^L (2L+1-3k)\\sin^2\\!\\left(\\frac{\\pi jk}{n}\\right).\n\\]\nFor \\(L = 2\\) this simplifies to\n\\[\n\\lambda_j = -\\frac{4}{n}\\cos\\!\\left(\\frac{2\\pi j}{n}\\right)\\sin^2\\!\\left(\\frac{\\pi j}{n}\\right).\n\\]\nBias bound. By Cauchy–Schwarz in the eigenbasis, and using \\(\\|\\tilde{\\theta}\\|_2 = \\|\\theta\\|_2\\) (unitarity of \\(Q\\)),\n\\[\n|\\theta_x^T A \\theta_y| \\leq \\max_j |\\lambda_j| \\cdot \\|\\theta_x\\|_2 \\|\\theta_y\\|_2.\n\\]\nThe bias is therefore controlled by \\(\\max_j |\\lambda_j|\\), which from the \\(L=2\\) formula is largest near the Nyquist frequency \\(j = n/2\\). Misspecification is most harmful when the mean vectors have energy concentrated at high frequencies.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Model Misspecification</span>"
+    ]
+  },
+  {
+    "objectID": "model-misspecification.html#closed-form-variance",
+    "href": "model-misspecification.html#closed-form-variance",
+    "title": "6  Model Misspecification",
+    "section": "6.3 Closed-Form Variance",
+    "text": "6.3 Closed-Form Variance\nThe variance of \\(X^T A Y\\) is (see the Bilinear Form chapter):\n\\[\n\\operatorname{Var}(X^T A Y) = \\sigma_y^2\\,\\theta_x^T A^2 \\theta_x + \\sigma_x^2\\,\\theta_y^T A^2 \\theta_y + 2\\sigma_{xy}\\,\\theta_x^T A^2 \\theta_y + (\\sigma_x^2\\sigma_y^2 + \\sigma_{xy}^2)\\operatorname{tr}(A^2).\n\\]\nThe noise term \\((\\sigma_x^2\\sigma_y^2 + \\sigma_{xy}^2)\\operatorname{tr}(A^2) = O(1/n)\\) regardless of the mean. The signal-dependent terms involve \\(\\theta_x^T A^2 \\theta_y\\), which mirrors the bias with \\(A\\) replaced by \\(A^2\\).\nSpectral form. Since \\(A^2 = Q\\Lambda^2 Q^*\\),\n\\[\n\\theta_x^T A^2 \\theta_y = \\sum_{j=0}^{n-1} \\lambda_j^2\\, \\tilde{\\theta}_{x,j}^*\\, \\tilde{\\theta}_{y,j},\n\\]\nwhere \\(\\tilde{\\theta} = Q^*\\theta\\). This is the spectral bias formula with \\(\\lambda_j\\) replaced by \\(\\lambda_j^2\\).\nSpectral form of \\(\\lambda_j^2\\). For \\(L = 2\\), squaring \\(\\lambda_j = -\\frac{4}{n}\\cos(2\\pi j/n)\\sin^2(\\pi j/n)\\):\n\\[\n\\lambda_j^2 = \\frac{16}{n^2}\\cos^2\\!\\left(\\frac{2\\pi j}{n}\\right)\\sin^4\\!\\left(\\frac{\\pi j}{n}\\right).\n\\]\nVariance bound. By Cauchy–Schwarz in the eigenbasis:\n\\[\n|\\theta_x^T A^2 \\theta_y| \\leq \\max_j \\lambda_j^2 \\cdot \\|\\theta_x\\|_2 \\|\\theta_y\\|_2 = \\left(\\max_j |\\lambda_j|\\right)^2 \\|\\theta_x\\|_2 \\|\\theta_y\\|_2.\n\\]\nThe signal-dependent variance is controlled by the same Nyquist-dominated \\(\\max_j|\\lambda_j|\\) as the bias.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Model Misspecification</span>"
+    ]
+  },
+  {
+    "objectID": "model-misspecification.html#case-study-sinusoidal-mean",
+    "href": "model-misspecification.html#case-study-sinusoidal-mean",
+    "title": "6  Model Misspecification",
+    "section": "6.4 Case Study: Sinusoidal Mean",
+    "text": "6.4 Case Study: Sinusoidal Mean\nSuppose \\(\\theta_x = \\theta_y = \\theta\\) with \\(\\theta_i = A\\sin(2\\pi fi/n)\\) for integer frequency \\(1 \\leq f &lt; n/2\\) and amplitude \\(A &gt; 0\\). This is misspecified since a sinusoid is not piecewise constant.\n\n6.4.1 Bias\nComputing \\(T_k(\\theta, \\theta)\\). Applying the sum-to-product identity \\(\\sin\\alpha - \\sin\\beta = 2\\cos\\!\\left(\\frac{\\alpha+\\beta}{2}\\right)\\sin\\!\\left(\\frac{\\alpha-\\beta}{2}\\right)\\),\n\\[\n\\theta_i - \\theta_{i+k} = -2A\\sin\\!\\left(\\frac{\\pi fk}{n}\\right)\\cos\\!\\left(\\frac{2\\pi fi}{n} + \\frac{\\pi fk}{n}\\right).\n\\]\nSquaring and summing over \\(i\\), and using \\(\\sum_{i=0}^{n-1}\\cos^2(\\alpha + 2\\pi fi/n) = n/2\\) for \\(f \\neq 0\\),\n\\[\nT_k(\\theta, \\theta) = 2nA^2\\sin^2\\!\\left(\\frac{\\pi fk}{n}\\right).\n\\]\nBias for \\(L = 2\\). Substituting into \\(\\frac{1}{2n}(2T_1 - T_2)\\),\n\\[\n\\theta^T A \\theta = 2A^2\\sin^2\\!\\left(\\frac{\\pi f}{n}\\right) - A^2\\sin^2\\!\\left(\\frac{2\\pi f}{n}\\right).\n\\]\nUsing \\(\\sin^2(2\\phi) = 4\\sin^2(\\phi)\\cos^2(\\phi)\\) and the double-angle identity \\(1 - 2\\cos^2\\phi = -\\cos(2\\phi)\\),\n\\[\n\\theta^T A \\theta = -2A^2\\sin^2\\!\\left(\\frac{\\pi f}{n}\\right)\\cos\\!\\left(\\frac{2\\pi f}{n}\\right).\n\\]\nInterpretation. The bias depends on frequency and amplitude but not on phase. It is zero at \\(f = 0\\) (constant — well specified) and at \\(f = n/4\\) (where \\(\\cos(2\\pi f/n) = 0\\)), negative for \\(f &lt; n/4\\), and positive for \\(f &gt; n/4\\). It grows as \\(A^2\\) and is largest near the Nyquist frequency \\(f = n/2\\), consistent with the general bound \\(|\\text{bias}| \\leq \\max_j|\\lambda_j| \\cdot \\|\\theta\\|_2^2\\).\n\ndevtools::load_all(\"~/Documents/Research/Code/ECE\")\nlibrary(testthat)\n\nn &lt;- 40; L &lt;- 2\na     &lt;- ece_reg_row(n, L)\nA_mat &lt;- circ(a) / n\nfreqs &lt;- 1:(n/2 - 1)\n\nbias_numerical &lt;- sapply(freqs, function(f) {\n  theta &lt;- sin(2 * pi * f * (0:(n - 1)) / n)\n  as.numeric(t(theta) %*% A_mat %*% theta)\n})\n\nbias_formula &lt;- -2 * sin(pi * freqs / n)^2 * cos(2 * pi * freqs / n)\n\ntest_that(\"sinusoidal bias matches closed form\", {\n  expect_equal(bias_numerical, bias_formula, tolerance = 1e-10)\n})\n\nTest passed 😀\n\nplot(freqs, bias_formula,\n  type = \"l\", lwd = 2, col = \"steelblue\",\n  xlab = \"Frequency f\", ylab = \"Bias\",\n  main = \"Bias for sinusoidal mean (A = 1, L = 2)\"\n)\nabline(h = 0, col = \"grey60\", lty = 2)\n\n\n\n\n\n\n\n\nApplication to scenario 14. Scenario 14 sets \\(\\theta_i = \\sin(2\\pi i / 365)\\) — a yearly cycle sampled at daily resolution. With \\(n = 100\\) observations, the signal has effective DFT bin \\(j \\approx n/365 \\approx 0.27\\), well below \\(j = 1\\). Since \\(\\lambda_j \\approx 0\\) near \\(j = 0\\), the formula predicts negligible bias: \\(|\\text{bias}| \\approx 2\\sin^2(\\pi/365) \\approx 1.5 \\times 10^{-4}\\) per unit amplitude squared. Numerically the bias is of order \\(10^{-5}\\), confirming that the ECE is effectively unbiased in this scenario despite the misspecification — the yearly cycle is too slow relative to the observation window to contaminate the estimate.\nWith \\(n = 1000\\) observations, the window covers approximately 2.7 full periods and the effective bin shifts to \\(j \\approx 2.74\\). The bias is now \\(\\approx -1.6 \\times 10^{-4}\\) — negative since \\(j &lt; n/4 = 250\\), and consistent with the formula prediction of \\(-1.5 \\times 10^{-4}\\). Despite the larger signal (\\(\\|\\theta\\|^2 \\approx 499\\)), the bias remains negligible: the yearly cycle is still low-frequency relative to \\(n\\).\n\n\n6.4.2 Variance\nWith \\(\\theta_x = \\theta_y = \\theta\\), the closed-form variance simplifies to\n\\[\\operatorname{Var}(X^T A Y) = (\\sigma_x^2 + \\sigma_y^2 + 2\\sigma_{xy})\\,\\theta^T A^2 \\theta + (\\sigma_x^2\\sigma_y^2 + \\sigma_{xy}^2)\\operatorname{tr}(A^2).\\]\nComputing \\(\\theta^T A^2 \\theta\\). Since \\(\\theta_i = A\\sin(2\\pi fi/n)\\) lies in the eigenspace of \\(A\\) at frequency \\(f\\) and \\(\\lambda_f = \\lambda_{n-f}\\), we have \\(A\\theta = \\lambda_f\\,\\theta\\). Therefore \\(\\theta^T A^2 \\theta = \\lambda_f^2\\|\\theta\\|^2 = \\frac{nA^2}{2}\\lambda_f^2\\).\nFor \\(L = 2\\). Substituting the \\(L=2\\) eigenvalue:\n\\[\\operatorname{Var}(X^T A Y) = \\frac{8A^2}{n}(\\sigma_x^2 + \\sigma_y^2 + 2\\sigma_{xy})\\cos^2\\!\\left(\\frac{2\\pi f}{n}\\right)\\sin^4\\!\\left(\\frac{\\pi f}{n}\\right) + (\\sigma_x^2\\sigma_y^2 + \\sigma_{xy}^2)\\operatorname{tr}(A^2).\\]\nBoth terms are \\(O(1/n)\\). The signal-dependent term vanishes at the same frequencies as the bias (\\(f = 0\\) and \\(f = n/4\\)).\n\ndevtools::load_all(\"~/Documents/Research/Code/ECE\")\nlibrary(testthat)\n\nn &lt;- 40; L &lt;- 2\na      &lt;- ece_reg_row(n, L)\nA_mat  &lt;- circ(a) / n\nlambda &lt;- Re(fft(a) / n)\nfreqs  &lt;- 1:(n/2 - 1)\n\ntest_that(\"A * theta = lambda_f * theta for sinusoidal theta\", {\n  for (f in freqs) {\n    theta &lt;- sin(2 * pi * f * (0:(n - 1)) / n)\n    expect_equal(as.numeric(A_mat %*% theta), lambda[f + 1] * theta,\n                 tolerance = 1e-10)\n  }\n})\n\nTest passed 🌈\n\nvar_signal_numerical &lt;- sapply(freqs, function(f) {\n  theta &lt;- sin(2 * pi * f * (0:(n - 1)) / n)\n  as.numeric(t(theta) %*% A_mat %*% A_mat %*% theta)\n})\nvar_signal_formula &lt;- (n / 2) * lambda[freqs + 1]^2\n\ntest_that(\"signal variance term matches closed form\", {\n  expect_equal(var_signal_numerical, var_signal_formula, tolerance = 1e-10)\n})\n\nTest passed 🎊",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Model Misspecification</span>"
+    ]
+  },
+  {
+    "objectID": "model-misspecification.html#case-study-random-walk-mean",
+    "href": "model-misspecification.html#case-study-random-walk-mean",
+    "title": "6  Model Misspecification",
+    "section": "6.5 Case Study: Random Walk Mean",
+    "text": "6.5 Case Study: Random Walk Mean\nSuppose \\(\\theta_x = \\theta_y = \\theta\\) where \\(\\theta_i = \\sum_{j=1}^i \\xi_j\\) is a random walk with i.i.d. increments \\(\\xi_j \\sim (0, \\sigma^2)\\). This corresponds to scenario 13.\nExpected bias is \\(O(1/n)\\). Since \\(\\theta_i - \\theta_{i+k} = \\xi_{i+1} + \\cdots + \\xi_{i+k}\\) is a sum of \\(k\\) independent increments,\n\\[\nE\\bigl[(\\theta_i - \\theta_{i+k})^2\\bigr] = k\\sigma^2,\n\\]\nso \\(E[T_k(\\theta,\\theta)] = (n-k)k\\sigma^2\\), which is approximately linear in \\(k\\) for \\(k \\ll n\\). Since the ECE is constructed to cancel exactly a linear trend in \\(k \\mapsto T_k\\),\n\\[\nE[\\theta^T A \\theta] = \\frac{1}{2n}\\bigl(2(n-1)\\sigma^2 - 2(n-2)\\sigma^2\\bigr) = \\frac{\\sigma^2}{n} \\to 0.\n\\]\nThe expected bias vanishes asymptotically — the ECE is nearly unbiased in expectation for random walk means, even though random walks are not piecewise constant.\nSpectral interpretation. The power spectral density of a random walk concentrates at low frequencies: \\(E[|\\tilde{\\theta}_j|^2] \\propto 1/\\sin^2(\\pi j/n)\\). Combined with \\(\\lambda_j \\propto -\\cos(2\\pi j/n)\\sin^2(\\pi j/n)\\), the expected bias is proportional to \\(\\sum_j \\cos(2\\pi j/n) = 0\\), confirming the result.\nIndividual realizations. While \\(E[\\theta^T A \\theta] \\approx 0\\), each realization of the random walk produces a nonzero bias. The distribution of realized biases has mean \\(\\approx \\sigma^2/n\\) and standard deviation that grows with \\(\\sigma^2\\).\n\ndevtools::load_all(\"~/Documents/Research/Code/ECE\")\nlibrary(testthat)\n\nn &lt;- 100; L &lt;- 2\na     &lt;- ece_reg_row(n, L)\nA_mat &lt;- circ(a) / n\n\nset.seed(42)\nB      &lt;- 5000\nbiases &lt;- replicate(B, {\n  theta &lt;- cumsum(rnorm(n))\n  as.numeric(t(theta) %*% A_mat %*% theta)\n})\n\ntest_that(\"expected bias is close to sigma^2/n = 1/100\", {\n  expect_equal(mean(biases), 1 / n, tolerance = 0.05)\n})\n\nTest passed 😀\n\nhist(biases,\n  breaks = 60, col = \"steelblue\", border = \"white\",\n  main = \"Distribution of realized bias (random walk mean, n = 100)\",\n  xlab = \"Bias\"\n)\nabline(v = 0, col = \"red\", lwd = 2, lty = 2)\nabline(v = mean(biases), col = \"orange\", lwd = 2)\nlegend(\"topright\",\n  legend = c(\"zero\", \"sample mean\"),\n  col = c(\"red\", \"orange\"), lwd = 2, lty = 2:1\n)",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Model Misspecification</span>"
+    ]
+  },
+  {
+    "objectID": "model-misspecification.html#eigenvalue-visualization",
+    "href": "model-misspecification.html#eigenvalue-visualization",
+    "title": "6  Model Misspecification",
+    "section": "6.6 Eigenvalue Visualization",
+    "text": "6.6 Eigenvalue Visualization\nEach eigenvalue \\(\\lambda_j = \\sum_{k=0}^{n-1} a_k \\omega^{jk}\\) is a sum of \\(n\\) complex numbers. The plot below shows the individual terms \\(a_k \\omega^{jk}\\) for \\(k = 0, \\ldots, n-1\\) as arrows in the complex plane, for each \\(j\\). The red star marks the sum \\(\\lambda_j\\), which is always real.\n\ndevtools::load_all(\"~/Documents/Research/Code/ECE\")\n\nn &lt;- 10\nL &lt;- 2\na &lt;- ece_first_row(n, L)\na[abs(a) &lt; 1e-10] &lt;- 0\nomega &lt;- exp(-2i * pi / n)\n\npar(mfrow = c(2, 5), mar = c(3, 3, 2, 1))\n\nfor (j in 0:(n - 1)) {\n  k     &lt;- 0:(n - 1)\n  terms &lt;- a * omega^(j * k)\n  lim   &lt;- max(abs(c(Re(terms), Im(terms))), 0.5) * 1.3\n\n  plot(Re(terms), Im(terms),\n    xlim = c(-lim, lim), ylim = c(-lim, lim),\n    xlab = \"Re\", ylab = \"Im\", asp = 1,\n    main = bquote(j == .(j) ~ \",\" ~ lambda[.(j)] == .(round(Re(sum(terms)), 3))),\n    pch = 16, col = \"steelblue\"\n  )\n  abline(h = 0, v = 0, col = \"grey80\", lty = 2)\n  arrows(0, 0, Re(terms), Im(terms), length = 0.07, col = \"steelblue\", lwd = 1.2)\n  points(Re(sum(terms)), Im(sum(terms)), pch = 8, col = \"red\", cex = 1.5, lwd = 2)\n}",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Model Misspecification</span>"
+    ]
+  },
+  {
+    "objectID": "positive-semidefinite.html",
+    "href": "positive-semidefinite.html",
+    "title": "7  Positive Semidefinite",
+    "section": "",
+    "text": "7.1 Existence of an Unbiased PSD Estimator\nThe ECE is not guaranteed to be positive semidefinite. In particular, when applied to estimate a variance (\\(X = Y\\)), the estimator \\(\\hat{\\sigma}_{xx} = X^T A X\\) can return negative values, since the matrix \\(A\\) itself is not positive semidefinite.\nIf \\(A \\succeq 0\\) and \\(\\theta_x^T A \\theta_y = 0\\) for all \\(\\theta_x, \\theta_y \\in \\Theta_L\\), then in particular \\(\\theta^T A \\theta = 0\\) for all \\(\\theta \\in \\Theta_L\\). Since \\(A \\succeq 0\\), all eigenvalues are non-negative. Using the eigendecomposition \\(A = Q\\Lambda Q^*\\) with \\(\\lambda_j \\geq 0\\),\n\\[\\theta^T A \\theta = \\sum_j \\lambda_j |\\tilde\\theta_j|^2 = 0.\\]\nSince every term is non-negative, each must vanish individually: \\(\\lambda_j |\\tilde\\theta_j|^2 = 0\\) for all \\(j\\), so \\(\\lambda_j \\tilde\\theta_j = 0\\) for all \\(j\\). Therefore \\(A\\theta = Q\\Lambda\\tilde\\theta = 0\\). This shows that any unbiased PSD estimator must satisfy \\(A\\theta = 0\\) for all \\(\\theta \\in \\Theta_L\\). If \\(\\operatorname{span}(\\Theta_L) = \\mathbb{R}^n\\), this forces \\(A = 0\\), contradicting \\(\\operatorname{tr}(A) = 1\\). Whether \\(\\Theta_L\\) spans \\(\\mathbb{R}^n\\) depends on \\(n\\) and \\(L\\) and is not established here.",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Positive Semidefinite</span>"
+    ]
+  },
+  {
+    "objectID": "positive-semidefinite.html#psd-projection-via-eigenvalue-clipping",
+    "href": "positive-semidefinite.html#psd-projection-via-eigenvalue-clipping",
+    "title": "7  Positive Semidefinite",
+    "section": "7.2 PSD Projection via Eigenvalue Clipping",
+    "text": "7.2 PSD Projection via Eigenvalue Clipping\nThe closest positive semidefinite matrix to \\(A\\) in Frobenius norm is obtained by replacing negative eigenvalues with zero. Given the eigendecomposition \\(A = Q\\Lambda Q^*\\), define\n\\[\\Lambda_+ = \\operatorname{diag}(\\max(\\lambda_0, 0), \\ldots, \\max(\\lambda_{n-1}, 0))\\]\nand form\n\\[A_+ = Q\\Lambda_+ Q^*.\\]\nThe resulting estimator \\(\\hat{\\sigma}_{xy}^+ = X^T A_+ Y\\) is guaranteed to be non-negative when \\(X = Y\\), since \\(A_+ \\succeq 0\\). The cost is that \\(A_+\\) no longer satisfies the unbiasedness constraints.",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Positive Semidefinite</span>"
+    ]
+  },
+  {
+    "objectID": "positive-semidefinite.html#bias-analysis-of-the-psd-projection",
+    "href": "positive-semidefinite.html#bias-analysis-of-the-psd-projection",
+    "title": "7  Positive Semidefinite",
+    "section": "7.3 Bias Analysis of the PSD Projection",
+    "text": "7.3 Bias Analysis of the PSD Projection\nThe bias of \\(\\hat{\\sigma}_{xy}^+ = X^T A_+ Y\\) is\n\\[\n\\mathbb{E}[\\hat{\\sigma}_{xy}^+] = \\theta_x^T A_+ \\theta_y + \\sigma_{xy} \\operatorname{tr}(A_+).\n\\]\nBy clipping negative eigenvalues, we have \\(\\operatorname{tr}(A_+) = \\sum_{j: \\lambda_j \\geq 0} \\lambda_j &lt; \\operatorname{tr}(A) = 1\\). The bias is therefore\n\\[\n\\text{Bias}(A_+) = \\theta_x^T A_+ \\theta_y + \\sigma_{xy} \\left(\\operatorname{tr}(A_+) - 1\\right).\n\\]\nThe second term \\(\\sigma_{xy}(\\operatorname{tr}(A_+) - 1)\\) is always negative (when \\(\\sigma_{xy} &gt; 0\\)), introducing systematic downward bias. By clipping, we lose the negative eigenvalue contributions that canceled the positive ones under correct specification. For \\(\\theta_x, \\theta_y \\in \\Theta_L\\), the original cancellation \\(\\sum_j \\lambda_j |\\tilde\\theta_j|^2 = 0\\) becomes a non-cancellation \\(\\sum_j \\lambda_j^+ |\\tilde\\theta_j|^2 \\geq 0\\) after clipping, introducing an additional positive spectral bias. The total bias is thus driven by both the trace loss and the broken cancellation, and its magnitude depends on the size and location of the negative eigenvalues in the spectrum.\n\ndevtools::load_all(\"~/Documents/Research/Code/ECE\")\nlibrary(testthat)\n\nn &lt;- 40; L &lt;- 2\na      &lt;- ece_reg_row(n, L)\nA_mat  &lt;- circ(a) / n\nlambda &lt;- Re(fft(a) / n)\n\n# Clipped eigenvalues: lambda_+ = max(lambda, 0)\nlambda_clipped &lt;- pmax(lambda, 0)\n\n# Construct clipped matrix via eigendecomposition: A_+ = Q Λ_+ Q*\nj &lt;- 0:(n - 1)\nk &lt;- 0:(n - 1)\nF_mat &lt;- exp(-2i * pi * outer(j, k) / n) / sqrt(n)\nQ &lt;- Conj(t(F_mat))\nA_clipped &lt;- Re(Q %*% diag(lambda_clipped) %*% t(Conj(Q)))\n\ntr_A &lt;- sum(lambda)\ntr_A_clipped &lt;- sum(lambda_clipped)\ntrace_loss &lt;- tr_A - tr_A_clipped\n\n# Test different mean vectors\ntheta_const &lt;- rep(1, n)\ntheta_pw    &lt;- c(rep(1, n/2), rep(-1, n/2))\nf &lt;- 5\ntheta_sin &lt;- sin(2 * pi * f * (0:(n-1)) / n)\nset.seed(123)\ntheta_rw &lt;- cumsum(rnorm(n))\ntheta_rw &lt;- theta_rw - mean(theta_rw)\n\n# Spectral biases\nspectral_orig &lt;- c(\n  as.numeric(t(theta_const) %*% A_mat %*% theta_const),\n  as.numeric(t(theta_pw) %*% A_mat %*% theta_pw),\n  as.numeric(t(theta_sin) %*% A_mat %*% theta_sin),\n  as.numeric(t(theta_rw) %*% A_mat %*% theta_rw)\n)\n\nspectral_clipped &lt;- c(\n  as.numeric(t(theta_const) %*% A_clipped %*% theta_const),\n  as.numeric(t(theta_pw) %*% A_clipped %*% theta_pw),\n  as.numeric(t(theta_sin) %*% A_clipped %*% theta_sin),\n  as.numeric(t(theta_rw) %*% A_clipped %*% theta_rw)\n)\n\n# Noise bias (with sigma_xy = 1)\nsigma_xy &lt;- 1\nnoise_bias &lt;- sigma_xy * (tr_A_clipped - 1)\n\nbiases &lt;- data.frame(\n  Vector = c(\"Constant\", \"Piecewise (2 seg)\", \"Sinusoid (f=5)\", \"Random walk\"),\n  Spectral_orig = spectral_orig,\n  Spectral_clipped = spectral_clipped,\n  Noise_bias = noise_bias,\n  Total_clipped = spectral_clipped + noise_bias\n)\n\ncat(\"Trace loss: \", round(trace_loss, 4), \"\\n\")\n\nTrace loss:  -0.1353 \n\ncat(\"Noise bias contribution: \", round(noise_bias, 4), \"\\n\\n\")\n\nNoise bias contribution:  0.1353 \n\nbiases_rounded &lt;- biases\nbiases_rounded[-1] &lt;- round(biases[-1], 6)\nprint(biases_rounded)\n\n             Vector Spectral_orig Spectral_clipped Noise_bias Total_clipped\n1          Constant      0.000000         0.000000    0.13531      0.135310\n2 Piecewise (2 seg)      0.000000         0.063925    0.13531      0.199235\n3    Sinusoid (f=5)     -0.207107         0.000000    0.13531      0.135310\n4       Random walk     -0.076799         0.227620    0.13531      0.362930\n\n# Bias vs frequency for sinusoids\nfreqs &lt;- 1:(n/2 - 1)\nbias_orig_sin &lt;- sapply(freqs, function(f) {\n  theta &lt;- sin(2 * pi * f * (0:(n-1)) / n)\n  as.numeric(t(theta) %*% A_mat %*% theta)\n})\nbias_clipped_sin &lt;- sapply(freqs, function(f) {\n  theta &lt;- sin(2 * pi * f * (0:(n-1)) / n)\n  as.numeric(t(theta) %*% A_clipped %*% theta)\n})\n\nplot(freqs, bias_orig_sin, type = \"l\", lwd = 2, col = \"steelblue\",\n  xlab = \"Frequency f\", ylab = \"Spectral bias\",\n  main = \"PSD clipping breaks cancellation under correct specification\"\n)\nlines(freqs, bias_clipped_sin, lwd = 2, col = \"coral\", lty = 2)\nabline(h = 0, col = \"grey60\", lty = 3)\nlegend(\"topright\", legend = c(\"Original A\", \"Clipped A+\"),\n  col = c(\"steelblue\", \"coral\"), lwd = 2, lty = c(1, 2))",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Positive Semidefinite</span>"
+    ]
+  },
+  {
+    "objectID": "math-background.html",
+    "href": "math-background.html",
+    "title": "Appendix A — Mathematical Background",
+    "section": "",
+    "text": "A.1 Expectation and Variance of Linear Transformations\nFor a random vector \\(X\\) and a fixed matrix \\(A\\):\n\\[\n\\mathbb{E}[AX] = A\\,\\mathbb{E}[X], \\qquad \\operatorname{Var}(AX) = A\\operatorname{Var}(X)A^T.\n\\]\nFor a scalar linear form \\(a^T X\\), these specialize to\n\\[\n\\mathbb{E}[a^T X] = a^T \\mathbb{E}[X], \\qquad \\operatorname{Var}(a^T X) = a^T \\operatorname{Var}(X)\\, a.\n\\]",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>Mathematical Background</span>"
+    ]
+  },
+  {
+    "objectID": "math-background.html#trace-trick-for-quadratic-forms",
+    "href": "math-background.html#trace-trick-for-quadratic-forms",
+    "title": "Appendix A — Mathematical Background",
+    "section": "A.2 Trace Trick for Quadratic Forms",
+    "text": "A.2 Trace Trick for Quadratic Forms\nFor any scalar \\(z\\), \\(z = \\operatorname{tr}(z)\\). So for vectors \\(u, v\\) and a fixed matrix \\(A\\),\n\\[\nu^T A v = \\operatorname{tr}(u^T A v).\n\\]\nApplying the cyclic property of trace, \\(\\operatorname{tr}(u^T A v) = \\operatorname{tr}(A v u^T)\\). Taking expectations and using linearity,\n\\[\n\\mathbb{E}[u^T A v] = \\operatorname{tr}\\!\\left(A\\,\\mathbb{E}[v u^T]\\right).\n\\]\nIn particular, if \\(u = \\varepsilon_x\\) and \\(v = \\varepsilon_y\\) with cross-covariance \\(\\mathbb{E}[\\varepsilon_y \\varepsilon_x^T] = \\Sigma_{xy}\\), then\n\\[\n\\mathbb{E}[\\varepsilon_x^T A \\varepsilon_y] = \\operatorname{tr}(A \\Sigma_{xy}).\n\\]",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>Mathematical Background</span>"
+    ]
+  },
+  {
+    "objectID": "math-background.html#spectral-properties-of-circulant-matrices",
+    "href": "math-background.html#spectral-properties-of-circulant-matrices",
+    "title": "Appendix A — Mathematical Background",
+    "section": "A.3 Spectral Properties of Circulant Matrices",
+    "text": "A.3 Spectral Properties of Circulant Matrices\nEvery circulant matrix \\(A = \\operatorname{circ}(a_0, \\ldots, a_{n-1})\\) is diagonalized by the DFT matrix \\(F\\),\n\\[\nA = F^* \\Lambda F, \\qquad F_{jk} = \\frac{1}{\\sqrt{n}}\\,\\omega^{jk}, \\quad \\omega = e^{-2\\pi i/n},\n\\]\nwhere indices \\(j, k\\) run from \\(0\\) to \\(n-1\\). Since \\(F\\) is unitary (\\(FF^* = I\\)), this is the eigendecomposition \\(A = Q\\Lambda Q^{-1}\\) with \\(Q = F^*\\).\nEigenvalues. The \\(j\\)-th eigenvalue is the DFT of the first row evaluated at frequency \\(j\\):\n\\[\n\\lambda_j = \\sum_{k=0}^{n-1} a_k\\,\\omega^{jk}.\n\\]\nEigenvectors. The columns of \\(Q = F^*\\) are the eigenvectors. The \\(j\\)-th eigenvector is\n\\[\nq_j = \\frac{1}{\\sqrt{n}}\\bigl(1,\\, \\omega^{-j},\\, \\omega^{-2j},\\, \\ldots,\\, \\omega^{-(n-1)j}\\bigr)^T,\n\\]\na complex sinusoid at frequency \\(j/n\\).\nReal symmetric case. When \\(A\\) is real and symmetric (i.e. \\(a_k = a_{n-k}\\)), the eigenvalues are real and come in symmetric pairs: \\(\\lambda_j = \\lambda_{n-j}\\).",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>Mathematical Background</span>"
+    ]
+  },
+  {
+    "objectID": "math-background.html#variance-of-a-product-of-correlated-standard-normals",
+    "href": "math-background.html#variance-of-a-product-of-correlated-standard-normals",
+    "title": "Appendix A — Mathematical Background",
+    "section": "A.4 Variance of a Product of Correlated Standard Normals",
+    "text": "A.4 Variance of a Product of Correlated Standard Normals\nLet \\((z_x, z_y)\\) be a standard bivariate Gaussian with zero mean, unit variances, and correlation \\(\\rho\\). Then\n\\[\n\\operatorname{Var}(z_x z_y) = 1 + \\rho^2.\n\\]\nProof. Decompose \\(z_y = \\rho z_x + \\sqrt{1 - \\rho^2}\\, w\\) where \\(w \\sim \\mathcal{N}(0, 1)\\) is independent of \\(z_x\\). Then\n\\[\nz_x z_y = \\rho z_x^2 + \\sqrt{1 - \\rho^2}\\, z_x w.\n\\]\nSince \\(z_x \\perp w\\), the two terms are independent, so their variances add:\n\\[\n\\operatorname{Var}(z_x z_y) = \\rho^2 \\operatorname{Var}(z_x^2) + (1 - \\rho^2)\\operatorname{Var}(z_x w).\n\\]\nFor \\(z_x \\sim \\mathcal{N}(0,1)\\): \\(\\operatorname{Var}(z_x^2) = \\mathbb{E}[z_x^4] - (\\mathbb{E}[z_x^2])^2 = 3 - 1 = 2\\). For independent standard normals: \\(\\operatorname{Var}(z_x w) = \\mathbb{E}[z_x^2]\\mathbb{E}[w^2] = 1\\). Therefore,\n\\[\n\\operatorname{Var}(z_x z_y) = 2\\rho^2 + (1 - \\rho^2) = 1 + \\rho^2. \\qquad \\square\n\\]",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>Mathematical Background</span>"
+    ]
+  },
+  {
+    "objectID": "math-results.html",
+    "href": "math-results.html",
+    "title": "Appendix B — Other Mathematical Results",
+    "section": "",
+    "text": "B.1 Properties of \\(A^2\\)\nLet \\(A\\) be a symmetric circulant with first row \\((a_0, a_1, \\ldots, a_{n-1})\\) and eigenvalues \\(\\lambda_0, \\ldots, \\lambda_{n-1}\\).\nStructure. Since the product of two circulants is circulant and \\((A^2)^T = (A^T)^2 = A^2\\), \\(A^2\\) is also a symmetric circulant. Its first row has \\(j\\)-th entry given by the autocorrelation\n\\[\n(A^2)_j = \\sum_{k=0}^{n-1} a_k\\, a_{j - k \\bmod n}.\n\\]\nPositive semidefiniteness. For any vector \\(x\\), \\(x^T A^2 x = \\|Ax\\|^2 \\geq 0\\), so \\(A^2 \\succeq 0\\).\nEigenvalues. The eigenvalues of \\(A^2\\) are \\(\\lambda_k^2\\), so\n\\[\n\\operatorname{tr}(A^2) = \\sum_k \\lambda_k^2 = \\|A\\|_F^2.\n\\]\nExplicit trace formula. Since every row of a circulant is a cyclic permutation of the first row, each row has the same squared norm, giving\n\\[\n\\operatorname{tr}(A^2) = \\|A\\|_F^2 = n \\sum_{k=0}^{n-1} a_k^2 = n\\!\\left(a_0^2 + 2\\sum_{k=1}^{\\lfloor n/2 \\rfloor} a_k^2\\right),\n\\]\nwhere the last equality uses the symmetry \\(a_k = a_{n-k}\\).",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>B</span>  <span class='chapter-title'>Other Mathematical Results</span>"
+    ]
+  },
+  {
+    "objectID": "math-results.html#lower-bound-on-operatornametra2",
+    "href": "math-results.html#lower-bound-on-operatornametra2",
+    "title": "Appendix B — Other Mathematical Results",
+    "section": "B.2 Lower Bound on \\(\\operatorname{tr}(A^2)\\)",
+    "text": "B.2 Lower Bound on \\(\\operatorname{tr}(A^2)\\)\nSince \\(\\operatorname{tr}(A) = \\sum_i \\lambda_i = 1\\) and \\(\\operatorname{tr}(A^2) = \\sum_i \\lambda_i^2\\), Jensen’s inequality gives\n\\[\n\\operatorname{tr}(A^2) = \\sum_i \\lambda_i^2 \\geq \\frac{\\left(\\sum_i \\lambda_i\\right)^2}{n} = \\frac{1}{n},\n\\]\nwith equality when all eigenvalues are equal. Thus the noise contribution \\((\\sigma_x^2\\sigma_y^2 + \\sigma_{xy}^2)\\operatorname{tr}(A^2) = O(1/n)\\), which shows the estimator is consistent.",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>B</span>  <span class='chapter-title'>Other Mathematical Results</span>"
+    ]
+  },
+  {
+    "objectID": "math-results.html#closed-form-of-ktk-1kt",
+    "href": "math-results.html#closed-form-of-ktk-1kt",
+    "title": "Appendix B — Other Mathematical Results",
+    "section": "B.3 Closed Form of \\((K^TK)^{-1}K^T\\)",
+    "text": "B.3 Closed Form of \\((K^TK)^{-1}K^T\\)\nThe design matrix is \\(K \\in \\mathbb{R}^{L \\times 2}\\) with \\(K_{k,1} = 1\\) and \\(K_{k,2} = k\\) for \\(k = 1, \\ldots, L\\). We use the Gaussian sum identities\n\\[\\sum_{k=1}^L 1 = L, \\qquad \\sum_{k=1}^L k = \\frac{L(L+1)}{2}, \\qquad \\sum_{k=1}^L k^2 = \\frac{L(L+1)(2L+1)}{6}.\\]\nStep 1: Compute \\(K^TK\\).\n\\[K^TK = \\begin{bmatrix} L & \\dfrac{L(L+1)}{2} \\\\[6pt] \\dfrac{L(L+1)}{2} & \\dfrac{L(L+1)(2L+1)}{6} \\end{bmatrix}.\\]\nStep 2: Compute \\(\\det(K^TK)\\).\n\\[\\det(K^TK) = \\frac{L^2(L+1)(2L+1)}{6} - \\frac{L^2(L+1)^2}{4} = L^2(L+1)\\cdot\\frac{2(2L+1) - 3(L+1)}{12} = \\frac{L^2(L^2-1)}{12}.\\]\nStep 3: Invert \\(K^TK\\).\nApplying the \\(2\\times 2\\) inverse formula and simplifying,\n\\[\n(K^TK)^{-1} = \\frac{12}{L^2(L^2-1)}\\begin{bmatrix} \\dfrac{L(L+1)(2L+1)}{6} & -\\dfrac{L(L+1)}{2} \\\\[6pt] -\\dfrac{L(L+1)}{2} & L \\end{bmatrix} = \\begin{bmatrix} \\dfrac{2(2L+1)}{L(L-1)} & \\dfrac{-6}{L(L-1)} \\\\[6pt] \\dfrac{-6}{L(L-1)} & \\dfrac{12}{L(L-1)(L+1)} \\end{bmatrix}.\n\\]\nStep 4: Multiply by \\(K^T\\).\nThe \\(j\\)-th column of \\((K^TK)^{-1}K^T\\) is \\((K^TK)^{-1}(1,j)^T\\). Computing each row,\n\\[\n\\bigl((K^TK)^{-1}K^T\\bigr)_{1,j} = \\frac{2(2L+1)}{L(L-1)} - \\frac{6j}{L(L-1)} = \\frac{2(2L+1-3j)}{L(L-1)},\n\\] \\[\n\\bigl((K^TK)^{-1}K^T\\bigr)_{2,j} = \\frac{-6}{L(L-1)} + \\frac{12j}{L(L-1)(L+1)} = \\frac{6(2j - L - 1)}{L(L-1)(L+1)}.\n\\]\nTherefore,\n\\[\n(K^TK)^{-1}K^T = \\frac{1}{L(L-1)}\\begin{bmatrix} 2(2L+1-3j) \\\\[4pt] \\dfrac{6(2j-L-1)}{L+1} \\end{bmatrix}_{j=1}^{L}.\n\\]\nSince \\(H = \\frac{1}{2n}(K^TK)^{-1}K^T\\), the first row is\n\\[H_{1,j} = \\frac{2L+1-3j}{nL(L-1)},\\]\nwhich is linear in \\(j\\).",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>B</span>  <span class='chapter-title'>Other Mathematical Results</span>"
+    ]
+  }
+]

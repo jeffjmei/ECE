@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.31">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>4&nbsp; Bilinear Form – ECE Notes</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./computational-solution.html" rel="next">
+<link href="./lagged-differences.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-e1a5c8363afafaef2c763b6775fbf3ca.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-414583d5b7e94ff7d9060d5cffdbfd3e.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./bilinear-form.html"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Bilinear Form</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">ECE Notes</a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Preface</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./model-assumptions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Model Assumptions</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./lagged-differences.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Lagged Differences</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./bilinear-form.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Bilinear Form</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./computational-solution.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Computational Solution</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./model-misspecification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Model Misspecification</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./positive-semidefinite.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./math-background.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Mathematical Background</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./math-results.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Other Mathematical Results</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#properties-of-circulant-matrices" id="toc-properties-of-circulant-matrices" class="nav-link active" data-scroll-target="#properties-of-circulant-matrices"><span class="header-section-number">4.1</span> Properties of Circulant Matrices</a></li>
+  <li><a href="#solving-for-a" id="toc-solving-for-a" class="nav-link" data-scroll-target="#solving-for-a"><span class="header-section-number">4.2</span> Solving for <span class="math inline">\(A\)</span></a></li>
+  <li><a href="#matrix-form-of-ece" id="toc-matrix-form-of-ece" class="nav-link" data-scroll-target="#matrix-form-of-ece"><span class="header-section-number">4.3</span> Matrix Form of ECE</a></li>
+  <li><a href="#derivation-of-mathbbext-a-y" id="toc-derivation-of-mathbbext-a-y" class="nav-link" data-scroll-target="#derivation-of-mathbbext-a-y"><span class="header-section-number">4.4</span> Derivation of <span class="math inline">\(\mathbb{E}[X^T A Y]\)</span></a></li>
+  <li><a href="#derivation-of-operatornamevarxt-a-y" id="toc-derivation-of-operatornamevarxt-a-y" class="nav-link" data-scroll-target="#derivation-of-operatornamevarxt-a-y"><span class="header-section-number">4.5</span> Derivation of <span class="math inline">\(\operatorname{Var}(X^T A Y)\)</span></a></li>
+  <li><a href="#solving-for-a-l-2" id="toc-solving-for-a-l-2" class="nav-link" data-scroll-target="#solving-for-a-l-2"><span class="header-section-number">4.6</span> Solving for <span class="math inline">\(A\)</span> (<span class="math inline">\(L &gt; 2\)</span>)</a></li>
+  <li><a href="#regression-approach" id="toc-regression-approach" class="nav-link" data-scroll-target="#regression-approach"><span class="header-section-number">4.7</span> Regression Approach</a></li>
+  <li><a href="#feasibility-of-the-regression-estimator" id="toc-feasibility-of-the-regression-estimator" class="nav-link" data-scroll-target="#feasibility-of-the-regression-estimator"><span class="header-section-number">4.8</span> Feasibility of the Regression Estimator</a></li>
+  <li><a href="#the-regression-estimator-is-the-minimum-norm-estimator" id="toc-the-regression-estimator-is-the-minimum-norm-estimator" class="nav-link" data-scroll-target="#the-regression-estimator-is-the-minimum-norm-estimator"><span class="header-section-number">4.9</span> The Regression Estimator is the Minimum-Norm Estimator</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Bilinear Form</span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p><strong>Definition.</strong> An estimator <span class="math inline">\(\tilde{s}(X, Y) = X^T A Y\)</span> for <span class="math inline">\(A \in \mathbb{R}^{n \times n}\)</span> is called <em>bilinear</em>.</p>
+<p>Expanding using <span class="math inline">\(X = \theta_x + \varepsilon_x\)</span> and <span class="math inline">\(Y = \theta_y + \varepsilon_y\)</span> and taking expectations gives</p>
+<p><span class="math display">\[
+\mathbb{E}[\tilde{s}(X, Y)] = \theta_x^T A \theta_y + \operatorname{tr}(A)\, \sigma_{xy}.
+\]</span></p>
+<p>For unbiasedness, <span class="math inline">\(A\)</span> must satisfy</p>
+<ol type="1">
+<li><span class="math inline">\(\theta_x^T A \theta_y = 0\)</span> for all <span class="math inline">\(\theta_x, \theta_y \in \Theta_L\)</span>, and<br>
+</li>
+<li><span class="math inline">\(\operatorname{tr}(A) = 1\)</span>.</li>
+</ol>
+<p>To reduce the search space, we impose a symmetry condition. Let <span class="math inline">\(C_k\)</span> be the circulant shift matrix, which shifts a vector <span class="math inline">\(k\)</span> positions to the right circularly.</p>
+<p><strong>Definition.</strong> A bilinear estimator is <em>equivariant</em> if <span class="math inline">\(\tilde{s}(C_k X, C_k Y) = \tilde{s}(X, Y)\)</span> for all <span class="math inline">\(k\)</span>.</p>
+<p><strong>Lemma (Equivariant <span class="math inline">\(\Leftrightarrow\)</span> Symmetric Circulant).</strong> <em>Since <span class="math inline">\(\tilde{s}\)</span> is a covariance estimator, <span class="math inline">\(A\)</span> must be symmetric. The bilinear estimator <span class="math inline">\(X^T A Y\)</span> is equivariant if and only if <span class="math inline">\(A\)</span> is a symmetric circulant:</em> <span class="math display">\[
+A = \operatorname{circ}(a_0, a_1, \ldots, a_{\lfloor n/2 \rfloor}, \ldots, a_1) = \begin{bmatrix}
+a_0    &amp; a_1    &amp; \cdots &amp; a_1    \\
+a_1    &amp; a_0    &amp; \cdots &amp; \vdots \\
+\vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
+a_1    &amp; \cdots &amp; a_1    &amp; a_0
+\end{bmatrix},
+\]</span> <em>where <span class="math inline">\(a_k = a_{n-k}\)</span> for all <span class="math inline">\(k\)</span>.</em></p>
+<p><em>Proof.</em> Since <span class="math inline">\(\tilde{s}(C_k X, C_k Y) = X^T(C_k^T A C_k)Y\)</span>, equivariance holds iff <span class="math inline">\(A = C_k^T A C_k\)</span> for all <span class="math inline">\(k\)</span>, which is equivalent to <span class="math inline">\(A\)</span> being circulant. Symmetry of <span class="math inline">\(A\)</span> further requires <span class="math inline">\(a_k = a_{n-k}\)</span>, so <span class="math inline">\(A\)</span> is a symmetric circulant. <span class="math inline">\(\square\)</span></p>
+<p>This reduces the <span class="math inline">\(n^2\)</span> free parameters of <span class="math inline">\(A\)</span> to the <span class="math inline">\(n\)</span> entries of its first row. Applying the unbiasedness constraints then uniquely determines <span class="math inline">\(A\)</span>, and the resulting estimator is exactly <span class="math inline">\(\hat{\sigma}_{xy}\)</span>.</p>
+<section id="properties-of-circulant-matrices" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="properties-of-circulant-matrices"><span class="header-section-number">4.1</span> Properties of Circulant Matrices</h2>
+<p>Let <span class="math inline">\(C_1 = \operatorname{circ}(0, 1, 0, \ldots, 0)\)</span> be the elementary shift-by-one matrix, so <span class="math inline">\(C_1^k = C_k\)</span>. The following facts hold:</p>
+<ol type="1">
+<li><p><strong>Power.</strong> <span class="math inline">\(C_k = C_1^k\)</span>, so applying a shift of <span class="math inline">\(k\)</span> is the same as applying a shift of 1 exactly <span class="math inline">\(k\)</span> times. As a consequence, every circulant matrix is a polynomial in <span class="math inline">\(C_1\)</span>: <span class="math inline">\(\operatorname{circ}(a_0, \ldots, a_{n-1}) = \sum_{k=0}^{n-1} a_k C_1^k\)</span>.</p></li>
+<li><p><strong>Transpose.</strong> <span class="math inline">\(C_k^T = C_{n-k} = C_k^{-1}\)</span>, since <span class="math inline">\(C_k\)</span> is a permutation matrix.</p></li>
+<li><p><strong>Circulant form.</strong> <span class="math inline">\(C_k = \operatorname{circ}(e_k)\)</span>, where <span class="math inline">\(e_k\)</span> is the standard basis vector with a 1 in position <span class="math inline">\(k\)</span> and 0s elsewhere. That is, <span class="math inline">\(C_k\)</span> is the circulant matrix whose first row has a single 1 on the <span class="math inline">\(k\)</span>-th band.</p></li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">"~/Documents/Research/Code/ECE"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(testthat)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">6</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>k <span class="ot">&lt;-</span> <span class="dv">2</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>C1 <span class="ot">&lt;-</span> <span class="fu">circ</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="fu">rep</span>(<span class="dv">0</span>, n <span class="sc">-</span> <span class="dv">2</span>)))</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>Ck <span class="ot">&lt;-</span> <span class="fu">circ</span>(<span class="fu">c</span>(<span class="fu">rep</span>(<span class="dv">0</span>, k), <span class="dv">1</span>, <span class="fu">rep</span>(<span class="dv">0</span>, n <span class="sc">-</span> k <span class="sc">-</span> <span class="dv">1</span>)))</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"circ constructs correct circulant matrix"</span>, {</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  a <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">0</span>, <span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  A <span class="ot">&lt;-</span> <span class="fu">circ</span>(a)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(A[<span class="dv">1</span>, ], a)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(A[<span class="dv">2</span>, ], <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">2</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">0</span>))</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(A[<span class="dv">3</span>, ], <span class="fu">c</span>(<span class="dv">0</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">2</span>, <span class="sc">-</span><span class="dv">1</span>))</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(A[<span class="dv">4</span>, ], <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">0</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test passed 😸</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"C_k = C_1^k"</span>, {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  C1_power_k <span class="ot">&lt;-</span> <span class="fu">Reduce</span>(<span class="st">"%*%"</span>, <span class="fu">rep</span>(<span class="fu">list</span>(C1), k))</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(Ck, C1_power_k)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test passed 😸</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"C_k^T = C_{n-k}"</span>, {</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  Cnk <span class="ot">&lt;-</span> <span class="fu">circ</span>(<span class="fu">c</span>(<span class="fu">rep</span>(<span class="dv">0</span>, n <span class="sc">-</span> k), <span class="dv">1</span>, <span class="fu">rep</span>(<span class="dv">0</span>, k <span class="sc">-</span> <span class="dv">1</span>)))</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(<span class="fu">t</span>(Ck), Cnk)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test passed 🎊</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"C_k = circ(e_k)"</span>, {</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (k <span class="cf">in</span> <span class="dv">0</span><span class="sc">:</span>(n <span class="sc">-</span> <span class="dv">1</span>)) {</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    e_k <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">seq_len</span>(n) <span class="sc">-</span> <span class="dv">1</span> <span class="sc">==</span> k)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    Ck  <span class="ot">&lt;-</span> <span class="fu">circ</span>(<span class="fu">c</span>(<span class="fu">rep</span>(<span class="dv">0</span>, k), <span class="dv">1</span>, <span class="fu">rep</span>(<span class="dv">0</span>, n <span class="sc">-</span> k <span class="sc">-</span> <span class="dv">1</span>)))</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">expect_equal</span>(<span class="fu">circ</span>(e_k), Ck)</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test passed 😀</code></pre>
+</div>
+</div>
+</section>
+<section id="solving-for-a" class="level2" data-number="4.2">
+<h2 data-number="4.2" class="anchored" data-anchor-id="solving-for-a"><span class="header-section-number">4.2</span> Solving for <span class="math inline">\(A\)</span></h2>
+<p>Since <span class="math inline">\(A\)</span> is a symmetric circulant, it is determined by <span class="math inline">\((a_0, \ldots, a_{\lfloor n/2 \rfloor})\)</span>. The unbiasedness conditions reduce to a linear system in these entries.</p>
+<p>For a circulant <span class="math inline">\(A\)</span>, the condition <span class="math inline">\(\theta_x^T A \theta_y = 0\)</span> for all piecewise-constant <span class="math inline">\(\theta_x, \theta_y \in \Theta_L\)</span> is equivalent to requiring that the sum of all entries of every <span class="math inline">\(\ell \times \ell\)</span> contiguous submatrix of <span class="math inline">\(A\)</span> is zero, for <span class="math inline">\(\ell = L, \ldots, \lfloor n/2 \rfloor\)</span>. Denoting by <span class="math inline">\(A_\ell\)</span> such a submatrix, this reads</p>
+<p><span class="math display">\[
+\|A_\ell\|_1 = 0, \qquad \ell = L, \ldots, \lfloor n/2 \rfloor.
+\]</span></p>
+<p>For a symmetric circulant, this sum depends only on <span class="math inline">\((a_0, \ldots, a_{\lfloor n/2 \rfloor})\)</span> and takes the explicit form</p>
+<p><span class="math display">\[
+g(\ell) = \ell\, a_0 + \sum_{i=1}^{\min\{\lfloor n/2 \rfloor,\, \ell\}} 2(\ell - i)\, a_i + \sum_{i=\lfloor n/2 \rfloor + 1}^{\ell} 2(\ell - i)\, a_{n-i}.
+\]</span></p>
+<p>For <span class="math inline">\(L = 2\)</span>, setting <span class="math inline">\(g(\ell) = 0\)</span> for <span class="math inline">\(\ell = 2, 3\)</span> and using <span class="math inline">\(a_0 = 1/n\)</span> gives</p>
+<p><span class="math display">\[
+g(2) = 2a_0 + 2a_1 = 0 \implies a_1 = -a_0,
+\]</span> <span class="math display">\[
+g(3) = 3a_0 + 4a_1 + 2a_2 = 0 \implies a_2 = \tfrac{a_0}{2},
+\]</span></p>
+<p>and for <span class="math inline">\(\ell \geq 4\)</span> one shows by induction that <span class="math inline">\(a_{\ell - 1} = 0\)</span>. Together with <span class="math inline">\(a_0 = 1/n\)</span>, this uniquely determines <span class="math inline">\(A\)</span>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">10</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>L <span class="ot">&lt;-</span> <span class="dv">2</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>G  <span class="ot">&lt;-</span> <span class="fu">constraint_matrix</span>(n, L)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>G</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     [,1] [,2] [,3] [,4] [,5] [,6]
+[1,]    2    2    0    0    0    0
+[2,]    3    4    2    0    0    0
+[3,]    4    6    4    2    0    0
+[4,]    5    8    6    4    2    0</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>ns <span class="ot">&lt;-</span> <span class="fu">null_space</span>(G)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>ns <span class="ot">&lt;-</span> ns <span class="sc">/</span> ns[<span class="dv">1</span>, <span class="dv">1</span>]</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>ns <span class="sc">|&gt;</span> <span class="fu">round</span>(<span class="dv">3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     [,1] [,2]
+[1,]  1.0  0.0
+[2,] -1.0  0.0
+[3,]  0.5  0.0
+[4,]  0.0  0.0
+[5,]  0.0  0.0
+[6,]  0.0  1.5</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>a_full <span class="ot">&lt;-</span> <span class="fu">ece_first_row</span>(n, L)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"null space solution matches expected a for L = 2"</span>, {</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  a_expected <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span><span class="sc">/</span><span class="dv">2</span>, <span class="fu">rep</span>(<span class="dv">0</span>, n <span class="sc">-</span> <span class="dv">5</span>), <span class="dv">1</span><span class="sc">/</span><span class="dv">2</span>, <span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(a_full, a_expected)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test passed 😸</code></pre>
+</div>
+</div>
+</section>
+<section id="matrix-form-of-ece" class="level2" data-number="4.3">
+<h2 data-number="4.3" class="anchored" data-anchor-id="matrix-form-of-ece"><span class="header-section-number">4.3</span> Matrix Form of ECE</h2>
+<p><strong>Proposition.</strong> For <span class="math inline">\(L = 2\)</span>, the ECE <span class="math inline">\(\hat{\sigma}_{xy} = X^T A Y\)</span> where <span class="math inline">\(A = \frac{1}{n}\operatorname{circ}(a)\)</span> and</p>
+<p><span class="math display">\[
+a = \left(1,\; -1,\; \tfrac{1}{2},\; 0,\; \ldots,\; 0,\; \tfrac{1}{2},\; -1\right).
+\]</span></p>
+<p><em>Proof.</em> Since <span class="math inline">\(T_k(X,Y) = ((I-C_k)X)^T((I-C_k)Y)\)</span>, we have <span class="math inline">\(T_k(X,Y) = X^T A_k Y\)</span> where</p>
+<p><span class="math display">\[
+A_k = (I - C_k)^T(I - C_k) = 2I - C_k - C_k^T.
+\]</span></p>
+<p>Since <span class="math inline">\(C_k = \operatorname{circ}(e_k)\)</span>, we have <span class="math inline">\(A_k = \operatorname{circ}(\tilde{a}_k)\)</span> where the first row <span class="math inline">\(\tilde{a}_k\)</span> has <span class="math inline">\(+2\)</span> at position <span class="math inline">\(0\)</span>, <span class="math inline">\(-1\)</span> at position <span class="math inline">\(k\)</span>, <span class="math inline">\(-1\)</span> at position <span class="math inline">\(n-k\)</span>, and <span class="math inline">\(0\)</span> elsewhere.</p>
+<p>Substituting into <span class="math inline">\(\hat{\sigma}_{xy} = \frac{1}{2n}(2T_1 - T_2)\)</span>,</p>
+<p><span class="math display">\[
+A = \frac{1}{2n}(2A_1 - A_2) = \frac{1}{2n}\bigl(2(2I - C_1 - C_1^T) - (2I - C_2 - C_2^T)\bigr) = \frac{1}{n}\operatorname{circ}(a). \quad\square
+\]</span></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">"~/Documents/Research/Code/ECE"</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1</span>)</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">10</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>X <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(n)</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>Y <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(n)</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Construct A = (1/n) circ(a)</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span><span class="sc">/</span><span class="dv">2</span>, <span class="fu">rep</span>(<span class="dv">0</span>, n <span class="sc">-</span> <span class="dv">5</span>), <span class="dv">1</span><span class="sc">/</span><span class="dv">2</span>, <span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>A <span class="ot">&lt;-</span> <span class="fu">circ</span>(a) <span class="sc">/</span> n</span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Verify A_k = 2I - C_k - C_k^T matches lag_diff</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>A1 <span class="ot">&lt;-</span> <span class="fu">lag_mat</span>(n, <span class="dv">1</span>)</span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>A2 <span class="ot">&lt;-</span> <span class="fu">lag_mat</span>(n, <span class="dv">2</span>)</span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"A_k matches lag_diff"</span>, {</span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(<span class="fu">as.numeric</span>(X <span class="sc">%*%</span> A1 <span class="sc">%*%</span> Y), <span class="fu">lag_diff</span>(X, Y, <span class="at">k =</span> <span class="dv">1</span>))</span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(<span class="fu">as.numeric</span>(X <span class="sc">%*%</span> A2 <span class="sc">%*%</span> Y), <span class="fu">lag_diff</span>(X, Y, <span class="at">k =</span> <span class="dv">2</span>))</span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test passed 🥳</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"X^T A Y matches equiv.cov"</span>, {</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(<span class="fu">as.numeric</span>(X <span class="sc">%*%</span> A <span class="sc">%*%</span> Y), <span class="fu">equiv.cov</span>(X, Y))</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test passed 🎉</code></pre>
+</div>
+</div>
+</section>
+<section id="derivation-of-mathbbext-a-y" class="level2" data-number="4.4">
+<h2 data-number="4.4" class="anchored" data-anchor-id="derivation-of-mathbbext-a-y"><span class="header-section-number">4.4</span> Derivation of <span class="math inline">\(\mathbb{E}[X^T A Y]\)</span></h2>
+<p>Substituting <span class="math inline">\(X = \theta_x + \varepsilon_x\)</span> and <span class="math inline">\(Y = \theta_y + \varepsilon_y\)</span>,</p>
+<p><span class="math display">\[
+X^T A Y = (\theta_x + \varepsilon_x)^T A (\theta_y + \varepsilon_y)
+= \theta_x^T A \theta_y + \theta_x^T A \varepsilon_y + \varepsilon_x^T A \theta_y + \varepsilon_x^T A \varepsilon_y.
+\]</span></p>
+<p>Taking expectations and using <span class="math inline">\(\mathbb{E}[\varepsilon_x] = \mathbb{E}[\varepsilon_y] = 0\)</span>,</p>
+<p><span class="math display">\[
+\mathbb{E}[X^T A Y] = \theta_x^T A \theta_y + \theta_x^T A \mathbb{E}[\varepsilon_y] + \mathbb{E}[\varepsilon_x]^T A \theta_y + \mathbb{E}[\varepsilon_x^T A \varepsilon_y]
+= \theta_x^T A \theta_y + \mathbb{E}[\varepsilon_x^T A \varepsilon_y].
+\]</span></p>
+<p>For the remaining term, since <span class="math inline">\(\varepsilon_x^T A \varepsilon_y\)</span> is a scalar,</p>
+<p><span class="math display">\[
+\varepsilon_x^T A \varepsilon_y = \operatorname{tr}(\varepsilon_x^T A \varepsilon_y).
+\]</span></p>
+<p>By the cyclic property of trace, <span class="math inline">\(\operatorname{tr}(\varepsilon_x^T A \varepsilon_y) = \operatorname{tr}(A \varepsilon_y \varepsilon_x^T)\)</span>. Taking the expectation and applying linearity,</p>
+<p><span class="math display">\[
+\mathbb{E}[\varepsilon_x^T A \varepsilon_y] = \operatorname{tr}(A\, \mathbb{E}[\varepsilon_y \varepsilon_x^T]) = \operatorname{tr}(A \cdot \sigma_{xy} I) = \sigma_{xy}\operatorname{tr}(A),
+\]</span></p>
+<p>where we used <span class="math inline">\(\mathbb{E}[\varepsilon_y \varepsilon_x^T] = \sigma_{xy} I\)</span>.</p>
+<p>Therefore,</p>
+<p><span class="math display">\[
+\mathbb{E}[X^T A Y] = \theta_x^T A \theta_y + \sigma_{xy}\operatorname{tr}(A). \qquad \square
+\]</span></p>
+</section>
+<section id="derivation-of-operatornamevarxt-a-y" class="level2" data-number="4.5">
+<h2 data-number="4.5" class="anchored" data-anchor-id="derivation-of-operatornamevarxt-a-y"><span class="header-section-number">4.5</span> Derivation of <span class="math inline">\(\operatorname{Var}(X^T A Y)\)</span></h2>
+<p>Using the same decomposition, write <span class="math inline">\(X^T A Y = \theta_x^T A \theta_y + \theta_x^T A \varepsilon_y + \varepsilon_x^T A \theta_y + \varepsilon_x^T A \varepsilon_y\)</span>. Since the first term is a constant, it does not contribute to the variance, so</p>
+<p><span class="math display">\[
+\operatorname{Var}(X^T A Y) = \operatorname{Var}(\theta_x^T A \varepsilon_y + \varepsilon_x^T A \theta_y + \varepsilon_x^T A \varepsilon_y).
+\]</span></p>
+<p>Expanding,</p>
+<p><span class="math display">\[\begin{align*}
+\operatorname{Var}(X^T A Y) &amp;= \operatorname{Var}(\theta_x^T A \varepsilon_y) + \operatorname{Var}(\varepsilon_x^T A \theta_y) + \operatorname{Var}(\varepsilon_x^T A \varepsilon_y) \\
+&amp;\quad + 2\operatorname{Cov}(\theta_x^T A \varepsilon_y,\, \varepsilon_x^T A \theta_y) \\
+&amp;\quad + 2\operatorname{Cov}(\theta_x^T A \varepsilon_y,\, \varepsilon_x^T A \varepsilon_y) \\
+&amp;\quad + 2\operatorname{Cov}(\varepsilon_x^T A \theta_y,\, \varepsilon_x^T A \varepsilon_y).
+\end{align*}\]</span></p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Derivation of each term
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p><strong>Term 1: <span class="math inline">\(\operatorname{Var}(\theta_x^T A \varepsilon_y)\)</span>.</strong> Since <span class="math inline">\(\theta_x^T A\)</span> is a fixed row vector, this is the variance of a linear form in <span class="math inline">\(\varepsilon_y\)</span>:</p>
+<p><span class="math display">\[
+\operatorname{Var}(\theta_x^T A \varepsilon_y) = \theta_x^T A \operatorname{Var}(\varepsilon_y) A^T \theta_x = \sigma_y^2\, \theta_x^T A A^T \theta_x = \sigma_y^2\, \theta_x^T A^2 \theta_x,
+\]</span></p>
+<p>where the last equality uses symmetry of <span class="math inline">\(A\)</span>.</p>
+<p><strong>Term 2: <span class="math inline">\(\operatorname{Var}(\varepsilon_x^T A \theta_y)\)</span>.</strong> By the same argument, <span class="math inline">\(A \theta_y\)</span> is a fixed vector, so</p>
+<p><span class="math display">\[
+\operatorname{Var}(\varepsilon_x^T A \theta_y) = \theta_y^T A^T \operatorname{Var}(\varepsilon_x) A \theta_y = \sigma_x^2\, \theta_y^T A^2 \theta_y.
+\]</span></p>
+<p><strong>Term 3: <span class="math inline">\(\operatorname{Var}(\varepsilon_x^T A \varepsilon_y)\)</span>.</strong> Apply the eigendecomposition <span class="math inline">\(A = Q\Lambda Q^T\)</span> and let <span class="math inline">\(z_x = Q^T \varepsilon_x / \sigma_x\)</span>, <span class="math inline">\(z_y = Q^T \varepsilon_y / \sigma_y\)</span>, so that <span class="math inline">\(z_x, z_y \sim \mathcal{N}(0, I)\)</span> with <span class="math inline">\(\operatorname{Cov}(z_x, z_y) = \rho I\)</span> where <span class="math inline">\(\rho = \sigma_{xy}/(\sigma_x \sigma_y)\)</span>. Applying the eigendecomposition,</p>
+<p><span class="math display">\[
+\varepsilon_x^T A \varepsilon_y = \sigma_x \sigma_y\, z_x^T \Lambda z_y = \sigma_x \sigma_y \sum_i \lambda_i z_{x,i} z_{y,i}.
+\]</span></p>
+<p>Since <span class="math inline">\(\operatorname{Cov}(z_x, z_y) = \rho I\)</span> is diagonal, the pairs <span class="math inline">\((z_{x,i}, z_{y,i})\)</span> are independent across <span class="math inline">\(i\)</span>, so</p>
+<p><span class="math display">\[
+\operatorname{Var}(\varepsilon_x^T A \varepsilon_y) = \sigma_x^2 \sigma_y^2 \sum_i \lambda_i^2\, \operatorname{Var}(z_{x,i} z_{y,i}).
+\]</span></p>
+<p>For each <span class="math inline">\(i\)</span>, <span class="math inline">\((z_{x,i}, z_{y,i})\)</span> is a standard bivariate Gaussian with correlation <span class="math inline">\(\rho\)</span>, so <span class="math inline">\(\operatorname{Var}(z_{x,i} z_{y,i}) = 1 + \rho^2\)</span> (see Appendix). Therefore,</p>
+<p><span class="math display">\[
+\operatorname{Var}(\varepsilon_x^T A \varepsilon_y) = \sigma_x^2 \sigma_y^2 (1 + \rho^2)\operatorname{tr}(A^2) = (\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2).
+\]</span></p>
+<p><strong>Term 4: <span class="math inline">\(\operatorname{Cov}(\theta_x^T A \varepsilon_y,\, \varepsilon_x^T A \theta_y)\)</span>.</strong> Since <span class="math inline">\(\mathbb{E}[\varepsilon_x] = \mathbb{E}[\varepsilon_y] = 0\)</span>, both terms have zero expectation, so the covariance reduces to</p>
+<p><span class="math display">\[
+\operatorname{Cov}(\theta_x^T A \varepsilon_y,\, \varepsilon_x^T A \theta_y) = \mathbb{E}[(\theta_x^T A \varepsilon_y)(\varepsilon_x^T A \theta_y)] = \theta_x^T A\, \mathbb{E}[\varepsilon_y \varepsilon_x^T]\, A^T \theta_y = \sigma_{xy}\, \theta_x^T A^2 \theta_y,
+\]</span></p>
+<p>where we used <span class="math inline">\(\mathbb{E}[\varepsilon_y \varepsilon_x^T] = \sigma_{xy} I\)</span> and symmetry of <span class="math inline">\(A\)</span>.</p>
+<p><strong>Terms 5 and 6: <span class="math inline">\(\operatorname{Cov}(\theta_x^T A \varepsilon_y,\, \varepsilon_x^T A \varepsilon_y)\)</span> and <span class="math inline">\(\operatorname{Cov}(\varepsilon_x^T A \theta_y,\, \varepsilon_x^T A \varepsilon_y)\)</span>.</strong> Since all terms have zero expectation, both covariances reduce to expectations of products involving one linear and one bilinear form in <span class="math inline">\((\varepsilon_x, \varepsilon_y)\)</span>. These are third-order moments of the zero-mean jointly Gaussian vector <span class="math inline">\((\varepsilon_x, \varepsilon_y)\)</span>, and all odd-order moments of a zero-mean Gaussian vanish. Therefore,</p>
+<p><span class="math display">\[
+\operatorname{Cov}(\theta_x^T A \varepsilon_y,\, \varepsilon_x^T A \varepsilon_y) = 0, \qquad \operatorname{Cov}(\varepsilon_x^T A \theta_y,\, \varepsilon_x^T A \varepsilon_y) = 0.
+\]</span></p>
+</div>
+</div>
+</div>
+<p>Collecting all terms,</p>
+<p><span class="math display">\[
+\operatorname{Var}(X^T A Y) = \sigma_y^2\, \theta_x^T A^2 \theta_x + \sigma_x^2\, \theta_y^T A^2 \theta_y + 2\sigma_{xy}\, \theta_x^T A^2 \theta_y + (\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2).
+\]</span></p>
+<p>The noise contribution <span class="math inline">\((\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2) = O(1/n)\)</span> by the lower bound on <span class="math inline">\(\operatorname{tr}(A^2)\)</span> (see Appendix B), which shows the estimator is consistent.</p>
+</section>
+<section id="solving-for-a-l-2" class="level2" data-number="4.6">
+<h2 data-number="4.6" class="anchored" data-anchor-id="solving-for-a-l-2"><span class="header-section-number">4.6</span> Solving for <span class="math inline">\(A\)</span> (<span class="math inline">\(L &gt; 2\)</span>)</h2>
+<p>For <span class="math inline">\(L &gt; 2\)</span>, the unbiasedness constraints leave a multi-dimensional solution space for <span class="math inline">\(a\)</span>, so we have freedom to optimize. The full variance is</p>
+<p><span class="math display">\[
+\operatorname{Var}(X^T A Y) = \sigma_y^2\, \theta_x^T A^2 \theta_x + \sigma_x^2\, \theta_y^T A^2 \theta_y + 2\sigma_{xy}\, \theta_x^T A^2 \theta_y + (\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2).
+\]</span></p>
+<p>Since <span class="math inline">\(\theta_x\)</span> and <span class="math inline">\(\theta_y\)</span> are unknown, the signal-dependent terms cannot be minimized directly. The only term we can control is the noise term <span class="math inline">\((\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2)\)</span>, which for fixed noise levels reduces to minimizing <span class="math inline">\(\operatorname{tr}(A^2)\)</span>. This gives the optimization problem</p>
+<p><span class="math display">\[
+\min_{a \in \mathbb{R}^n} \operatorname{tr}(A^2) \quad \text{subject to} \quad \|A_\ell\|_1 = 0,\ \ell = L, \ldots, \lfloor n/2 \rfloor, n, \quad \operatorname{tr}(A) = 1,
+\]</span></p>
+<p>where <span class="math inline">\(A = \operatorname{circ}(a)\)</span>.</p>
+<p><strong>Reducing to a norm minimization.</strong> Since <span class="math inline">\(A = \operatorname{circ}(a)\)</span> is a circulant, every row of <span class="math inline">\(A\)</span> is a cyclic permutation of <span class="math inline">\(a\)</span> and therefore has the same squared norm <span class="math inline">\(\|a\|^2\)</span>. The Frobenius norm of <span class="math inline">\(A\)</span> is thus</p>
+<p><span class="math display">\[
+\|A\|_F^2 = n\|a\|^2.
+\]</span></p>
+<p>Since <span class="math inline">\(A\)</span> is symmetric, <span class="math inline">\(\operatorname{tr}(A^2) = \operatorname{tr}(A^T A) = \|A\|_F^2 = n\|a\|^2\)</span>. Minimizing <span class="math inline">\(\operatorname{tr}(A^2)\)</span> is therefore equivalent to minimizing <span class="math inline">\(\|a\|^2\)</span>. Because the unbiasedness constraints are linear in <span class="math inline">\(a\)</span>, the problem reduces to</p>
+<p><span class="math display">\[
+\min_{a \in \mathbb{R}^n} \|a\|^2 \quad \text{subject to} \quad \|A_\ell\|_1 = 0,\ \ell = L, \ldots, \lfloor n/2 \rfloor, n, \quad \operatorname{tr}(A) = 1,
+\]</span></p>
+<p>where <span class="math inline">\(A = \operatorname{circ}(a)\)</span>. Both sets of constraints are linear in <span class="math inline">\(a\)</span>, so this is a quadratic program with a unique solution — the minimum-norm point in the feasible affine subspace.</p>
+</section>
+<section id="regression-approach" class="level2" data-number="4.7">
+<h2 data-number="4.7" class="anchored" data-anchor-id="regression-approach"><span class="header-section-number">4.7</span> Regression Approach</h2>
+<p>A natural way to estimate <span class="math inline">\(\sigma_{xy}\)</span> is to exploit the linear relationship <span class="math inline">\(\mathbb{E}[T_k(X,Y)] = 2n\sigma_{xy} + k\,\omega_{xy}\)</span> (established in the Lagged Differences chapter). Stacking <span class="math inline">\(k = 1, \ldots, L\)</span> gives a linear model</p>
+<p><span class="math display">\[
+\mathbb{E}[R] = K\beta,
+\qquad
+K = \begin{bmatrix} 1 &amp; 1 \\ 1 &amp; 2 \\ \vdots &amp; \vdots \\ 1 &amp; L \end{bmatrix} \in \mathbb{R}^{L \times 2},
+\quad
+\beta = \begin{pmatrix} 2n\sigma_{xy} \\ \omega_{xy} \end{pmatrix},
+\]</span></p>
+<p>where <span class="math inline">\(R_k = T_k(X,Y)\)</span>. The OLS estimate is <span class="math inline">\(\hat\beta = (K^TK)^{-1}K^T R\)</span>, and the regression estimator of <span class="math inline">\(\sigma_{xy}\)</span> is its first component rescaled:</p>
+<p><span class="math display">\[
+\hat\sigma_{\mathrm{reg}} = \frac{1}{2n}\, e_1^T(K^TK)^{-1}K^T R = H_{1\cdot} R,
+\quad
+H = \frac{1}{2n}(K^TK)^{-1}K^T \in \mathbb{R}^{2 \times L},
+\]</span></p>
+<p>where <span class="math inline">\(H_{1\cdot}\)</span> denotes the first row of <span class="math inline">\(H\)</span>.</p>
+<p><strong>Relationship <span class="math inline">\(T_k(X,Y) = X^T A_k Y\)</span>.</strong> Since</p>
+<p><span class="math display">\[
+T_k(X,Y) = \sum_{i=1}^n (X_i - X_{i+k})(Y_i - Y_{i+k}) = \bigl((I - C_k)X\bigr)^T\bigl((I - C_k)Y\bigr),
+\]</span></p>
+<p>we have <span class="math inline">\(T_k(X,Y) = X^T A_k Y\)</span> with</p>
+<p><span class="math display">\[
+A_k = (I - C_k)^T(I - C_k) = 2I - C_k - C_k^T.
+\]</span></p>
+<p>Substituting <span class="math inline">\(R_k = X^T A_k Y\)</span> into the regression estimator,</p>
+<p><span class="math display">\[
+\hat\sigma_{\mathrm{reg}} = H_{1\cdot} R = X^T A Y,
+\]</span></p>
+<p>so the regression estimator is a bilinear form <span class="math inline">\(X^T A Y\)</span> with</p>
+<p><span class="math display">\[
+A = \sum_{k=1}^L H_{1,k}\, A_k.
+\]</span></p>
+<p>Since each <span class="math inline">\(A_k = 2I - C_k - C_k^T\)</span> is a symmetric circulant, <span class="math inline">\(A\)</span> is also a symmetric circulant, determined by its first row <span class="math inline">\(\tilde{a} \in \mathbb{R}^n\)</span>.</p>
+<p><strong>Conjecture.</strong> The first row <span class="math inline">\(\tilde{a}\)</span> of the regression matrix <span class="math inline">\(A\)</span> is the minimum-norm solution described in the previous section. That is, the regression approach and the Frobenius-norm minimization produce the same estimator.</p>
+</section>
+<section id="feasibility-of-the-regression-estimator" class="level2" data-number="4.8">
+<h2 data-number="4.8" class="anchored" data-anchor-id="feasibility-of-the-regression-estimator"><span class="header-section-number">4.8</span> Feasibility of the Regression Estimator</h2>
+<p>To show that <span class="math inline">\(\tilde{a}\)</span> is the minimum-norm solution, we must verify it is feasible, i.e., that it satisfies the trace and unbiasedness constraints.</p>
+<p>The regression estimator is the bilinear form <span class="math inline">\(X^T A Y\)</span> with <span class="math inline">\(A = \sum_{k=1}^L c_k A_k\)</span>, where <span class="math inline">\(c_k = H_{1,k} = \frac{2L+1-3k}{nL(L-1)}\)</span>. Since we evaluate <span class="math inline">\(g(\ell)\)</span> only for <span class="math inline">\(\ell \geq L\)</span>, every <span class="math inline">\(k \leq L\)</span> satisfies <span class="math inline">\(k \leq \ell\)</span>, so the Lemma (see Other Mathematical Results) gives <span class="math inline">\(\mathbf{1}_\ell^T A_k \mathbf{1}_\ell = 2k\)</span>. By linearity, <span class="math display">\[g(\ell) = \mathbf{1}_\ell^T A\, \mathbf{1}_\ell = 2\sum_{k=1}^L c_k k,\]</span> which is independent of <span class="math inline">\(\ell\)</span>. Both constraints then reduce to evaluating <span class="math inline">\(\sum_k c_k\)</span> and <span class="math inline">\(\sum_k c_k k\)</span> via the closed form of <span class="math inline">\(c_k\)</span>.</p>
+<p><strong>Trace constraint: <span class="math inline">\(\operatorname{tr}(A) = 1\)</span>.</strong> Since <span class="math inline">\(\operatorname{tr}(A_k) = \operatorname{tr}(2I - C_k - C_k^T) = 2n\)</span> (as <span class="math inline">\(C_k\)</span> has no fixed points for <span class="math inline">\(k \geq 1\)</span>), we have <span class="math inline">\(\operatorname{tr}(A) = 2n\sum_k c_k\)</span>. Applying the Gaussian sum <span class="math inline">\(\sum_{k=1}^L k = \frac{L(L+1)}{2}\)</span>, <span class="math display">\[\sum_{k=1}^L c_k = \frac{1}{nL(L-1)}\left[(2L+1)L - \frac{3L(L+1)}{2}\right] = \frac{1}{n(L-1)}\cdot\frac{L-1}{2} = \frac{1}{2n}.\]</span> Therefore <span class="math inline">\(\operatorname{tr}(A) = 2n \cdot \frac{1}{2n} = 1\)</span>. <span class="math inline">\(\square\)</span></p>
+<p><strong>Unbiasedness: <span class="math inline">\(g(\ell) = 0\)</span> for <span class="math inline">\(\ell = L, \ldots, \lfloor n/2 \rfloor\)</span>.</strong> For <span class="math inline">\(\ell \geq L\)</span>, <span class="math inline">\(g(\ell) = 2\sum_k c_k k\)</span>. Applying the Gaussian sums <span class="math inline">\(\sum_{k=1}^L k = \frac{L(L+1)}{2}\)</span> and <span class="math inline">\(\sum_{k=1}^L k^2 = \frac{L(L+1)(2L+1)}{6}\)</span>, <span class="math display">\[\sum_{k=1}^L c_k k = \frac{1}{nL(L-1)}\left[(2L+1)\frac{L(L+1)}{2} - \frac{3L(L+1)(2L+1)}{6}\right] = \frac{(2L+1)L(L+1)}{nL(L-1)}\left[\frac{1}{2} - \frac{1}{2}\right] = 0.\]</span> Therefore <span class="math inline">\(g(\ell) = 0\)</span> for all <span class="math inline">\(\ell \geq L\)</span>. <span class="math inline">\(\square\)</span></p>
+</section>
+<section id="the-regression-estimator-is-the-minimum-norm-estimator" class="level2" data-number="4.9">
+<h2 data-number="4.9" class="anchored" data-anchor-id="the-regression-estimator-is-the-minimum-norm-estimator"><span class="header-section-number">4.9</span> The Regression Estimator is the Minimum-Norm Estimator</h2>
+<p>Having established feasibility, it remains to show that <span class="math inline">\(\tilde{a}\)</span> is the minimum-norm feasible solution.</p>
+<p><strong>Setup.</strong> Since the unbiasedness constraints are homogeneous (<span class="math inline">\(Ga = 0\)</span>), every feasible <span class="math inline">\(a\)</span> lies in <span class="math inline">\(\mathrm{null}(G)\)</span>. The trace constraint <span class="math inline">\(\mathrm{tr}(A) = 1\)</span> is the only inhomogeneous condition, cutting out an affine hyperplane within <span class="math inline">\(\mathrm{null}(G)\)</span>: <span class="math display">\[F = \{a \in \mathrm{null}(G) : \mathrm{tr}(A) = 1\}.\]</span> Let <span class="math inline">\(a^* \in F\)</span> be the minimum-norm feasible solution. We will show <span class="math inline">\(a^* = \tilde{a}\)</span> by writing <span class="math inline">\(a^* = \tilde{a} + w\)</span> with <span class="math inline">\(w = a^* - \tilde{a}\)</span> and expanding: <span class="math display">\[\|a^*\|^2 = \|\tilde{a}\|^2 + \|w\|^2 + 2\langle\tilde{a}, w\rangle.\]</span> Steps 1 and 2 below show <span class="math inline">\(\langle\tilde{a}, w\rangle = 0\)</span>, so the expansion reduces to <span class="math display">\[\|a^*\|^2 = \|\tilde{a}\|^2 + \|w\|^2.\]</span> Since <span class="math inline">\(a^*\)</span> is optimal and <span class="math inline">\(\tilde{a}\)</span> is feasible, <span class="math inline">\(\|a^*\|^2 \leq \|\tilde{a}\|^2\)</span>, so <span class="math display">\[\|a^*\|^2 = \|\tilde{a}\|^2 + \|w\|^2 \leq \|\tilde{a}\|^2 \implies \|w\|^2 \leq 0.\]</span> Therefore <span class="math inline">\(w = 0\)</span> and <span class="math inline">\(a^* = \tilde{a}\)</span>.</p>
+<p><strong>Step 1: Characterize vectors satisfying <span class="math inline">\((*)\)</span>.</strong></p>
+<p>Since both <span class="math inline">\(a^*, \tilde{a} \in F\)</span>, the difference <span class="math inline">\(w = a^* - \tilde{a}\)</span> satisfies <span class="math inline">\(Gw = 0\)</span> (as both <span class="math inline">\(Ga^* = 0\)</span> and <span class="math inline">\(G\tilde{a} = 0\)</span>) and <span class="math inline">\(\mathrm{tr}(\mathrm{circ}(w)) = \mathrm{tr}(\mathrm{circ}(a^*)) - \mathrm{tr}(\mathrm{circ}(\tilde{a})) = 1 - 1 = 0\)</span>. Since <span class="math inline">\(\mathrm{tr}(\mathrm{circ}(w)) = nw_0\)</span>, we have <span class="math inline">\(w_0 = 0\)</span>. So <span class="math inline">\(w\)</span> satisfies <span class="math display">\[Gw = 0, \quad w_0 = 0. \tag{$*$}\]</span></p>
+<p>Let <span class="math inline">\(w\)</span> satisfy <span class="math inline">\((*)\)</span>. The constraint matrix <span class="math inline">\(G\)</span> has entries <span class="math inline">\(G_{\ell,0} = \ell\)</span> and <span class="math inline">\(G_{\ell,k} = 2(\ell-k)^+\)</span> for <span class="math inline">\(k \geq 1\)</span>, so <span class="math inline">\(Gw = 0\)</span> requires for each <span class="math inline">\(\ell = L, \ldots, \lfloor n/2 \rfloor\)</span>:</p>
+<p><span class="math display">\[\ell\, w_0 + \sum_{k=1}^{\lfloor n/2 \rfloor} 2(\ell - k)^+\, w_k = 0.\]</span></p>
+<p>We analyze this system by applying a first-difference operator twice. For any matrix <span class="math inline">\(B\)</span> with <span class="math inline">\(r\)</span> rows, define <span class="math inline">\(M(B)\)</span> as the <span class="math inline">\((r-1) \times r\)</span> bidiagonal matrix applied to <span class="math inline">\(B\)</span>:</p>
+<p><span class="math display">\[M(B) = \begin{pmatrix} -1 &amp; 1 &amp; 0 &amp; \cdots &amp; 0 \\ 0 &amp; -1 &amp; 1 &amp; \cdots &amp; 0 \\ \vdots &amp; &amp; \ddots &amp; \ddots &amp; \vdots \\ 0 &amp; 0 &amp; \cdots &amp; -1 &amp; 1 \end{pmatrix} B,\]</span></p>
+<p>so that <span class="math inline">\(M(B)_\ell = B_{\ell+1} - B_\ell\)</span>. We write <span class="math inline">\(M^2G\)</span> as shorthand for <span class="math inline">\(M(M(G))\)</span> — applying the operator twice sequentially, each time with a smaller matrix of appropriate dimensions. Since <span class="math inline">\(Gw = 0\)</span> implies <span class="math inline">\(M(G)w = 0\)</span> and <span class="math inline">\(M(M(G))w = 0\)</span>, each application yields simpler conditions.</p>
+<p><strong>Step 1a: Show <span class="math inline">\(w_k = 0\)</span> for <span class="math inline">\(k &gt; L\)</span>.</strong></p>
+<p><em>First application (<span class="math inline">\(M(G)w = 0\)</span>).</em> Subtracting the <span class="math inline">\(\ell\)</span>-th row from the <span class="math inline">\((\ell+1)\)</span>-th gives</p>
+<p><span class="math display">\[w_0 + 2\sum_{k=1}^{\ell} w_k = 0, \qquad \ell = L, \ldots, \lfloor n/2 \rfloor - 1.\]</span></p>
+<p>The resulting matrix <span class="math inline">\(MG\)</span> has a column of <span class="math inline">\(1\)</span>s in position <span class="math inline">\(k=0\)</span> and <span class="math inline">\(2\)</span>s in positions <span class="math inline">\(k = 1, \ldots, \ell\)</span> (filling in one more entry per row):</p>
+<p><span class="math display">\[MG = \begin{pmatrix} 1 &amp; 2 &amp; \cdots &amp; 2 &amp; 0 &amp; 0 &amp; \cdots \\ 1 &amp; 2 &amp; \cdots &amp; 2 &amp; 2 &amp; 0 &amp; \cdots \\ 1 &amp; 2 &amp; \cdots &amp; 2 &amp; 2 &amp; 2 &amp; \cdots \\ \vdots &amp; &amp; &amp; &amp; &amp; &amp; \ddots \end{pmatrix}.\]</span></p>
+<p><em>Second application (<span class="math inline">\(M(M(G))w = 0\)</span>).</em> Subtracting consecutive equations from <span class="math inline">\(M(G)w = 0\)</span> gives <span class="math inline">\(2w_{\ell+1} = 0\)</span> for each <span class="math inline">\(\ell = L, \ldots, \lfloor n/2 \rfloor - 2\)</span>, so <span class="math inline">\(w_k = 0\)</span> for all <span class="math inline">\(k &gt; L\)</span>.</p>
+<p>The matrix <span class="math inline">\(M(M(G))\)</span> has exactly one nonzero entry per row — a <span class="math inline">\(2\)</span> in column <span class="math inline">\(\ell + 1\)</span> — making the zero conditions on each <span class="math inline">\(w_k\)</span> explicit:</p>
+<p><span class="math display">\[M(M(G)) = \begin{pmatrix} 0 &amp; \cdots &amp; 0 &amp; 2 &amp; 0 &amp; 0 &amp; \cdots \\ 0 &amp; \cdots &amp; 0 &amp; 0 &amp; 2 &amp; 0 &amp; \cdots \\ 0 &amp; \cdots &amp; 0 &amp; 0 &amp; 0 &amp; 2 &amp; \cdots \\ \vdots &amp; &amp; &amp; &amp; &amp; &amp; \ddots \end{pmatrix}.\]</span></p>
+<p><strong>Step 1b: Characterize <span class="math inline">\((w_1, \ldots, w_L)\)</span>.</strong></p>
+<p>Having zeroed out <span class="math inline">\(w_k\)</span> for <span class="math inline">\(k &gt; L\)</span>, we need two conditions on the remaining entries <span class="math inline">\((w_1, \ldots, w_L)\)</span>. We obtain these by working back through <span class="math inline">\(MGw = 0\)</span> and <span class="math inline">\(Gw = 0\)</span> at <span class="math inline">\(\ell = L\)</span> — each provides one independent condition, and no further applications of <span class="math inline">\(M\)</span> are needed to characterize the null space.</p>
+<p>Recall from Step 1a that <span class="math inline">\(M(G)w = 0\)</span> gives <span class="math display">\[w_0 + 2\sum_{k=1}^{\ell} w_k = 0, \qquad \ell = L, \ldots, \lfloor n/2 \rfloor - 1.\]</span> Setting <span class="math inline">\(\ell = L\)</span> and substituting <span class="math inline">\(w_k = 0\)</span> for <span class="math inline">\(k &gt; L\)</span> gives <span class="math inline">\(w_0 + 2\sum_{k=1}^L w_k = 0\)</span>. Since <span class="math inline">\(w_0 = 0\)</span> by <span class="math inline">\((*)\)</span>, this forces <span class="math inline">\(\sum_{k=1}^L w_k = 0\)</span>.</p>
+<p>Similarly, recall from Step 1a that <span class="math inline">\(Gw = 0\)</span> gives <span class="math inline">\(\ell\, w_0 + \sum_{k=1}^{\lfloor n/2 \rfloor} 2(\ell-k)^+\, w_k = 0\)</span>. Setting <span class="math inline">\(\ell = L\)</span> and splitting the sum: <span class="math display">\[L\, w_0 + \sum_{k=1}^{L} 2(L-k)^+\, w_k + \sum_{k=L+1}^{\lfloor n/2 \rfloor} 2(L-k)^+\, w_k = 0.\]</span> The second sum vanishes since <span class="math inline">\((L-k)^+ = 0\)</span> for <span class="math inline">\(k &gt; L\)</span>, and <span class="math inline">\(w_0 = 0\)</span> by <span class="math inline">\((*)\)</span>, leaving <span class="math inline">\(\sum_{k=1}^L 2(L-k)\, w_k = 0\)</span>. Expanding and applying <span class="math inline">\(\sum_{k=1}^L w_k = 0\)</span> gives <span class="math inline">\(\sum_{k=1}^L k\, w_k = 0\)</span>.</p>
+<p>Therefore the vectors satisfying <span class="math inline">\((*)\)</span> are exactly those with <span class="math inline">\(w_0 = 0\)</span>, <span class="math inline">\(w_k = 0\)</span> for <span class="math inline">\(k &gt; L\)</span>, and <span class="math inline">\((w_1, \ldots, w_L)\)</span> satisfying</p>
+<p><span class="math display">\[\sum_{k=1}^L w_k = 0, \qquad \sum_{k=1}^L k\,w_k = 0.\]</span></p>
+<p>To summarize, each level of differentiation contributes one layer of structure:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Equation</th>
+<th>Conclusion</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="math inline">\(M(M(G))w = 0\)</span></td>
+<td><span class="math inline">\(w_k = 0\)</span> for <span class="math inline">\(k &gt; L\)</span></td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(M(G)w = 0\)</span> at <span class="math inline">\(\ell = L\)</span></td>
+<td><span class="math inline">\(\sum_{k=1}^L w_k = 0\)</span></td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(Gw = 0\)</span> at <span class="math inline">\(\ell = L\)</span></td>
+<td><span class="math inline">\(\sum_{k=1}^L k\, w_k = 0\)</span></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step 2: Show <span class="math inline">\(\tilde{a} \perp w\)</span>.</strong></p>
+<p>Since <span class="math inline">\(\tilde{a} = \sum_{k=1}^L c_k \tilde{a}_k\)</span>, by linearity of the inner product: <span class="math display">\[\langle \tilde{a}, w \rangle = \sum_{k=1}^L c_k \langle \tilde{a}_k, w \rangle.\]</span></p>
+<p>Since <span class="math inline">\(\tilde{a}_k = 2e_0 - e_k - e_{n-k}\)</span>, <span class="math display">\[\langle \tilde{a}_k, w \rangle = 2w_0 - w_k - w_{n-k}.\]</span></p>
+<p>From Step 1: <span class="math inline">\(w_0 = 0\)</span>, and for <span class="math inline">\(k \in \{1, \ldots, L\}\)</span> we have <span class="math inline">\(n - k &gt; L\)</span>, so <span class="math inline">\(w_{n-k} = 0\)</span>. Therefore <span class="math inline">\(\langle \tilde{a}_k, w \rangle = -w_k\)</span>, and <span class="math display">\[\langle \tilde{a}, w \rangle = -\sum_{k=1}^L c_k\, w_k.\]</span></p>
+<p>Since <span class="math inline">\(c_k = \frac{2L+1-3k}{nL(L-1)}\)</span> is affine in <span class="math inline">\(k\)</span>,</p>
+<p><span class="math display">\[\sum_{k=1}^L c_k\, w_k = \frac{2L+1}{nL(L-1)} \sum_{k=1}^L w_k - \frac{3}{nL(L-1)} \sum_{k=1}^L k\,w_k = 0,\]</span></p>
+<p>where both sums vanish by Step 1. Therefore <span class="math inline">\(\langle \tilde{a}, w \rangle = 0\)</span> for all <span class="math inline">\(w\)</span> satisfying <span class="math inline">\((*)\)</span>. <span class="math inline">\(\square\)</span></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Computationally Verifying Regression Solution is Min-Norm Solution </span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">100</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (L <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">49</span>) {</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">test_that</span>(<span class="fu">paste0</span>(<span class="st">"regression and optim first rows agree for L = "</span>, L), {</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">expect_equal</span>(<span class="fu">ece_reg_row</span>(n, L), <span class="fu">ece_optim</span>(n, L), <span class="at">tolerance =</span> <span class="fl">1e-4</span>)</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>  })</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test passed 🎊
+Test passed 🌈
+Test passed 🌈
+Test passed 🌈
+Test passed 🥳
+Test passed 🌈
+Test passed 😀
+Test passed 🎊
+Test passed 🎉
+Test passed 😀
+Test passed 🌈
+Test passed 😀
+Test passed 🎊
+Test passed 🎉
+Test passed 🥳
+Test passed 🎊
+Test passed 😸
+Test passed 🥳
+Test passed 🎉
+Test passed 🎉
+Test passed 🥳
+Test passed 🥇
+Test passed 🥳
+Test passed 🎉
+Test passed 🎉
+Test passed 🎉
+Test passed 😀
+Test passed 😸
+Test passed 😸
+Test passed 🎉
+Test passed 🎊
+Test passed 🎊
+Test passed 🌈
+Test passed 🎉
+Test passed 🎊
+Test passed 😸
+Test passed 😀
+Test passed 🌈
+Test passed 🥇
+Test passed 😀
+Test passed 😀
+Test passed 🎊
+Test passed 🎉
+Test passed 🌈
+Test passed 🎊
+Test passed 🥇
+Test passed 🥇
+Test passed 🌈</code></pre>
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./lagged-differences.html" class="pagination-link" aria-label="Lagged Differences">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Lagged Differences</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./computational-solution.html" class="pagination-link" aria-label="Computational Solution">
+        <span class="nav-page-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Computational Solution</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
