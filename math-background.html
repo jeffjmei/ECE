@@ -20,6 +20,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -213,8 +248,9 @@ window.Quarto = {
   <ul>
   <li><a href="#expectation-and-variance-of-linear-transformations" id="toc-expectation-and-variance-of-linear-transformations" class="nav-link active" data-scroll-target="#expectation-and-variance-of-linear-transformations"><span class="header-section-number">A.1</span> Expectation and Variance of Linear Transformations</a></li>
   <li><a href="#trace-trick-for-quadratic-forms" id="toc-trace-trick-for-quadratic-forms" class="nav-link" data-scroll-target="#trace-trick-for-quadratic-forms"><span class="header-section-number">A.2</span> Trace Trick for Quadratic Forms</a></li>
-  <li><a href="#spectral-properties-of-circulant-matrices" id="toc-spectral-properties-of-circulant-matrices" class="nav-link" data-scroll-target="#spectral-properties-of-circulant-matrices"><span class="header-section-number">A.3</span> Spectral Properties of Circulant Matrices</a></li>
-  <li><a href="#variance-of-a-product-of-correlated-standard-normals" id="toc-variance-of-a-product-of-correlated-standard-normals" class="nav-link" data-scroll-target="#variance-of-a-product-of-correlated-standard-normals"><span class="header-section-number">A.4</span> Variance of a Product of Correlated Standard Normals</a></li>
+  <li><a href="#properties-of-circulant-matrices" id="toc-properties-of-circulant-matrices" class="nav-link" data-scroll-target="#properties-of-circulant-matrices"><span class="header-section-number">A.3</span> Properties of Circulant Matrices</a></li>
+  <li><a href="#spectral-properties-of-circulant-matrices" id="toc-spectral-properties-of-circulant-matrices" class="nav-link" data-scroll-target="#spectral-properties-of-circulant-matrices"><span class="header-section-number">A.4</span> Spectral Properties of Circulant Matrices</a></li>
+  <li><a href="#variance-of-a-product-of-correlated-standard-normals" id="toc-variance-of-a-product-of-correlated-standard-normals" class="nav-link" data-scroll-target="#variance-of-a-product-of-correlated-standard-normals"><span class="header-section-number">A.5</span> Variance of a Product of Correlated Standard Normals</a></li>
   </ul>
 </nav>
     </div>
@@ -266,8 +302,62 @@ u^T A v = \operatorname{tr}(u^T A v).
 \mathbb{E}[\varepsilon_x^T A \varepsilon_y] = \operatorname{tr}(A \Sigma_{xy}).
 \]</span></p>
 </section>
-<section id="spectral-properties-of-circulant-matrices" class="level2" data-number="A.3">
-<h2 data-number="A.3" class="anchored" data-anchor-id="spectral-properties-of-circulant-matrices"><span class="header-section-number">A.3</span> Spectral Properties of Circulant Matrices</h2>
+<section id="properties-of-circulant-matrices" class="level2" data-number="A.3">
+<h2 data-number="A.3" class="anchored" data-anchor-id="properties-of-circulant-matrices"><span class="header-section-number">A.3</span> Properties of Circulant Matrices</h2>
+<p>Let <span class="math inline">\(C_1 = \operatorname{circ}(0, 1, 0, \ldots, 0)\)</span> be the elementary shift-by-one matrix, so <span class="math inline">\(C_1^k = C_k\)</span>. The following facts hold:</p>
+<ol type="1">
+<li><p><strong>Power.</strong> <span class="math inline">\(C_k = C_1^k\)</span>, so applying a shift of <span class="math inline">\(k\)</span> is the same as applying a shift of 1 exactly <span class="math inline">\(k\)</span> times. As a consequence, every circulant matrix is a polynomial in <span class="math inline">\(C_1\)</span>: <span class="math inline">\(\operatorname{circ}(a_0, \ldots, a_{n-1}) = \sum_{k=0}^{n-1} a_k C_1^k\)</span>.</p></li>
+<li><p><strong>Transpose.</strong> <span class="math inline">\(C_k^T = C_{n-k} = C_k^{-1}\)</span>, since <span class="math inline">\(C_k\)</span> is a permutation matrix.</p></li>
+<li><p><strong>Circulant form.</strong> <span class="math inline">\(C_k = \operatorname{circ}(e_k)\)</span>, where <span class="math inline">\(e_k\)</span> is the standard basis vector with a 1 in position <span class="math inline">\(k\)</span> and 0s elsewhere. That is, <span class="math inline">\(C_k\)</span> is the circulant matrix whose first row has a single 1 on the <span class="math inline">\(k\)</span>-th band.</p></li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">"~/Documents/Research/Code/ECE"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(testthat)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">6</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>k <span class="ot">&lt;-</span> <span class="dv">2</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>C1 <span class="ot">&lt;-</span> <span class="fu">circ</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="fu">rep</span>(<span class="dv">0</span>, n <span class="sc">-</span> <span class="dv">2</span>)))</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>Ck <span class="ot">&lt;-</span> <span class="fu">circ</span>(<span class="fu">c</span>(<span class="fu">rep</span>(<span class="dv">0</span>, k), <span class="dv">1</span>, <span class="fu">rep</span>(<span class="dv">0</span>, n <span class="sc">-</span> k <span class="sc">-</span> <span class="dv">1</span>)))</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"circ constructs correct circulant matrix"</span>, {</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  a <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">0</span>, <span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  A <span class="ot">&lt;-</span> <span class="fu">circ</span>(a)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(A[<span class="dv">1</span>, ], a)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(A[<span class="dv">2</span>, ], <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">2</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">0</span>))</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(A[<span class="dv">3</span>, ], <span class="fu">c</span>(<span class="dv">0</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">2</span>, <span class="sc">-</span><span class="dv">1</span>))</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(A[<span class="dv">4</span>, ], <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">0</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test passed 😀</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"C_k = C_1^k"</span>, {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  C1_power_k <span class="ot">&lt;-</span> <span class="fu">Reduce</span>(<span class="st">"%*%"</span>, <span class="fu">rep</span>(<span class="fu">list</span>(C1), k))</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(Ck, C1_power_k)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test passed 🎊</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"C_k^T = C_{n-k}"</span>, {</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  Cnk <span class="ot">&lt;-</span> <span class="fu">circ</span>(<span class="fu">c</span>(<span class="fu">rep</span>(<span class="dv">0</span>, n <span class="sc">-</span> k), <span class="dv">1</span>, <span class="fu">rep</span>(<span class="dv">0</span>, k <span class="sc">-</span> <span class="dv">1</span>)))</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(<span class="fu">t</span>(Ck), Cnk)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test passed 🎊</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"C_k = circ(e_k)"</span>, {</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (k <span class="cf">in</span> <span class="dv">0</span><span class="sc">:</span>(n <span class="sc">-</span> <span class="dv">1</span>)) {</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    e_k <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">seq_len</span>(n) <span class="sc">-</span> <span class="dv">1</span> <span class="sc">==</span> k)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    Ck  <span class="ot">&lt;-</span> <span class="fu">circ</span>(<span class="fu">c</span>(<span class="fu">rep</span>(<span class="dv">0</span>, k), <span class="dv">1</span>, <span class="fu">rep</span>(<span class="dv">0</span>, n <span class="sc">-</span> k <span class="sc">-</span> <span class="dv">1</span>)))</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">expect_equal</span>(<span class="fu">circ</span>(e_k), Ck)</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test passed 🥳</code></pre>
+</div>
+</div>
+</section>
+<section id="spectral-properties-of-circulant-matrices" class="level2" data-number="A.4">
+<h2 data-number="A.4" class="anchored" data-anchor-id="spectral-properties-of-circulant-matrices"><span class="header-section-number">A.4</span> Spectral Properties of Circulant Matrices</h2>
 <p>Every circulant matrix <span class="math inline">\(A = \operatorname{circ}(a_0, \ldots, a_{n-1})\)</span> is diagonalized by the DFT matrix <span class="math inline">\(F\)</span>,</p>
 <p><span class="math display">\[
 A = F^* \Lambda F, \qquad F_{jk} = \frac{1}{\sqrt{n}}\,\omega^{jk}, \quad \omega = e^{-2\pi i/n},
@@ -284,8 +374,8 @@ q_j = \frac{1}{\sqrt{n}}\bigl(1,\, \omega^{-j},\, \omega^{-2j},\, \ldots,\, \ome
 <p>a complex sinusoid at frequency <span class="math inline">\(j/n\)</span>.</p>
 <p><strong>Real symmetric case.</strong> When <span class="math inline">\(A\)</span> is real and symmetric (i.e.&nbsp;<span class="math inline">\(a_k = a_{n-k}\)</span>), the eigenvalues are real and come in symmetric pairs: <span class="math inline">\(\lambda_j = \lambda_{n-j}\)</span>.</p>
 </section>
-<section id="variance-of-a-product-of-correlated-standard-normals" class="level2" data-number="A.4">
-<h2 data-number="A.4" class="anchored" data-anchor-id="variance-of-a-product-of-correlated-standard-normals"><span class="header-section-number">A.4</span> Variance of a Product of Correlated Standard Normals</h2>
+<section id="variance-of-a-product-of-correlated-standard-normals" class="level2" data-number="A.5">
+<h2 data-number="A.5" class="anchored" data-anchor-id="variance-of-a-product-of-correlated-standard-normals"><span class="header-section-number">A.5</span> Variance of a Product of Correlated Standard Normals</h2>
 <p>Let <span class="math inline">\((z_x, z_y)\)</span> be a standard bivariate Gaussian with zero mean, unit variances, and correlation <span class="math inline">\(\rho\)</span>. Then</p>
 <p><span class="math display">\[
 \operatorname{Var}(z_x z_y) = 1 + \rho^2.
