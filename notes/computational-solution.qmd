@@ -32,6 +32,8 @@ The Moore-Penrose pseudoinverse $G^+$ is defined via SVD as:
 $$G^+ = V \Sigma^+ U^T$$
 where $\Sigma^+$ is obtained by taking reciprocals of the non-zero singular values and transposing.
 
+$G^+$ simultaneously solves two optimality problems. When $b \notin \text{col}(G)$ the system $Ga = b$ is inconsistent, and $G^+b$ is the least-squares solution minimizing $\|Ga - b\|_2^2$. When the system is consistent but underdetermined, $G^+b$ is the minimum-norm solution among all exact solutions.
+
 For a system $Ga = b$, the general solution is:
 $$a = G^+ b + \sum_{i=r+1}^{n} c_i v_i$$
 where the second term spans $\text{null}(G)$. The norm of the general solution is:
