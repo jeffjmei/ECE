@@ -253,3 +253,33 @@ identical(
 )
 ```
 
+```{R}
+k <- 1
+n <- 10
+Ck <- circ(c(rep(0, k), 1, rep(0, n - k - 1)))
+
+e <- function(k, n){
+  c(rep(0, k), 1, rep(0, n - k - 1))
+}
+e(k, n)
+
+Ck <- circ(e(2, n))
+t(diag(n) - Ck) %*% (diag(n) - Ck)
+```
+
+```{R}
+# Dimension
+devtools::load_all("~/Documents/Research/Code/ECE")
+
+n <- 10
+L <- 2
+
+G <- constraint_matrix(n, L)
+m <- floor(n/2) - L + 1
+M1 <- diff(diag(m))
+M2 <- diff(diag(m - 1))
+
+MG <- M1 %*% G
+M2G <- M2 %*% MG
+```
+
