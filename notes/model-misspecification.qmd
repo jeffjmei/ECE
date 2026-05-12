@@ -2,6 +2,49 @@
 title: "Model Misspecification"
 ---
 
+## Key Concepts
+
+**The signal $\theta$.** A vector $(\theta_0, \ldots, \theta_{n-1})$ where $\theta_i$ is the true mean of the time series at time $i$. The ECE is designed for piecewise-constant $\theta$; misspecification means $\theta$ has some other shape.
+
+**Frequency index $j$.** An integer from $0$ to $n-1$ labeling a sinusoidal component. Specifically, $j$ counts how many complete oscillations the sinusoid $\cos(2\pi j i / n)$ makes as $i$ runs from $0$ to $n-1$:
+
+- $j = 0$: flat constant — no oscillations
+- $j = 1$: one slow wave across the whole window
+- $j = n/2$: the fastest possible — alternates sign at every step (Nyquist)
+
+The plot below shows what each of these looks like concretely.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-height: 3
+n <- 20
+i <- 0:(n - 1)
+
+par(mfrow = c(1, 4), mar = c(4, 2.5, 3, 1))
+for (f in c(1, 3, 7, 10)) {
+  plot(i, cos(2 * pi * f * i / n),
+    type = "b", pch = 16, cex = 0.7, lwd = 1.5, col = "steelblue",
+    xlab = "i", ylab = "", ylim = c(-1.4, 1.4),
+    main = bquote(j == .(f) ~ "(" * .(f) ~ "cycles)")
+  )
+  abline(h = 0, col = "grey70", lty = 2)
+}
+```
+
+**The DFT.** The Discrete Fourier Transform rewrites $\theta$ as a sum of sinusoids — one at each frequency $j$. The complex coefficient $\tilde\theta_j$ says how much of $\theta$ oscillates at rate $j$.
+
+**Energy $|\tilde\theta_j|^2/n$.** How much of $\theta$'s total variation comes from frequency $j$. A tall bar at $j = 5$ means $\theta$ has a strong 5-cycle-per-window oscillation. By Parseval's theorem, the energies sum to $\|\theta\|^2/n$.
+
+**Eigenvalues $\lambda_j$.** The ECE matrix $A$ acts differently on each frequency: it scales sinusoidal components by $\lambda_j$. Small $|\lambda_j|$ means the ECE ignores energy at that frequency; large $|\lambda_j|$ means energy there leaks into the bias.
+
+**The bias formula.** Because of the eigendecomposition $A = Q\Lambda Q^*$, the bias simplifies to a frequency-by-frequency weighted sum:
+
+$$\theta^T A \theta = \sum_{j=0}^{n-1} \lambda_j \cdot \frac{|\tilde\theta_j|^2}{n}$$
+
+This is the central formula for understanding misspecification: the bias is the dot product between the signal's energy profile and the ECE's frequency sensitivity. Wherever $\lambda_j \approx 0$, that frequency contributes nothing to the bias regardless of how much energy $\theta$ places there.
+
 ## Circulant Matrices and the DFT
 
 Every symmetric circulant $A = \operatorname{circ}(a)$ is diagonalized by the DFT matrix $F \in \mathbb{C}^{n \times n}$,
