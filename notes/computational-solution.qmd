@@ -40,3 +40,17 @@ where the second term spans $\text{null}(G)$. The norm of the general solution i
 $$\|a\|^2 = \|G^+ b\|^2 + \sum_{i=r+1}^{n} c_i^2$$
 since $G^+ b$ lies in the row space of $G$, which is orthogonal to $\text{null}(G)$. This is minimized by setting all $c_i = 0$, giving the minimum-norm solution:
 $$a^* = G^+ b$$
+
+```{r}
+#| message: false
+#| warning: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(testthat)
+
+n <- 20
+L <- 3
+
+test_that("optimization-based solution matches ece_min_norm", {
+  expect_equal(ece_optim(n, L), ece_min_norm(n, L), tolerance = 1e-4)
+})
+```
