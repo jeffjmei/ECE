@@ -202,14 +202,38 @@ t(X) %*% A %*% X
 
 ```{R}
 a <- c(1, -1, 1/2, rep(0, n - 5), 1/2, -1)
-A <- circ(a) / n 
-Re(eigen(A)$val)
-Im(eigen(A)$val)
+A <- circ(a) / n
 
 a <- ece_min_norm(n=10, L=2) |> round(3)
 a <- ece_min_norm(n=10, L=3) |> round(3)
 a <- ece_min_norm(n=10, L=4) |> round(3)
 a <- ece_min_norm(n=10, L=5) |> round(3)
+
+A <- circ(a) / n
+
+```
+
+```{R}
+# Regression Form
+n <- 100
+L <- 6
+K <- matrix(c(rep(1, L), 1:L), ncol=2)
+H <- solve(t(K) %*% K) %*% t(K) / (2 * n)
+
+# Find Corresponding A
+Ak <- map(1:L, ~lag_mat(n, k=.x))
+A <- map2(H[1,], Ak, ~ .x * .y) |> reduce(`+`)
+
+a_matrix <- ece_min_norm(n=n, L=L) |> round(3)
+a_regress <- (A * n)[1,] |> round(3)
+
+# Test
+identical(a_matrix, a_regress)
+
+# Calculate Real Values
+config <- scenario(2)
+X <- generate_data(config)
+map_dbl(1:L, ~lag_diff(X[,1], X[,2], k=.x))
 ```
 
 ```{R}
