@@ -283,3 +283,22 @@ MG <- M1 %*% G
 M2G <- M2 %*% MG
 ```
 
+```{R}
+n <- 10
+L <- 3
+ece_reg_row(n, L)
+```
+
+```{R}
+config <- scenario(2, n=400) # changepoint (0)
+config <- scenario(12, n=400) # linear (0.04)
+config <- scenario(14, n=400) # sin wave (-0.5)
+
+# Estimate Bias
+hx <- config$h[,1]
+hy <- config$h[,2]
+a <- ece_min_norm(n=config$n, L=2)
+A <- circ(a)
+t(hx) %*% A %*% hy
+```
+
