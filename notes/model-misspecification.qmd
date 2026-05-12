@@ -369,6 +369,67 @@ legend("topright",
 )
 ```
 
+## Spectral Fingerprints of Common Misspecifications
+
+Each misspecification has a characteristic frequency signature. The left panel shows $\theta_i$; the right panel shows its power spectrum $|\tilde\theta_j|^2/n$ (bars, left axis) together with the ECE eigenvalues $\lambda_j$ (red line, right axis). The bias $\theta^T A \theta = \sum_j \lambda_j |\tilde\theta_j|^2/n$ is the inner product between the two curves — large only when signal energy and $|\lambda_j|$ overlap at the same frequencies.
+
+```{r}
+#| message: false
+#| warning: false
+#| fig-height: 12
+devtools::load_all("~/Documents/Research/Code/ECE")
+
+n <- 100; L <- 2
+set.seed(42)
+
+a          <- ece_reg_row(n, L)
+A_mat      <- circ(a) / n
+lambda_all <- Re(fft(a) / n)
+j_pos      <- 1:(n / 2)          # unique positive-frequency indices (1-based)
+lambda_pos <- lambda_all[j_pos + 1]
+
+make_scenario <- function(name, theta) {
+  bias  <- as.numeric(t(theta) %*% A_mat %*% theta)
+  power <- Mod(fft(theta))^2 / n  # Parseval-normalised
+  list(name = name, theta = theta, bias = bias, power = power[j_pos + 1])
+}
+
+scenarios <- list(
+  make_scenario("Linear",         (0:(n - 1) - (n - 1) / 2) / n),
+  make_scenario("Step (-1 to 1)", ifelse(0:(n - 1) < n / 2, -1, 1)),
+  make_scenario("Sinusoid",       sin(2 * pi * 10 * (0:(n - 1)) / n)),
+  make_scenario("Random Walk",    cumsum(rnorm(n)))
+)
+
+par(mfrow = c(4, 2), mar = c(3.5, 3.5, 2.5, 4.5))
+
+for (sc in scenarios) {
+  ## Left: time domain
+  plot(0:(n - 1), sc$theta, type = "l", lwd = 1.5, col = "steelblue",
+       xlab = "i", ylab = expression(theta[i]),
+       main = bquote(.(sc$name) ~ "  [bias =" ~ .(round(sc$bias, 5)) ~ "]"))
+
+  ## Right: power spectrum (primary axis) + lambda_j (secondary axis)
+  ylim_power <- c(0, max(sc$power) * 1.15)
+  ylim_lam   <- range(lambda_pos) * c(1.2, 1.2)
+
+  plot(j_pos, sc$power, type = "h", lwd = 2,
+       col = adjustcolor("steelblue", 0.6),
+       xlab = "Frequency j", ylab = expression("|" ~ tilde(theta)[j] ~ "|"^2 / n),
+       main = "Spectrum",
+       ylim = ylim_power)
+  abline(h = 0, col = "grey70", lty = 2)
+
+  par(new = TRUE)
+  plot(j_pos, lambda_pos, type = "l", col = "firebrick", lwd = 2,
+       axes = FALSE, xlab = "", ylab = "",
+       ylim = ylim_lam)
+  axis(4, col = "firebrick", col.axis = "firebrick", las = 1)
+  mtext(expression(lambda[j]), side = 4, line = 3, col = "firebrick")
+  abline(h = 0, col = "firebrick", lty = 3, lwd = 0.8)
+}
+```
+
 ## Eigenvalue Visualization
 
 Each eigenvalue $\lambda_j = \sum_{k=0}^{n-1} a_k \omega^{jk}$ is a sum of $n$ complex numbers. The plot below shows the individual terms $a_k \omega^{jk}$ for $k = 0, \ldots, n-1$ as arrows in the complex plane, for each $j$. The red star marks the sum $\lambda_j$, which is always real.
