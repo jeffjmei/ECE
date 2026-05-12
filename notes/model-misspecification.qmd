@@ -430,6 +430,67 @@ for (sc in scenarios) {
 }
 ```
 
+## Linear Signals at Different Slopes
+
+A natural conjecture is that steeper linear signals shift spectral energy to higher frequencies, producing more bias. The figures below test this: $\theta_i = m \cdot (i/n - 0.5)$ for slopes $m = 1, 2, 5, 10$.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-height: 4
+devtools::load_all("~/Documents/Research/Code/ECE")
+
+n <- 100; L <- 2
+
+a          <- ece_reg_row(n, L)
+A_mat      <- circ(a) / n
+lambda_all <- Re(fft(a) / n)
+j_pos      <- 1:(n / 2)
+lambda_pos <- lambda_all[j_pos + 1]
+
+slopes  <- c(1, 2, 5, 10)
+colors  <- c("steelblue", "seagreen", "darkorange", "purple")
+thetas  <- lapply(slopes, function(m) m * ((0:(n - 1)) / n - 0.5))
+powers  <- lapply(thetas, function(th) (Mod(fft(th))^2 / n)[j_pos + 1])
+biases  <- sapply(seq_along(slopes), function(k)
+  as.numeric(t(thetas[[k]]) %*% A_mat %*% thetas[[k]]))
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 4.5))
+
+## Left: all signals overlaid
+ylim_sig <- range(sapply(thetas, range))
+plot(NA, xlim = c(0, n - 1), ylim = ylim_sig,
+     xlab = "i", ylab = expression(theta[i]), main = "Signal")
+for (k in seq_along(slopes)) {
+  lines(0:(n - 1), thetas[[k]], col = colors[k], lwd = 1.8)
+}
+legend("topleft", legend = paste0("m = ", slopes, "  (bias = ", round(biases, 4), ")"),
+       col = colors, lwd = 2, bty = "n", cex = 0.8)
+
+## Right: all spectra overlaid + lambda on secondary axis
+ylim_pow <- c(0, max(unlist(powers)) * 1.15)
+ylim_lam <- range(lambda_pos) * c(1.2, 1.2)
+
+plot(NA, xlim = range(j_pos), ylim = ylim_pow,
+     xlab = "Frequency j", ylab = expression("|" ~ tilde(theta)[j] ~ "|"^2 / n),
+     main = "Spectrum")
+for (k in seq_along(slopes)) {
+  lines(j_pos, powers[[k]], col = colors[k], lwd = 1.8)
+}
+legend("topright", legend = paste0("m = ", slopes),
+       col = colors, lwd = 2, bty = "n", cex = 0.8)
+
+par(new = TRUE)
+plot(j_pos, lambda_pos, type = "l", col = "firebrick", lwd = 2, lty = 2,
+     axes = FALSE, xlab = "", ylab = "", ylim = ylim_lam)
+axis(4, col = "firebrick", col.axis = "firebrick", las = 1)
+mtext(expression(lambda[j]), side = 4, line = 3, col = "firebrick")
+abline(h = 0, col = "firebrick", lty = 3, lwd = 0.8)
+```
+
+The spectral shape is identical across all slopes — energy concentrates at low $j$ in every case. What changes is only the scale: the bars grow as $m^2$. Since $\lambda_j \approx 0$ at those low frequencies, the bias remains small even for steep slopes. A linear signal is inherently low-frequency, and the ECE is insensitive to low-frequency structure by construction.
+
 ## Eigenvalue Visualization
 
 Each eigenvalue $\lambda_j = \sum_{k=0}^{n-1} a_k \omega^{jk}$ is a sum of $n$ complex numbers. The plot below shows the individual terms $a_k \omega^{jk}$ for $k = 0, \ldots, n-1$ as arrows in the complex plane, for each $j$. The red star marks the sum $\lambda_j$, which is always real.
