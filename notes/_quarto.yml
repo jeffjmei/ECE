@@ -13,6 +13,7 @@ book:
     - computational-solution.qmd
     - model-misspecification.qmd
     - positive-semidefinite.qmd
+    - diagonal-test.qmd
   appendices:
     - math-background.qmd
     - math-results.qmd

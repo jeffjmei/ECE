@@ -1,0 +1,57 @@
+---
+title: "Diagonal Test"
+---
+
+We test the hypotheses
+$$H_0: \Sigma = I_p \quad \text{vs} \quad H_1: \Sigma \neq I_p.$$
+Equivalently, this is a test of whether all off-diagonal entries $\sigma_{xy} = 0$, which are precisely the quantities estimated by the ECE.
+
+**Outline.** The Multiplier Bootstrap provides a distribution-free null distribution for a sum of mean-zero independent terms. The ECE satisfies neither condition directly: its summands are neither mean-zero nor independent. We address each in turn. First, we reparametrize the ECE as a sum of terms $s_i^{(k)}$ that are mean-zero under $H_0$. Second, we partition these terms into three subsequences, each comprising independent terms. Each subsequence yields a p-value via the Multiplier Bootstrap. Finally, since the three subsequences are mutually dependent, we combine their p-values using the Cauchy Combination Test.
+
+## Notation
+
+Using circular indexing $i := [(i-1) \bmod n] + 1$, define the $k$-lagged sum
+$$T_k(X, Y) = \sum_{i=1}^n (X_i - X_{i+k})(Y_i - Y_{i+k}).$$
+
+For notational convenience, define $s_i^{(k)} = (X_i - X_{i+k})(Y_i - Y_{i+k})$, so that 
+$$T_k(X,Y) = \sum_{i=1}^n s_i^{(k)}.$$
+
+## Multiplier Bootstrap
+
+The Multiplier Bootstrap requires each summand to be mean-zero. The terms $s_i^{(k)}$ do not satisfy this directly.
+
+**Making Terms Mean Zero.**
+
+Under circular indexing, shifting all indices by 1 leaves $T_1$ unchanged:
+$$T_1(X,Y) = \sum_{i=1}^n s_i^{(1)} = \sum_{i=1}^n s_{i+1}^{(1)}.$$
+Therefore $2T_1(X,Y) = \sum_{i=1}^n \left(s_i^{(1)} + s_{i+1}^{(1)}\right)$, and the ECE numerator becomes
+$$2T_1(X,Y) - T_2(X,Y) = \sum_{i=1}^n \underbrace{\left(s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}\right)}_{d_i}.$$
+
+::: {.callout-note collapse="true"}
+## $d_i$ is mean-zero under $H_0$
+
+Define $h_i^{(k)} = (\theta_{x,i} - \theta_{x,i+k})(\theta_{y,i} - \theta_{y,i+k})$ and $e_i^{(k)} = (\varepsilon_{x,i} - \varepsilon_{x,i+k})(\varepsilon_{y,i} - \varepsilon_{y,i+k})$. Since cross terms have mean zero, $\mathbb{E}[s_i^{(k)}] = h_i^{(k)} + 2\sigma_{xy}$. Therefore
+$$\mathbb{E}[d_i] = h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)} + 2\sigma_{xy}.$$
+Under $H_0$ ($\sigma_{xy} = 0$), it remains to show $h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)} = 0$. We consider two cases.
+
+If there is a change point at $i$: minimum segment length 2 forces $\theta_{i+1} = \theta_{i+2}$, so $h_{i+1}^{(1)} = 0$ and $h_i^{(2)} = h_i^{(1)}$. Hence $h_i^{(1)} + 0 - h_i^{(1)} = 0$.
+
+If there is a change point at $i+1$: then $\theta_i = \theta_{i+1}$, so $h_i^{(1)} = 0$ and $h_i^{(2)} = h_{i+1}^{(1)}$. Hence $0 + h_{i+1}^{(1)} - h_{i+1}^{(1)} = 0$.
+
+If there is no change point at either index, all terms are zero. Hence $\mathbb{E}[d_i] = 0$ under $H_0$.
+:::
+
+**Making Terms Independent.**
+
+Each $d_i$ depends only on observations $X_i, X_{i+1}, X_{i+2}$ (and the same for $Y$), so $d_i$ and $d_j$ are independent whenever $|i - j| \geq 3$. This motivates partitioning by residue mod 3:
+$$\{d_1, d_4, d_7, \ldots\}, \quad \{d_2, d_5, d_8, \ldots\}, \quad \{d_3, d_6, d_9, \ldots\}.$$
+Within each subsequence, consecutive terms are at least 3 apart, so the terms are independent. However, the three subsequences share observations and are mutually dependent, so their p-values cannot be combined trivially.
+
+## Cauchy Combination Test
+
+Given p-values $p_1, p_2, p_3$ from the three subsequences, the CCT statistic is
+$$T = \sum_{j=1}^3 w_j \tan\!\left(\left(\tfrac{1}{2} - p_j\right)\pi\right),$$
+where $w_j > 0$ are weights with $\sum_j w_j = 1$, typically $w_j = 1/3$. Under $H_0$, each $p_j$ is uniformly distributed on $[0,1]$, so each summand is standard Cauchy. The key property of the CCT is that $T$ is approximately standard Cauchy under $H_0$ regardless of the dependence structure among the $p_j$. The combined p-value is then $p = \frac{1}{2} - \frac{\arctan(T)}{\pi}$.
+
+## Questions
+- What happens if we have a NA value in the matrix? 
