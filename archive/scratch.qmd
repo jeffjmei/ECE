@@ -237,6 +237,19 @@ map_dbl(1:L, ~lag_diff(X[,1], X[,2], k=.x))
 ```
 
 ```{R}
+n <- 10
+L <- 5
 
+a_optim <- ece_optim(
+  n, L,
+  objective = function(a) sum(a^2)
+)
+a_minnorm <- ece_min_norm(n, L)
+
+# Test
+identical(
+  round(a_optim, 3),
+  round(a_minnorm, 3)
+)
 ```
 
