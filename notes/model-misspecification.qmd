@@ -307,6 +307,22 @@ $$
 E\bigl[(\theta_i - \theta_{i+k})^2\bigr] = k\sigma^2,
 $$
 
+::: {.callout-note collapse="true"}
+## Why $E[(\theta_i - \theta_{i+k})^2] = k\sigma^2$
+
+The lag-$k$ difference telescopes into a sum of exactly $k$ consecutive increments:
+
+$$\theta_i - \theta_{i+k} = -(\xi_{i+1} + \cdots + \xi_{i+k})$$
+
+Since the $\xi_t$ are i.i.d. with mean 0 and variance $\sigma^2$, squaring and taking expectations gives:
+
+$$E[(\theta_i - \theta_{i+k})^2] = \sum_{s=i+1}^{i+k} \sum_{t=i+1}^{i+k} E[\xi_s \xi_t] = \sum_{s=i+1}^{i+k} \sigma^2 = k\sigma^2$$
+
+where the cross terms $E[\xi_s \xi_t] = 0$ for $s \neq t$ by independence.
+
+Summing over $i = 1, \ldots, n-k$ (the valid pairs) then gives $E[T_k] = (n-k)k\sigma^2$. For $k \ll n$ this is approximately $nk\sigma^2$, linear in $k$.
+:::
+
 so $E[T_k(\theta,\theta)] = (n-k)k\sigma^2$, which is approximately linear in $k$ for $k \ll n$. Since the ECE is constructed to cancel exactly a linear trend in $k \mapsto T_k$,
 
 $$
