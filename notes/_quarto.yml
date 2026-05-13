@@ -14,6 +14,7 @@ book:
     - model-misspecification.qmd
     - positive-semidefinite.qmd
     - diagonal-test.qmd
+    - mean-removal.qmd
   appendices:
     - math-background.qmd
     - math-results.qmd

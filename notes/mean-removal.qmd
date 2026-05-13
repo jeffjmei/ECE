@@ -1,0 +1,210 @@
+---
+title: "Mean Removal"
+---
+
+## Segmentation
+
+Assume each time series has a piecewise-constant mean:
+$$X_t = \mu_t + \varepsilon_t, \qquad \mu_t \text{ piecewise constant.}$$
+Segmentation estimates $\mu_t$ by the within-segment sample mean and subtracts it:
+$$\hat{\varepsilon}_t = X_t - \hat{\mu}_t.$$
+The residuals $\hat{\varepsilon}_t$ are approximately stationary, so Pearson correlation applied to $(\hat{\varepsilon}_t^{(1)}, \hat{\varepsilon}_t^{(2)})$ estimates contemporaneous correlation between the two series.
+
+## Degrees of Freedom Correction
+
+To do inference on Pearson correlation, we first estimate the correlation $\hat{r}$. Then, we find that
+$$t_{\text{naive}} = \frac{r \sqrt{n-2}}{\sqrt{1-r^2}} \sim t_{n-2}.$$
+That is, the standard Pearson correlation has $df = n-2$, because we use two degrees of freedom to estimate the mean and variance.
+
+However, with segmentation, we must estimate multiple means. If there are $K$ change points, then we must estimate $K + 1$ sample means. In all, we must estimate $K + 2$ parameters, so the correct statistic is
+$$t_{\text{correct}} = \frac{r\sqrt{n-K-2}}{\sqrt{1-r^2}} \sim t_{n-K-2}.$$
+Since both statistics share the same $r$, they are related by
+$$t_{\text{naive}} = \lambda \cdot t_{\text{correct}}, \qquad \lambda = \sqrt{\frac{n-2}{n-K-2}} > 1.$$
+
+The naive test rejects when
+$$|t_{\text{naive}}| > t_{n-2,\,\alpha/2}.$$
+Substituting $t_{\text{naive}} = \lambda \cdot t_{\text{correct}}$, this is equivalent to
+$$|t_{\text{correct}}| > \frac{t_{n-2,\,\alpha/2}}{\lambda}.$$
+So the actual type I error of the naive test is
+$$P\!\left(|t_{\text{correct}}| > \frac{t_{n-2,\,\alpha/2}}{\lambda}\right), \qquad t_{\text{correct}} \sim t_{n-K-2}.$$
+Since $\lambda > 1$, the threshold $t_{n-2,\,\alpha/2}/\lambda < t_{n-K-2,\,\alpha/2}$, so the naive test rejects more often than it should.
+
+**Theoretical type I error.** Given $n$, $K$, and $\alpha$, the exact inflation is computable in closed form. Let $c = t_{n-2,\,\alpha/2}$ be the naive critical value. The actual type I error is
+$$P\!\left(|T| > \frac{c}{\lambda}\right), \qquad T \sim t_{n-K-2}.$$
+In R: `2 * pt(-qt(1 - alpha/2, df = n-2) / lambda, df = n - K - 2)`.
+
+**Example.** The table below uses $\alpha = 0.05$ and $K/n \approx 0.25$ (as in `scenario(10, n)`), showing that the inflation is determined by the ratio $K/n$, not $n$ alone.
+
+| $n$ | $K$ | $\lambda$ | Naive critical value | Effective threshold | Actual type I error |
+|-----|-----|-----------|----------------------|---------------------|---------------------|
+| 100 | 25 | $\sqrt{98/73} \approx 1.159$ | $t_{98,\,0.025} \approx 1.984$ | $1.984/1.159 \approx 1.712$ | $P(\lvert t_{73}\rvert > 1.712) \approx 0.091$ |
+| 500 | 125 | $\sqrt{498/373} \approx 1.155$ | $t_{498,\,0.025} \approx 1.965$ | $1.965/1.155 \approx 1.701$ | $P(\lvert t_{373}\rvert > 1.701) \approx 0.090$ |
+| 1000 | 249 | $\sqrt{998/749} \approx 1.155$ | $t_{998,\,0.025} \approx 1.962$ | $1.962/1.155 \approx 1.699$ | $P(\lvert t_{749}\rvert > 1.699) \approx 0.090$ |
+
+The simulation below confirms this. The histogram shows the corrected t-statistics alongside both candidate densities. When $n$ and $n - K$ are both large, the two $t$-curves are visually indistinguishable — the inflation does not appear in the bulk of the distribution, only in the rejection rate.
+
+```{r}
+#| message: false
+#| echo: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+
+make_config <- function(n, K, s12 = 0, signal = 1) {
+  seg_len <- ceiling(n / (K + 1))
+  vals <- ifelse(seq_len(K + 1) %% 2 == 1, 1, -1)
+  h_vec <- rep(vals, each = seg_len)[seq_len(n)]
+  h <- signal * cbind(h_vec, h_vec)
+  S <- matrix(c(1, s12, s12, 1), ncol = 2, byrow = TRUE)
+  list(scenario = 0, n = n, K = K, S = S, h = h, signal = signal)
+}
+
+segment.test <- function(X, config) {
+  n <- nrow(X)
+  K <- length(find_cp(config$h))
+
+  X_resid <- X - segment_mean_oracle(X, config)
+  r <- cor(X_resid[, 1], X_resid[, 2])
+
+  df <- n - K - 2
+  t_stat <- r * sqrt(df) / sqrt(1 - r^2)
+  pval <- 2 * pt(-abs(t_stat), df = df)
+
+  list(statistic = t_stat, p.value = pval, df = df, r = r, K = K)
+}
+```
+
+### Distribution of T-Statistic
+After applying segmentation, this is the distribution of t-statistics
+
+```{R}
+#| cache: true
+#| echo: false
+N <- 1000
+n <- 1000
+K <- n / 2
+
+set.seed(1)
+t_naive <- replicate(N, {
+  # Generate Data
+  config <- make_config(n=n, K=K)
+  X <- generate_data(config)
+
+  # Remove Mean and Estimate Correlation
+  X_resid <- X - segment_mean_oracle(X, config)
+  r <- cor(X_resid[, 1], X_resid[, 2])
+
+  # Calculate t-Statistic
+  df <- n - 2
+  t_stat <- r * sqrt(df) / sqrt(1 - r^2)
+  pval <- 2 * pt(-abs(t_stat), df = df)
+  t_stat
+})
+
+set.seed(1)
+t_correct <- replicate(N, {
+  # Generate Data
+  config <- make_config(n=n, K=K)
+  X <- generate_data(config)
+
+  # Remove Mean and Estimate Correlation
+  X_resid <- X - segment_mean_oracle(X, config)
+  r <- cor(X_resid[, 1], X_resid[, 2])
+
+  # Calculate t-Statistic
+  df <- n - K - 2
+  t_stat <- r * sqrt(df) / sqrt(1 - r^2)
+  pval <- 2 * pt(-abs(t_stat), df = df)
+  t_stat
+})
+
+```
+
+```{R}
+#| echo: false
+xlim <- range(c(t_naive, t_correct))
+par(mfrow = c(1, 2))
+
+  hist(t_naive, breaks = 40, freq = FALSE,
+       col = "lightgray", border = "white",
+       main = expression("Naive:" ~ frac(r * sqrt(n-2), sqrt(1-r^2))),
+       xlab = "t-statistic", xlim = xlim)
+  xx <- seq(xlim[1], xlim[2], length.out = 200)
+  lines(xx, dt(xx, df = n - 2),     col = "#E41A1C", lwd = 2)
+  lines(xx, dt(xx, df = n - K - 2), col = "#377EB8", lwd = 2)
+  legend("topright", legend = c(sprintf("t[%d]", n-2), sprintf("t[%d]", n-K-2)),
+         col = c("#E41A1C", "#377EB8"), lwd = 2, bty = "n", cex = 0.8)
+
+  hist(t_correct, breaks = 40, freq = FALSE,
+       col = "lightgray", border = "white",
+       main = expression("Corrected:" ~ frac(r * sqrt(n - K - 2), sqrt(1 - r^2))),
+       xlab = "t-statistic", xlim = xlim)
+  lines(xx, dt(xx, df = n - 2),     col = "#E41A1C", lwd = 2)
+  lines(xx, dt(xx, df = n - K - 2), col = "#377EB8", lwd = 2)
+  legend("topright", legend = c(sprintf("t[%d]", n-2), sprintf("t[%d]", n-K-2)),
+         col = c("#E41A1C", "#377EB8"), lwd = 2, bty = "n", cex = 0.8)
+
+par(mfrow = c(1, 1))
+```
+
+We see that the correction fits the curve much better. While the t-distributions are nearly identical (they're stacked in the figure), the distribution of the t-statistic just doesn't fit the t-distribution correctly. 
+
+```{R}
+#| echo: false
+alpha <- 0.05
+lambda <- sqrt((n - 2) / (n - K - 2))
+theoretical <- 2 * pt(-qt(1 - alpha / 2, df = n - 2) / lambda, df = n - K - 2)
+
+pval_naive <- 2 * pt(-abs(t_naive), df = n - 2)
+pval_correct <- 2 * pt(-abs(t_correct), df = n - K - 2)
+
+data.frame(
+  Test = c("Theoretical (naive)", "Naive", "Corrected"),
+  `Type I Error` = c(
+    theoretical,
+    mean(pval_naive < alpha), 
+    mean(pval_correct < alpha)
+  ),
+  check.names = FALSE
+) |> knitr::kable(digits = 3)
+```
+
+We also see that the theoretical type I error is empirically prominent.
+
+## Type I Error vs Number of Change Points
+
+With $n = 1000$ fixed, we sweep over $K \in \{2, 100, 250, 500\}$ and compare the theoretical prediction against the empirical naive and corrected rejection rates.
+
+```{r}
+#| cache: true
+#| echo: false
+n <- 1000
+K_vals <- c(2, 100, 250, 500)
+alpha <- 0.05
+N <- 1000
+
+results <- map(K_vals, function(K) {
+  config <- make_config(n = n, K = K)
+  lambda <- sqrt((n - 2) / (n - K - 2))
+  theoretical <- 2 * pt(-qt(1 - alpha / 2, df = n - 2) / lambda, df = n - K - 2)
+
+  set.seed(1)
+  pvals <- replicate(N, {
+    X <- generate_data(config)
+    X_resid <- X - segment_mean_oracle(X, config)
+    r <- cor(X_resid[, 1], X_resid[, 2])
+    c(
+      naive   = 2 * pt(-abs(r * sqrt(n - 2)     / sqrt(1 - r^2)), df = n - 2),
+      correct = 2 * pt(-abs(r * sqrt(n - K - 2) / sqrt(1 - r^2)), df = n - K - 2)
+    )
+  })
+
+  data.frame(
+    K           = K,
+    Theoretical = theoretical,
+    Naive       = mean(pvals["naive", ]   < alpha),
+    Corrected   = mean(pvals["correct", ] < alpha)
+  )
+})
+
+list_rbind(results) |> knitr::kable(digits = 3)
+```
+
