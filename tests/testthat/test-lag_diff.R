@@ -10,3 +10,11 @@ test_that("lag_diff returns lagged cross-product with two arguments", {
   expect_equal(lag_diff(x, y, k = 1), -8)
 })
 
+test_that("lag_diff agrees with matrix multiplication via lag_mat", {
+  x <- c(-1, -1, 1, 1)
+  y <- c(1, 1, -1, -1)
+  n <- length(x)
+  expect_equal(lag_diff(x, k = 1), as.numeric(t(x) %*% lag_mat(n, 1) %*% x))
+  expect_equal(lag_diff(x, y, k = 1), as.numeric(t(x) %*% lag_mat(n, 1) %*% y))
+})
+
