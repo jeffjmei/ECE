@@ -9,16 +9,90 @@ Working notes on the R package API design and refactoring decisions. This chapte
 Public-facing functions use dot notation to mirror base R (e.g., `cor.test`, `cov`):
 
 - `ece.cov` — equivariant covariance estimator (replaces `equiv.cov`)
-- `ece.test` — hypothesis test for correlation
+- `ece.cor` — equivariant correlation estimator (corresponds to `cor`)
+- `ece.complexity` — mean heterogeneity / complexity of the series
+- `ece.se` — asymptotic standard error of the correlation estimator
+- `ece.test` — hypothesis test for correlation (corresponds to `cor.test`)
 
-Internal helpers use snake_case.
+Internal helpers use snake_case (e.g., `ece_pair`, `var_corr_est`).
+
+## Design Decisions
+
+### `ece_pair` (internal)
+
+The internal workhorse for pairwise computation. Returns `list(cov, complexity)` for a single pair of vectors. Not exported. Pulled out of `equiv.cov` (formerly `compute_equiv`).
+
+### `ece.cov`
+
+Mirrors the interface of base `cov()`: two vectors → scalar, matrix → p×p matrix. Calls `ece_pair` internally.
+
+### `ece.complexity`
+
+Captures the slope of lagged differences as a function of lag. Large values indicate large or frequent mean shifts. Same interface as `ece.cov`.
+
+### `ece.test`
+
+Accepts an n×2 matrix only (no `Y = NULL`). Dispatches on `type`:
+
+- `type = "z.test"` — asymptotic normal test based on `ece.cor`
+- `type = "bs.multiplier"` — multiplier bootstrap test (planned)
+
+Returns `list(estimate, p.value)`. `conf.int` was dropped as it was not functional.
+
+### `var_corr_est`
+
+Now takes scalars `(n, sx, sy, sxy, wx, wy, wxy)` directly instead of an `ece_obj`. Renamed to `ece.se` at the public level.
 
 ## Refactor Checklist
 
-- [ ] Rename `equiv.cov` → `ece.cov`; drop `return.norm`; always return `list(cov, roughness)`
-- [ ] Extract `compute_equiv` → `ece_pair`
-- [ ] Rename `var_corr_est` → `ece_avar`
-- [ ] Update `ece.test` to accept matrix `X` only (drop `Y = NULL`)
-- [ ] Clean up `utils.R` dispatch triple pattern (`_vec` / `_mat` / dispatch)
-- [ ] Consolidate `scenario.R` (~30 numbered functions → parameterized)
-- [ ] Write tests for untested functions in `utils.R` and `theory.R`
+### Completed
+
+- [x] Develop unit testing suite
+- [x] `lag_diff`: inputs lowercased, `y = x` default
+- [x] `ece.cov` corresponds to `cov`; helper pulled out as `ece_pair`; `ece.complexity` added as a separate function
+- [x] `ece.cor` corresponds to `cor`
+- [x] `var_corr_est` renamed to `ece.se`; decoupled from `ece_obj`
+- [x] `ece.test`: matrix-only input, drop `conf.int`, add `type` argument
+
+### Pending
+
+#### 1. Immediate cleanup (finish what we started)
+
+- [ ] Delete `equiv.cov`
+- [ ] Resolve `ece_obj` design pattern — consider renaming to `ece.fit`
+- [ ] Rewrite `theory-estimators.R` — naming is poor throughout
+
+#### 2. Core utilities
+
+- [ ] `lag_terms` — new function; test that it sums to `lag_diff`; use `X - rotate(X, k = 1)`
+- [ ] `mod_idx` — poor name; only used once; consider moving or inlining
+- [ ] `circ.eigendecomp` — new feature
+
+#### 3. Data generation layer
+
+- [ ] `demean` should not take `params` as a parameter
+- [ ] `generate_data`: `scenario13` breaks the interface; needs fixing
+- [ ] Resolve inconsistency between `config` and `params`
+
+#### 4. Structural refactors
+
+- [ ] `utils.R` — clean up `_vec` / `_mat` / dispatch triple pattern
+- [ ] `scenario.R` — consolidate ~30 numbered functions into a parameterized form
+- [ ] `X` should be accepted as a multivariate matrix throughout
+
+#### 5. Tests
+
+- [ ] New unit-test file for mathematical facts
+  - [ ] `lag_diff` corresponds to `lag_mat`
+  - [ ] Two representations of variance
+- [ ] Tests for untested functions in `utils.R` and `theory.R`
+
+#### 6. New features and fixes
+
+- [ ] `demean.test`
+- [ ] `segment.test`: fix degrees of freedom
+- [ ] `ece.test`: add `type = "bs.multiplier"`
+
+#### 7. Simulation and documentation
+
+- [ ] Produce master simulation file (like RCV)
