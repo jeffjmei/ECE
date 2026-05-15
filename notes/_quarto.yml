@@ -15,6 +15,7 @@ book:
     - positive-semidefinite.qmd
     - diagonal-test.qmd
     - mean-removal.qmd
+    - package.qmd
   appendices:
     - math-background.qmd
     - math-results.qmd

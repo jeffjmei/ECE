@@ -1,0 +1,24 @@
+---
+title: "Package"
+---
+
+Working notes on the R package API design and refactoring decisions. This chapter will be removed or reorganized once the refactor is merged.
+
+## Naming Conventions
+
+Public-facing functions use dot notation to mirror base R (e.g., `cor.test`, `cov`):
+
+- `ece.cov` — equivariant covariance estimator (replaces `equiv.cov`)
+- `ece.test` — hypothesis test for correlation
+
+Internal helpers use snake_case.
+
+## Refactor Checklist
+
+- [ ] Rename `equiv.cov` → `ece.cov`; drop `return.norm`; always return `list(cov, roughness)`
+- [ ] Extract `compute_equiv` → `ece_pair`
+- [ ] Rename `var_corr_est` → `ece_avar`
+- [ ] Update `ece.test` to accept matrix `X` only (drop `Y = NULL`)
+- [ ] Clean up `utils.R` dispatch triple pattern (`_vec` / `_mat` / dispatch)
+- [ ] Consolidate `scenario.R` (~30 numbered functions → parameterized)
+- [ ] Write tests for untested functions in `utils.R` and `theory.R`
