@@ -38,15 +38,8 @@ var_Qh_est <- function(n, sx, sy, sxy, wx, wy, wxy, k22, k = 1) {
     4 * n * k * sxy * wxy
 }
 
-var_corr_est <- function(n, ece_obj) {
-  sx <- sqrt(ece_obj$cov[1, 1])
-  sy <- sqrt(ece_obj$cov[2, 2])
-  sxy <- ece_obj$cov[1, 2]
+var_corr_est <- function(n, sx, sy, sxy, wx, wy, wxy) {
   rxy <- sxy / (sx * sy)
-
-  wx <- ece_obj$norm[1, 1]
-  wy <- ece_obj$norm[2, 2]
-  wxy <- ece_obj$norm[1, 2]
 
   k22 <- 1 + 2 * rxy^2 # NOTE: assuming normality
   k40 <- 3 # NOTE: assuming normality
