@@ -7,7 +7,7 @@ rho_var <- ece.cor.asymp(params)
 rho_var_sims <- map_dbl(1:1000, ~ {
   rho_sims <- map_dbl(1:10, ~ {
     X <- generate_data(params)
-    rho <- cov2cor(equiv.cov(X))[1, 2]
+    rho <- cov2cor(ece.cov(X))[1, 2]
     return(rho)
   })
   return(var(rho_sims))
