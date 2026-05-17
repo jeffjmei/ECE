@@ -33,3 +33,8 @@ lag_terms <- function(x) {
   idx <- combn(p, 2)
   do.call(cbind, map2(idx[1, ], idx[2, ], \(i, j) lag_term(x[, i], x[, j])))
 }
+
+split_indep <- function(x, stride = 3) {
+  x <- as.matrix(x)
+  map(1:stride, \(r) x[seq(r, nrow(x), stride), , drop = FALSE])
+}
