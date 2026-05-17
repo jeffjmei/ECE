@@ -18,3 +18,44 @@ test_that("lag_diff agrees with matrix multiplication via lag_mat", {
   expect_equal(lag_diff(x, y, k = 1), as.numeric(t(x) %*% lag_mat(n, 1) %*% y))
 })
 
+test_that("sum of lag_term equals 2*lag_diff(k=1) - lag_diff(k=2)", {
+  x <- rnorm(50)
+  y <- rnorm(50)
+  expect_equal(sum(lag_term(x, y)), 2 * lag_diff(x, y, k = 1) - lag_diff(x, y, k = 2))
+})
+
+test_that("lag_term has mean zero under independence", {
+  set.seed(123)
+  means <- map_dbl(1:500, ~ mean(lag_term(rnorm(200), rnorm(200))))
+  expect_lt(abs(mean(means)), 0.05)
+})
+
+test_that("lag_terms returns C(p, 2) columns", {
+  expect_equal(ncol(lag_terms(matrix(rnorm(300), ncol = 3))), 3)
+  expect_equal(ncol(lag_terms(matrix(rnorm(400), ncol = 4))), 6)
+})
+
+test_that("lag_terms columns agree with lag_term on each pair", {
+  X <- matrix(rnorm(300), ncol = 3)
+  lt <- lag_terms(X)
+  expect_equal(lt[, 1], lag_term(X[, 1], X[, 2]))
+  expect_equal(lt[, 2], lag_term(X[, 1], X[, 3]))
+  expect_equal(lt[, 3], lag_term(X[, 2], X[, 3]))
+})
+
+test_that("split_indep preserves all values", {
+  x <- 1:99
+  expect_equal(split_indep(x) |> unlist() |> sort() |> unname(), x)
+})
+
+test_that("split_indep returns stride sublists", {
+  X <- matrix(rnorm(90), ncol = 2)
+  expect_length(split_indep(X, stride = 3), 3)
+  expect_length(split_indep(X, stride = 4), 4)
+})
+
+test_that("split_indep preserves matrix structure", {
+  X <- matrix(rnorm(90), ncol = 2)
+  expect_true(all(map_lgl(split_indep(X), is.matrix)))
+})
+

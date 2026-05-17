@@ -24,6 +24,16 @@ test_that("estimator is unbiased under null", {
   expect_true((ci[1] < rxy) & (rxy < ci[2]))
 })
 
+test_that("bs_multiplier returns vector of length B", {
+  s <- matrix(rnorm(90), ncol = 3)
+  expect_length(bs_multiplier(s, B = 50), 50)
+})
+
+test_that("bs_multiplier returns non-negative values", {
+  s <- matrix(rnorm(90), ncol = 3)
+  expect_true(all(bs_multiplier(s, B = 50) >= 0))
+})
+
 test_that("type I error rate is controlled", {
   params <- scenario(10, n = 1000, sxy = 0, sx = 2, sy = 3)
 
