@@ -34,6 +34,12 @@ bs_multiplier <- function(s, B = 1000) {
   n <- nrow(s)
   map_dbl(1:B, ~ max(abs(colMeans(rnorm(n) * s))))
 }
+
+cauchy_combine <- function(pvals) {
+  T_stat <- mean(tan(pi * (1 / 2 - pvals)))
+  pcauchy(T_stat, lower.tail = FALSE)
+}
+
 #' Equivariant Correlation Test
 #'
 #' Tests for correlation between two time series in the presence of unknown mean
