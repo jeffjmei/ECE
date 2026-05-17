@@ -30,6 +30,10 @@ ece.se <- function(X, L = 2) {
   ))
 }
 
+bs_multiplier <- function(s, B = 1000) {
+  n <- nrow(s)
+  map_dbl(1:B, ~ max(abs(colMeans(rnorm(n) * s))))
+}
 #' Equivariant Correlation Test
 #'
 #' Tests for correlation between two time series in the presence of unknown mean
