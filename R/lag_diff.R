@@ -11,13 +11,25 @@
 #'
 #' @examples
 #' x <- 1:3
-#' lag_diff(x)        # 6
+#' lag_diff(x) # 6
 #' lag_diff(x, k = 2) # 6
 #'
 #' y <- c(4, 5, 6)
-#' lag_diff(x, y)     # 27
+#' lag_diff(x, y) # 27
 #'
 #' @export
 lag_diff <- function(x, y = x, k = 1) {
   sum((x - rotate(x, k)) * (y - rotate(y, k)))
+}
+
+lag_term <- function(x, y = x) {
+  ((x - rotate(x, 1)) * (y - rotate(y, 1)) +
+    (rotate(x, 1) - rotate(x, 2)) * (rotate(y, 1) - rotate(y, 2)) -
+    (x - rotate(x, 2)) * (y - rotate(y, 2)))
+}
+
+lag_terms <- function(x) {
+  p <- ncol(x)
+  idx <- combn(p, 2)
+  do.call(cbind, map2(idx[1, ], idx[2, ], \(i, j) lag_term(x[, i], x[, j])))
 }
