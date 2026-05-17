@@ -59,19 +59,34 @@ cauchy_combine <- function(pvals) {
 #' ece.test(X)
 #'
 #' @export
-ece.test <- function(X, type = "z.test", alpha = 0.05) {
+ece.test <- function(X, type = "z.test", B = 1000) {
   X <- as.matrix(X)
   if (type == "z.test") {
     if (ncol(X) != 2) stop("type = 'z.test' requires a 2-column matrix")
     cov_mat <- ece.cov(X)
-    sx  <- sqrt(cov_mat[1, 1])
-    sy  <- sqrt(cov_mat[2, 2])
+    sx <- sqrt(cov_mat[1, 1])
+    sy <- sqrt(cov_mat[2, 2])
     sxy <- cov_mat[1, 2]
     rxy <- sxy / (sx * sy)
-    se  <- ece.se(X)
+    se <- ece.se(X)
     list(
       estimate = rxy,
       p.value  = 2 * (1 - pnorm(abs(rxy / se)))
+    )
+  } else if (type == "bs.multiplier") {
+    # Make Terms Mean Zero and Independent
+    splits <- lag_terms(X) |> split_indep()
+
+    # Apply Bootstrap Multiplier
+    bs_pval <- splits |>
+      map_dbl(function(s) {
+        stat_s <- max(abs(colMeans(s)))
+        mean(bs_multiplier(s, B) > stat_s)
+      })
+
+    # Combine p-Values
+    list(
+      p.value = cauchy_combine(bs_pval)
     )
   }
 }
