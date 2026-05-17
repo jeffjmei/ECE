@@ -30,11 +30,15 @@ ece.se <- function(X, L = 2) {
   ))
 }
 
+# Simulates the null distribution of max|colMeans(Z * s)| via Gaussian multiplier
+# bootstrap, where Z is an iid N(0,1) vector independent of s.
 bs_multiplier <- function(s, B = 1000) {
   n <- nrow(s)
   map_dbl(1:B, ~ max(abs(colMeans(rnorm(n) * s))))
 }
 
+# Combines p-values via the Cauchy combination test (Liu & Xie, 2020).
+# Robust to dependence among p-values.
 cauchy_combine <- function(pvals) {
   T_stat <- mean(tan(pi * (1 / 2 - pvals)))
   pcauchy(T_stat, lower.tail = FALSE)
@@ -42,21 +46,28 @@ cauchy_combine <- function(pvals) {
 
 #' Equivariant Correlation Test
 #'
-#' Tests for correlation between two time series in the presence of unknown mean
-#' shifts, using an asymptotic z-test based on the equivariant correlation estimator.
+#' Tests for correlation among time series in the presence of unknown mean
+#' shifts. Supports an asymptotic z-test for bivariate series and a bootstrap
+#' multiplier test for multivariate series.
 #'
-#' @param X An \eqn{n \times 2} numeric matrix with the two series in columns.
-#' @param type A character string specifying the test type. Currently only
-#'   \code{"z.test"} is supported.
-#' @param alpha A numeric significance level (default 0.05).
+#' @param X A numeric matrix with series in columns (\eqn{n \times 2} for
+#'   \code{"z.test"}, \eqn{n \times p} for \code{"bs.multiplier"}).
+#' @param type A character string specifying the test type:
+#'   \describe{
+#'     \item{\code{"z.test"}}{Asymptotic z-test based on the equivariant
+#'       correlation estimator. Requires a 2-column matrix.}
+#'     \item{\code{"bs.multiplier"}}{Bootstrap multiplier test using pairwise
+#'       lag terms and Cauchy combination of split p-values.}
+#'   }
+#' @param B Number of bootstrap replicates for \code{"bs.multiplier"} (default 1000).
 #'
-#' @return A list with elements:
-#'   \item{estimate}{The estimated correlation.}
-#'   \item{p.value}{The two-sided p-value.}
+#' @return A list with element \code{p.value}. For \code{"z.test"}, also
+#'   includes \code{estimate} (the estimated correlation).
 #'
 #' @examples
 #' X <- matrix(rnorm(200), ncol = 2)
 #' ece.test(X)
+#' ece.test(X, type = "bs.multiplier")
 #'
 #' @export
 ece.test <- function(X, type = "z.test", B = 1000) {
