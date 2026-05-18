@@ -96,3 +96,57 @@ Now takes scalars `(n, sx, sy, sxy, wx, wy, wxy)` directly instead of an `ece_ob
 #### 7. Simulation and documentation
 
 - [ ] Produce master simulation file (like RCV)
+
+--- 
+
+# Usage
+
+```{R}
+#| echo: false
+#| message: false
+devtools::load_all()
+```
+
+## Simulation
+
+To evaluate ECE, we have produced many simulation scenarios. 
+
+```{R}
+# Generating Data
+config <- scenario(10, n=1000)
+X <- generate_data(config)
+```
+
+## Estimation
+
+To get the covariance of a matrix
+
+```{R}
+ece.cov(X) 
+ece.complexity(X)
+#ece.cor(X) # TODO: this doesn't exist
+```
+
+## Inference
+
+```{R}
+ece.test(X, type="z.test")
+ece.test(X, type="bs.multiplier")
+```
+
+```{R}
+ece.se(X)
+#ece.ci(X) # TODO: this doesn't exist
+```
+
+## Alternative Methods
+
+IN DEVELOPMENT. 
+
+```R
+fit.mean(X, method="PELT", args=arg_list)
+remove.mean(X, method="PELT", args=arg_list)
+resid_test(X, method="PELT", args=arg_list)
+```
+
+
