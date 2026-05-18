@@ -7,9 +7,6 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --time=2:00:00
 #SBATCH --mem=2G
-#SBATCH --output=logs/%A_%a.out
-#SBATCH --error=logs/%A_%a.err
-#SBATCH --open-mode=append
 #SBATCH --mail-user=jmei@arizona.edu
 #SBATCH --mail-type=ALL
 

@@ -6,6 +6,6 @@ set -e
 N=$(($(wc -l < scripts/param_grid.csv) - 1))
 echo "Submitting array of $N tasks"
 
-mkdir -p data logs
+mkdir -p data
 
 sbatch --array="1-${N}%500" --chdir="$(pwd)" scripts/run_array.slurm
