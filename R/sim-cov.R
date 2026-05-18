@@ -8,10 +8,10 @@ cov_ar1 <- function(r, p) {
   r^abs(outer(1:p, 1:p, "-"))
 }
 
-make_cov <- function(r, p, type = "compound") {
-  switch(type,
+make_cov <- function(r, p, cov_type = "compound") {
+  switch(cov_type,
     compound = cov_cs(r, p),
     ar1      = cov_ar1(r, p),
-    stop("Unknown type: ", type)
+    stop("Unknown cov_type: ", cov_type)
   )
 }

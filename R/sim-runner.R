@@ -13,7 +13,7 @@ run_sim <- function(config_row, N = 1000) {
     p            = config_row$p,
     r            = config_row$r,
     amp          = config_row$amp,
-    type         = config_row$cov_type
+    cov_type     = config_row$cov_type
   )
 
   p_vals <- replicate(N, {
