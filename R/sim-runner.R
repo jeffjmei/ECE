@@ -16,17 +16,29 @@ run_sim <- function(config_row, N = 1000) {
     cov_type     = config_row$cov_type
   )
 
-  p_vals <- replicate(N, {
+  results <- replicate(N, {
     X <- generate_data(params)
-    test.diag(X, method = config_row$method, B = config_row$B)$p.value
-  })
+    test.diag(X, method = config_row$method, B = config_row$B)
+  }, simplify = FALSE)
 
-  config_row |>
-    dplyr::mutate(
-      power           = mean(p_vals < 0.05),
-      n_sim           = N,
-      timestamp       = Sys.time(),
-      scenario_params = jsonlite::toJSON(params$scenario_param),
-      method_params   = jsonlite::toJSON(list(B = config_row$B))
-    )
+  meta <- dplyr::mutate(
+    config_row,
+    n_sim           = N,
+    timestamp       = Sys.time(),
+    scenario_params = jsonlite::toJSON(params$scenario_param),
+    method_params   = jsonlite::toJSON(list(B = config_row$B))
+  )
+
+  metrics <- list(
+    data.frame(metric_type = "power",
+               metric_val  = mean(sapply(results, `[[`, "p.value") < 0.05))
+  )
+  if (!is.null(results[[1]]$estimate)) {
+    metrics <- c(metrics, list(
+      data.frame(metric_type = "estimate",
+                 metric_val  = mean(sapply(results, `[[`, "estimate")))
+    ))
+  }
+
+  dplyr::bind_rows(lapply(metrics, \(m) dplyr::bind_cols(meta, m)))
 }
