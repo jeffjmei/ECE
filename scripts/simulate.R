@@ -1,4 +1,4 @@
-library(ECE)
+devtools::load_all()
 library(optparse)
 
 option_list <- list(
