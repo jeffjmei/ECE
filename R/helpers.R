@@ -1,3 +1,56 @@
+#' Circular Modular Index
+#'
+#' Computes a modular (wrap-around) index in the range `1` to `n`, useful for circular embeddings.
+#'
+#' @param i An integer or vector of integers indicating the original index or indices.
+#' @param n A positive integer indicating the modulus (i.e., total number of positions).
+#'
+#' @return An integer or vector of integers, each in the range `1` to `n`, representing the modularized index.
+#'
+#' @examples
+#' mod_idx(10, 10) # 10
+#' mod_idx(11, 10) # 1
+#' mod_idx(c(0, -1, 21), 10) # 10, 9, 1
+#'
+#' @export
+mod_idx <- function(i, n) {
+  (i - 1) %% n + 1
+}
+
+#' Rotate Elements to the Right
+#'
+#' Rotates a vector or matrix downwards (i.e., toward the end) by `k` positions. For a vector, the last `k` elements move to the front. For a matrix, rows are rotated downward.
+#'
+#' @param X A numeric vector or matrix.
+#' @param k An integer specifying how many positions to rotate. Defaults to 1.
+#'
+#' @return A rotated vector or matrix of the same dimensions as `X`.
+#'
+#' @examples
+#' rotate(1:3, k = 1) # returns 3 1 2
+#'
+#' X <- matrix(c(1:3, 1:3), ncol = 2)
+#' rotate(X, k = 1) # rotates rows downward
+#'
+#' @export
+rotate <- function(X, k = 1) {
+  if (is.matrix(X)) {
+    n <- nrow(X)
+    k <- k %% n
+    if (k %% n == 0) {
+      return(X)
+    }
+    return(X[c((k + 1):n, 1:k), ])
+  } else {
+    n <- length(X)
+    k <- k %% n
+    if (k %% n == 0) {
+      return(X)
+    }
+    return(X[c((k + 1):n, 1:k)])
+  }
+}
+
 #' Lagged Difference or Cross-Lagged Product
 #'
 #' Computes the sum of squared lagged differences of a vector, or the sum of
