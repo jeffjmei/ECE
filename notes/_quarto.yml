@@ -9,6 +9,7 @@ book:
     - index.qmd
     - model-assumptions.qmd
     - lagged-differences.qmd
+    - asymptotics.qmd
     - bilinear-form.qmd
     - computational-solution.qmd
     - model-misspecification.qmd

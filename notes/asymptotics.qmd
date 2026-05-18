@@ -1,0 +1,55 @@
+---
+title: "Asymptotics"
+---
+
+Define $Z = (Z_1, ..., Z_6)^T = (T_1(X, X), T_2(X, X), T_1(Y, Y), T_2(Y, Y), T_1(X, Y), T_2(X, Y))^T$.
+
+## Asymptotic Normality
+
+**Proposition.** Under the model assumptions, if $\max_j\{(\mu_{x,j} - \mu_{x,j+1})^2\} = o(n)$ and $\max_j\{(\mu_{y,j} - \mu_{y,j+1})^2\} = o(n)$, and errors have finite 4th moments, then
+$$
+\frac{1}{\sqrt{n}}(Z - \mathbb{E}[Z]) \xrightarrow{d} N(\mathbf{0}, \Sigma_Z).
+$$
+
+**Strategy.** Each component of $Z$ is of the form $T_k(X,Y)$ for some lag $k$ and choice of series. It therefore suffices to show $T_k(X,Y)$ is asymptotically normal, since any linear combination $a^T Z$ inherits this structure. The Cramér-Wold device then promotes univariate normality to joint normality of the full vector.
+
+**Proof.** By the Cramér-Wold device, it suffices to show every linear combination $a^T Z$ is asymptotically normal. We handle the general cross-product component $T_k(X,Y)$; the diagonal components $T_k(X,X)$ and $T_k(Y,Y)$ follow as special cases.
+
+Substituting $X_i = \theta_{x,i} + \varepsilon_{x,i}$ and $Y_i = \theta_{y,i} + \varepsilon_{y,i}$ and expanding gives four terms:
+
+\begin{align}
+T_k(X,Y) &= \sum_{i=1}^n (\theta_{x,i} - \theta_{x,i+k})(\theta_{y,i} - \theta_{y,i+k}) \\
+&\quad + \sum_{i=1}^n (\theta_{x,i} - \theta_{x,i+k})(\varepsilon_{y,i} - \varepsilon_{y,i+k}) + \sum_{i=1}^n (\theta_{y,i} - \theta_{y,i+k})(\varepsilon_{x,i} - \varepsilon_{x,i+k}) \\
+&\quad + \sum_{i=1}^n (\varepsilon_{x,i} - \varepsilon_{x,i+k})(\varepsilon_{y,i} - \varepsilon_{y,i+k}).
+\end{align}
+
+The first term equals $kW_{xy}$ and is deterministic. The last term has expectation $2n\sigma_{xy}$, so adding and subtracting this expectation gives
+
+\begin{align}
+T_k(X,Y) &= \underbrace{kW_{xy} + 2n\sigma_{xy}}_{\mathbb{E}[T_k(X,Y)]} \\
+&\quad + \underbrace{\sum_{i=1}^n (\theta_{x,i} - \theta_{x,i+k})(\varepsilon_{y,i} - \varepsilon_{y,i+k}) + \sum_{i=1}^n (\theta_{y,i} - \theta_{y,i+k})(\varepsilon_{x,i} - \varepsilon_{x,i+k})}_{\text{(I) mixed}} \\
+&\quad + \underbrace{\sum_{i=1}^n \bigl[(\varepsilon_{x,i} - \varepsilon_{x,i+k})(\varepsilon_{y,i} - \varepsilon_{y,i+k}) - 2\sigma_{xy}\bigr]}_{\text{(II) purely random}},
+\end{align}
+
+where $W_{xy} = T_1(\theta_x, \theta_y)$.
+
+**Term (II)** is a sum of mean-zero, $k$-dependent, identically distributed random variables (since errors are i.i.d.), so the CLT for $m$-dependent sequences applies directly.
+
+**Term (I).** Consider the first sum; the second is identical in structure with $x$ and $y$ exchanged. Splitting the error differences,
+$$
+\sum_{i=1}^n (\theta_{x,i} - \theta_{x,i+k})(\varepsilon_{y,i} - \varepsilon_{y,i+k})
+= \sum_{i=1}^n (\theta_{x,i} - \theta_{x,i+k})\varepsilon_{y,i} - \sum_{i=1}^n (\theta_{x,i} - \theta_{x,i+k})\varepsilon_{y,i+k},
+$$
+each of which is a weighted sum of independent errors with deterministic coefficients $c_i = \theta_{x,i} - \theta_{x,i+k}$. Since $\theta_x$ is piecewise constant, the nonzero coefficients take values $\{\mu_{x,j} - \mu_{x,j+1}\}$, giving $\sum_i c_i^2 = kW_x(\theta)$ and $\max_i c_i^2 = \max_j (\mu_{x,j} - \mu_{x,j+1})^2$.
+
+The proposition condition $\max_j\{(\mu_{x,j} - \mu_{x,j+1})^2\} = o(n)$ implies one of two cases:
+
+**Case 1:** $W_x(\theta) = o(n)$. Then Term (I) has standard deviation $O(\sqrt{W_x(\theta)}) = o(\sqrt{n})$, so Term (I)$/\sqrt{n} \xrightarrow{p} 0$. By Slutsky's theorem, $[{\rm Term\;(I)} + {\rm Term\;(II)}]/\sqrt{n}$ has the same limiting distribution as Term (II)$/\sqrt{n}$, which is normal by the CLT for $m$-dependent sequences.
+
+**Case 2:** $W_x(\theta) = \Omega(n)$. Since $\max_j(\mu_{x,j} - \mu_{x,j+1})^2 = o(n)$ and $W_x(\theta) = \Omega(n)$, we have
+$$
+\frac{\max_j (\mu_{x,j} - \mu_{x,j+1})^2}{W_x(\theta)} \to 0,
+$$
+which is equivalent to $\max_i c_i^2 / \sum_i c_i^2 \to 0$. This is the Lindeberg condition for the weighted sum $\sum_i c_i \varepsilon_{y,i}$, which ensures it is asymptotically normal. Term (I) is therefore asymptotically normal, and together with Term (II), the sum is asymptotically normal.
+
+Since any linear combination $a^T Z$ is a sum of terms of the form (I) and (II) across components and lags, the same argument applies in both cases, and the Cramér-Wold device gives joint normality of $Z$. $\square$
