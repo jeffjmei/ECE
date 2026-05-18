@@ -30,3 +30,12 @@ run_sim <- function(config_row, N = 1000) {
       method_params   = jsonlite::toJSON(list(B = config_row$B))
     )
 }
+
+save_sim <- function(result, file) {
+  write.table(result, file,
+    sep       = ",",
+    row.names = FALSE,
+    col.names = !file.exists(file),
+    append    = TRUE
+  )
+}
