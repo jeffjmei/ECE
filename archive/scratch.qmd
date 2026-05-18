@@ -302,3 +302,259 @@ A <- circ(a)
 t(hx) %*% A %*% hy
 ```
 
+
+```{R}
+devtools::load_all("~/Documents/Research/Code/ECE")
+lag_term <- function(x, y=x){
+  if (is.matrix(x)) return(lag_term(x[,1], x[,2]))
+  ((x - rotate(x, 1)) * (y - rotate(y, 1)) + 
+    (rotate(x, 1) - rotate(x, 2)) * (rotate(y, 1) - rotate(y, 2)) - 
+    (x - rotate(x, 2)) * (y - rotate(y, 2)))
+}
+
+lag_terms <- function(x, y = NULL) {
+  if (is.matrix(x) && is.null(y)) {
+    p <- ncol(x)
+    idx <- combn(p, 2)
+    do.call(cbind, map2(idx[1, ], idx[2, ], \(i, j) lag_term(x[, i], x[, j])))
+  } else {
+    if (is.null(y)) y <- x
+    lag_term(x, y)
+  }
+}
+
+split_indep <- function(x, stride = 3) {
+  x <- as.matrix(x)
+  map(1:stride, \(r) x[seq(r, nrow(x), stride), , drop = FALSE])
+}
+
+bs.multiplier <- function(s, B=100){
+  n <- nrow(s)
+  map_dbl(1:B, ~{
+    z <- rnorm(n)
+    max(abs(colMeans(z * s))) 
+  })
+}
+
+cauchy.test <- function(pvals){
+  T_stat <- mean(tan(pi * (1/2 - pvals)))
+  #pcauchy(T_stat, lower.tail = FALSE)
+  1/2 - atan(T_stat) / pi
+}
+
+ece.test.bs.multiplier <- function(X, B=1000){
+  n <- nrow(X)
+
+  # Make Terms Mean Zero and Independent
+  splits <- lag_terms(X) |> split_indep()
+
+  # Apply Bootstrap Multiplier
+  bs_pval <- splits |>
+    map_dbl(function(s) {
+      stat_s <- max(abs(colMeans(s)))
+      mean(bs.multiplier(s, B) > stat_s)
+    })
+
+  # Combine p-Values
+  pval <- cauchy.test(bs_pval)
+  pval
+}
+```
+
+```{R}
+
+# Simulation
+config <- scenario(2, n=1000)
+S <- diag(3); S[1,2] <- S[2,1] <- 0.0
+pval_sim <- replicate(100, {
+  h <- config$h[,1]
+  e <- MASS::mvrnorm(n, mu=c(0, 0, 0), Sigma=S)
+  X <- cbind(h, h, h) + e 
+  ece.test(X, type="bs.multiplier", B=1000)
+})
+mean(pval_sim < 0.05)
+```
+
+
+```{R}
+# Tests
+
+# Generate Data
+n <- 1000
+x <- rnorm(n)
+y <- rnorm(n)
+
+# TEST: 
+# sum(lag_term(x, y)) = lag_diff(x, y)
+(2 * lag_diff(x, y, k=1) - lag_diff(x, y, k=2))
+sum(lag_term(x, y))
+
+# TEST: mean of each term is zero
+sim <- map(1:1000, ~{
+  x <- rnorm(n)
+  y <- rnorm(n)
+  lag_term(x, y)
+}) |> reduce(`+`) / 1000
+mean(sim)
+hist(sim)
+
+# TEST: are any values lost?
+# - collapse vector and check if it's the same as the input
+x <- 1:100
+split_indep(x) |> unlist() |> sort()
+1:100
+
+# TEST: 
+# - autocorrelation?
+config <- scenario(10, n=1000)
+pval <- map(1:1000, ~{
+  X <- generate_data(config)
+  splits <- split_indep(lag_term(X[,1], X[,2]))
+  map_dbl(splits, \(s) Box.test(s, lag = 10, type = "Ljung-Box")$p.value)
+}) |> do.call(rbind, args = _)
+colMeans(pval < 0.05)
+hist(pval[,1])
+hist(pval[,2])
+hist(pval[,3])
+
+# TEST: all sequences are independent
+config <- scenario(10, n=1000)
+sim <- map(1:100, ~{
+  X <- generate_data(config)
+  splits <- split_indep(lag_term(X[,1], X[,2]))
+
+  # make splits same length
+  min_len <- min(map_dbl(splits, length))
+  splits <- map(splits, ~.x[1:min_len])
+
+  # combine vectors into matrix and get correlation matrix
+  cor(do.call(cbind, splits))
+})
+sim |> reduce(`+`) / length(sim)
+
+# BUG: the lengths of the sequences don't always align 
+splits <- split_indep(lag_term(x, y))
+```
+
+```{R}
+h <- config$h[,1]
+e <- MASS::mvrnorm(n, mu=c(0, 0, 0), Sigma=S)
+X <- cbind(h, h, h) + e 
+S <- lag_terms(X)
+
+sum(S)
+```
+
+```{R}
+# Mean Removal
+segment_mean(X) 
+
+# 
+mean_removal.test()
+```
+
+--- 
+
+# Refactoring Utilities
+
+```{R}
+PELT <- function(penalty = "BIC", minseglen = 2, pen.value = NULL) {
+  structure(
+    list(penalty = penalty, minseglen = minseglen, pen.value = pen.value),
+    class = "PELT"
+  )
+}
+
+fit_mean <- function(X, method) {
+  if (inherits(method, "PELT")) {
+    detect_cp(X, penalty = method$penalty, minseglen = method$minseglen)
+  } else if (inherits(method, "Loess")) {
+    ...
+  }
+}
+
+fit_mean(X, PELT(penalty = "BIC", minseglen = 2))
+m <- PELT(penalty = "BIC", minseglen=2)
+tibble(
+  method    = class(m),
+  arguments = jsonlite::toJSON(unclass(m), auto_unbox = TRUE)
+)
+```
+
+```{R}
+detect_cp <- function(){
+
+}
+
+fit_mean <- function(X, method="", args=NULL){
+  if(method == "PELT"){
+
+  }else{
+
+  }
+  list(
+    est = ""
+  )
+}
+
+remove_mean <- function(X, method="", args=NULL){
+  X - fit.mean(X, method, args)  
+}
+
+resid_test <- function(X, method="", args=NULL){
+
+  # Pearson Correlation
+  resid <- remove.mean(X, method, args)  
+  r <- cor(resid[, 1], resid[, 2])
+
+  df <- n - K - 2
+  t_stat <- r * sqrt(df) / sqrt(1 - r^2)
+  pval <- 2 * pt(-abs(t_stat), df = df)
+
+  list(statistic = t_stat, p.value = pval, df = df, r = r, K = K)
+}
+```
+
+
+```{R}
+
+# Execute Simulation
+
+# Save Simulation
+# - parse config 
+# - parse method args 
+# - parse results (fp, power)
+
+# Determine Simulation Configurations
+configs <- expand.grid(...)
+```
+
+## Diagonal Test Simulations
+
+```{R}
+param_grid <- expand.grid(
+  scenario = c(2, 10), 
+  method = c("ECE", "PELT"),
+  n = c(100, 400), 
+  p = c(2, 3, 5, 10), 
+  sxy = c(0, 0.1, 0.2), 
+  seed = 321
+)
+```
+
+```{R}
+# Diagonal Test: Simulations
+config <- scenario(2, n=1000, sxy = 0.1)
+pvals <- replicate(100, {
+  X <- generate_data(config)
+  ece.test(X, type="bs.multiplier", B=1000)
+})
+
+# Save Results
+power <- mean(pvals < 0.05)
+
+# Output Results
+list(
+  power
+)
+```
