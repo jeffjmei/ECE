@@ -31,27 +31,27 @@ The Multiplier Bootstrap requires each summand to be mean-zero. The terms $s_i^{
 Under circular indexing, shifting all indices by 1 leaves $T_1$ unchanged:
 $$T_1(X,Y) = \sum_{i=1}^n s_i^{(1)} = \sum_{i=1}^n s_{i+1}^{(1)}.$$
 Therefore $2T_1(X,Y) = \sum_{i=1}^n \left(s_i^{(1)} + s_{i+1}^{(1)}\right)$, and the ECE numerator becomes
-$$2T_1(X,Y) - T_2(X,Y) = \sum_{i=1}^n \underbrace{\left(s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}\right)}_{d_i}.$$
+$$2T_1(X,Y) - T_2(X,Y) = \sum_{i=1}^n \underbrace{\left(s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}\right)}_{S_i}.$$
 
 ::: {.callout-note collapse="true"}
-## Proof: $d_i$ is mean-zero under $H_0$
+## Proof: $S_i$ is mean-zero under $H_0$
 
 Define $h_i^{(k)} = (\theta_{x,i} - \theta_{x,i+k})(\theta_{y,i} - \theta_{y,i+k})$ and $e_i^{(k)} = (\varepsilon_{x,i} - \varepsilon_{x,i+k})(\varepsilon_{y,i} - \varepsilon_{y,i+k})$. Since cross terms have mean zero, $\mathbb{E}[s_i^{(k)}] = h_i^{(k)} + 2\sigma_{xy}$. Therefore
-$$\mathbb{E}[d_i] = h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)} + 2\sigma_{xy}.$$
+$$\mathbb{E}[S_i] = h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)} + 2\sigma_{xy}.$$
 Under $H_0$ ($\sigma_{xy} = 0$), it remains to show $h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)} = 0$. We consider two cases.
 
 If there is a change point at $i$: minimum segment length 2 forces $\theta_{i+1} = \theta_{i+2}$, so $h_{i+1}^{(1)} = 0$ and $h_i^{(2)} = h_i^{(1)}$. Hence $h_i^{(1)} + 0 - h_i^{(1)} = 0$.
 
 If there is a change point at $i+1$: then $\theta_i = \theta_{i+1}$, so $h_i^{(1)} = 0$ and $h_i^{(2)} = h_{i+1}^{(1)}$. Hence $0 + h_{i+1}^{(1)} - h_{i+1}^{(1)} = 0$.
 
-If there is no change point at either index, all terms are zero. Hence $\mathbb{E}[d_i] = 0$ under $H_0$.
+If there is no change point at either index, all terms are zero. Hence $\mathbb{E}[S_i] = 0$ under $H_0$.
 :::
 
 ::: {.callout-note collapse="true"}
-## Code: $d_i$ is mean-zero under $H_0$
+## Code: $S_i$ is mean-zero under $H_0$
 
 ```{R}
-config <- scenario(10, n=1000)
+config <- scenario(2, n=1000, L=2)
 means <- replicate(1000, {
   X <- generate_data(config)
   mean(lag_terms(X))
@@ -64,14 +64,14 @@ t.test(means)$conf.int
 
 **Making Terms Independent.**
 
-Each $d_i$ depends only on observations $X_i, X_{i+1}, X_{i+2}$ (and the same for $Y$), so $d_i$ and $d_j$ are independent whenever $|i - j| \geq 3$. This motivates partitioning by residue mod 3:
-$$\{d_1, d_4, d_7, \ldots\}, \quad \{d_2, d_5, d_8, \ldots\}, \quad \{d_3, d_6, d_9, \ldots\}.$$
+Each $S_i$ depends only on observations $X_i, X_{i+1}, X_{i+2}$ (and the same for $Y$), so $S_i$ and $S_j$ are independent whenever $|i - j| \geq 3$. This motivates partitioning by residue mod 3:
+$$\{S_1, S_4, S_7, \ldots\}, \quad \{S_2, S_5, S_8, \ldots\}, \quad \{S_3, S_6, S_9, \ldots\}.$$
 Within each subsequence, consecutive terms are at least 3 apart, so the terms are independent. However, the three subsequences share observations and are mutually dependent, so their p-values cannot be combined trivially.
 
 ::: {.callout-note collapse="true"}
 ## Code: All Subsequences are Independent
 ```{R}
-config <- scenario(10, n=1000)
+config <- scenario(2, n=1000, L=2)
 pval <- replicate(1000, {
   X <- generate_data(config)
   d <- lag_terms(X)
@@ -106,7 +106,7 @@ $$p = 1 - \frac{1}{2} - \frac{\arctan(T)}{\pi} = \frac{1}{2} - \frac{\arctan(T)}
 ## Code: Combined P-value is Uniform Under $H_0$
 ```{R}
 #| cache: true 
-config <- scenario(10, n=1000)
+config <- scenario(2, n=1000, L=2)
 pvals <- replicate(1000, {
   X <- generate_data(config)
   ece.test(X, type="bs.multiplier", B=500)$p.value
@@ -117,6 +117,49 @@ mean(pvals < 0.05)  # ~0.05
 ```
 :::
 
+## Simulation Results
+
+```{R}
+#| echo: false
+#| message: false
+
+library(tidyverse)
+results <- read_csv(paste0(here::here(), "/data/results.csv"))
+
+# n = 200, 500, 1000
+# p = 2, 3, 5, 10
+# r = 0, 0.1
+
+# Type I Error
+results |>
+  filter(r == 0) |>
+  mutate(n = factor(n)) |>
+  ggplot(aes(x = n, y = power, color = cov_type, group = cov_type, shape = as.factor(scenario))) +
+  geom_point(size=3) +
+  #geom_line() +
+  geom_hline(yintercept=0.05) +
+  facet_wrap(~ p, labeller = label_both) +
+  labs(x = "Sample size", y = "Power", color = "Covariance") +
+  theme_bw()
+
+# Power
+results |>
+  filter(r != 0) |>
+  mutate(n = factor(n)) |>
+  ggplot(aes(x = n, y = power, color = cov_type, group = cov_type, shape = as.factor(scenario))) +
+  geom_point(size=3) +
+  geom_line() +
+  facet_wrap(~ p, labeller = label_both) +
+  labs(x = "Sample size", y = "Power", color = "Covariance") +
+  theme_bw()
+```
+
+## Bootstrap Test
+
+Let $S_i \in \mathbb{R}^p$ denote the vector of lag terms across all pairs at index $i$. To test $H_0$, we need the variance of $\bar{S} = \frac{1}{n}\sum_{i=1}^n S_i$.
+
+Since $S_i$ depends only on observations at indices $i, i+1, i+2$, terms separated by 3 or more indices are independent. The variance therefore has bandwidth 2:
+$$\operatorname{Var}\!\left(\sum_{i=1}^n S_i\right) = \sum_{i=1}^n S_i S_i^\top + \sum_{i=1}^{n}\!\left(S_i S_{i+1}^\top + S_{i+1} S_i^\top\right) + \sum_{i=1}^{n}\!\left(S_i S_{i+2}^\top + S_{i+2} S_i^\top\right).$$
 
 ## Questions
 - What happens if we have a NA value in the matrix? 
