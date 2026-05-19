@@ -7,14 +7,20 @@ test.diag <- function(X, method = "bs.multiplier", ...) {
 }
 
 run_sim <- function(config_row, N = 1000) {
-  params <- scenario(
-    scenario_num = config_row$scenario,
-    n            = config_row$n,
-    p            = config_row$p,
-    r            = config_row$r,
-    amp          = config_row$amp,
-    cov_type     = config_row$cov_type
-  )
+  standard_cols <- c("scenario", "n", "p", "cov_type", "r", "amp", "method", "B")
+  extra_params  <- as.list(config_row[setdiff(names(config_row), standard_cols)])
+
+  params <- do.call(scenario, c(
+    list(
+      scenario_num = config_row$scenario,
+      n            = config_row$n,
+      p            = config_row$p,
+      r            = config_row$r,
+      amp          = config_row$amp,
+      cov_type     = config_row$cov_type
+    ),
+    extra_params
+  ))
 
   p_vals <- replicate(N, {
     X <- generate_data(params)
@@ -28,7 +34,9 @@ run_sim <- function(config_row, N = 1000) {
       timestamp       = Sys.time(),
       scenario_params = jsonlite::toJSON(params$scenario_param),
       method_params   = jsonlite::toJSON(list(B = config_row$B))
-    )
+    ) |>
+    dplyr::select(scenario, n, p, cov_type, r, amp, method,
+                  power, n_sim, timestamp, scenario_params, method_params)
 }
 
 save_sim <- function(result, file) {
