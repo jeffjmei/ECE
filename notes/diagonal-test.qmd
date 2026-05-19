@@ -159,7 +159,38 @@ results |>
 Let $S_i \in \mathbb{R}^p$ denote the vector of lag terms across all pairs at index $i$. To test $H_0$, we need the variance of $\bar{S} = \frac{1}{n}\sum_{i=1}^n S_i$.
 
 Since $S_i$ depends only on observations at indices $i, i+1, i+2$, terms separated by 3 or more indices are independent. The variance therefore has bandwidth 2:
-$$\operatorname{Var}\!\left(\sum_{i=1}^n S_i\right) = \sum_{i=1}^n S_i S_i^\top + \sum_{i=1}^{n}\!\left(S_i S_{i+1}^\top + S_{i+1} S_i^\top\right) + \sum_{i=1}^{n}\!\left(S_i S_{i+2}^\top + S_{i+2} S_i^\top\right).$$
+\begin{align*}
+\operatorname{Var}\!\left(\bar{S}\right) &= \frac{1}{n^2}\left(\sum_{i=1}^n \operatorname{Var}(S_i) + \sum_{i=1}^n\bigl[\operatorname{Cov}(S_i, S_{i+1}) + \operatorname{Cov}(S_{i+1}, S_i)\bigr]\right. \\
+&\quad\left. + \sum_{i=1}^n\bigl[\operatorname{Cov}(S_i, S_{i+2}) + \operatorname{Cov}(S_{i+2}, S_i)\bigr]\right).
+\end{align*}
+Plugging in $\operatorname{Var}(S_i) = \mathbb{E}[S_i S_i^\top]$ and $\operatorname{Cov}(S_i, S_{i+k}) = \mathbb{E}[S_i S_{i+k}^\top]$ and estimating by sample quantities gives
+$$V := \widehat{\operatorname{Var}}\!\left(\bar{S}\right) = \frac{1}{n^2}\left(\sum_{i=1}^n S_i S_i^\top + \sum_{i=1}^{n}\!\left(S_i S_{i+1}^\top + S_{i+1} S_i^\top\right) + \sum_{i=1}^{n}\!\left(S_i S_{i+2}^\top + S_{i+2} S_i^\top\right)\right).$$
+
+**Parametric Bootstrap Test.** Under $H_0$, $\bar{S} \approx N(0, V)$ by the CLT. This gives a direct procedure:
+
+1. Compute the observed statistic $T_\text{obs} = \max_{1 \leq j \leq p} |\bar{S}_j|$.
+2. Draw $S^{(b)} \sim N(0, V)$ for $b = 1, \ldots, B$.
+3. Compute $T^{(b)} = \max_{1 \leq j \leq p} |S^{(b)}_j|$.
+4. The p-value is $\frac{1}{B}\sum_{b=1}^B \mathbf{1}\!\left[T^{(b)} \geq T_\text{obs}\right]$.
+
+```{R}
+devtools::load_all()
+n <- 1000; p <- 3
+B <- 1000
+params <- scenario(2, n=n, p=p)
+X <- generate_data(params)
+S <- lag_terms(X)
+
+W <- var(S)
+H <- (t(S) %*% S + 
+  t(rotate(S)) %*% S + t(S) %*% rotate(S) + 
+  t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)) / n^2
+
+# Boostrap Test
+# draw from N(0, H)
+q <- p * (p - 1) / 2
+foo <- MASS::mvrnorm(n=B, mu=rep(0, q), Sigma=H)
+```
 
 ## Questions
 - What happens if we have a NA value in the matrix? 
