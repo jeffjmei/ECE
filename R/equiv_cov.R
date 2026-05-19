@@ -43,6 +43,40 @@ ece.cov <- function(x, y = NULL, L = 2) {
   ece_pair(x, y, L)$cov
 }
 
+#' Equivariant Correlation
+#'
+#' Computes an equivariant estimate of correlation based on lagged differences,
+#' robust to unknown mean shifts. Mirrors the interface of \code{\link[stats]{cor}}.
+#'
+#' @param x A numeric vector or matrix with observations in rows and variables in columns.
+#' @param y A numeric vector of the same length as \code{x}. If \code{NULL} and \code{x}
+#'   is a vector, computes the autocorrelation of \code{x}.
+#' @param L A positive integer giving the minimum segment length (default 2).
+#'
+#' @return A scalar if \code{x} and \code{y} are vectors; a \eqn{p \times p} matrix
+#'   if \code{x} is a matrix.
+#'
+#' @examples
+#' x <- rnorm(100)
+#' y <- rnorm(100)
+#' ece.cor(x, y)
+#'
+#' X <- matrix(rnorm(300), ncol = 3)
+#' ece.cor(X)
+#'
+#' @export
+ece.cor <- function(x, y = NULL, L = 2) {
+  if (is.matrix(x)) {
+    cov2cor(ece.cov(x, L = L))
+  } else {
+    if (is.null(y)) y <- x
+    sxy <- ece_pair(x, y, L)$cov
+    sxx <- ece_pair(x, x, L)$cov
+    syy <- ece_pair(y, y, L)$cov
+    sxy / sqrt(sxx * syy)
+  }
+}
+
 #' Equivariant Complexity
 #'
 #' Estimates the mean heterogeneity (complexity) of a time series based on lagged differences.
