@@ -34,11 +34,8 @@ test_that("ece.cov accepts matrix inputs", {
 })
 
 test_that("ece.complexity outputs correct values", {
-  n_scenarios <- 11
-  misspecified_scenarios <- c(8, 9)
-  scenario_list <- setdiff(1:n_scenarios, misspecified_scenarios)
-  for (s in scenario_list) {
-    params <- scenario(s, sxy = 0, sx = 1, sy = 1, n = 1000)
+  for (s in 1:2) {
+    params <- scenario(s, r = 0, n = 1000)
     n <- params$n
     h <- params$h
 
@@ -50,7 +47,7 @@ test_that("ece.complexity outputs correct values", {
 })
 
 test_that("covariance matrix is correct", {
-  params <- scenario(11, sxy = 0, sx = sqrt(3), sy = sqrt(5), n = 1000)
+  params <- scenario(2, r = 0, n = 1000, L = 4)
   S <- params$S
   set.seed(123)
   var_sims <- map(1:1000, ~ {
@@ -80,11 +77,8 @@ test_that("covariance matrix is correct", {
 })
 
 # TEST: ece.complexity yields expected value (no noise)
-n_scenarios <- 11
-misspecified_scenarios <- c(8, 9)
-scenario_list <- setdiff(1:n_scenarios, misspecified_scenarios)
-for (scenario_num in scenario_list) {
-  params <- scenario(scenario_num, sxy = 0, sx = 1, sy = 1, n = 1000)
+for (scenario_num in 1:2) {
+  params <- scenario(scenario_num, r = 0, n = 1000)
   h <- params$h
   n <- params$n
 
@@ -101,8 +95,8 @@ for (scenario_num in scenario_list) {
 }
 
 # TEST: ece.complexity yields expected value (with noise)
-for (scenario_num in scenario_list) {
-  params <- scenario(scenario_num, sxy = 0, sx = 1, sy = 1, n = 1000)
+for (scenario_num in 1:2) {
+  params <- scenario(scenario_num, r = 0, n = 1000)
   sim_results <- map(1:1000, ~ {
     sim_results_inner <- map(1:10, ~ {
       X <- generate_data(params)

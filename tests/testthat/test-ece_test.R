@@ -1,5 +1,5 @@
 test_that("p-value is a valid probability", {
-  params <- scenario(10, n = 1000, sxy = 0, sx = 2, sy = 3)
+  params <- scenario(2, n = 1000, r = 0, L = 4)
 
   results <- map_lgl(1:100, ~ {
     X <- generate_data(params)
@@ -11,7 +11,7 @@ test_that("p-value is a valid probability", {
 })
 
 test_that("estimator is unbiased under null", {
-  params <- scenario(10, n = 1000, sxy = 0, sx = 2, sy = 3)
+  params <- scenario(2, n = 1000, r = 0, L = 4)
 
   set.seed(123)
   rxy_est_sim <- map_dbl(1:1000, ~ {
@@ -35,7 +35,7 @@ test_that("bs_multiplier returns non-negative values", {
 })
 
 test_that("type I error rate is controlled", {
-  params <- scenario(10, n = 1000, sxy = 0, sx = 2, sy = 3)
+  params <- scenario(2, n = 1000, r = 0, L = 4)
 
   set.seed(123)
   pvals <- map_dbl(1:1000, ~ {

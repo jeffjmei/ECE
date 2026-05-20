@@ -1,5 +1,5 @@
 # Check if Estimate is Right
-params <- scenario(10, sxy = 0, sx = 1, sy = 1, n = 1000)
+params <- scenario(2, r = 0, n = 1000, L = 4)
 rho_var <- ece.cor.asymp(params)
 # TODO: generalize to any scenario
 
