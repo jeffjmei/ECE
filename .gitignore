@@ -9,3 +9,4 @@ man
 *.knit.md
 _book/
 .quarto/
+archive/
