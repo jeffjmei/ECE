@@ -21,11 +21,13 @@ scenario <- function(scenario_num = 1, n = 1000, p = 2, r = 0, amp = 1,
     stop("Unknown scenario: ", scenario_num)
   )
 
-  list(
+  params <- list(
     scenario = scenario_num, h = ms$h,
     n = n, p = p, r = r, cov_type = cov_type,
     S = S, S_cholesky = chol(S),
     amp = amp, seed = seed, err_type = err_type,
     scenario_param = ms$scenario_param
   )
+  params$kappa <- kappa_from_params(params)
+  params
 }
