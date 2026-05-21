@@ -1,0 +1,306 @@
+---
+title: "Covariance of $Z$"
+---
+
+## Setup
+
+Define the vector
+$$
+Z = \bigl(T_1(X,X),\; T_2(X,X),\; T_1(Y,Y),\; T_2(Y,Y),\; T_1(X,Y),\; T_2(X,Y)\bigr)^T.
+$$
+Our goal is to compute the $6\times 6$ covariance matrix $\Sigma_Z = \operatorname{Cov}(Z)$ exactly.
+
+**Moment notation.** Let $(\varepsilon_{x,i}, \varepsilon_{y,i})$ denote a generic error pair. We define standardized joint moments
+$$
+\kappa_{ab} = \frac{E[\varepsilon_{x,i}^a \varepsilon_{y,i}^b]}{\sigma_x^a \sigma_y^b}, \qquad a + b = 4,
+$$
+and $\rho = \sigma_{xy}/(\sigma_x\sigma_y)$. Under bivariate normality, $\kappa_{40} = \kappa_{04} = 3$, $\kappa_{22} = 1+2\rho^2$, $\kappa_{31} = \kappa_{13} = 3\rho$.
+
+**Signal summary statistics.** For $k \leq L/2$, define
+$$
+W_x = T_1(\theta_x, \theta_x), \quad W_y = T_1(\theta_y, \theta_y), \quad W_{xy} = T_1(\theta_x, \theta_y).
+$$
+
+## Variance of $T_k(X, Y)$
+
+We decompose the variance into diagonal and off-diagonal terms:
+\begin{align}
+\operatorname{Var}(T_k(X,Y))
+&= \operatorname{Var}\!\left(\sum_{i=1}^n (X_i - X_{i+k})(Y_i - Y_{i+k})\right) \\
+&= \sum_{i=1}^n \operatorname{Var}\!\bigl((X_i-X_{i+k})(Y_i-Y_{i+k})\bigr) \\
+&\quad + \sum_{i \neq i'} \operatorname{Cov}\!\bigl((X_i-X_{i+k})(Y_i-Y_{i+k}),\,(X_{i'}-X_{i'+k})(Y_{i'}-Y_{i'+k})\bigr).
+\end{align}
+
+We evaluate these two types of terms in Lemmas 1 and 2 below.
+
+**Lemma 1** (Single-index variance).
+$$
+\operatorname{Var}\bigl[(X_i - X_{i+k})(Y_i - Y_{i+k})\bigr]
+= 2\sigma_y^2(\theta_{x,i}-\theta_{x,i+k})^2 + 2\sigma_x^2(\theta_{y,i}-\theta_{y,i+k})^2
++ 4\sigma_{xy}(\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i}-\theta_{y,i+k})
++ 2(\kappa_{22}+1)\sigma_x^2\sigma_y^2.
+$$
+
+*Proof.* Substituting $X_i = \theta_{x,i} + \varepsilon_{x,i}$ and centering,
+\begin{align}
+(X_i-X_{i+k})(Y_i-Y_{i+k}) - E[(X_i-X_{i+k})(Y_i-Y_{i+k})]
+&= (\theta_{x,i}-\theta_{x,i+k})(\varepsilon_{y,i}-\varepsilon_{y,i+k}) \\
+&\quad + (\theta_{y,i}-\theta_{y,i+k})(\varepsilon_{x,i}-\varepsilon_{x,i+k}) \\
+&\quad + (\varepsilon_{x,i}-\varepsilon_{x,i+k})(\varepsilon_{y,i}-\varepsilon_{y,i+k}) - 2\sigma_{xy}.
+\end{align}
+Taking the variance of this centered expression and expanding:
+\begin{align}
+&\operatorname{Var}\bigl[(X_i-X_{i+k})(Y_i-Y_{i+k})\bigr] \\
+&= (\theta_{x,i}-\theta_{x,i+k})^2 \operatorname{Var}(\varepsilon_{y,i}-\varepsilon_{y,i+k})
++ (\theta_{y,i}-\theta_{y,i+k})^2 \operatorname{Var}(\varepsilon_{x,i}-\varepsilon_{x,i+k}) \\
+&\quad + \operatorname{Var}\bigl[(\varepsilon_{x,i}-\varepsilon_{x,i+k})(\varepsilon_{y,i}-\varepsilon_{y,i+k})\bigr] \\
+&\quad + 2(\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i}-\theta_{y,i+k})\operatorname{Cov}(\varepsilon_{y,i}-\varepsilon_{y,i+k},\,\varepsilon_{x,i}-\varepsilon_{x,i+k}) \\
+&\quad + 2(\theta_{x,i}-\theta_{x,i+k})\operatorname{Cov}\bigl(\varepsilon_{y,i}-\varepsilon_{y,i+k},\,(\varepsilon_{x,i}-\varepsilon_{x,i+k})(\varepsilon_{y,i}-\varepsilon_{y,i+k})\bigr) \\
+&\quad + 2(\theta_{y,i}-\theta_{y,i+k})\operatorname{Cov}\bigl(\varepsilon_{x,i}-\varepsilon_{x,i+k},\,(\varepsilon_{x,i}-\varepsilon_{x,i+k})(\varepsilon_{y,i}-\varepsilon_{y,i+k})\bigr).
+\end{align}
+We evaluate each component. Since errors are i.i.d. with zero mean:
+$$
+\operatorname{Var}(\varepsilon_{y,i} - \varepsilon_{y,i+k}) = 2\sigma_y^2, \quad
+\operatorname{Var}(\varepsilon_{x,i} - \varepsilon_{x,i+k}) = 2\sigma_x^2, \quad
+\operatorname{Cov}(\varepsilon_{y,i}-\varepsilon_{y,i+k},\, \varepsilon_{x,i}-\varepsilon_{x,i+k}) = 2\sigma_{xy}.
+$$
+For the pure noise variance, expanding and using independence of times $i$ and $i+k$:
+$$
+E\bigl[(\varepsilon_{x,i}-\varepsilon_{x,i+k})^2(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2\bigr]
+= 2\kappa_{22}\sigma_x^2\sigma_y^2 + 2\sigma_x^2\sigma_y^2 + 4\sigma_{xy}^2,
+$$
+so $\operatorname{Var}[(\varepsilon_{x,i}-\varepsilon_{x,i+k})(\varepsilon_{y,i}-\varepsilon_{y,i+k})] = 2(\kappa_{22}+1)\sigma_x^2\sigma_y^2$.
+
+For the last two covariances, consider the first:
+$$
+\operatorname{Cov}\bigl(\varepsilon_{y,i}-\varepsilon_{y,i+k},\,(\varepsilon_{x,i}-\varepsilon_{x,i+k})(\varepsilon_{y,i}-\varepsilon_{y,i+k})\bigr)
+= E\bigl[(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2(\varepsilon_{x,i}-\varepsilon_{x,i+k})\bigr].
+$$
+Expanding and using independence of times $i$ and $i+k$, this equals $E[\varepsilon_{x,i}\varepsilon_{y,i}^2] - E[\varepsilon_{x,i+k}\varepsilon_{y,i+k}^2] = \kappa_{12}\sigma_x\sigma_y^2 - \kappa_{12}\sigma_x\sigma_y^2 = 0$. The last covariance vanishes by the same argument. Substituting:
+$$
+\operatorname{Var}\bigl[(X_i-X_{i+k})(Y_i-Y_{i+k})\bigr]
+= 2\sigma_y^2(\theta_{x,i}-\theta_{x,i+k})^2 + 2\sigma_x^2(\theta_{y,i}-\theta_{y,i+k})^2
++ 4\sigma_{xy}(\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i}-\theta_{y,i+k})
++ 2(\kappa_{22}+1)\sigma_x^2\sigma_y^2. \quad\square
+$$
+
+**Lemma 2** (Adjacent-index covariance). For three different indices $i$, $i'$, $i''$,
+\begin{align}
+&\operatorname{Cov}\bigl((X_i - X_{i'})(Y_i - Y_{i'}),\,(X_{i'} - X_{i''})(Y_{i'} - Y_{i''})\bigr) \\
+&= (\kappa_{22} - \rho^2)\sigma_x^2\sigma_y^2
+- (\theta_{x,i}-\theta_{x,i'})(\theta_{x,i'}-\theta_{x,i''})\sigma_y^2
+- (\theta_{y,i}-\theta_{y,i'})(\theta_{y,i'}-\theta_{y,i''})\sigma_x^2 \\
+&\quad - \bigl[(\theta_{x,i}-\theta_{x,i'})(\theta_{y,i'}-\theta_{y,i''}) + (\theta_{y,i}-\theta_{y,i'})(\theta_{x,i'}-\theta_{x,i''})\bigr]\sigma_{xy} \\
+&\quad - (\theta_{x,i} - 2\theta_{x,i'} + \theta_{x,i''})\kappa_{12}\sigma_x\sigma_y^2
+- (\theta_{y,i} - 2\theta_{y,i'} + \theta_{y,i''})\kappa_{21}\sigma_x^2\sigma_y.
+\end{align}
+
+*Proof.* Substituting $X_j = \theta_{x,j} + \varepsilon_{x,j}$ and centering, each factor decomposes as
+$$
+(X_j - X_{j'})(Y_j - Y_{j'}) - E[\cdots]
+= (\theta_{x,j}-\theta_{x,j'})(\varepsilon_{y,j}-\varepsilon_{y,j'})
++ (\theta_{y,j}-\theta_{y,j'})(\varepsilon_{x,j}-\varepsilon_{x,j'})
++ (\varepsilon_{x,j}-\varepsilon_{x,j'})(\varepsilon_{y,j}-\varepsilon_{y,j'}) - 2\sigma_{xy}.
+$$
+Expanding the covariance as a sum of nine terms, those involving only variables at times $i$ and $i''$ are zero by independence from $i'$. The surviving terms, evaluated using the shared index $i'$, give:
+
+- $(\theta_{x,i}-\theta_{x,i'})\cdot(\theta_{x,i'}-\theta_{x,i''})\operatorname{Cov}(\varepsilon_{y,i}-\varepsilon_{y,i'},\,\varepsilon_{y,i'}-\varepsilon_{y,i''}) = -(\theta_{x,i}-\theta_{x,i'})(\theta_{x,i'}-\theta_{x,i''})\sigma_y^2$
+- $(\theta_{y,i}-\theta_{y,i'})\cdot(\theta_{y,i'}-\theta_{y,i''})\operatorname{Cov}(\varepsilon_{x,i}-\varepsilon_{x,i'},\,\varepsilon_{x,i'}-\varepsilon_{x,i''}) = -(\theta_{y,i}-\theta_{y,i'})(\theta_{y,i'}-\theta_{y,i''})\sigma_x^2$
+- $(\theta_{x,i}-\theta_{x,i'})\cdot(\theta_{y,i'}-\theta_{y,i''})\operatorname{Cov}(\varepsilon_{y,i}-\varepsilon_{y,i'},\,\varepsilon_{x,i'}-\varepsilon_{x,i''}) = -(\theta_{x,i}-\theta_{x,i'})(\theta_{y,i'}-\theta_{y,i''})\sigma_{xy}$
+- $(\theta_{y,i}-\theta_{y,i'})\cdot(\theta_{x,i'}-\theta_{x,i''})\operatorname{Cov}(\varepsilon_{x,i}-\varepsilon_{x,i'},\,\varepsilon_{y,i'}-\varepsilon_{y,i''}) = -(\theta_{y,i}-\theta_{y,i'})(\theta_{x,i'}-\theta_{x,i''})\sigma_{xy}$
+- $(\theta_{x,i}-\theta_{x,i'})\operatorname{Cov}\bigl(\varepsilon_{y,i}-\varepsilon_{y,i'},\,(\varepsilon_{x,i'}-\varepsilon_{x,i''})(\varepsilon_{y,i'}-\varepsilon_{y,i''})\bigr) = -(\theta_{x,i}-\theta_{x,i'})\kappa_{12}\sigma_x\sigma_y^2$
+- $(\theta_{y,i}-\theta_{y,i'})\operatorname{Cov}\bigl(\varepsilon_{x,i}-\varepsilon_{x,i'},\,(\varepsilon_{x,i'}-\varepsilon_{x,i''})(\varepsilon_{y,i'}-\varepsilon_{y,i''})\bigr) = -(\theta_{y,i}-\theta_{y,i'})\kappa_{21}\sigma_x^2\sigma_y$
+- $(\theta_{x,i'}-\theta_{x,i''})\operatorname{Cov}\bigl((\varepsilon_{x,i}-\varepsilon_{x,i'})(\varepsilon_{y,i}-\varepsilon_{y,i'}),\,\varepsilon_{y,i'}-\varepsilon_{y,i''}\bigr) = (\theta_{x,i'}-\theta_{x,i''})\kappa_{12}\sigma_x\sigma_y^2$
+- $(\theta_{y,i'}-\theta_{y,i''})\operatorname{Cov}\bigl((\varepsilon_{x,i}-\varepsilon_{x,i'})(\varepsilon_{y,i}-\varepsilon_{y,i'}),\,\varepsilon_{x,i'}-\varepsilon_{x,i''}\bigr) = (\theta_{y,i'}-\theta_{y,i''})\kappa_{21}\sigma_x^2\sigma_y$
+- $\operatorname{Cov}\bigl((\varepsilon_{x,i}-\varepsilon_{x,i'})(\varepsilon_{y,i}-\varepsilon_{y,i'}),\,(\varepsilon_{x,i'}-\varepsilon_{x,i''})(\varepsilon_{y,i'}-\varepsilon_{y,i''})\bigr) = (\kappa_{22}-\rho^2)\sigma_x^2\sigma_y^2$
+
+where for the last three, we condition on $(\varepsilon_{x,i'}, \varepsilon_{y,i'})$ and use $E[(\varepsilon_{x,i}-\varepsilon_{x,i'})(\varepsilon_{y,i}-\varepsilon_{y,i'}) \mid \varepsilon_{x,i'}, \varepsilon_{y,i'}] = \sigma_{xy} + \varepsilon_{x,i'}\varepsilon_{y,i'}$, giving $E[(\sigma_{xy}+\varepsilon_{x,i'}\varepsilon_{y,i'})^2] = 3\sigma_{xy}^2 + \kappa_{22}\sigma_x^2\sigma_y^2$ for the last term. Collecting and using $(\theta_{x,i'}-\theta_{x,i''}) - (\theta_{x,i}-\theta_{x,i'}) = -(\theta_{x,i} - 2\theta_{x,i'} + \theta_{x,i''})$ gives the result. $\square$
+
+**Proof of $\operatorname{Var}(T_k(X,Y))$.** The summands are nonzero only when $i = i'$, $i = i' + k$, $i + k = i'$, or $i + k = i' + k$. The last case reduces to $i = i'$, and the cases $i = i' + k$ and $i + k = i'$ are both at offset $k$, contributing $2n$ ordered off-diagonal terms in total. Therefore:
+\begin{align}
+\operatorname{Var}(T_k(X,Y))
+&= \sum_{i=1}^n \operatorname{Var}\bigl((X_i-X_{i+k})(Y_i-Y_{i+k})\bigr) \\
+&\quad + 2\sum_{i=1}^n \operatorname{Cov}\bigl((X_i-X_{i+k})(Y_i-Y_{i+k}),\,(X_{i+k}-X_{i+2k})(Y_{i+k}-Y_{i+2k})\bigr).
+\end{align}
+
+Applying Lemma 1 to the diagonal:
+$$
+\sum_{i=1}^n \operatorname{Var}\bigl[(X_i-X_{i+k})(Y_i-Y_{i+k})\bigr]
+= 2\sigma_y^2 \sum_i(\theta_{x,i}-\theta_{x,i+k})^2 + 2\sigma_x^2\sum_i(\theta_{y,i}-\theta_{y,i+k})^2
++ 4\sigma_{xy}\sum_i(\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i}-\theta_{y,i+k}) + 2n(\kappa_{22}+1)\sigma_x^2\sigma_y^2.
+$$
+
+Applying Lemma 2 with $(i, i', i'') = (i, i+k, i+2k)$ to the off-diagonal:
+\begin{align}
+&2\sum_{i=1}^n \operatorname{Cov}\bigl((X_i-X_{i+k})(Y_i-Y_{i+k}),\,(X_{i+k}-X_{i+2k})(Y_{i+k}-Y_{i+2k})\bigr) \\
+&= 2\sum_{i=1}^n \Bigl[
+(\kappa_{22}-\rho^2)\sigma_x^2\sigma_y^2
+- (\theta_{x,i}-\theta_{x,i+k})(\theta_{x,i+k}-\theta_{x,i+2k})\sigma_y^2
+- (\theta_{y,i}-\theta_{y,i+k})(\theta_{y,i+k}-\theta_{y,i+2k})\sigma_x^2 \\
+&\qquad - \bigl[(\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i+k}-\theta_{y,i+2k}) + (\theta_{y,i}-\theta_{y,i+k})(\theta_{x,i+k}-\theta_{x,i+2k})\bigr]\sigma_{xy} \\
+&\qquad - (\theta_{x,i}-2\theta_{x,i+k}+\theta_{x,i+2k})\kappa_{12}\sigma_x\sigma_y^2
+- (\theta_{y,i}-2\theta_{y,i+k}+\theta_{y,i+2k})\kappa_{21}\sigma_x^2\sigma_y
+\Bigr].
+\end{align}
+
+The sums simplify for $k \leq L/2$: since no two change points lie within distance $2k$, any product $(\theta_{x,i}-\theta_{x,i+k})(\theta_{x,i+k}-\theta_{x,i+2k}) = 0$ for all $i$, and by circular telescoping $\sum_i(\theta_{x,i}-2\theta_{x,i+k}+\theta_{x,i+2k}) = 0$. The off-diagonal therefore reduces to $2n(\kappa_{22}-\rho^2)\sigma_x^2\sigma_y^2$.
+
+Adding diagonal and off-diagonal and using $\sum_i(\theta_{x,i}-\theta_{x,i+k})^2 = kW_x$, $\sum_i(\theta_{y,i}-\theta_{y,i+k})^2 = kW_y$, and $\sum_i(\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i}-\theta_{y,i+k}) = kW_{xy}$:
+$$
+\operatorname{Var}(T_k(X,Y)) = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1-\rho^2) + 2k\sigma_y^2 W_x + 2k\sigma_x^2 W_y + 4k\sigma_{xy}W_{xy}.
+$$
+
+## Variance of $T_k(X,X)$ and $T_k(Y,Y)$
+
+Setting $Y = X$ in the above (so $\sigma_y^2 \to \sigma_x^2$, $\sigma_{xy} \to \sigma_x^2$, $\rho \to 1$, $\kappa_{22} \to \kappa_{40}$, $W_y \to W_x$, $W_{xy} \to W_x$):
+$$
+\operatorname{Var}(T_k(X,X)) = 2n\sigma_x^4(2\kappa_{40}+1-1) + 2k\sigma_x^2 W_x + 2k\sigma_x^2 W_x + 4k\sigma_x^2 W_x = 4n\kappa_{40}\sigma_x^4 + 8k\sigma_x^2 W_x.
+$$
+
+By the $X \leftrightarrow Y$ symmetry:
+$$
+\operatorname{Var}(T_k(Y,Y)) = 4n\kappa_{04}\sigma_y^4 + 8k\sigma_y^2 W_y.
+$$
+
+## Summary of diagonal entries
+
+For $k = 1, 2$ and $k \leq L/2$:
+
+| Entry | Formula |
+|---|---|
+| $\operatorname{Var}(T_k(X,X))$ | $4n\kappa_{40}\sigma_x^4 + 8k\sigma_x^2 W_x$ |
+| $\operatorname{Var}(T_k(Y,Y))$ | $4n\kappa_{04}\sigma_y^4 + 8k\sigma_y^2 W_y$ |
+| $\operatorname{Var}(T_k(X,Y))$ | $2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1-\rho^2) + 2k\sigma_y^2 W_x + 2k\sigma_x^2 W_y + 4k\sigma_{xy}W_{xy}$ |
+
+## Covariance of $T_h(X,Y)$ and $T_k(X,Y)$
+
+**Proposition.** For $h \neq k$ with $h, k \leq L/2$, let $m = \min(h,k)$. Then
+$$
+\operatorname{Cov}(T_h(X,Y),\,T_k(X,Y))
+= 4n\sigma_x^2\sigma_y^2(\kappa_{22} - \rho^2)
++ 2m\sigma_y^2 W_x + 2m\sigma_x^2 W_y + 4m\sigma_{xy}W_{xy}.
+$$
+
+*Proof.* Expanding as a double sum and using independence, only pairs of summands whose index sets share an element contribute. For $h \neq k$, the four overlapping families are:
+
+| Case | Shared index | Pair 1 | Pair 2 |
+|---|---|---|---|
+| A | $i$ (first of both) | $(i,\,i+h)$ | $(i,\,i+k)$ |
+| B | $i$ (last of 2, first of 1) | $(i,\,i+h)$ | $(i-k,\,i)$ |
+| C | $i+h$ (last of 1, first of 2) | $(i,\,i+h)$ | $(i+h,\,i+h+k)$ |
+| D | $i+h$ (last of both) | $(i,\,i+h)$ | $(i+h-k,\,i+h)$ |
+
+**Cases B and C** match the adjacent-index pattern of Lemma 2 (shared middle index). Applying Lemma 2 and summing over $i$: the signal cross-products vanish because the two index windows are disjoint (e.g., in Case B, $\Delta_{x,i-k,i} \neq 0$ and $\Delta_{x,i,i+h} \neq 0$ simultaneously would require two changes within distance $k+h \leq 2k$, violating the separation assumption). Each case therefore contributes only the pure-noise term $n(\kappa_{22}-\rho^2)\sigma_x^2\sigma_y^2$.
+
+**Cases A and D** share a first (resp. last) index $a$. Decomposing signal and noise at the shared index, the covariance for a single $i$ is (writing $\Delta_{x,a,b} = \theta_{x,a}-\theta_{x,b}$ and similarly for $y$):
+\begin{align}
+&\operatorname{Cov}\bigl((X_i-X_{i+h})(Y_i-Y_{i+h}),\,(X_i-X_{i+k})(Y_i-Y_{i+k})\bigr) \notag\\
+&= \Delta_{x,i,i+h}\Delta_{x,i,i+k}\sigma_y^2
+ + \Delta_{y,i,i+h}\Delta_{y,i,i+k}\sigma_x^2
+ + \bigl(\Delta_{x,i,i+h}\Delta_{y,i,i+k}+\Delta_{y,i,i+h}\Delta_{x,i,i+k}\bigr)\sigma_{xy}
+ + (\kappa_{22}-\rho^2)\sigma_x^2\sigma_y^2,
+\end{align}
+where odd-order cross-moments vanish by symmetry of the error distribution. The same formula holds for Case D by an identical calculation at the shared last index.
+
+Summing the signal terms over $i$: for $m = h < k$, the product $\Delta_{x,i,i+h}\Delta_{x,i,i+k}$ is nonzero only when a change point lies in $(i, i+h]$ (the smaller window forces the constraint), so $\sum_i \Delta_{x,i,i+h}\Delta_{x,i,i+k} = m\,W_x$ by the same telescoping argument as in the variance proof. Case D contributes the same sum. Combined signal from Cases A and D:
+$$
+2m\sigma_y^2 W_x + 2m\sigma_x^2 W_y + 4m\sigma_{xy}W_{xy}.
+$$
+
+Adding all four cases' noise contributions ($4n(\kappa_{22}-\rho^2)\sigma_x^2\sigma_y^2$) and signal contributions gives the result. $\square$
+
+## Diagnostics
+
+To verify the formulas, we simulate scenario 2 ($n = 1000$, $L = 4$, $r = 0.3$) under two error distributions and compare the empirical covariance matrix of $Z$ to the theoretical $\Sigma_Z$.
+
+For each error type, we run 500 outer replicates. In each replicate, we draw 10 independent datasets, compute $Z$ for each, and take their sample covariance as one estimate of $\Sigma_Z$. Each panel in the grid below shows the distribution of residuals (estimated minus theoretical) for one entry of $\Sigma_Z$ across the 500 replicates. The red line marks zero (no bias) and the orange line marks the sample mean. The p-value is from a one-sample t-test of whether the mean residual is zero.
+
+```{r}
+#| message: false
+#| echo: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(tidyverse)
+```
+
+```{r}
+#| echo: false
+sim_Z_once <- function(params) {
+  map_dfr(1:10, ~{
+    X <- generate_data(params)
+    matrix(c(
+      lag_diff(X[,1], X[,1], k = 1),
+      lag_diff(X[,1], X[,1], k = 2),
+      lag_diff(X[,2], X[,2], k = 1),
+      lag_diff(X[,2], X[,2], k = 2),
+      lag_diff(X[,1], X[,2], k = 1),
+      lag_diff(X[,1], X[,2], k = 2)
+    ), nrow = 1) |> as.data.frame()
+  }) |> cov()
+}
+```
+
+```{r}
+#| echo: false
+#| cache: true
+err_types <- c("normal", "exponential")
+
+sim_results <- map(err_types, \(et) {
+  params <- scenario(2, n = 1000, L = 4, r = 0.3, err_type = et)
+  list(
+    params        = params,
+    cov_estimates = map(1:500, ~sim_Z_once(params)),
+    S_z           = 4 * params$n^2 * cov_Z(params)
+  )
+}) |> setNames(err_types)
+```
+
+```{r}
+#| echo: false
+z_labels <- c("T1(X,X)", "T2(X,X)", "T1(Y,Y)", "T2(Y,Y)", "T1(X,Y)", "T2(X,Y)")
+idx <- expand.grid(i = 1:6, j = 1:6) |> filter(i <= j)
+
+diag_plots <- imap(sim_results, \(res, et) {
+  cov_long <- imap_dfr(res$cov_estimates, ~{
+    mutate(idx, rep = .y, value = .x[cbind(i, j)] - res$S_z[cbind(i, j)])
+  }) |> mutate(
+    row_label = factor(z_labels[i], levels = z_labels),
+    col_label = factor(z_labels[j], levels = z_labels)
+  )
+
+  panel_stats <- cov_long |>
+    summarise(
+      mean  = mean(value),
+      p_val = t.test(value)$p.value,
+      .by   = c(row_label, col_label)
+    ) |>
+    mutate(label = paste0("p=", formatC(p_val, format = "g", digits = 2)))
+
+  cov_long |>
+    ggplot(aes(x = value)) +
+    geom_histogram(bins = 40, fill = "steelblue", color = "white", alpha = 0.8) +
+    geom_vline(data = distinct(cov_long, row_label, col_label),
+               aes(xintercept = 0), color = "firebrick", linewidth = 0.8) +
+    geom_vline(data = panel_stats, aes(xintercept = mean),
+               color = "orange", linewidth = 0.8) +
+    geom_text(data = panel_stats, aes(x = Inf, y = Inf, label = label),
+              hjust = 1.1, vjust = 1.5, size = 2.5, color = "black") +
+    facet_grid(row_label ~ col_label, scales = "free") +
+    labs(x = NULL, y = NULL,
+         title = "Residuals: estimated - theoretical (n_inner=10, n_outer=500)",
+         subtitle = "Red = theoretical (0), orange = sample mean, p = t-test for bias") +
+    theme_minimal(base_size = 9) +
+    theme(axis.text = element_blank(), axis.ticks = element_blank())
+})
+```
+
+```{r}
+#| echo: false
+#| results: asis
+cat("::: {.panel-tabset}\n\n")
+iwalk(diag_plots, \(p, et) {
+  cat(paste0("## ", et, "\n\n"))
+  print(p)
+  cat("\n\n")
+})
+cat(":::\n")
+```
