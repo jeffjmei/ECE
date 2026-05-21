@@ -3,31 +3,95 @@
 #' Computes the asymptotic standard error of the equivariant correlation estimator
 #' for a bivariate time series.
 #'
-#' @param X An \eqn{n \times 2} numeric matrix.
+#' @param x A numeric vector, or an \eqn{n \times 2} matrix with series in columns.
+#' @param y A numeric vector of the same length as \code{x}. Ignored if \code{x} is a matrix.
 #' @param L A positive integer giving the minimum segment length (default 2).
+#' @param params Optional list of oracle parameters. If \code{params$kappa} is present,
+#'   those cumulants are used instead of the Gaussian assumption.
 #'
 #' @return A scalar standard error.
 #'
 #' @examples
+#' x <- rnorm(100)
+#' y <- rnorm(100)
+#' ece.cor.se(x, y)
+#'
 #' X <- matrix(rnorm(200), ncol = 2)
-#' ece.se(X)
+#' ece.cor.se(X)
 #'
 #' @export
-ece.se <- function(X, L = 2) {
-  X <- as.matrix(X)
-  n <- nrow(X)
-  ece_xx <- ece_pair(X[, 1], X[, 1], L)
-  ece_yy <- ece_pair(X[, 2], X[, 2], L)
-  ece_xy <- ece_pair(X[, 1], X[, 2], L)
-  sqrt(var_corr_est(
-    n,
-    sx  = sqrt(ece_xx$cov),
-    sy  = sqrt(ece_yy$cov),
-    sxy = ece_xy$cov,
-    wx  = ece_xx$complexity,
-    wy  = ece_yy$complexity,
-    wxy = ece_xy$complexity
-  ))
+ece.cor.se <- function(x, y = NULL, L = 2, params = NULL) {
+  if (is.matrix(x)) {
+    if (ncol(x) != 2) stop("matrix input must have exactly 2 columns")
+    y <- x[, 2]
+    x <- x[, 1]
+  }
+  n <- length(x)
+  ece_xx <- ece_pair(x, x, L)
+  ece_yy <- ece_pair(y, y, L)
+  ece_xy <- ece_pair(x, y, L)
+  sx  <- sqrt(ece_xx$cov)
+  sy  <- sqrt(ece_yy$cov)
+  sxy <- ece_xy$cov
+  wx  <- ece_xx$complexity
+  wy  <- ece_yy$complexity
+  wxy <- ece_xy$complexity
+  rxy <- sxy / (sx * sy)
+
+  if (is.null(params)) {
+    k40 <- 3; k04 <- 3
+    k31 <- 3 * rxy; k13 <- 3 * rxy
+    k22 <- 1 + 2 * rxy^2
+  } else {
+    k <- params$kappa
+    k40 <- k$k40; k04 <- k$k04
+    k31 <- k$k31; k13 <- k$k13
+    k22 <- k$k22
+  }
+
+  S11 <- var_Tk_est(n, sx, wx, k40, k = 1)
+  S12 <- cov_Th_Tk_est(n, sx, wx, k40)
+  S13 <- cov_Tk_Rk_est(n, sx, sy, sxy, wxy, k22, k = 1)
+  S14 <- cov_Th_Rk_est(n, sx, sy, sxy, wxy, k22)
+  S15 <- cov_Tk_Qk_est(n, sx, sy, sxy, wx, wxy, k31, k = 1)
+  S16 <- cov_Th_Qk_est(n, sx, sy, sxy, wx, wxy, k31)
+  S22 <- var_Tk_est(n, sx, wx, k40, k = 2)
+  S23 <- cov_Th_Rk_est(n, sx, sy, sxy, wxy, k22)
+  S24 <- cov_Tk_Rk_est(n, sx, sy, sxy, wxy, k22, k = 2)
+  S25 <- cov_Th_Qk_est(n, sx, sy, sxy, wx, wxy, k31)
+  S26 <- cov_Tk_Qk_est(n, sx, sy, sxy, wx, wxy, k31, k = 2)
+  S33 <- var_Tk_est(n, sy, wy, k04, k = 1)
+  S34 <- cov_Th_Tk_est(n, sy, wy, k04)
+  S35 <- cov_Tk_Qk_est(n, sy, sx, sxy, wy, wxy, k13, k = 1)
+  S36 <- cov_Th_Qk_est(n, sy, sx, sxy, wy, wxy, k13)
+  S44 <- var_Tk_est(n, sy, wy, k04, k = 2)
+  S45 <- cov_Th_Qk_est(n, sy, sx, sxy, wy, wxy, k13)
+  S46 <- cov_Tk_Qk_est(n, sy, sx, sxy, wy, wxy, k13, k = 2)
+  S55 <- var_Qh_est(n, sx, sy, sxy, wx, wy, wxy, k22, k = 1)
+  S56 <- cov_Qh_Qk_est(n, sx, sy, sxy, wx, wy, wxy, k22)
+  S66 <- var_Qh_est(n, sx, sy, sxy, wx, wy, wxy, k22, k = 2)
+
+  S_u_upper <- (1 / (4 * n^2)) * c(
+    S11,
+    S12, S22,
+    S13, S23, S33,
+    S14, S24, S34, S44,
+    S15, S25, S35, S45, S55,
+    S16, S26, S36, S46, S56, S66
+  )
+  S_u <- matrix(0, nrow = 6, ncol = 6)
+  S_u[upper.tri(S_u, diag = TRUE)] <- S_u_upper
+  S_u <- S_u + t(S_u) - diag(diag(S_u))
+
+  dg_mu <- c(
+    -rxy * sx^(-2),
+    0.5 * rxy * sx^(-2),
+    -rxy * sy^(-2),
+    0.5 * rxy * sy^(-2),
+    2 * sx^(-1) * sy^(-1),
+    -1 * sx^(-1) * sy^(-1)
+  )
+  sqrt(as.numeric(t(dg_mu) %*% S_u %*% dg_mu))
 }
 
 # Simulates the null distribution of max|colMeans(Z * s)| via Gaussian multiplier
@@ -45,13 +109,16 @@ cauchy_combine <- function(pvals) {
 }
 
 # Asymptotic z-test for zero correlation based on the equivariant correlation estimator.
-z_test <- function(X) {
+z_test <- function(X, conf.level = 0.95, params = NULL) {
   if (ncol(X) != 2) stop("type = 'z.test' requires a 2-column matrix")
   rxy <- ece.cor(X)[1, 2]
-  se <- ece.se(X)
+  se  <- ece.cor.se(X[, 1], X[, 2], params = params)
+  ci  <- rxy + c(-1, 1) * qnorm((1 + conf.level) / 2) * se
   list(
     estimate = rxy,
-    p.value  = 2 * (1 - pnorm(abs(rxy / se)))
+    se       = se,
+    conf.int = structure(ci, conf.level = conf.level),
+    p.value  = 2 * pnorm(abs(rxy / se), lower.tail = FALSE)
   )
 }
 
@@ -125,10 +192,10 @@ bs_parametric_test <- function(X, B = 1000) {
 #' ece.test(X, type = "bs.parametric")
 #'
 #' @export
-ece.test <- function(X, type = "z.test", B = 1000) {
+ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95, params = NULL) {
   X <- as.matrix(X)
   if (type == "z.test") {
-    z_test(X)
+    z_test(X, conf.level = conf.level, params = params)
   } else if (type == "bs.multiplier") {
     bs_multiplier_test(X, B)
   } else if (type == "bs.parametric") {
