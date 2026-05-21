@@ -1,3 +1,14 @@
+kappa_from_params <- function(params) {
+  e  <- generate_err(modifyList(params, list(n = 1e7)))
+  ex <- e[, 1] / sqrt(params$S[1, 1])
+  ey <- e[, 2] / sqrt(params$S[2, 2])
+  list(
+    k40 = mean(ex^4), k04 = mean(ey^4),
+    k22 = mean(ex^2 * ey^2),
+    k31 = mean(ex^3 * ey), k13 = mean(ex * ey^3)
+  )
+}
+
 mean_flat <- function(n, p, amp, ...) {
   list(h = matrix(0, n, p), scenario_param = list())
 }

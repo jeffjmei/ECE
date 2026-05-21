@@ -8,8 +8,7 @@ test_that("unknown scenario raises error", {
 })
 
 test_that("unknown err_type raises error", {
-  params <- scenario(1, err_type = "uniform")
-  expect_error(generate_err(params), "unknown err_type")
+  expect_error(scenario(1, err_type = "uniform"), "unknown err_type")
 })
 
 test_that("generate_err produces correct covariance structure", {

@@ -224,6 +224,56 @@ library(tidyverse)
 
 ```{r}
 #| echo: false
+cov_Z <- function(params) {
+  n   <- params$n
+  sx  <- sqrt(params$S[1, 1])
+  sy  <- sqrt(params$S[2, 2])
+  sxy <- params$S[1, 2]
+  hx  <- params$h[, 1]
+  hy  <- params$h[, 2]
+  wx  <- lag_diff(hx) / n
+  wy  <- lag_diff(hy) / n
+  wxy <- lag_diff(hx, hy) / n
+  rxy <- sxy / (sx * sy)
+
+  k <- kappa_from_params(params)
+  k22 <- k$k22; k40 <- k$k40; k04 <- k$k04; k31 <- k$k31; k13 <- k$k13
+
+  S11 <- var_Tk_est(n, sx, wx, k40, k = 1)
+  S12 <- cov_Th_Tk_est(n, sx, wx, k40)
+  S13 <- cov_Tk_Rk_est(n, sx, sy, sxy, wxy, k22, k = 1)
+  S14 <- cov_Th_Rk_est(n, sx, sy, sxy, wxy, k22)
+  S15 <- cov_Tk_Qk_est(n, sx, sy, sxy, wx, wxy, k31, k = 1)
+  S16 <- cov_Th_Qk_est(n, sx, sy, sxy, wx, wxy, k31)
+  S22 <- var_Tk_est(n, sx, wx, k40, k = 2)
+  S23 <- cov_Th_Rk_est(n, sx, sy, sxy, wxy, k22)
+  S24 <- cov_Tk_Rk_est(n, sx, sy, sxy, wxy, k22, k = 2)
+  S25 <- cov_Th_Qk_est(n, sx, sy, sxy, wx, wxy, k31)
+  S26 <- cov_Tk_Qk_est(n, sx, sy, sxy, wx, wxy, k31, k = 2)
+  S33 <- var_Tk_est(n, sy, wy, k04, k = 1)
+  S34 <- cov_Th_Tk_est(n, sy, wy, k04)
+  S35 <- cov_Tk_Qk_est(n, sy, sx, sxy, wy, wxy, k13, k = 1)
+  S36 <- cov_Th_Qk_est(n, sy, sx, sxy, wy, wxy, k13)
+  S44 <- var_Tk_est(n, sy, wy, k04, k = 2)
+  S45 <- cov_Th_Qk_est(n, sy, sx, sxy, wy, wxy, k13)
+  S46 <- cov_Tk_Qk_est(n, sy, sx, sxy, wy, wxy, k13, k = 2)
+  S55 <- var_Qh_est(n, sx, sy, sxy, wx, wy, wxy, k22, k = 1)
+  S56 <- cov_Qh_Qk_est(n, sx, sy, sxy, wx, wy, wxy, k22)
+  S66 <- var_Qh_est(n, sx, sy, sxy, wx, wy, wxy, k22, k = 2)
+
+  S_u_upper <- (1 / (4 * n^2)) * c(
+    S11,
+    S12, S22,
+    S13, S23, S33,
+    S14, S24, S34, S44,
+    S15, S25, S35, S45, S55,
+    S16, S26, S36, S46, S56, S66
+  )
+  S_u <- matrix(0, nrow = 6, ncol = 6)
+  S_u[upper.tri(S_u, diag = TRUE)] <- S_u_upper
+  S_u + t(S_u) - diag(diag(S_u))
+}
+
 sim_Z_once <- function(params) {
   map_dfr(1:10, ~{
     X <- generate_data(params)
