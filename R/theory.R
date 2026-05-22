@@ -53,7 +53,7 @@ dg <- function(u1, u2, u3, u4, u5, u6) {
 }
 
 
-ece.cor.asymp <- function(params) {
+ece.cor.asymp <- function(params, type = "general") {
   n <- params$n
   sx <- sqrt(params$S[1, 1])
   sy <- sqrt(params$S[2, 2])
@@ -63,11 +63,20 @@ ece.cor.asymp <- function(params) {
   hy <- params$h[, 2]
 
   # TODO: generalize to non-gaussian
-  k40 <- 3
-  k04 <- 3
-  k31 <- 3 * rxy
-  k13 <- 3 * rxy
-  k22 <- (1 + 2 * rxy^2)
+  if (type == "gaussian") {
+    k40 <- 3
+    k04 <- 3
+    k31 <- 3 * rxy
+    k13 <- 3 * rxy
+    k22 <- (1 + 2 * rxy^2)
+  } else {
+    k <- params$kappa
+    k40 <- k$k40
+    k04 <- k$k04
+    k31 <- k$k31
+    k13 <- k$k13
+    k22 <- k$k22
+  }
 
   # Populate Matrix
   T1_T1 <- var_Tk(n, sx, hx, k40, k = 1)
