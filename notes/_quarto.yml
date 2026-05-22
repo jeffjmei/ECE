@@ -16,6 +16,10 @@ book:
       chapters:
         - z-test.qmd
         - diagonal-test.qmd
+    - part: "Numerical Studies"
+      chapters:
+        - type-i-error.qmd
+        - power.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd
