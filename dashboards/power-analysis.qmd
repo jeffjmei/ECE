@@ -62,7 +62,7 @@ plot_type1 <- function(data) {
   }
 
   pl$x$layout$legend <- list(
-    title       = list(text = "Method<br>(● = normal, ▲ = exponential)"),
+    title       = list(text = ""),
     orientation = "h",
     x = 0,   xanchor = "left",
     y = -0.2
@@ -94,19 +94,21 @@ power_data <- results |>
   filter(r != 0) |>
   mutate(n = factor(n))
 
-plot_power <- function(data) {
+power_p2 <- power_data |> filter(p == 2, amp == 1, r == 0.1)
+power_pp  <- power_data |> filter(p >  2, amp == 1, r == 0.1)
+
+scenarios <- sort(unique(power_p2$scenario_label))
+
+plot_power <- function(data, by_p = FALSE) {
   p <- data |>
-    mutate(
-      linetype = ifelse(err_type == "exponential", "dashed", "solid"),
-      shape    = ifelse(err_type == "exponential", 17, 16)
-    ) |>
+    mutate(shape = ifelse(err_type == "exponential", 17, 16)) |>
     arrange(method_label, err_type, n) |>
     ggplot(aes(
       x        = n,
       y        = metric_val,
       color    = method_label,
       group    = interaction(method_label, err_type),
-      linetype = I(linetype),
+      linetype = err_type,
       shape    = I(shape),
       text     = paste0(
         scenario_label, "<br>",
@@ -119,7 +121,11 @@ plot_power <- function(data) {
     geom_line() +
     geom_point(size = 2) +
     geom_hline(yintercept = 0.10, linetype = "dashed", color = "black") +
-    facet_grid(rows = vars(cov_type, r), cols = vars(scenario_label), labeller = label_both) +
+    scale_linetype_manual(values = c(normal = "solid", exponential = "dashed"), guide = "none") +
+    { if (by_p)
+        facet_grid(rows = vars(cov_type), cols = vars(p), labeller = label_both)
+      else
+        facet_wrap(vars(cov_type), labeller = label_both) } +
     labs(y = "Power", x = "Sample Size", color = "Method") +
     theme_bw()
 
@@ -132,7 +138,7 @@ plot_power <- function(data) {
   }
 
   pl$x$layout$legend <- list(
-    title       = list(text = "Method<br>(● = normal, ▲ = exponential)"),
+    title       = list(text = ""),
     orientation = "h",
     x = 0,   xanchor = "left",
     y = -0.2
@@ -151,7 +157,7 @@ plot_power <- function(data) {
 ## Type I Error
 
 ```{r}
-plotlyOutput("t1_plot")
+plotlyOutput("t1_plot", height = "100vh")
 ```
 
 ```{r}
@@ -162,12 +168,36 @@ output$t1_plot <- renderPlotly(plot_type1(type1_data))
 ## Power
 
 ```{r}
-plotlyOutput("pw_plot")
+#| results: asis
+#| echo: false
+cat("::: {.panel-tabset}\n\n")
+for (sc in scenarios) {
+  cat("##", sc, "\n\n")
+  cat(as.character(plotlyOutput(paste0("pw_", make.names(sc)), height = "100vh")))
+  if (any(power_pp$scenario_label == sc)) {
+    cat("\n\n")
+    cat(as.character(plotlyOutput(paste0("pwp_", make.names(sc)), height = "100vh")))
+  }
+  cat("\n\n")
+}
+cat(":::\n")
 ```
 
 ```{r}
 #| context: server
-output$pw_plot <- renderPlotly(plot_power(power_data))
+lapply(scenarios, function(sc) {
+  local({
+    s <- sc
+    output[[paste0("pw_", make.names(s))]] <- renderPlotly({
+      plot_power(power_p2 |> filter(scenario_label == s))
+    })
+    if (any(power_pp$scenario_label == s)) {
+      output[[paste0("pwp_", make.names(s))]] <- renderPlotly({
+        plot_power(power_pp |> filter(scenario_label == s), by_p = TRUE)
+      })
+    }
+  })
+})
 ```
 
 :::
