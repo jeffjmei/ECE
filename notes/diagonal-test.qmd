@@ -117,43 +117,6 @@ mean(pvals < 0.05)  # ~0.05
 ```
 :::
 
-## Simulation Results
-
-```{R}
-#| echo: false
-#| message: false
-
-library(tidyverse)
-results <- read_csv(paste0(here::here(), "/data/results.csv"))
-
-# n = 200, 500, 1000
-# p = 2, 3, 5, 10
-# r = 0, 0.1
-
-# Type I Error
-results |>
-  filter(r == 0) |>
-  mutate(n = factor(n)) |>
-  ggplot(aes(x = n, y = power, color = cov_type, group = cov_type, shape = as.factor(scenario))) +
-  geom_point(size=3) +
-  #geom_line() +
-  geom_hline(yintercept=0.05) +
-  facet_wrap(~ p, labeller = label_both) +
-  labs(x = "Sample size", y = "Power", color = "Covariance") +
-  theme_bw()
-
-# Power
-results |>
-  filter(r != 0) |>
-  mutate(n = factor(n)) |>
-  ggplot(aes(x = n, y = power, color = cov_type, group = cov_type, shape = as.factor(scenario))) +
-  geom_point(size=3) +
-  geom_line() +
-  facet_wrap(~ p, labeller = label_both) +
-  labs(x = "Sample size", y = "Power", color = "Covariance") +
-  theme_bw()
-```
-
 ## Parametric Bootstrap Test
 
 Let $S_i \in \mathbb{R}^p$ denote the vector of lag terms across all pairs at index $i$. To test $H_0$, we need the variance of $\bar{S} = \frac{1}{n}\sum_{i=1}^n S_i$.
@@ -229,6 +192,68 @@ legend("topright",
        fill = adjustcolor(c("red", "blue"), 0.4), border = NA)
 ```
 :::
+
+## Simulation Results
+
+All simulations are run with exponential error terms in the setting with frequent mean shifts ($L = 4$). We see that in all cases, we are able to control type I error.
+
+```{R}
+#| echo: false
+#| cache: true
+params <- scenario(2, n=1000, p=2, L=4, r=0, err_type="exponential")
+```
+
+```{R}
+#| echo: false
+#| cache: true
+set.seed(1)
+pval_gaussian <- map_dbl(1:10000, ~{
+  X <- generate_data(params)
+  test.diag(X, method = "z.test.gaussian")$p.value
+})
+```
+
+```{R}
+#| echo: false
+#| cache: true
+set.seed(1)
+pval_kappa <- map_dbl(1:10000, ~{
+  X <- generate_data(params)
+  test.diag(X, method = "z.test.kappa")$p.value
+})
+```
+
+```{R}
+#| echo: false
+#| cache: true
+set.seed(1)
+pval_multiplier <- map_dbl(1:10000, ~{
+  X <- generate_data(params)
+  test.diag(X, method = "bs.multiplier")$p.value
+})
+```
+
+```{R}
+#| echo: false
+#| cache: true
+set.seed(1)
+pval_parametric <- map_dbl(1:10000, ~{
+  X <- generate_data(params)
+  test.diag(X, method = "bs.parametric")$p.value
+})
+```
+
+```{R}
+#| echo: false
+#| fig-width: 12
+#| fig-height: 10
+par(mfrow = c(2, 2))
+hist(pval_gaussian,   breaks=10, freq=FALSE, main="Z-Test (Gaussian)",          xlab="p-value"); abline(h=1, col="red", lty="dashed")
+hist(pval_kappa,      breaks=10, freq=FALSE, main="Z-Test (Kappa)",             xlab="p-value"); abline(h=1, col="red", lty="dashed")
+hist(pval_multiplier, breaks=10, freq=FALSE, main="Bootstrap Multiplier",        xlab="p-value"); abline(h=1, col="red", lty="dashed")
+hist(pval_parametric, breaks=10, freq=FALSE, main="Parametric Bootstrap",        xlab="p-value"); abline(h=1, col="red", lty="dashed")
+par(mfrow = c(1, 1))
+```
 
 ## Questions
 - What happens if we have a NA value in the matrix?
