@@ -7,18 +7,23 @@ book:
   date: today
   chapters:
     - index.qmd
-    - model-assumptions.qmd
-    - lagged-differences.qmd
-    - asymptotics.qmd
-    - covariance-z.qmd
-    - bilinear-form.qmd
-    - computational-solution.qmd
-    - model-misspecification.qmd
-    - positive-semidefinite.qmd
-    - diagonal-test.qmd
-    - mean-removal.qmd
-    - package.qmd
+    - part: "Estimation"
+      chapters:
+        - model-assumptions.qmd
+        - lagged-differences.qmd
+        - bilinear-form.qmd
+    - part: "Inference"
+      chapters:
+        - z-test.qmd
+        - diagonal-test.qmd
+    - part: "In Progress"
+      chapters:
+        - positive-semidefinite.qmd
+        - model-misspecification.qmd
+        - package.qmd
   appendices:
+    - computational-solution.qmd
+    - mean-removal.qmd
     - math-background.qmd
     - math-results.qmd
 
