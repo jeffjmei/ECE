@@ -18,6 +18,7 @@ book:
         - diagonal-test.qmd
     - part: "Numerical Studies"
       chapters:
+        - simulation.qmd
         - type-i-error.qmd
         - power.qmd
     - part: "In Progress"

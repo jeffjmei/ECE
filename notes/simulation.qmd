@@ -1,0 +1,13 @@
+# Simulation Design
+
+## Generating Correlated Errors via Cholesky Decomposition
+
+To simulate errors with a target covariance matrix $\Sigma$, we use the Cholesky decomposition. Factor $\Sigma = L^T L$ where $L$ is upper triangular. Then for any $n \times p$ matrix $Z$ with iid entries of mean zero and unit variance,
+
+$$
+E = Z L
+$$
+
+has $\text{Cov}(E_t) = L^T \text{Cov}(Z_t) L = L^T L = \Sigma$.
+
+In `generate_err`, $L$ = `chol(S)` and the correlated errors are produced as `Z %*% chol(S)`. The marginal distribution of each entry of $Z$ — normal, $t$, log-normal, etc. — determines the marginal distribution of $\varepsilon_t$, while the covariance structure is always $\Sigma$ regardless of that choice.
