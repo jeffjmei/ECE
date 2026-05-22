@@ -147,6 +147,23 @@ $$
 When additionally $\rho = 0$, $V = \frac{1}{n}\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} + \frac{7}{2}\right)$.
 
 ::: {.callout-note collapse="true"}
+## Scale invariance
+
+$V$ is invariant under $X \to aX$, $Y \to bY$, consistent with $\widehat\rho(aX, bY) = \widehat\rho(X, Y)$. Each piece transforms as follows.
+
+**$\omega$ terms.** Scaling $X$ by $a$ scales $h_x \to ah_x$, so $W_x \to a^2 W_x$ and $\omega_x \to a\omega_x$. Similarly $\omega_y \to b\omega_y$ and $\omega_{xy} \to ab\,\omega_{xy}$. The ratios
+$$
+\frac{\omega_x^2}{\sigma_x^2} \to \frac{a^2\omega_x^2}{a^2\sigma_x^2} = \frac{\omega_x^2}{\sigma_x^2}, \qquad
+\frac{\rho\,\omega_{xy}}{\sigma_x\sigma_y} \to \frac{\rho\cdot ab\,\omega_{xy}}{a\sigma_x\cdot b\sigma_y} = \frac{\rho\,\omega_{xy}}{\sigma_x\sigma_y}
+$$
+are therefore unchanged.
+
+**$\kappa$ terms.** The cumulants $\kappa_{rs}$ are moments of the standardized errors $\varepsilon_x/\sigma_x$ and $\varepsilon_y/\sigma_y$. Since scaling $X$ by $a$ scales both $\varepsilon_x$ and $\sigma_x$ by $a$, the ratio is unchanged, and all $\kappa_{rs}$ are invariant.
+
+**$\rho$.** Invariant by definition of correlation.
+:::
+
+::: {.callout-note collapse="true"}
 ## Computational verification
 
 We verify the proposition by checking that the closed-form $V$ equals $\nabla g(\boldsymbol{\mu}_Z)^\top \Sigma_Z \nabla g(\boldsymbol{\mu}_Z)$ computed explicitly as a matrix product, mirroring the structure of `ece.cor.se` but with oracle inputs.
