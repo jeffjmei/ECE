@@ -1,12 +1,14 @@
 library(tidyr)
 
 common <- list(
-  n        = c(200, 500, 1000),
+  # n        = c(200, 500, 1000),
+  n        = c(2000),
   p        = c(2),
   # p        = c(3, 5, 10),
-  cov_type = c("compound", "ar1"),
-  # r        = c(0, 0.1),
-  r        = c(0.2, 0.3, 0.4),
+  # cov_type = c("compound", "ar1"),
+  cov_type = c("compound"),
+  r        = c(0),
+  # r        = c(0.2, 0.3, 0.4),
   amp      = c(1),
   err_type = c("normal", "exponential"),
   method   = c("bs.multiplier", "bs.parametric", "z.test.gaussian", "z.test.kappa"),
