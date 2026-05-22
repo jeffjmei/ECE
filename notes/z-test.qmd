@@ -54,6 +54,196 @@ which is equivalent to $\max_i c_i^2 / \sum_i c_i^2 \to 0$. This is the Lindeber
 
 Since any linear combination $a^T Z$ is a sum of terms of the form (I) and (II) across components and lags, the same argument applies in both cases, and the Cramér-Wold device gives joint normality of $Z$. $\square$
 
+## Covariance Matrix of $Z$
+
+Let $W_x$, $W_y$, $W_{xy}$ denote the squared-jump sums
+$$
+W_x = \sum_j (\mu_{x,j} - \mu_{x,j+1})^2, \quad
+W_y = \sum_j (\mu_{y,j} - \mu_{y,j+1})^2, \quad
+W_{xy} = \sum_j (\mu_{x,j} - \mu_{x,j+1})(\mu_{y,j} - \mu_{y,j+1}),
+$$
+and let $\kappa_{rs} = \kappa_{rs}(\varepsilon_x, \varepsilon_y)$ be the joint cumulants of the error distribution.
+
+**Proposition.** The covariance matrix $\Sigma_Z = \mathrm{Cov}(Z)$ has the following entries (upper triangle; the matrix is symmetric).
+
+| Entry $(i,j)$ | $[\Sigma_Z]_{ij}$ |
+|---|---|
+| $(T_1(X,X),\, T_1(X,X))$ | $4n\kappa_{40}\sigma_x^4 + 8\sigma_x^2 W_x$ |
+| $(T_1(X,X),\, T_2(X,X))$ | $4n(\kappa_{40}-1)\sigma_x^4 + 8\sigma_x^2 W_x$ |
+| $(T_2(X,X),\, T_2(X,X))$ | $4n\kappa_{40}\sigma_x^4 + 16\sigma_x^2 W_x$ |
+| $(T_1(Y,Y),\, T_1(Y,Y))$ | $4n\kappa_{04}\sigma_y^4 + 8\sigma_y^2 W_y$ |
+| $(T_1(Y,Y),\, T_2(Y,Y))$ | $4n(\kappa_{04}-1)\sigma_y^4 + 8\sigma_y^2 W_y$ |
+| $(T_2(Y,Y),\, T_2(Y,Y))$ | $4n\kappa_{04}\sigma_y^4 + 16\sigma_y^2 W_y$ |
+| $(T_1(X,X),\, T_1(Y,Y))$ | $4n\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 4n\sigma_{xy}^2 + 8\sigma_{xy} W_{xy}$ |
+| $(T_1(X,X),\, T_2(Y,Y))$ | $4n\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 8\sigma_{xy} W_{xy}$ |
+| $(T_2(X,X),\, T_1(Y,Y))$ | $4n\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 8\sigma_{xy} W_{xy}$ |
+| $(T_2(X,X),\, T_2(Y,Y))$ | $4n\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 4n\sigma_{xy}^2 + 16\sigma_{xy} W_{xy}$ |
+| $(T_1(X,X),\, T_1(X,Y))$ | $4n\sigma_x^3\sigma_y\kappa_{31} + 4\sigma_{xy} W_x + 4\sigma_x^2 W_{xy}$ |
+| $(T_1(X,X),\, T_2(X,Y))$ | $4n\sigma_x^3\sigma_y\kappa_{31} - 4n\sigma_x^2\sigma_{xy} + 4\sigma_{xy} W_x + 4\sigma_x^2 W_{xy}$ |
+| $(T_2(X,X),\, T_1(X,Y))$ | $4n\sigma_x^3\sigma_y\kappa_{31} - 4n\sigma_x^2\sigma_{xy} + 4\sigma_{xy} W_x + 4\sigma_x^2 W_{xy}$ |
+| $(T_2(X,X),\, T_2(X,Y))$ | $4n\sigma_x^3\sigma_y\kappa_{31} + 8\sigma_{xy} W_x + 8\sigma_x^2 W_{xy}$ |
+| $(T_1(Y,Y),\, T_1(X,Y))$ | $4n\sigma_y^3\sigma_x\kappa_{13} + 4\sigma_{xy} W_y + 4\sigma_y^2 W_{xy}$ |
+| $(T_1(Y,Y),\, T_2(X,Y))$ | $4n\sigma_y^3\sigma_x\kappa_{13} - 4n\sigma_y^2\sigma_{xy} + 4\sigma_{xy} W_y + 4\sigma_y^2 W_{xy}$ |
+| $(T_2(Y,Y),\, T_1(X,Y))$ | $4n\sigma_y^3\sigma_x\kappa_{13} - 4n\sigma_y^2\sigma_{xy} + 4\sigma_{xy} W_y + 4\sigma_y^2 W_{xy}$ |
+| $(T_2(Y,Y),\, T_2(X,Y))$ | $4n\sigma_y^3\sigma_x\kappa_{13} + 8\sigma_{xy} W_y + 8\sigma_y^2 W_{xy}$ |
+| $(T_1(X,Y),\, T_1(X,Y))$ | $2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 2n\sigma_{xy}^2 + 2\sigma_y^2 W_x + 2\sigma_x^2 W_y + 4\sigma_{xy} W_{xy}$ |
+| $(T_1(X,Y),\, T_2(X,Y))$ | $4n(\sigma_x^2\sigma_y^2\kappa_{22} - \sigma_{xy}^2) + 2\sigma_y^2 W_x + 2\sigma_x^2 W_y + 4\sigma_{xy} W_{xy}$ |
+| $(T_2(X,Y),\, T_2(X,Y))$ | $2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 2n\sigma_{xy}^2 + 4\sigma_y^2 W_x + 4\sigma_x^2 W_y + 8\sigma_{xy} W_{xy}$ |
+
+## Asymptotic Variance of $\hat\rho$
+
+The ECE correlation estimator is $\hat\rho = g(Z)$ where
+$$
+g(Z) = \frac{2Z_5 - Z_6}{\sqrt{(2Z_1 - Z_2)(2Z_3 - Z_4)}}.
+$$
+
+By the multivariate delta method, $\sqrt{n}(\hat\rho - \rho) \xrightarrow{d} N(0, V)$ where
+$$
+V = \nabla g(\boldsymbol{\mu}_Z)^\top \Sigma_Z\, \nabla g(\boldsymbol{\mu}_Z).
+$$
+
+The gradient evaluated at $\boldsymbol{\mu}_Z$ is
+
+$$
+\nabla g(\boldsymbol{\mu}_Z) =
+\begin{pmatrix}
+-\dfrac{g(\mathbf{Z})}{2Z_1 - Z_2} \\[6pt]
+\dfrac{1}{2}\dfrac{g(\mathbf{Z})}{2Z_1 - Z_2} \\[6pt]
+-\dfrac{g(\mathbf{Z})}{2Z_3 - Z_4} \\[6pt]
+\dfrac{1}{2}\dfrac{g(\mathbf{Z})}{2Z_3 - Z_4} \\[6pt]
+\dfrac{2}{\sqrt{(2Z_1-Z_2)(2Z_3-Z_4)}} \\[6pt]
+-\dfrac{1}{\sqrt{(2Z_1-Z_2)(2Z_3-Z_4)}}
+\end{pmatrix}_{\mathbf{Z} = \boldsymbol{\mu}_Z}
+= \frac{1}{2n}
+\begin{pmatrix}
+-\rho/\sigma_x^2 \\ \rho/(2\sigma_x^2) \\ -\rho/\sigma_y^2 \\ \rho/(2\sigma_y^2) \\ 2/(\sigma_x\sigma_y) \\ -1/(\sigma_x\sigma_y)
+\end{pmatrix},
+$$
+
+using $2\mu_{Z_1} - \mu_{Z_2} = 2n\sigma_x^2$, $2\mu_{Z_3} - \mu_{Z_4} = 2n\sigma_y^2$, $2\mu_{Z_5} - \mu_{Z_6} = 2n\sigma_{xy}$, and $g(\boldsymbol{\mu}_Z) = \rho$.
+
+**Proposition.** Define
+$$
+\omega_x = \sqrt{\frac{W_x}{n}}, \qquad
+\omega_y = \sqrt{\frac{W_y}{n}}, \qquad
+\omega_{xy} = \frac{W_{xy}}{n}.
+$$
+Then
+$$
+V = \frac{1}{n}\left[
+(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y}\right)
++ \frac{\rho^2}{4}(\kappa_{40} + 2\kappa_{22} + \kappa_{04})
+- \rho(\kappa_{31} + \kappa_{13})
++ \frac{5}{2}(1-\rho^2)^2 + \kappa_{22}
+\right].
+$$
+
+Under the Gaussian assumption ($\kappa_{40} = \kappa_{04} = 3$, $\kappa_{31} = \kappa_{13} = 3\rho$, $\kappa_{22} = 1 + 2\rho^2$), this reduces to
+
+$$
+V = \frac{1}{n}(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y} + \frac{7}{2}(1-\rho^2)\right).
+$$
+
+When additionally $\rho = 0$, $V = \frac{1}{n}\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} + \frac{7}{2}\right)$.
+
+::: {.callout-note collapse="true"}
+## Computational verification
+
+We verify the proposition by checking that the closed-form $V$ equals $\nabla g(\boldsymbol{\mu}_Z)^\top \Sigma_Z \nabla g(\boldsymbol{\mu}_Z)$ computed explicitly as a matrix product, mirroring the structure of `ece.cor.se` but with oracle inputs.
+
+```{r}
+#| message: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+
+V_formula <- function(params) {
+  n   <- params$n
+  sx  <- sqrt(params$S[1, 1])
+  sy  <- sqrt(params$S[2, 2])
+  sxy <- params$S[1, 2]
+  rho <- sxy / (sx * sy)
+  hx  <- params$h[, 1]
+  hy  <- params$h[, 2]
+
+  wx  <- lag_diff(hx) / n
+  wy  <- lag_diff(hy) / n
+  wxy <- lag_diff(hx, hy) / n
+  k   <- params$kappa
+
+  (1 / n) * (
+    (1 - rho^2) * (wx / sx^2 + wy / sy^2 - 2 * rho * wxy / (sx * sy)) +
+    rho^2 / 4 * (k$k40 + 2 * k$k22 + k$k04) - rho * (k$k31 + k$k13) +
+    5 / 2 * (1 - rho^2)^2 + k$k22
+  )
+}
+
+V_matrix <- function(params) {
+  n   <- params$n
+  sx  <- sqrt(params$S[1, 1])
+  sy  <- sqrt(params$S[2, 2])
+  sxy <- params$S[1, 2]
+  rho <- sxy / (sx * sy)
+  hx  <- params$h[, 1]
+  hy  <- params$h[, 2]
+
+  k   <- params$kappa
+  k40 <- k$k40; k04 <- k$k04; k31 <- k$k31; k13 <- k$k13; k22 <- k$k22
+
+  # Theoretical Sigma_Z / (4n^2), using non-_est functions (take full hx/hy)
+  # to avoid the normalization ambiguity in the _est counterparts
+  S_u_upper <- (1 / (4 * n^2)) * c(
+    var_Tk(n, sx, hx, k40, k = 1),
+    cov_Th_Tk(n, sx, hx, k40),              var_Tk(n, sx, hx, k40, k = 2),
+    cov_Tk_Rk(n, sx, sy, sxy, hx, hy, k22, k = 1),
+    cov_Th_Rk(n, sx, sy, sxy, hx, hy, k22), var_Tk(n, sy, hy, k04, k = 1),
+    cov_Th_Rk(n, sx, sy, sxy, hx, hy, k22),
+    cov_Tk_Rk(n, sx, sy, sxy, hx, hy, k22, k = 2), cov_Th_Tk(n, sy, hy, k04),
+    var_Tk(n, sy, hy, k04, k = 2),
+    cov_Tk_Qk(n, sx, sy, sxy, hx, hy, k31, k = 1),
+    cov_Th_Qk(n, sx, sy, sxy, hx, hy, k31),
+    cov_Tk_Qk(n, sy, sx, sxy, hy, hx, k13, k = 1),
+    cov_Th_Qk(n, sy, sx, sxy, hy, hx, k13),  var_Qh(n, sx, sy, sxy, hx, hy, k22, k = 1),
+    cov_Th_Qk(n, sx, sy, sxy, hx, hy, k31),
+    cov_Tk_Qk(n, sx, sy, sxy, hx, hy, k31, k = 2),
+    cov_Th_Qk(n, sy, sx, sxy, hy, hx, k13),
+    cov_Tk_Qk(n, sy, sx, sxy, hy, hx, k13, k = 2),
+    cov_Qh_Qk(n, sx, sy, sxy, hx, hy, k22),  var_Qh(n, sx, sy, sxy, hx, hy, k22, k = 2)
+  )
+  S_u <- matrix(0, 6, 6)
+  S_u[upper.tri(S_u, diag = TRUE)] <- S_u_upper
+  S_u <- S_u + t(S_u) - diag(diag(S_u))
+
+  # Gradient at mu_Z (1/(2n) factor absorbed into S_u scaling)
+  dg <- c(-rho / sx^2, 0.5 * rho / sx^2,
+          -rho / sy^2, 0.5 * rho / sy^2,
+           2 / (sx * sy), -1 / (sx * sy))
+
+  as.numeric(t(dg) %*% S_u %*% dg)
+}
+
+# scenario() fixes S = diag(1,1); patch manually to test sigma != 1
+set_sigma <- function(params, sx, sy) {
+  rho <- params$S[1, 2] / (sqrt(params$S[1, 1]) * sqrt(params$S[2, 2]))
+  params$S <- matrix(c(sx^2, rho * sx * sy, rho * sx * sy, sy^2), 2, 2)
+  params
+}
+
+base <- scenario(2, n = 1000, L = 4, r = 0.3, err_type = "normal")
+scenarios <- list(
+  set_sigma(base, sx = 1, sy = 1),
+  set_sigma(base, sx = 2, sy = 1),
+  set_sigma(base, sx = 1, sy = 3),
+  set_sigma(base, sx = 2, sy = 2)
+)
+
+data.frame(
+  sx        = c(1, 2, 1, 2),
+  sy        = c(1, 1, 3, 2),
+  V_formula = sapply(scenarios, V_formula),
+  V_matrix  = sapply(scenarios, V_matrix)
+)
+```
+:::
+
 ## Diagnostics
 
 To verify the formulas, we simulate scenario 2 ($n = 1000$, $L = 4$, $r = 0.3$) under two error distributions and compare the empirical covariance matrix of $Z$ to the theoretical $\Sigma_Z$.
