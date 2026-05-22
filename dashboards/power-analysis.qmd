@@ -1,0 +1,173 @@
+---
+title: "Power Analysis Dashboard"
+format: html
+server: shiny
+---
+
+```{r}
+#| context: setup
+#| include: false
+library(tidyverse)
+library(shiny)
+library(bslib)
+library(plotly)
+library(jsonlite)
+
+make_params_label <- function(params_json) {
+  params <- fromJSON(gsub('\\', '"', params_json, fixed = TRUE))
+  if (length(params) == 0) return("")
+  paste(names(params), unlist(params), sep = "=", collapse = ", ")
+}
+
+make_method_label <- function(method, method_params_json) {
+  lab <- make_params_label(method_params_json)
+  if (nzchar(lab)) paste0(method, " (", lab, ")") else method
+}
+
+make_scenario_label <- function(scenario, scenario_params_json) {
+  lab <- make_params_label(scenario_params_json)
+  if (nzchar(lab)) paste0("Scenario ", scenario, " (", lab, ")") else paste0("Scenario ", scenario)
+}
+
+plot_type1 <- function(data) {
+  p <- data |>
+    mutate(
+      shape    = ifelse(err_type == "exponential", 17, 16),
+      err_type = fct_relevel(err_type, "normal")
+    ) |>
+    arrange(method_label, err_type) |>
+    ggplot(aes(
+      x     = n,
+      y     = metric_val,
+      color = method_label,
+      shape = I(shape),
+      text  = paste0(
+        scenario_label, "<br>",
+        method_label, "<br>",
+        err_type, "<br>",
+        "rejection rate: ", metric_val
+      )
+    )) +
+    geom_point(size = 2) +
+    geom_hline(yintercept = 0.10, linetype = "dashed") +
+    labs(y = "Rejection Rate", x = "Sample Size", color = "Method") +
+    theme_bw()
+
+  pl <- ggplotly(p, tooltip = "text")
+
+  # Split 4 method traces into two columns by assigning to legend / legend2
+  method_idx <- which(vapply(pl$x$data, function(t) nzchar(t$name), logical(1)))
+  for (i in seq_along(method_idx)) {
+    pl$x$data[[method_idx[i]]]$legend <- if (i <= 2) "legend" else "legend2"
+  }
+
+  pl$x$layout$legend <- list(
+    title       = list(text = "Method<br>(● = normal, ▲ = exponential)"),
+    orientation = "h",
+    x = 0,   xanchor = "left",
+    y = -0.2
+  )
+  pl$x$layout$legend2 <- list(
+    orientation = "h",
+    x = 0.5, xanchor = "left",
+    y = -0.2
+  )
+  pl
+}
+
+results <- read_csv(
+  here::here("data/results.csv"),
+  show_col_types = FALSE
+) |>
+  mutate(
+    method_label   = map2_chr(method,   method_params,   make_method_label),
+    scenario_label = map2_chr(scenario, scenario_params, make_scenario_label)
+  )
+
+# cov_type is irrelevant (AR1 == compound), drop duplicates
+type1_data <- results |>
+  filter(r == 0) |>
+  distinct(n, err_type, method_label, .keep_all = TRUE) |>
+  mutate(n = factor(n))
+
+power_data <- results |>
+  filter(r != 0) |>
+  mutate(n = factor(n))
+
+plot_power <- function(data) {
+  p <- data |>
+    mutate(
+      linetype = ifelse(err_type == "exponential", "dashed", "solid"),
+      shape    = ifelse(err_type == "exponential", 17, 16)
+    ) |>
+    arrange(method_label, err_type, n) |>
+    ggplot(aes(
+      x        = n,
+      y        = metric_val,
+      color    = method_label,
+      group    = interaction(method_label, err_type),
+      linetype = I(linetype),
+      shape    = I(shape),
+      text     = paste0(
+        scenario_label, "<br>",
+        method_label, "<br>",
+        err_type, "<br>",
+        "n = ", n, "<br>",
+        "power: ", metric_val
+      )
+    )) +
+    geom_line() +
+    geom_point(size = 2) +
+    geom_hline(yintercept = 0.10, linetype = "dashed", color = "black") +
+    facet_grid(rows = vars(cov_type, r), cols = vars(scenario_label), labeller = label_both) +
+    labs(y = "Power", x = "Sample Size", color = "Method") +
+    theme_bw()
+
+  pl <- ggplotly(p, tooltip = "text")
+
+  method_idx <- which(vapply(pl$x$data, function(t) nzchar(t$name), logical(1)))
+  half <- ceiling(length(method_idx) / 2)
+  for (i in seq_along(method_idx)) {
+    pl$x$data[[method_idx[i]]]$legend <- if (i <= half) "legend" else "legend2"
+  }
+
+  pl$x$layout$legend <- list(
+    title       = list(text = "Method<br>(● = normal, ▲ = exponential)"),
+    orientation = "h",
+    x = 0,   xanchor = "left",
+    y = -0.2
+  )
+  pl$x$layout$legend2 <- list(
+    orientation = "h",
+    x = 0.5, xanchor = "left",
+    y = -0.2
+  )
+  pl
+}
+```
+
+::: {.panel-tabset}
+
+## Type I Error
+
+```{r}
+plotlyOutput("t1_plot")
+```
+
+```{r}
+#| context: server
+output$t1_plot <- renderPlotly(plot_type1(type1_data))
+```
+
+## Power
+
+```{r}
+plotlyOutput("pw_plot")
+```
+
+```{r}
+#| context: server
+output$pw_plot <- renderPlotly(plot_power(power_data))
+```
+
+:::
