@@ -9,6 +9,13 @@ title: "Power"
 library(tidyverse)
 devtools::load_all()
 results <- read_csv("../data/results.csv")
+
+method_colors <- c(
+  "z.test.gaussian" = "#E41A1C",
+  "z.test.kappa"    = "#377EB8",
+  "bs.multiplier"   = "#4DAF4A",
+  "bs.parametric"   = "#FF7F00"
+)
 ```
 
 ## Z-Test: Gaussian vs. Kappa
@@ -21,7 +28,10 @@ We compare `z.test.gaussian` and `z.test.kappa` at $n = 200$, $p = 2$, across sc
 dat <- results |>
   filter(p == 2, n == 200, method %in% c("z.test.gaussian", "z.test.kappa"), metric == "power") |>
   filter(scenario == 1 | (scenario == 2 & scenario_params == "{\\L\\:[4]}")) |>
-  mutate(err_type = factor(err_type, levels = c("normal", "exponential")))
+  mutate(
+    err_type = factor(err_type, levels = c("normal", "exponential")),
+    method   = factor(method, levels = names(method_colors))
+  )
 
 y_range <- range(dat$metric_val)
 
@@ -36,7 +46,7 @@ plots <- dat |>
         "1" = "No Change Points",
         "2" = "Change Points (L = 4)"
       ))) +
-      scale_color_brewer(palette = "Set1") +
+      scale_color_manual(values = method_colors) +
       scale_y_continuous(limits = y_range) +
       labs(x = expression(paste("Correlation (", rho, ")")), y = "Power", color = "Method") +
       theme_minimal() +
@@ -53,3 +63,47 @@ iwalk(plots, \(plot, err_type) {
 cat(":::\n")
 ```
 
+## Z-Test vs. Bootstrap Methods
+
+We compare all four methods at $n = 200$, $p = 2$, across scenarios and error distributions.
+
+```{r}
+#| echo: false
+#| results: asis
+dat2 <- results |>
+  filter(p == 2, n == 200, method %in% c("z.test.gaussian", "z.test.kappa", "bs.multiplier", "bs.parametric"), metric == "power") |>
+  filter(scenario == 1 | (scenario == 2 & scenario_params == "{\\L\\:[4]}")) |>
+  mutate(
+    err_type = factor(err_type, levels = c("normal", "exponential")),
+    method   = factor(method, levels = names(method_colors))
+  )
+
+y_range2 <- range(dat2$metric_val)
+
+plots2 <- dat2 |>
+  group_by(err_type) |>
+  group_map(\(d, g) {
+    ggplot(d, aes(x = r, y = metric_val, color = method)) +
+      geom_hline(yintercept = 0.10, linetype = "dashed", color = "gray50") +
+      geom_line() +
+      geom_point() +
+      facet_wrap(~scenario, labeller = labeller(scenario = c(
+        "1" = "No Change Points",
+        "2" = "Change Points (L = 4)"
+      ))) +
+      scale_color_manual(values = method_colors) +
+      scale_y_continuous(limits = y_range2) +
+      labs(x = expression(paste("Correlation (", rho, ")")), y = "Power", color = "Method") +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+  }) |>
+  setNames(levels(dat2$err_type))
+
+cat("::: {.panel-tabset}\n\n")
+iwalk(plots2, \(plot, err_type) {
+  cat(paste0("## ", err_type, "\n\n"))
+  print(plot)
+  cat("\n\n")
+})
+cat(":::\n")
+```
