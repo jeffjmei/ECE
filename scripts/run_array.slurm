@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=1:00:00
+#SBATCH --time=2:00:00
 #SBATCH --mem=1G
 #SBATCH --output=logs/%A_%a.out
 #SBATCH --error=logs/%A_%a.err
@@ -18,5 +18,4 @@ module load R
 Rscript scripts/simulate.R \
 	--task_id "$SLURM_ARRAY_TASK_ID" \
 	--config scripts/param_grid.csv \
-	--n_sims 1000 \
 	--outdir data/

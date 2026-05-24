@@ -1,27 +1,36 @@
 library(tidyr)
+library(dplyr)
 
-common <- list(
-  # n        = c(200, 500, 1000),
-  n        = c(2000),
+base_params <- list(
+  n        = c(200, 500, 1000, 2000),
   p        = c(2),
-  # p        = c(3, 5, 10),
-  # cov_type = c("compound", "ar1"),
   cov_type = c("compound"),
-  r        = c(0),
-  # r        = c(0.2, 0.3, 0.4),
+  r        = c(0, 0.1, 0.2, 0.3, 0.4),
   amp      = c(1),
   err_type = c("normal", "exponential"),
-  method   = c("bs.multiplier", "bs.parametric", "z.test.gaussian", "z.test.kappa"),
-  # method   = c("bs.multiplier", "bs.parametric"),
   seed     = 1,
-  B        = 1000
+  n_sims   = 1000
 )
 
-scenario1 <- do.call(tidyr::crossing, c(list(scenario = 1), common))
+bs_methods <- c("bs.multiplier", "bs.parametric")
+zt_methods <- c("z.test.gaussian", "z.test.kappa")
 
-scenario2 <- do.call(tidyr::crossing, c(list(scenario = 2), common, list(L = 4)))
+make_scenario <- function(scenario_id, extra = list()) {
+  bs <- do.call(crossing, c(
+    list(scenario = scenario_id), base_params,
+    list(method = bs_methods, B = 1000), extra
+  ))
+  zt <- do.call(crossing, c(
+    list(scenario = scenario_id), base_params,
+    list(method = zt_methods), extra
+  ))
+  bind_rows(bs, zt)
+}
 
-config_grid <- dplyr::bind_rows(scenario1, scenario2)
+config_grid <- bind_rows(
+  make_scenario(1),
+  make_scenario(2, list(L = 4))
+)
 
 write.csv(config_grid, "scripts/param_grid.csv", row.names = FALSE)
 message("Wrote ", nrow(config_grid), " configurations to scripts/param_grid.csv")
