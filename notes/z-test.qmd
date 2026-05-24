@@ -2,18 +2,77 @@
 title: "Z-Test"
 ---
 
-Define $Z = (Z_1, ..., Z_6)^T = (T_1(X, X), T_2(X, X), T_1(Y, Y), T_2(Y, Y), T_1(X, Y), T_2(X, Y))^T$.
+::: callout-important
+## Theorem: Asymptotic Distribution of $\hat\rho$
 
-## Asymptotic Normality
+If $\max_j\{(\mu_{x,j} - \mu_{x,j+1})^2\} = o(n)$, $\max_j\{(\mu_{y,j} - \mu_{y,j+1})^2\} = o(n)$, and the errors have finite 4th moments, then the ECE correlation estimator satisfies
+$$
+\sqrt{n}(\hat\rho - \rho) \xrightarrow{d} N(0,\, v^2),
+$$
+where
+$$
+v^2 = \frac{1}{n}\left[
+(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y}\right)
++ \frac{\rho^2}{4}(\kappa_{40} + 2\kappa_{22} + \kappa_{04})
+- \rho(\kappa_{31} + \kappa_{13})
++ \frac{5}{2}(1-\rho^2)^2 + \kappa_{22}
+\right].
+$$
 
-**Proposition.** Under the model assumptions, if $\max_j\{(\mu_{x,j} - \mu_{x,j+1})^2\} = o(n)$ and $\max_j\{(\mu_{y,j} - \mu_{y,j+1})^2\} = o(n)$, and errors have finite 4th moments, then
+::: {.callout-note collapse="true"}
+## Remark: Asymptotic Variance Under Gaussian Errors
+
+Under the Gaussian assumption ($\kappa_{40} = \kappa_{04} = 3$, $\kappa_{31} = \kappa_{13} = 3\rho$, $\kappa_{22} = 1 + 2\rho^2$), $v^2$ reduces to
+$$
+v^2 = \frac{1}{n}(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y} + \frac{7}{2}(1-\rho^2)\right).
+$$
+:::
+
+::: {.callout-note collapse="true"}
+## Remark: Asymptotic Variance for $\rho = 0$ Under Gaussian Errors
+
+Under the Gaussian assumption $\kappa_{22} = 1 + 2\rho^2 = 1$, so
+$$
+v^2 = \frac{1}{n}\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} + \frac{7}{2}\right).
+$$
+:::
+
+::: {.callout-note collapse="true"}
+## Remark: Asymptotic Variance for $\rho = 0$
+
+Setting $\rho = 0$ in the general formula,
+$$
+v^2 = \frac{1}{n}\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} + \frac{5}{2} + \kappa_{22}\right).
+$$
+:::
+:::
+
+Define the lag-$k$ cross-product statistic $T_k(X, Y) = \sum_{i=1}^{n} (X_i - X_{i+k})(Y_i - Y_{i+k})$, and let
+$$
+Z = \begin{pmatrix} Z_1 \\ Z_2 \\ Z_3 \\ Z_4 \\ Z_5 \\ Z_6 \end{pmatrix} = \begin{pmatrix} T_1(X,X) \\ T_2(X,X) \\ T_1(Y,Y) \\ T_2(Y,Y) \\ T_1(X,Y) \\ T_2(X,Y) \end{pmatrix}.
+$$
+
+The proof applies the **Multivariate Delta Method** in three steps:
+
+**Step 1.** Show that
+$$
+\frac{1}{\sqrt{n}}(Z - \mu_Z) \xrightarrow{d} N(\mathbf{0}, \Sigma_Z), \quad \mu_Z = \mathbb{E}[Z].
+$$
+
+::: {.callout-important collapse="true"}
+## Proposition: Asymptotic Normality of $Z$
+
+Under the model assumptions, if $\max_j\{(\mu_{x,j} - \mu_{x,j+1})^2\} = o(n)$ and $\max_j\{(\mu_{y,j} - \mu_{y,j+1})^2\} = o(n)$, and errors have finite 4th moments, then
 $$
 \frac{1}{\sqrt{n}}(Z - \mathbb{E}[Z]) \xrightarrow{d} N(\mathbf{0}, \Sigma_Z).
 $$
 
+::: {.callout-note collapse="true"}
+## Proof: Asymptotic Normality of $Z$
+
 **Strategy.** Each component of $Z$ is of the form $T_k(X,Y)$ for some lag $k$ and choice of series. It therefore suffices to show $T_k(X,Y)$ is asymptotically normal, since any linear combination $a^T Z$ inherits this structure. The Cramér-Wold device then promotes univariate normality to joint normality of the full vector.
 
-**Proof.** By the Cramér-Wold device, it suffices to show every linear combination $a^T Z$ is asymptotically normal. We handle the general cross-product component $T_k(X,Y)$; the diagonal components $T_k(X,X)$ and $T_k(Y,Y)$ follow as special cases.
+By the Cramér-Wold device, it suffices to show every linear combination $a^T Z$ is asymptotically normal. We handle the general cross-product component $T_k(X,Y)$; the diagonal components $T_k(X,X)$ and $T_k(Y,Y)$ follow as special cases.
 
 Substituting $X_i = \theta_{x,i} + \varepsilon_{x,i}$ and $Y_i = \theta_{y,i} + \varepsilon_{y,i}$ and expanding gives four terms:
 
@@ -53,56 +112,62 @@ $$
 which is equivalent to $\max_i c_i^2 / \sum_i c_i^2 \to 0$. This is the Lindeberg condition for the weighted sum $\sum_i c_i \varepsilon_{y,i}$, which ensures it is asymptotically normal. Term (I) is therefore asymptotically normal, and together with Term (II), the sum is asymptotically normal.
 
 Since any linear combination $a^T Z$ is a sum of terms of the form (I) and (II) across components and lags, the same argument applies in both cases, and the Cramér-Wold device gives joint normality of $Z$. $\square$
+:::
 
-## Covariance Matrix of $Z$
+:::
 
-Let $W_x$, $W_y$, $W_{xy}$ denote the squared-jump sums
+**Step 2.** Compute $\Sigma_Z = \mathrm{Cov}(Z)$.
+
+::: {.callout-note collapse="true"}
+## $\Sigma_Z$ Entries
+
+Let
 $$
-W_x = \sum_j (\mu_{x,j} - \mu_{x,j+1})^2, \quad
-W_y = \sum_j (\mu_{y,j} - \mu_{y,j+1})^2, \quad
-W_{xy} = \sum_j (\mu_{x,j} - \mu_{x,j+1})(\mu_{y,j} - \mu_{y,j+1}),
+\omega_x^2 = \frac{T_1(\theta_x, \theta_x)}{n}, \qquad
+\omega_y^2 = \frac{T_1(\theta_y, \theta_y)}{n}, \qquad
+\omega_{xy} = \frac{T_1(\theta_x, \theta_y)}{n},
 $$
-and let $\kappa_{rs} = \kappa_{rs}(\varepsilon_x, \varepsilon_y)$ be the joint cumulants of the error distribution.
-
-**Proposition.** The covariance matrix $\Sigma_Z = \mathrm{Cov}(Z)$ has the following entries (upper triangle; the matrix is symmetric).
+and let $\kappa_{rs} = \kappa_{rs}(\varepsilon_x, \varepsilon_y)$ be the joint cumulants of the error distribution. The covariance matrix $\Sigma_Z = \mathrm{Cov}(Z)$ has the following entries (upper triangle; the matrix is symmetric).
 
 | Entry $(i,j)$ | $[\Sigma_Z]_{ij}$ |
 |---|---|
-| $(T_1(X,X),\, T_1(X,X))$ | $4n\kappa_{40}\sigma_x^4 + 8\sigma_x^2 W_x$ |
-| $(T_1(X,X),\, T_2(X,X))$ | $4n(\kappa_{40}-1)\sigma_x^4 + 8\sigma_x^2 W_x$ |
-| $(T_2(X,X),\, T_2(X,X))$ | $4n\kappa_{40}\sigma_x^4 + 16\sigma_x^2 W_x$ |
-| $(T_1(Y,Y),\, T_1(Y,Y))$ | $4n\kappa_{04}\sigma_y^4 + 8\sigma_y^2 W_y$ |
-| $(T_1(Y,Y),\, T_2(Y,Y))$ | $4n(\kappa_{04}-1)\sigma_y^4 + 8\sigma_y^2 W_y$ |
-| $(T_2(Y,Y),\, T_2(Y,Y))$ | $4n\kappa_{04}\sigma_y^4 + 16\sigma_y^2 W_y$ |
-| $(T_1(X,X),\, T_1(Y,Y))$ | $4n\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 4n\sigma_{xy}^2 + 8\sigma_{xy} W_{xy}$ |
-| $(T_1(X,X),\, T_2(Y,Y))$ | $4n\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 8\sigma_{xy} W_{xy}$ |
-| $(T_2(X,X),\, T_1(Y,Y))$ | $4n\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 8\sigma_{xy} W_{xy}$ |
-| $(T_2(X,X),\, T_2(Y,Y))$ | $4n\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 4n\sigma_{xy}^2 + 16\sigma_{xy} W_{xy}$ |
-| $(T_1(X,X),\, T_1(X,Y))$ | $4n\sigma_x^3\sigma_y\kappa_{31} + 4\sigma_{xy} W_x + 4\sigma_x^2 W_{xy}$ |
-| $(T_1(X,X),\, T_2(X,Y))$ | $4n\sigma_x^3\sigma_y\kappa_{31} - 4n\sigma_x^2\sigma_{xy} + 4\sigma_{xy} W_x + 4\sigma_x^2 W_{xy}$ |
-| $(T_2(X,X),\, T_1(X,Y))$ | $4n\sigma_x^3\sigma_y\kappa_{31} - 4n\sigma_x^2\sigma_{xy} + 4\sigma_{xy} W_x + 4\sigma_x^2 W_{xy}$ |
-| $(T_2(X,X),\, T_2(X,Y))$ | $4n\sigma_x^3\sigma_y\kappa_{31} + 8\sigma_{xy} W_x + 8\sigma_x^2 W_{xy}$ |
-| $(T_1(Y,Y),\, T_1(X,Y))$ | $4n\sigma_y^3\sigma_x\kappa_{13} + 4\sigma_{xy} W_y + 4\sigma_y^2 W_{xy}$ |
-| $(T_1(Y,Y),\, T_2(X,Y))$ | $4n\sigma_y^3\sigma_x\kappa_{13} - 4n\sigma_y^2\sigma_{xy} + 4\sigma_{xy} W_y + 4\sigma_y^2 W_{xy}$ |
-| $(T_2(Y,Y),\, T_1(X,Y))$ | $4n\sigma_y^3\sigma_x\kappa_{13} - 4n\sigma_y^2\sigma_{xy} + 4\sigma_{xy} W_y + 4\sigma_y^2 W_{xy}$ |
-| $(T_2(Y,Y),\, T_2(X,Y))$ | $4n\sigma_y^3\sigma_x\kappa_{13} + 8\sigma_{xy} W_y + 8\sigma_y^2 W_{xy}$ |
-| $(T_1(X,Y),\, T_1(X,Y))$ | $2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 2n\sigma_{xy}^2 + 2\sigma_y^2 W_x + 2\sigma_x^2 W_y + 4\sigma_{xy} W_{xy}$ |
-| $(T_1(X,Y),\, T_2(X,Y))$ | $4n(\sigma_x^2\sigma_y^2\kappa_{22} - \sigma_{xy}^2) + 2\sigma_y^2 W_x + 2\sigma_x^2 W_y + 4\sigma_{xy} W_{xy}$ |
-| $(T_2(X,Y),\, T_2(X,Y))$ | $2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 2n\sigma_{xy}^2 + 4\sigma_y^2 W_x + 4\sigma_x^2 W_y + 8\sigma_{xy} W_{xy}$ |
+| $(T_1(X,X),\, T_1(X,X))$ | $4n\kappa_{40}\sigma_x^4 + 8n\sigma_x^2\omega_x^2$ |
+| $(T_1(X,X),\, T_2(X,X))$ | $4n(\kappa_{40}-1)\sigma_x^4 + 8n\sigma_x^2\omega_x^2$ |
+| $(T_2(X,X),\, T_2(X,X))$ | $4n\kappa_{40}\sigma_x^4 + 16n\sigma_x^2\omega_x^2$ |
+| $(T_1(Y,Y),\, T_1(Y,Y))$ | $4n\kappa_{04}\sigma_y^4 + 8n\sigma_y^2\omega_y^2$ |
+| $(T_1(Y,Y),\, T_2(Y,Y))$ | $4n(\kappa_{04}-1)\sigma_y^4 + 8n\sigma_y^2\omega_y^2$ |
+| $(T_2(Y,Y),\, T_2(Y,Y))$ | $4n\kappa_{04}\sigma_y^4 + 16n\sigma_y^2\omega_y^2$ |
+| $(T_1(X,X),\, T_1(Y,Y))$ | $4n\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 4n\sigma_{xy}^2 + 8n\sigma_{xy}\omega_{xy}$ |
+| $(T_1(X,X),\, T_2(Y,Y))$ | $4n\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 8n\sigma_{xy}\omega_{xy}$ |
+| $(T_2(X,X),\, T_1(Y,Y))$ | $4n\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 8n\sigma_{xy}\omega_{xy}$ |
+| $(T_2(X,X),\, T_2(Y,Y))$ | $4n\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 4n\sigma_{xy}^2 + 16n\sigma_{xy}\omega_{xy}$ |
+| $(T_1(X,X),\, T_1(X,Y))$ | $4n\sigma_x^3\sigma_y\kappa_{31} + 4n\sigma_{xy}\omega_x^2 + 4n\sigma_x^2\omega_{xy}$ |
+| $(T_1(X,X),\, T_2(X,Y))$ | $4n\sigma_x^3\sigma_y\kappa_{31} - 4n\sigma_x^2\sigma_{xy} + 4n\sigma_{xy}\omega_x^2 + 4n\sigma_x^2\omega_{xy}$ |
+| $(T_2(X,X),\, T_1(X,Y))$ | $4n\sigma_x^3\sigma_y\kappa_{31} - 4n\sigma_x^2\sigma_{xy} + 4n\sigma_{xy}\omega_x^2 + 4n\sigma_x^2\omega_{xy}$ |
+| $(T_2(X,X),\, T_2(X,Y))$ | $4n\sigma_x^3\sigma_y\kappa_{31} + 8n\sigma_{xy}\omega_x^2 + 8n\sigma_x^2\omega_{xy}$ |
+| $(T_1(Y,Y),\, T_1(X,Y))$ | $4n\sigma_y^3\sigma_x\kappa_{13} + 4n\sigma_{xy}\omega_y^2 + 4n\sigma_y^2\omega_{xy}$ |
+| $(T_1(Y,Y),\, T_2(X,Y))$ | $4n\sigma_y^3\sigma_x\kappa_{13} - 4n\sigma_y^2\sigma_{xy} + 4n\sigma_{xy}\omega_y^2 + 4n\sigma_y^2\omega_{xy}$ |
+| $(T_2(Y,Y),\, T_1(X,Y))$ | $4n\sigma_y^3\sigma_x\kappa_{13} - 4n\sigma_y^2\sigma_{xy} + 4n\sigma_{xy}\omega_y^2 + 4n\sigma_y^2\omega_{xy}$ |
+| $(T_2(Y,Y),\, T_2(X,Y))$ | $4n\sigma_y^3\sigma_x\kappa_{13} + 8n\sigma_{xy}\omega_y^2 + 8n\sigma_y^2\omega_{xy}$ |
+| $(T_1(X,Y),\, T_1(X,Y))$ | $2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 2n\sigma_{xy}^2 + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2 + 4n\sigma_{xy}\omega_{xy}$ |
+| $(T_1(X,Y),\, T_2(X,Y))$ | $4n(\sigma_x^2\sigma_y^2\kappa_{22} - \sigma_{xy}^2) + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2 + 4n\sigma_{xy}\omega_{xy}$ |
+| $(T_2(X,Y),\, T_2(X,Y))$ | $2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 2n\sigma_{xy}^2 + 4n\sigma_y^2\omega_x^2 + 4n\sigma_x^2\omega_y^2 + 8n\sigma_{xy}\omega_{xy}$ |
 
-## Asymptotic Variance of $\hat\rho$
+:::
 
-The ECE correlation estimator is $\hat\rho = g(Z)$ where
+**Step 3.** Define
 $$
-g(Z) = \frac{2Z_5 - Z_6}{\sqrt{(2Z_1 - Z_2)(2Z_3 - Z_4)}}.
+g(Z) = \frac{2Z_5 - Z_6}{\sqrt{(2Z_1 - Z_2)(2Z_3 - Z_4)}} = \hat\rho.
+$$
+Since $g(\mu_Z) = \rho$, the multivariate delta method gives
+$$
+\sqrt{n}(\hat\rho - \rho) \xrightarrow{d} N(0,\, v^2), \quad v^2 = \nabla g(\mu_Z)^\top \Sigma_Z\, \nabla g(\mu_Z).
 $$
 
-By the multivariate delta method, $\sqrt{n}(\hat\rho - \rho) \xrightarrow{d} N(0, V)$ where
-$$
-V = \nabla g(\boldsymbol{\mu}_Z)^\top \Sigma_Z\, \nabla g(\boldsymbol{\mu}_Z).
-$$
+::: {.callout-note collapse="true"}
+## Gradient: $\nabla g(\mu_Z)$
 
-The gradient evaluated at $\boldsymbol{\mu}_Z$ is
+The gradient of $g$ evaluated at $\boldsymbol{\mu}_Z$ is
 
 $$
 \nabla g(\boldsymbol{\mu}_Z) =
@@ -121,37 +186,18 @@ $$
 $$
 
 using $2\mu_{Z_1} - \mu_{Z_2} = 2n\sigma_x^2$, $2\mu_{Z_3} - \mu_{Z_4} = 2n\sigma_y^2$, $2\mu_{Z_5} - \mu_{Z_6} = 2n\sigma_{xy}$, and $g(\boldsymbol{\mu}_Z) = \rho$.
+:::
 
-**Proposition.** Define
-$$
-\omega_x = \sqrt{\frac{W_x}{n}}, \qquad
-\omega_y = \sqrt{\frac{W_y}{n}}, \qquad
-\omega_{xy} = \frac{W_{xy}}{n}.
-$$
-Then
-$$
-V = \frac{1}{n}\left[
-(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y}\right)
-+ \frac{\rho^2}{4}(\kappa_{40} + 2\kappa_{22} + \kappa_{04})
-- \rho(\kappa_{31} + \kappa_{13})
-+ \frac{5}{2}(1-\rho^2)^2 + \kappa_{22}
-\right].
-$$
+## Diagnostics
 
-Under the Gaussian assumption ($\kappa_{40} = \kappa_{04} = 3$, $\kappa_{31} = \kappa_{13} = 3\rho$, $\kappa_{22} = 1 + 2\rho^2$), this reduces to
-
-$$
-V = \frac{1}{n}(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y} + \frac{7}{2}(1-\rho^2)\right).
-$$
-
-When additionally $\rho = 0$, $V = \frac{1}{n}\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} + \frac{7}{2}\right)$.
+To verify the formulas, we simulate scenario 2 ($n = 1000$, $L = 4$, $r = 0.3$) under two error distributions and compare the empirical covariance matrix of $Z$ to the theoretical $\Sigma_Z$.
 
 ::: {.callout-note collapse="true"}
 ## Scale invariance
 
-$V$ is invariant under $X \to aX$, $Y \to bY$, consistent with $\widehat\rho(aX, bY) = \widehat\rho(X, Y)$. Each piece transforms as follows.
+$v^2$ is invariant under $X \to aX$, $Y \to bY$, consistent with $\widehat\rho(aX, bY) = \widehat\rho(X, Y)$. Each piece transforms as follows.
 
-**$\omega$ terms.** Scaling $X$ by $a$ scales $h_x \to ah_x$, so $W_x \to a^2 W_x$ and $\omega_x \to a\omega_x$. Similarly $\omega_y \to b\omega_y$ and $\omega_{xy} \to ab\,\omega_{xy}$. The ratios
+**$\omega$ terms.** Scaling $X$ by $a$ scales $\theta_x \to a\theta_x$, so $\omega_x^2 \to a^2\omega_x^2$ and $\omega_x \to a\omega_x$. Similarly $\omega_y \to b\omega_y$ and $\omega_{xy} \to ab\,\omega_{xy}$. The ratios
 $$
 \frac{\omega_x^2}{\sigma_x^2} \to \frac{a^2\omega_x^2}{a^2\sigma_x^2} = \frac{\omega_x^2}{\sigma_x^2}, \qquad
 \frac{\rho\,\omega_{xy}}{\sigma_x\sigma_y} \to \frac{\rho\cdot ab\,\omega_{xy}}{a\sigma_x\cdot b\sigma_y} = \frac{\rho\,\omega_{xy}}{\sigma_x\sigma_y}
@@ -260,10 +306,6 @@ data.frame(
 )
 ```
 :::
-
-## Diagnostics
-
-To verify the formulas, we simulate scenario 2 ($n = 1000$, $L = 4$, $r = 0.3$) under two error distributions and compare the empirical covariance matrix of $Z$ to the theoretical $\Sigma_Z$.
 
 For each error type, we run 500 outer replicates. In each replicate, we draw 10 independent datasets, compute $Z$ for each, and take their sample covariance as one estimate of $\Sigma_Z$. Each panel in the grid below shows the distribution of residuals (estimated minus theoretical) for one entry of $\Sigma_Z$ across the 500 replicates. The red line marks zero (no bias) and the orange line marks the sample mean. The p-value is from a one-sample t-test of whether the mean residual is zero.
 
