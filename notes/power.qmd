@@ -125,32 +125,48 @@ This is zero under the Gaussian assumption and measures the excess variance due 
 
 ## Cumulants by Distribution
 
-The magnitude of $V - V_G$ depends on how far the joint cumulants depart from their Gaussian values. The table below reports $(\kappa_{40}, \kappa_{31}, \kappa_{22}, \kappa_{13}, \kappa_{04})$ and $n(V - V_G)$ at $\rho = 0.3$ for each supported error distribution, estimated via $10^7$ samples.
+The magnitude of $V - V_G$ depends on how far the joint cumulants depart from their Gaussian values. The tables below report $(\kappa_{40}, \kappa_{31}, \kappa_{22}, \kappa_{13}, \kappa_{04})$ and $n(V - V_G)$ for each supported error distribution, estimated via $10^7$ samples.
+
+**$\rho = 0.3$**
 
 ```{r}
 #| message: false
 #| echo: false
+#| cache: true
 devtools::load_all("~/Documents/Research/Code/ECE")
 
 err_types <- c("normal", "exponential", "t", "lognormal")
-base <- scenario(1, n = 100, r = 0.3, err_type = "normal")
-rho <- 0.3
 
-kappa_table <- lapply(err_types, \(et) {
-  p <- modifyList(base, list(err_type = et))
-  p$kappa <- kappa_from_params(p)
-  k <- p$kappa
-  diff <- rho^2/4 * (k$k40 + 2*k$k22 + k$k04) - rho*(k$k31 + k$k13) +
-          k$k22 - (1 - rho^2)^2
-  data.frame(
-    Distribution = et,
-    k40 = k$k40, k31 = k$k31, k22 = k$k22, k13 = k$k13, k04 = k$k04,
-    diff = diff
-  )
-})
-kappa_table <- do.call(rbind, kappa_table)
+make_kappa_table <- function(rho) {
+  base <- scenario(1, n = 100, r = rho, err_type = "normal")
+  rows <- lapply(err_types, \(et) {
+    p <- modifyList(base, list(err_type = et))
+    p$kappa <- kappa_from_params(p)
+    k <- p$kappa
+    diff <- rho^2/4 * (k$k40 + 2*k$k22 + k$k04) - rho*(k$k31 + k$k13) +
+            k$k22 - (1 - rho^2)^2
+    data.frame(
+      Distribution = et,
+      k40 = k$k40, k31 = k$k31, k22 = k$k22, k13 = k$k13, k04 = k$k04,
+      diff = diff
+    )
+  })
+  do.call(rbind, rows)
+}
 
-knitr::kable(kappa_table, digits = 3,
+knitr::kable(make_kappa_table(0.3), digits = 3,
+  col.names = c("Distribution", "$\\kappa_{40}$", "$\\kappa_{31}$",
+                "$\\kappa_{22}$", "$\\kappa_{13}$", "$\\kappa_{04}$",
+                "$n(V - V_G)$"))
+```
+
+**$\rho = 0$**
+
+```{r}
+#| message: false
+#| echo: false
+#| cache: true
+knitr::kable(make_kappa_table(0), digits = 3,
   col.names = c("Distribution", "$\\kappa_{40}$", "$\\kappa_{31}$",
                 "$\\kappa_{22}$", "$\\kappa_{13}$", "$\\kappa_{04}$",
                 "$n(V - V_G)$"))
