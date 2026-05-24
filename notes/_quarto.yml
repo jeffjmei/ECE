@@ -16,6 +16,7 @@ book:
       chapters:
         - z-test.qmd
         - diagonal-test.qmd
+        - independence-test.qmd
     - part: "Numerical Studies"
       chapters:
         - simulation.qmd

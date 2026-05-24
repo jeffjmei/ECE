@@ -1,0 +1,29 @@
+---
+title: "Independence Test"
+---
+
+# Independence Test
+
+Let $X \sim N(0, 1)$ and $Y = X^2$. Then, $Cov(X,Y) = E(X^3) - E(X) E(X^2) = 0$. That is, $X$ and $Y$ have zero correlation, but they are clearly no independent.
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+params <- scenario(2, L = 4)
+
+pval <- map_dbl(1:10000, ~{
+  # Generate Uncorrelated, but Dependent Data
+  ex <- rnorm(params$n)
+  ey <- (ex^2 - 1) / sqrt(2)
+  X <- params$h[,1] + ex
+  Y <- params$h[,2] + ey
+  ece.test(cbind(X, Y))$p.value
+})
+
+hist(pval, breaks=10, freq=FALSE, main="Distribution of p-Values for Uncorrelated Data")
+```
+
+
+
