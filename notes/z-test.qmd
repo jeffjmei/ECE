@@ -7,15 +7,15 @@ title: "Z-Test"
 
 If $\max_j\{(\mu_{x,j} - \mu_{x,j+1})^2\} = o(n)$, $\max_j\{(\mu_{y,j} - \mu_{y,j+1})^2\} = o(n)$, and the errors have finite 4th moments, then the ECE correlation estimator satisfies
 $$
-\sqrt{n}(\hat\rho - \rho) \xrightarrow{d} N(0,\, v^2),
+\sqrt{n}(\hat\rho - \rho) \xrightarrow{d} N(0,\, v^2).
 $$
-where
+Since $\hat\rho$ is scale-invariant, we may take $\sigma_x = \sigma_y = 1$ without loss of generality, giving
 $$
 v^2 = \frac{1}{n}\left[
-(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y}\right)
+(1-\rho^2)\!\left(\omega_x^2 + \omega_y^2 - 2\rho\,\omega_{xy}\right)
 + \frac{\rho^2}{4}(\kappa_{40} + 2\kappa_{22} + \kappa_{04})
 - \rho(\kappa_{31} + \kappa_{13})
-+ \frac{5}{2}(1-\rho^2)^2 + \kappa_{22}
++ \kappa_{22} + \frac{5}{2}(1-\rho^2)^2
 \right].
 $$
 
@@ -24,16 +24,16 @@ $$
 
 Under the Gaussian assumption ($\kappa_{40} = \kappa_{04} = 3$, $\kappa_{31} = \kappa_{13} = 3\rho$, $\kappa_{22} = 1 + 2\rho^2$), $v^2$ reduces to
 $$
-v^2 = \frac{1}{n}(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y} + \frac{7}{2}(1-\rho^2)\right).
+v^2 = \frac{1}{n}(1-\rho^2)\!\left(\omega_x^2 + \omega_y^2 - 2\rho\,\omega_{xy} + \frac{7}{2}(1-\rho^2)\right).
 $$
 :::
 
 ::: {.callout-note collapse="true"}
 ## Remark: Asymptotic Variance for $\rho = 0$ Under Gaussian Errors
 
-Under the Gaussian assumption $\kappa_{22} = 1 + 2\rho^2 = 1$, so
+Setting $\rho = 0$ under the Gaussian assumption ($\kappa_{22} = 1$),
 $$
-v^2 = \frac{1}{n}\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} + \frac{7}{2}\right).
+v^2 = \frac{1}{n}\!\left(\omega_x^2 + \omega_y^2 + \frac{7}{2}\right).
 $$
 :::
 
@@ -42,7 +42,7 @@ $$
 
 Setting $\rho = 0$ in the general formula,
 $$
-v^2 = \frac{1}{n}\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} + \frac{5}{2} + \kappa_{22}\right).
+v^2 = \frac{1}{n}\!\left(\omega_x^2 + \omega_y^2 + \kappa_{22} + \frac{5}{2}\right).
 $$
 :::
 :::
@@ -190,122 +190,91 @@ using $2\mu_{Z_1} - \mu_{Z_2} = 2n\sigma_x^2$, $2\mu_{Z_3} - \mu_{Z_4} = 2n\sigm
 
 ## Diagnostics
 
-To verify the formulas, we simulate scenario 2 ($n = 1000$, $L = 4$, $r = 0.3$) under two error distributions and compare the empirical covariance matrix of $Z$ to the theoretical $\Sigma_Z$.
 
 ::: {.callout-note collapse="true"}
-## Remark: $v^2$ is scale-invariant
+## Test: $Var(\hat{\rho})$ is Scale-Invariant
+We can define the asymptotic variance of $\hat{\rho}$ as
+$$
+v^2 = \frac{1}{n}\left[
+(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y}\right)
++ \frac{\rho^2}{4}(\kappa_{40} + 2\kappa_{22} + \kappa_{04})
+- \rho(\kappa_{31} + \kappa_{13})
++ \kappa_{22} + \frac{5}{2}(1-\rho^2)^2
+\right].
+$$
 
-$v^2$ is invariant under $X \to aX$, $Y \to bY$, consistent with $\widehat\rho(aX, bY) = \widehat\rho(X, Y)$. Each piece transforms as follows.
+Since $\widehat\rho(aX, bY) = \widehat\rho(X, Y)$ for any $a, b > 0$, the asymptotic variance $v^2$ must be invariant under $X \to aX$, $Y \to bY$. We verify this term by term.
 
-**$\omega$ terms.** Scaling $X$ by $a$ scales $\theta_x \to a\theta_x$, so $\omega_x^2 \to a^2\omega_x^2$ and $\omega_x \to a\omega_x$. Similarly $\omega_y \to b\omega_y$ and $\omega_{xy} \to ab\,\omega_{xy}$. The ratios
+**$\omega$ terms.** Scaling $X$ by $a$ sends $\theta_x \to a\theta_x$, so $\omega_x^2 \to a^2\omega_x^2$ and $\sigma_x \to a\sigma_x$. Similarly $\omega_y \to b\omega_y$, $\omega_{xy} \to ab\,\omega_{xy}$. The ratios
 $$
 \frac{\omega_x^2}{\sigma_x^2} \to \frac{a^2\omega_x^2}{a^2\sigma_x^2} = \frac{\omega_x^2}{\sigma_x^2}, \qquad
 \frac{\rho\,\omega_{xy}}{\sigma_x\sigma_y} \to \frac{\rho\cdot ab\,\omega_{xy}}{a\sigma_x\cdot b\sigma_y} = \frac{\rho\,\omega_{xy}}{\sigma_x\sigma_y}
 $$
-are therefore unchanged.
+are unchanged.
 
-**$\kappa$ terms.** The cumulants $\kappa_{rs}$ are moments of the standardized errors $\varepsilon_x/\sigma_x$ and $\varepsilon_y/\sigma_y$. Since scaling $X$ by $a$ scales both $\varepsilon_x$ and $\sigma_x$ by $a$, the ratio is unchanged, and all $\kappa_{rs}$ are invariant.
+**$\kappa$ terms.** The $\kappa_{rs}$ are cumulants of the standardized errors $\varepsilon_x/\sigma_x$ and $\varepsilon_y/\sigma_y$. Scaling $X$ by $a$ scales both $\varepsilon_x$ and $\sigma_x$ by $a$, leaving the ratio unchanged, so all $\kappa_{rs}$ are invariant. **$\rho$** is invariant by definition.
 
-**$\rho$.** Invariant by definition of correlation.
-:::
+Therefore $v^2$ is scale-invariant, and we may study $X/\sigma_x$, $Y/\sigma_y$ in place of $X$, $Y$ without loss of generality. Setting $\sigma_x = \sigma_y = 1$:
 
-::: {.callout-note collapse="true"}
-## Test: $\nabla g(\mu_Z)^\top \Sigma_Z \nabla g(\mu_Z)$ matches closed-form $v^2$
-
-We verify the proposition by checking that the closed-form $V$ equals $\nabla g(\boldsymbol{\mu}_Z)^\top \Sigma_Z \nabla g(\boldsymbol{\mu}_Z)$ computed explicitly as a matrix product, mirroring the structure of `ece.cor.se` but with oracle inputs.
+$$
+v^2 = \frac{1}{n}\left[
+(1-\rho^2)\!\left(\omega_x^2 + \omega_y^2 - 2\rho\,\omega_{xy}\right)
++ \frac{\rho^2}{4}(\kappa_{40} + 2\kappa_{22} + \kappa_{04})
+- \rho(\kappa_{31} + \kappa_{13})
++ \kappa_{22} + \frac{5}{2}(1-\rho^2)^2
+\right].
+$$
 
 ```{r}
 #| message: false
 devtools::load_all("~/Documents/Research/Code/ECE")
-
-V_formula <- function(params) {
-  n   <- params$n
-  sx  <- sqrt(params$S[1, 1])
-  sy  <- sqrt(params$S[2, 2])
-  sxy <- params$S[1, 2]
-  rho <- sxy / (sx * sy)
-  hx  <- params$h[, 1]
-  hy  <- params$h[, 2]
-
-  wx  <- lag_diff(hx) / n
-  wy  <- lag_diff(hy) / n
-  wxy <- lag_diff(hx, hy) / n
-  k   <- params$kappa
-
-  (1 / n) * (
-    (1 - rho^2) * (wx / sx^2 + wy / sy^2 - 2 * rho * wxy / (sx * sy)) +
-    rho^2 / 4 * (k$k40 + 2 * k$k22 + k$k04) - rho * (k$k31 + k$k13) +
-    5 / 2 * (1 - rho^2)^2 + k$k22
+library(testthat)
+params <- scenario(2, r = 0.5, L = 4)
+params_scale <- params
+a <- 3; b <- 5
+params_scale$S[1, 1] <- a^2 * params$S[1, 1]
+params_scale$S[2, 2] <- b^2 * params$S[2, 2]
+params_scale$S[1, 2] <- params_scale$S[2, 1] <- a * b * params$S[1, 2]
+params_scale$h[, 1] <- a * params$h[, 1]
+params_scale$h[, 2] <- b * params$h[, 2]
+test_that("scale invariance holds", {
+  expect_equal(
+    ece.cor.se.formula(params), 
+    ece.cor.se.formula(params_scale)
   )
-}
+})
+```
 
-V_matrix <- function(params) {
-  n   <- params$n
-  sx  <- sqrt(params$S[1, 1])
-  sy  <- sqrt(params$S[2, 2])
-  sxy <- params$S[1, 2]
-  rho <- sxy / (sx * sy)
-  hx  <- params$h[, 1]
-  hy  <- params$h[, 2]
+:::
 
-  k   <- params$kappa
-  k40 <- k$k40; k04 <- k$k04; k31 <- k$k31; k13 <- k$k13; k22 <- k$k22
+::: {.callout-note collapse="true"}
+## Test: $\Sigma_Z$ corresponds to closed-form expression
 
-  # Theoretical Sigma_Z / (4n^2), using non-_est functions (take full hx/hy)
-  # to avoid the normalization ambiguity in the _est counterparts
-  S_u_upper <- (1 / (4 * n^2)) * c(
-    var_Tk(n, sx, hx, k40, k = 1),
-    cov_Th_Tk(n, sx, hx, k40),              var_Tk(n, sx, hx, k40, k = 2),
-    cov_Tk_Rk(n, sx, sy, sxy, hx, hy, k22, k = 1),
-    cov_Th_Rk(n, sx, sy, sxy, hx, hy, k22), var_Tk(n, sy, hy, k04, k = 1),
-    cov_Th_Rk(n, sx, sy, sxy, hx, hy, k22),
-    cov_Tk_Rk(n, sx, sy, sxy, hx, hy, k22, k = 2), cov_Th_Tk(n, sy, hy, k04),
-    var_Tk(n, sy, hy, k04, k = 2),
-    cov_Tk_Qk(n, sx, sy, sxy, hx, hy, k31, k = 1),
-    cov_Th_Qk(n, sx, sy, sxy, hx, hy, k31),
-    cov_Tk_Qk(n, sy, sx, sxy, hy, hx, k13, k = 1),
-    cov_Th_Qk(n, sy, sx, sxy, hy, hx, k13),  var_Qh(n, sx, sy, sxy, hx, hy, k22, k = 1),
-    cov_Th_Qk(n, sx, sy, sxy, hx, hy, k31),
-    cov_Tk_Qk(n, sx, sy, sxy, hx, hy, k31, k = 2),
-    cov_Th_Qk(n, sy, sx, sxy, hy, hx, k13),
-    cov_Tk_Qk(n, sy, sx, sxy, hy, hx, k13, k = 2),
-    cov_Qh_Qk(n, sx, sy, sxy, hx, hy, k22),  var_Qh(n, sx, sy, sxy, hx, hy, k22, k = 2)
+We verify that $v^2 = \nabla g(\mu_Z)^T \Sigma_Z \nabla g(\mu_Z)$ by checking that `ece.cor.se.formula` and `ece.cor.se.matrix` return the same value.
+
+```{r}
+#| message: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(testthat)
+params <- scenario(2, r = 0.5, L = 4)
+test_that("formula matches matrix for scenario 2", {
+  expect_equal(
+    ece.cor.se.formula(params), 
+    ece.cor.se.matrix(params)
   )
-  S_u <- matrix(0, 6, 6)
-  S_u[upper.tri(S_u, diag = TRUE)] <- S_u_upper
-  S_u <- S_u + t(S_u) - diag(diag(S_u))
+})
 
-  # Gradient at mu_Z (1/(2n) factor absorbed into S_u scaling)
-  dg <- c(-rho / sx^2, 0.5 * rho / sx^2,
-          -rho / sy^2, 0.5 * rho / sy^2,
-           2 / (sx * sy), -1 / (sx * sy))
-
-  as.numeric(t(dg) %*% S_u %*% dg)
-}
-
-# scenario() fixes S = diag(1,1); patch manually to test sigma != 1
-set_sigma <- function(params, sx, sy) {
-  rho <- params$S[1, 2] / (sqrt(params$S[1, 1]) * sqrt(params$S[2, 2]))
-  params$S <- matrix(c(sx^2, rho * sx * sy, rho * sx * sy, sy^2), 2, 2)
-  params
-}
-
-base <- scenario(2, n = 1000, L = 4, r = 0.3, err_type = "normal")
-scenarios <- list(
-  set_sigma(base, sx = 1, sy = 1),
-  set_sigma(base, sx = 2, sy = 1),
-  set_sigma(base, sx = 1, sy = 3),
-  set_sigma(base, sx = 2, sy = 2)
-)
-
-data.frame(
-  sx        = c(1, 2, 1, 2),
-  sy        = c(1, 1, 3, 2),
-  V_formula = sapply(scenarios, V_formula),
-  V_matrix  = sapply(scenarios, V_matrix)
-)
+params <- scenario(1, r = 0)
+test_that("formula matches matrix for scenario 1, rho=0", {
+  expect_equal(
+    ece.cor.se.formula(params), 
+    ece.cor.se.matrix(params)
+  )
+})
 ```
 :::
+
+To verify the formulas, we simulate scenario 2 ($n = 1000$, $L = 4$, $r = 0.3$) under two error distributions and compare the empirical covariance matrix of $Z$ to the theoretical $\Sigma_Z$.
 
 For each error type, we run 500 outer replicates. In each replicate, we draw 10 independent datasets, compute $Z$ for each, and take their sample covariance as one estimate of $\Sigma_Z$. Each panel in the grid below shows the distribution of residuals (estimated minus theoretical) for one entry of $\Sigma_Z$ across the 500 replicates. The red line marks zero (no bias) and the orange line marks the sample mean. The p-value is from a one-sample t-test of whether the mean residual is zero.
 
@@ -448,3 +417,103 @@ iwalk(diag_plots, \(p, et) {
 })
 cat(":::\n")
 ```
+
+
+```{R}
+#| echo: false
+#| cache: true
+set.seed(1)
+pval_gaussian <- map_dbl(1:10000, ~{
+  X <- generate_data(params)
+  test.diag(X, method = "z.test.gaussian")$p.value
+})
+```
+
+```{R}
+#| echo: false
+#| cache: true
+set.seed(1)
+pval_kappa <- map_dbl(1:10000, ~{
+  X <- generate_data(params)
+  test.diag(X, method = "z.test.kappa")$p.value
+})
+```
+
+```{R}
+#| echo: false
+tibble(
+  gaussian = pval_gaussian,
+  kappa    = pval_kappa
+) |>
+  pivot_longer(everything(), names_to = "method", values_to = "p") |>
+  mutate(method = factor(method,
+    levels = c("gaussian", "kappa"),
+    labels = c("Z-Test (Gaussian)", "Z-Test (Kappa)")
+  )) |>
+  ggplot(aes(x = p)) +
+  geom_histogram(aes(y = after_stat(density)),
+    breaks = seq(0, 1, by = 0.05), fill = "steelblue", color = "white", alpha = 0.8
+  ) +
+  geom_hline(yintercept = 1, color = "firebrick", linetype = "dashed") +
+  facet_wrap(~method) +
+  labs(x = "p-value", y = "density",
+       title = "P-value distributions under H₀: ρ = 0 (B = 10,000)") +
+  theme_minimal()
+```
+
+::: {.callout-note collapse="true"}
+## Test: Standard Error Converges (Exponential Errors, $\rho = 0.95$)
+
+For strong correlation under non-Gaussian errors, the estimated SE shows noticeable bias at moderate $n$. We verify it converges to the theoretical value as $n$ grows.
+
+```{r}
+#| cache: true
+#| echo: false
+set.seed(42)
+params_se <- scenario(1, n = 1000, r = 0.95, err_type = "exponential")
+se_dist <- map_dbl(1:10000, ~ {
+  X <- generate_data(params_se)
+  ece.cor.se(X)
+})
+```
+
+```{r}
+#| echo: false
+tibble(se = se_dist) |>
+  ggplot(aes(x = se)) +
+  geom_histogram(bins = 40, fill = "steelblue", color = "white", alpha = 0.8) +
+  geom_vline(xintercept = mean(se_dist), linetype = "dashed") +
+  geom_vline(xintercept = ece.cor.se.formula(params_se), color = "firebrick") +
+  labs(x = "estimated SE", y = "count",
+       title = "Distribution of ece.cor.se (n = 1000, ρ = 0.95, exponential)",
+       subtitle = "Dashed = empirical mean, red = theoretical SE") +
+  theme_minimal()
+```
+
+```{r}
+#| cache: true
+#| echo: false
+set.seed(42)
+n_seq <- seq(200, 1000, by = 200)
+se_bias <- map_dfr(n_seq, \(n) {
+  params <- scenario(1, n = n, r = 0.95, err_type = "exponential")
+  empirical <- map_dbl(1:10000, ~ {
+    X <- generate_data(params)
+    ece.cor.se(X)
+  })
+  tibble(n = n, bias = ece.cor.se.formula(params) - mean(empirical))
+})
+```
+
+```{r}
+#| echo: false
+se_bias |>
+  ggplot(aes(x = n, y = bias)) +
+  geom_line(color = "steelblue") +
+  geom_point(color = "steelblue") +
+  geom_hline(yintercept = 0, color = "firebrick", linetype = "dashed") +
+  labs(x = "n", y = "theoretical − empirical mean SE",
+       title = "SE bias vs. sample size (ρ = 0.95, exponential, B = 10,000)") +
+  theme_minimal()
+```
+:::
