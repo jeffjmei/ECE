@@ -30,22 +30,26 @@ ece.cor.se <- function(x, y = NULL, L = 2, params = NULL) {
   ece_xx <- ece_pair(x, x, L)
   ece_yy <- ece_pair(y, y, L)
   ece_xy <- ece_pair(x, y, L)
-  sx  <- sqrt(ece_xx$cov)
-  sy  <- sqrt(ece_yy$cov)
+  sx <- sqrt(ece_xx$cov)
+  sy <- sqrt(ece_yy$cov)
   sxy <- ece_xy$cov
-  wx  <- ece_xx$complexity
-  wy  <- ece_yy$complexity
+  wx <- ece_xx$complexity
+  wy <- ece_yy$complexity
   wxy <- ece_xy$complexity
   rxy <- sxy / (sx * sy)
 
   if (is.null(params)) {
-    k40 <- 3; k04 <- 3
-    k31 <- 3 * rxy; k13 <- 3 * rxy
+    k40 <- 3
+    k04 <- 3
+    k31 <- 3 * rxy
+    k13 <- 3 * rxy
     k22 <- 1 + 2 * rxy^2
   } else {
     k <- params$kappa
-    k40 <- k$k40; k04 <- k$k04
-    k31 <- k$k31; k13 <- k$k13
+    k40 <- k$k40
+    k04 <- k$k04
+    k31 <- k$k31
+    k13 <- k$k13
     k22 <- k$k22
   }
 
@@ -112,8 +116,8 @@ cauchy_combine <- function(pvals) {
 z_test <- function(X, conf.level = 0.95, params = NULL) {
   if (ncol(X) != 2) stop("type = 'z.test' requires a 2-column matrix")
   rxy <- ece.cor(X)[1, 2]
-  se  <- ece.cor.se(X[, 1], X[, 2], params = params)
-  ci  <- rxy + c(-1, 1) * qnorm((1 + conf.level) / 2) * se
+  se <- ece.cor.se(X[, 1], X[, 2], params = params)
+  ci <- rxy + c(-1, 1) * qnorm((1 + conf.level) / 2) * se
   list(
     estimate = rxy,
     se       = se,
