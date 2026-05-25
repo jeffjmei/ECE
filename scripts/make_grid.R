@@ -3,13 +3,13 @@ library(dplyr)
 
 base_params <- list(
   n        = c(200, 500, 1000, 2000),
-  p        = c(2),
-  cov_type = c("compound"),
+  p        = c(3, 5, 10),
+  cov_type = c("compound", "ar1"),
   r        = c(0, 0.1, 0.2, 0.3, 0.4),
   amp      = c(1),
   err_type = c("normal", "exponential"),
   seed     = 1,
-  n_sims   = 1000
+  n_sims   = 10000
 )
 
 bs_methods <- c("bs.multiplier", "bs.parametric")
