@@ -1,7 +1,7 @@
-test.diag <- function(X, method = "bs.multiplier", params = NULL, ...) {
+test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...) {
   switch(method,
-    bs.multiplier   = ece.test(X, type = "bs.multiplier", ...),
-    bs.parametric   = ece.test(X, type = "bs.parametric", ...),
+    bs.multiplier   = ece.test(X, type = "bs.multiplier", B = B, ...),
+    bs.parametric   = ece.test(X, type = "bs.parametric", B = B, ...),
     z.test.gaussian = ece.test(X, type = "z.test", ...),
     z.test.kappa    = ece.test(X, type = "z.test", params = params, ...),
     stop("Unknown method: ", method)
@@ -9,7 +9,7 @@ test.diag <- function(X, method = "bs.multiplier", params = NULL, ...) {
 }
 
 run_sim <- function(config_row, N = 1000) {
-  standard_cols <- c("scenario", "n", "p", "cov_type", "r", "amp", "err_type", "method", "B", "seed")
+  standard_cols <- c("scenario", "n", "p", "cov_type", "r", "amp", "err_type", "method", "B", "seed", "n_sims")
   extra_params <- as.list(config_row[setdiff(names(config_row), standard_cols)])
 
   params <- do.call(scenario, c(
@@ -42,7 +42,8 @@ run_sim <- function(config_row, N = 1000) {
       run_time        = run_time,
       timestamp       = Sys.time(),
       scenario_params = jsonlite::toJSON(params$scenario_param),
-      method_params   = jsonlite::toJSON(list(B = config_row$B))
+      method_params   = if (config_row$method %in% c("bs.multiplier", "bs.parametric"))
+        jsonlite::toJSON(list(B = config_row$B)) else jsonlite::toJSON(list())
     ) |>
     dplyr::select(
       scenario, n, p, cov_type, r, amp, err_type, method, seed,
