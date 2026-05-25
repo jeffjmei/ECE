@@ -53,32 +53,44 @@ dg <- function(u1, u2, u3, u4, u5, u6) {
 }
 
 
-ece.cor.asymp <- function(params, type = "general") {
-  n <- params$n
-  sx <- sqrt(params$S[1, 1])
-  sy <- sqrt(params$S[2, 2])
+ece.cor.se.formula <- function(params) {
+  n   <- params$n
+  sx  <- sqrt(params$S[1, 1])
+  sy  <- sqrt(params$S[2, 2])
   sxy <- params$S[1, 2]
   rxy <- sxy / (sx * sy)
-  hx <- params$h[, 1]
-  hy <- params$h[, 2]
+  k04 <- params$kappa$k04
+  k13 <- params$kappa$k13
+  k22 <- params$kappa$k22
+  k31 <- params$kappa$k31
+  k40 <- params$kappa$k40
+  wx  <- sqrt(lag_diff(params$h[, 1]) / n)
+  wy  <- sqrt(lag_diff(params$h[, 2]) / n)
+  wxy <- lag_diff(params$h[, 1], params$h[, 2]) / n
 
-  # TODO: generalize to non-gaussian
-  if (type == "gaussian") {
-    k40 <- 3
-    k04 <- 3
-    k31 <- 3 * rxy
-    k13 <- 3 * rxy
-    k22 <- (1 + 2 * rxy^2)
-  } else {
-    k <- params$kappa
-    k40 <- k$k40
-    k04 <- k$k04
-    k31 <- k$k31
-    k13 <- k$k13
-    k22 <- k$k22
-  }
+  sqrt(
+    (1 / n) * (
+      (1 - rxy^2) * (wx^2 / sx^2 + wy^2 / sy^2 - 2 * rxy * wxy / (sx * sy)) +
+      rxy^2 / 4 * (k40 + 2 * k22 + k04) -
+      rxy * (k31 + k13) + k22 +
+      5 / 2 * (1 - rxy^2)^2
+    )
+  )
+}
 
-  # Populate Matrix
+ece.cor.se.matrix <- function(params) {
+  n   <- params$n
+  sx  <- sqrt(params$S[1, 1])
+  sy  <- sqrt(params$S[2, 2])
+  sxy <- params$S[1, 2]
+  hx  <- params$h[, 1]
+  hy  <- params$h[, 2]
+  k40 <- params$kappa$k40
+  k04 <- params$kappa$k04
+  k31 <- params$kappa$k31
+  k13 <- params$kappa$k13
+  k22 <- params$kappa$k22
+
   T1_T1 <- var_Tk(n, sx, hx, k40, k = 1)
   T1_T2 <- cov_Th_Tk(n, sx, hx, k40)
   T1_R1 <- cov_Tk_Rk(n, sx, sy, sxy, hx, hy, k22, k = 1)
@@ -100,6 +112,7 @@ ece.cor.asymp <- function(params, type = "general") {
   Q1_Q1 <- var_Qh(n, sx, sy, sxy, hx, hy, k22, k = 1)
   Q1_Q2 <- cov_Qh_Qk(n, sx, sy, sxy, hx, hy, k22)
   Q2_Q2 <- var_Qh(n, sx, sy, sxy, hx, hy, k22, k = 2)
+
   S_u_upper <- c(
     T1_T1,
     T1_T2, T2_T2,
@@ -118,6 +131,5 @@ ece.cor.asymp <- function(params, type = "general") {
   u4 <- 2 * n * sy^2 + 2 * lag_diff(hy)
   u5 <- 2 * n * sxy + lag_diff(hx, hy)
   u6 <- 2 * n * sxy + 2 * lag_diff(hx, hy)
-  rho_var <- (t(dg(u1, u2, u3, u4, u5, u6)) %*% S_u %*% dg(u1, u2, u3, u4, u5, u6))[1, 1]
-  return(rho_var)
+  sqrt(t(dg(u1, u2, u3, u4, u5, u6)) %*% S_u %*% dg(u1, u2, u3, u4, u5, u6))[1, 1]
 }
