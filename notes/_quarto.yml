@@ -15,7 +15,8 @@ book:
     - part: "Inference"
       chapters:
         - z-test.qmd
-        - diagonal-test.qmd
+        - multiplier-bootstrap-test.qmd
+        - parametric-bootstrap-test.qmd
         - independence-test.qmd
     - part: "Numerical Studies"
       chapters:
