@@ -193,7 +193,7 @@ using $2\mu_{Z_1} - \mu_{Z_2} = 2n\sigma_x^2$, $2\mu_{Z_3} - \mu_{Z_4} = 2n\sigm
 To verify the formulas, we simulate scenario 2 ($n = 1000$, $L = 4$, $r = 0.3$) under two error distributions and compare the empirical covariance matrix of $Z$ to the theoretical $\Sigma_Z$.
 
 ::: {.callout-note collapse="true"}
-## Scale invariance
+## Remark: $v^2$ is scale-invariant
 
 $v^2$ is invariant under $X \to aX$, $Y \to bY$, consistent with $\widehat\rho(aX, bY) = \widehat\rho(X, Y)$. Each piece transforms as follows.
 
@@ -210,7 +210,7 @@ are therefore unchanged.
 :::
 
 ::: {.callout-note collapse="true"}
-## Computational verification
+## Test: $\nabla g(\mu_Z)^\top \Sigma_Z \nabla g(\mu_Z)$ matches closed-form $v^2$
 
 We verify the proposition by checking that the closed-form $V$ equals $\nabla g(\boldsymbol{\mu}_Z)^\top \Sigma_Z \nabla g(\boldsymbol{\mu}_Z)$ computed explicitly as a matrix product, mirroring the structure of `ece.cor.se` but with oracle inputs.
 
