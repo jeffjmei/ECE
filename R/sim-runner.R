@@ -34,14 +34,14 @@ run_sim <- function(config_row, N = 1000) {
     test.diag(X, method = config_row$method, B = config_row$B, params = params)$p.value
   })
   end_time <- proc.time()
-  run_time <- (end_time - start_time)[["elapsed"]]
+  runtime <- (end_time - start_time)[["elapsed"]] / 60
 
   config_row |>
     dplyr::mutate(
       metric          = "power",
       metric_val      = mean(p_vals < 0.10),
       n_sim           = N,
-      run_time        = run_time,
+      runtime         = runtime,
       timestamp       = Sys.time(),
       scenario_params = jsonlite::toJSON(params$scenario_param),
       method_params   = if (config_row$method %in% c("bs.multiplier", "bs.parametric"))
@@ -49,7 +49,7 @@ run_sim <- function(config_row, N = 1000) {
     ) |>
     dplyr::select(
       scenario, n, p, cov_type, r, amp, err_type, method, seed,
-      metric, metric_val, n_sim, run_time, timestamp, scenario_params, method_params
+      metric, metric_val, n_sim, runtime, timestamp, scenario_params, method_params
     )
 }
 
