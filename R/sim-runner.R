@@ -1,7 +1,8 @@
 test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...) {
+  b_arg <- if (!is.null(B)) list(B = B) else list()
   switch(method,
-    bs.multiplier   = ece.test(X, type = "bs.multiplier", B = B, ...),
-    bs.parametric   = ece.test(X, type = "bs.parametric", B = B, ...),
+    bs.multiplier   = do.call(ece.test, c(list(X, type = "bs.multiplier"), b_arg, list(...))),
+    bs.parametric   = do.call(ece.test, c(list(X, type = "bs.parametric"),  b_arg, list(...))),
     z.test.gaussian = ece.test(X, type = "z.test", ...),
     z.test.kappa    = ece.test(X, type = "z.test", params = params, ...),
     stop("Unknown method: ", method)
