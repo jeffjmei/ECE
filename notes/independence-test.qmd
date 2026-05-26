@@ -61,350 +61,112 @@ pearson_robust_zero_corr_test <- function(x, y) {
 
 Let $X \sim N(0, 1)$ and $Y = X^2$. Then, $Cov(X,Y) = E(X^3) - E(X) E(X^2) = 0$. That is, $X$ and $Y$ have zero correlation, but they are clearly no independent.
 
-## Estimating $\kappa_{22}$ from Data
+## Estimating $\kappa_{22}$ via $W$
 
-Our goal is a consistent estimator of $\kappa_{22} = E[\varepsilon_x^2\varepsilon_y^2]/(\sigma_x^2\sigma_y^2)$ computed directly from the observed series $X, Y$.
+Since `lag_terms(X) |> mean() / 2 == ece.cov(X[,1], X[,2])`, the sample mean of the $S_i$ terms satisfies
 
-In `pearson_robust_zero_corr_test`, the key line is
+$$\bar S = \frac{2T_1(X,Y) - T_2(X,Y)}{n},$$
 
-```r
-kappa22_hat <- mean(xc^2 * yc^2) / (sx2 * sy2)
+so the parametric bootstrap variance $W = \widehat{\operatorname{Var}}(\bar S)$ estimates $\operatorname{Var}((2T_1-T_2)/n)$. This variance has a closed form containing $\kappa_{22}$, so we can solve for $\kappa_{22}$ directly from $W$.
+
+Under $H_0$ ($\sigma_{xy} = 0$), applying $\operatorname{Var}(2Z_5 - Z_6) = 4[\Sigma_Z]_{55} - 4[\Sigma_Z]_{56} + [\Sigma_Z]_{66}$ to the entries of $\Sigma_Z$ gives
+
+$$\operatorname{Var}(2T_1 - T_2) = 2n\!\left[(2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2\right].$$
+
+Since $W = \operatorname{Var}(2T_1 - T_2)/n^2$, solving for $\kappa_{22}$:
+
+$$\hat\kappa_{22} = \frac{nW}{4\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2},$$
+
+where $\hat\omega_x^2 = (T_2(X,X) - T_1(X,X))/n$ and $\hat\omega_y^2 = (T_2(Y,Y) - T_1(Y,Y))/n$.
+
+::: {.callout-note collapse="true"}
+## Derivation: $\operatorname{Var}(2T_1 - T_2)$ from $\Sigma_Z$
+
+From the $\Sigma_Z$ table, under $H_0$ ($\sigma_{xy} = \omega_{xy} = 0$):
+
+$$[\Sigma_Z]_{55} = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2,$$
+$$[\Sigma_Z]_{56} = 4n\sigma_x^2\sigma_y^2\kappa_{22} + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2,$$
+$$[\Sigma_Z]_{66} = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) + 4n\sigma_y^2\omega_x^2 + 4n\sigma_x^2\omega_y^2.$$
+
+Substituting into $4[\Sigma_Z]_{55} - 4[\Sigma_Z]_{56} + [\Sigma_Z]_{66}$:
+
+- **$\sigma_x^2\sigma_y^2$ coefficient:** $4\cdot 2(2\kappa_{22}+1) - 4\cdot 4\kappa_{22} + 2(2\kappa_{22}+1) = 4\kappa_{22} + 10 = 2(2\kappa_{22}+5)$.
+- **$\sigma_y^2\omega_x^2$ coefficient:** $4\cdot 2 - 4\cdot 2 + 4 = 4$.
+- **$\sigma_x^2\omega_y^2$ coefficient:** $4\cdot 2 - 4\cdot 2 + 4 = 4$.
+
+Therefore $\operatorname{Var}(2T_1 - T_2) = 2n[(2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2]$.
+
+Since $W = \operatorname{Var}(2T_1-T_2)/n^2$, we have $nW/2 = (2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2$. Solving:
+
+$$\kappa_{22} = \frac{nW/2 - 2\sigma_y^2\omega_x^2 - 2\sigma_x^2\omega_y^2}{2\sigma_x^2\sigma_y^2} - \frac{5}{2} \cdot \frac{1}{1} = \frac{nW}{4\sigma_x^2\sigma_y^2} - \frac{\omega_x^2}{\sigma_x^2} - \frac{\omega_y^2}{\sigma_y^2} - \frac{5}{2}. \quad\square$$
+:::
+
+In code, using the parametric bootstrap $W$ already computed:
+
+```{r}
+#| eval: false
+wx2 <- (lag_diff(X[,1], X[,1], k=2) - lag_diff(X[,1], X[,1], k=1)) / n
+wy2 <- (lag_diff(X[,2], X[,2], k=2) - lag_diff(X[,2], X[,2], k=1)) / n
+
+k22 <- n * as.numeric(W) / (4 * sx^2 * sy^2) - wx2 / sx^2 - wy2 / sy^2 - 5/2
 ```
 
-which estimates $\kappa_{22}$ from sample fourth moments of the centered observations. This works because, for iid mean-zero data, $E[x_i^2 y_i^2]/(\sigma_x^2\sigma_y^2) = \kappa_{22}$ directly. Centering is possible because there are no change points.
+### Simulation: Does $\hat\kappa_{22}$ Recover the Truth?
 
-For ECE, centering is unavailable, but differencing recovers the error structure. The key quantity to compute is $E[(X_i - X_{i+k})^2(Y_i - Y_{i+k})^2]$. The derivation below shows that, under $H_0$ and away from change points,
+We run two scenarios with exponential mean structure ($L = 4$):
 
-$$\frac{E[(X_i-X_{i+k})^2(Y_i-Y_{i+k})^2]}{E[(X_i-X_{i+k})^2]\cdot E[(Y_i-Y_{i+k})^2]} = \frac{\kappa_{22}+1}{2}.$$
+- **Independent:** errors drawn from $\text{Exp}(1) - 1$, independent across series. True $\kappa_{22} = E[\varepsilon_x^2]E[\varepsilon_y^2]/(\sigma_x^2\sigma_y^2) = 1$.
+- **Dependent:** $\varepsilon_x \sim N(0,1)$, $\varepsilon_y = (\varepsilon_x^2 - 1)/\sqrt{2}$. Zero correlation but strong dependence. True $\kappa_{22} = E[\varepsilon_x^2 \varepsilon_y^2] = \tfrac{1}{2}E[\varepsilon_x^2(\varepsilon_x^2-1)^2] = 5$.
 
-Solving for $\kappa_{22}$ and replacing expectations with sample averages gives the plug-in estimator
-
-$$\hat\kappa_{22} = 2\cdot\frac{\overline{(X_i-X_{i+1})^2(Y_i-Y_{i+1})^2}}{\overline{(X_i-X_{i+1})^2}\cdot\overline{(Y_i-Y_{i+1})^2}} - 1.$$
-
-::: {.callout-note collapse="true"}
-## Derivation: $E[(X_i-X_{i+k})^2(Y_i-Y_{i+k})^2]$
-
-**Setup.** Write $X_i - X_{i+k} = h_x + e_x$ where $h_x = \theta_{x,i} - \theta_{x,i+k}$ is deterministic and $e_x = \varepsilon_{x,i} - \varepsilon_{x,i+k}$ is mean-zero. Define $h_y, e_y$ analogously.
-
-**Expansion.** Expanding each squared factor and multiplying out all nine terms,
-
-\begin{align}
-(X_i-X_{i+k})^2(Y_i-Y_{i+k})^2
-&= (h_x^2 + 2h_xe_x + e_x^2)(h_y^2 + 2h_ye_y + e_y^2) \\
-&= h_x^2h_y^2 \\
-&\quad + 2h_x^2h_ye_y + 2h_xh_y^2e_x \\
-&\quad + h_x^2e_y^2 + h_y^2e_x^2 \\
-&\quad + 4h_xh_ye_xe_y \\
-&\quad + 2h_xe_xe_y^2 + 2h_ye_x^2e_y \\
-&\quad + e_x^2e_y^2.
-\end{align}
-
-**Taking expectations term by term.** Since $E[e_x] = E[e_y] = 0$, any term linear in $e_x$ alone or $e_y$ alone vanishes:
-$$E[2h_x^2h_ye_y] = 0, \qquad E[2h_xh_y^2e_x] = 0.$$
-
-For the remaining terms we need four moment calculations.
-
-**(i)** $E[e_x^2]$. Since errors at different times are independent and identically distributed,
-$$E[e_x^2] = E[(\varepsilon_{x,i} - \varepsilon_{x,i+k})^2] = E[\varepsilon_{x,i}^2] - 2E[\varepsilon_{x,i}]E[\varepsilon_{x,i+k}] + E[\varepsilon_{x,i+k}^2] = 2\sigma_x^2,$$
-and likewise $E[e_y^2] = 2\sigma_y^2$.
-
-**(ii)** $E[e_xe_y]$. Again using independence across time,
-$$E[e_xe_y] = E[(\varepsilon_{x,i}-\varepsilon_{x,i+k})(\varepsilon_{y,i}-\varepsilon_{y,i+k})] = E[\varepsilon_{x,i}\varepsilon_{y,i}] - E[\varepsilon_{x,i}\varepsilon_{y,i+k}] - E[\varepsilon_{x,i+k}\varepsilon_{y,i}] + E[\varepsilon_{x,i+k}\varepsilon_{y,i+k}] = 2\sigma_{xy}.$$
-
-**(iii)** $E[e_xe_y^2] = 0$. Expanding,
-\begin{align}
-E[e_xe_y^2] &= E[(\varepsilon_{x,i}-\varepsilon_{x,i+k})(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2] \\
-&= E[\varepsilon_{x,i}(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2] - E[\varepsilon_{x,i+k}(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2].
-\end{align}
-In the first term, $\varepsilon_{x,i}$ and $(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2$ share the time-$i$ error but not the time-$(i+k)$ error. Conditioning on $\varepsilon_{y,i+k}$ and using $E[\varepsilon_{x,i+k}] = 0$, the second term evaluates identically to $E[\varepsilon_{x,i}(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2]$. The two terms are equal and subtract to zero.
-
-More explicitly: let $\mu_{12} = E[\varepsilon_{x,i}\varepsilon_{y,i}^2]$. Then $E[\varepsilon_{x,i}(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2] = \mu_{12} + 0 + 0 = \mu_{12}$ (cross-time terms vanish because $E[\varepsilon_{x,i}]=0$ and independence). Similarly the second term equals $\mu_{12}$, so $E[e_xe_y^2] = \mu_{12} - \mu_{12} = 0$. By the same argument, $E[e_x^2e_y] = 0$.
-
-**(iv)** $E[e_x^2e_y^2]$. Let $a = \varepsilon_{x,i}$, $b = \varepsilon_{x,i+k}$, $c = \varepsilon_{y,i}$, $d = \varepsilon_{y,i+k}$. The pairs $(a,c)$ and $(b,d)$ are independent of each other. Expanding,
-\begin{align}
-E[(a-b)^2(c-d)^2]
-&= E[a^2c^2] - 2E[a^2cd] + E[a^2d^2] \\
-&\quad - 2E[abc^2] + 4E[abcd] - 2E[abd^2] \\
-&\quad + E[b^2c^2] - 2E[b^2cd] + E[b^2d^2].
-\end{align}
-Evaluating each: $E[a^2c^2] = E[b^2d^2] = \kappa_{22}\sigma_x^2\sigma_y^2$ (fourth joint moment, same for both times by identical distribution). $E[a^2d^2] = E[b^2c^2] = \sigma_x^2\sigma_y^2$ (cross-time, so independent). $E[abcd] = E[ac]E[bd] = \sigma_{xy}^2$ (independence across time). All remaining terms vanish because at least one factor has mean zero and is independent of the rest (e.g., $E[a^2cd] = E[a^2]E[c]E[d]$... actually $E[a^2cd] = E[a^2c] \cdot E[d] = 0$ since $E[d]=0$; $E[abc^2] = E[a]E[b]E[c^2] = 0$ since $E[a]=0$ — the key point is that $b$ is independent of $a$ and $c$). Therefore,
-$$E[e_x^2e_y^2] = 2\kappa_{22}\sigma_x^2\sigma_y^2 + 2\sigma_x^2\sigma_y^2 + 4\sigma_{xy}^2.$$
-
-**Collecting all terms.**
-\begin{align}
-E[(X_i-X_{i+k})^2(Y_i-Y_{i+k})^2]
-&= h_x^2h_y^2 + 2h_x^2\sigma_y^2 + 2h_y^2\sigma_x^2 + 8h_xh_y\sigma_{xy} + 2\kappa_{22}\sigma_x^2\sigma_y^2 + 2\sigma_x^2\sigma_y^2 + 4\sigma_{xy}^2.
-\end{align}
-
-Noting that $E[(X_i-X_{i+k})^2] = h_x^2 + 2\sigma_x^2$ and $E[(Y_i-Y_{i+k})^2] = h_y^2 + 2\sigma_y^2$, we have $(h_x^2+2\sigma_x^2)(h_y^2+2\sigma_y^2) = h_x^2h_y^2 + 2h_x^2\sigma_y^2 + 2h_y^2\sigma_x^2 + 4\sigma_x^2\sigma_y^2$, so
-
-$$\boxed{E[(X_i-X_{i+k})^2(Y_i-Y_{i+k})^2] = E[(X_i-X_{i+k})^2]\cdot E[(Y_i-Y_{i+k})^2] + 8h_xh_y\sigma_{xy} + 2(\kappa_{22}-1)\sigma_x^2\sigma_y^2 + 4\sigma_{xy}^2.}$$
-
-**Summing over $i$.** Summing the collected expression over $i = 1, \ldots, n$ and using the definitions $T_k(f, g) = \sum_{i=1}^n (f_i - f_{i+k})(g_i - g_{i+k})$,
-
-$$\sum_{i=1}^n h_{x,i}^2 = T_k(\theta_x, \theta_x), \qquad \sum_{i=1}^n h_{y,i}^2 = T_k(\theta_y, \theta_y), \qquad \sum_{i=1}^n h_{x,i}h_{y,i} = T_k(\theta_x, \theta_y),$$
-
-we obtain
-
-\begin{align}
-\sum_{i=1}^n E[(X_i-X_{i+k})^2(Y_i-Y_{i+k})^2]
-&= \sum_{i=1}^n h_{x,i}^2 h_{y,i}^2 \\
-&\quad + 2\sigma_y^2\, T_k(\theta_x,\theta_x) + 2\sigma_x^2\, T_k(\theta_y,\theta_y) + 8\sigma_{xy}\, T_k(\theta_x,\theta_y) \\
-&\quad + n\bigl[2(\kappa_{22}+1)\sigma_x^2\sigma_y^2 + 4\sigma_{xy}^2\bigr].
-\end{align}
-
-The first term $\sum_i h_{x,i}^2 h_{y,i}^2$ is nonzero only at indices where both series change simultaneously, so it is $O(L)$ and asymptotically negligible relative to the $O(n)$ terms. The remaining terms involve exactly $T_k(\theta_x, \theta_x)$, $T_k(\theta_y, \theta_y)$, and $T_k(\theta_x, \theta_y)$ — the same lag-sum statistics that appear throughout the ECE variance formula.
-
-**Implications for estimating $\kappa_{22}$.** Under $H_0$ ($\sigma_{xy} = 0$) the formula reduces to
-
-$$E[(X_i-X_{i+k})^2(Y_i-Y_{i+k})^2] = E[(X_i-X_{i+k})^2]\cdot E[(Y_i-Y_{i+k})^2] + 2(\kappa_{22}-1)\sigma_x^2\sigma_y^2,$$
-
-so
-
-$$\frac{E[(X_i-X_{i+k})^2(Y_i-Y_{i+k})^2]}{E[(X_i-X_{i+k})^2]\cdot E[(Y_i-Y_{i+k})^2]} = 1 + \frac{2(\kappa_{22}-1)\sigma_x^2\sigma_y^2}{(h_x^2+2\sigma_x^2)(h_y^2+2\sigma_y^2)}.$$
-
-Away from change points ($h_x = h_y = 0$) this simplifies to $(\kappa_{22}+1)/2$, so replacing expectations with sample averages and solving gives $\hat\kappa_{22} \to \kappa_{22}$. With large change points, the denominator $(h_x^2+2\sigma_x^2)(h_y^2+2\sigma_y^2)$ is inflated relative to $\sigma_x^2\sigma_y^2$ in the numerator, shrinking the ratio toward 1 and biasing $\hat\kappa_{22}$ toward the Gaussian value of 1.
-:::
-
-
-## Estimating $\kappa_{22}$ via $S_i$ Terms
-
-The previous estimator is biased in the presence of change points because summing $(X_i - X_{i+k})^2(Y_i - Y_{i+k})^2$ mixes the $\omega_x^2\omega_y^2$ change-point contribution into the denominator at $O(n)$, without a matching term in the numerator. The $S_i$ terms avoid this: they are mean-zero at change points by construction, so their squared values are not contaminated at leading order.
-
-The plug-in estimator is
-
-$$\hat\kappa_{22} = \frac{\overline{S_i^2}\,/\,(\hat\sigma_x^2\hat\sigma_y^2) - 6}{4}.$$
-
-::: {.callout-note collapse="true"}
-## Derivation: $E[S_i^2]$ under $H_0$
-
-**Setup.** Since $E[S_i] = 0$ under $H_0$ (see "Proof: $S_i$ is mean-zero under $H_0$" in the Multiplier Bootstrap chapter), we have $E[S_i^2] = \mathrm{Var}(S_i)$. Define $e_{x,j}^{(k)} = \varepsilon_{x,j} - \varepsilon_{x,j+k}$, the $k$-lag error difference, analogous to $h_{x,j}^{(k)} = \theta_{x,j} - \theta_{x,j+k}$. Write $s_j^{(k)} = (h_{x,j}^{(k)} + e_{x,j}^{(k)})(h_{y,j}^{(k)} + e_{y,j}^{(k)})$. Centering gives $\tilde{s}_j^{(k)} = s_j^{(k)} - E[s_j^{(k)}] = h_{x,j}^{(k)}e_{y,j}^{(k)} + h_{y,j}^{(k)}e_{x,j}^{(k)} + e_{x,j}^{(k)}e_{y,j}^{(k)}$. Because $E[S_i] = 0$, the mean parts $E[s_j^{(k)}]$ cancel in the sum, giving $S_i = \tilde{s}_i^{(1)} + \tilde{s}_{i+1}^{(1)} - \tilde{s}_i^{(2)}$.
-
-Using $h_{x,j}^{(2)} = h_{x,j}^{(1)} + h_{x,j+1}^{(1)}$ and $e_{x,j}^{(2)} = e_{x,j}^{(1)} + e_{x,j+1}^{(1)}$, the sum decomposes as
-
-$$S_i = A_i + B_i,$$
-
-where
-$$A_i = -(e_{x,i}^{(1)}\,e_{y,i+1}^{(1)} + e_{x,i+1}^{(1)}\,e_{y,i}^{(1)})$$
-is the pure-error bilinear term, and
-$$B_i = -(h_{x,i}^{(1)}\,e_{y,i+1}^{(1)} + h_{x,i+1}^{(1)}\,e_{y,i}^{(1)} + h_{y,i}^{(1)}\,e_{x,i+1}^{(1)} + h_{y,i+1}^{(1)}\,e_{x,i}^{(1)})$$
-is the change-point interaction term, nonzero only when $i$ or $i+1$ is a change-point index.
-
-Both $A_i$ and $B_i$ are mean-zero. Since $A_i$ is bilinear and $B_i$ is linear in mean-zero errors with independent factors across time, every term in $A_i B_i$ is a cubic product with at least one independent mean-zero factor, so $E[A_i B_i] = 0$. Therefore
-
-$$E[S_i^2] = E[A_i^2] + E[B_i^2].$$
-
-We compute $E[A_i^2]$; the $E[B_i^2]$ term is handled at the end.
-
-**Computing $E[A_i^2]$.** Squaring $A_i$,
-
-$$A_i^2 = (e_{x,i}^{(1)})^2\,(e_{y,i+1}^{(1)})^2 + 2\,e_{x,i}^{(1)}\,e_{y,i+1}^{(1)}\,e_{x,i+1}^{(1)}\,e_{y,i}^{(1)} + (e_{x,i+1}^{(1)})^2\,(e_{y,i}^{(1)})^2.$$
-
-We compute the expectation of each term under $H_0: \sigma_{xy} = 0$.
-
-**Shared structure.** The four difference terms involve errors at times $i, i+1, i+2$. The only same-time X-Y pair shared across all three terms is $(\varepsilon_{x,i+1}, \varepsilon_{y,i+1})$ at time $i+1$. This is where $\kappa_{22}$ will enter.
-
-**Term 1: $E[(e_{x,i}^{(1)})^2\,(e_{y,i+1}^{(1)})^2]$.** Here $e_{x,i}^{(1)} = \varepsilon_{x,i} - \varepsilon_{x,i+1}$ involves times $i$ and $i+1$, and $e_{y,i+1}^{(1)} = \varepsilon_{y,i+1} - \varepsilon_{y,i+2}$ involves times $i+1$ and $i+2$. Expanding,
-
-$$E[(\varepsilon_{x,i} - \varepsilon_{x,i+1})^2(\varepsilon_{y,i+1} - \varepsilon_{y,i+2})^2].$$
-
-The nine terms from expanding each squared factor are evaluated by independence across time. The only nonzero contributions are those where every time index appears to an even power or in a same-time $(X, Y)$ pair:
-
-- $E[\varepsilon_{x,i}^2]\,E[\varepsilon_{y,i+1}^2] = \sigma_x^2\sigma_y^2$ (times $i$ and $i+1$, independent)
-- $E[\varepsilon_{x,i}^2]\,E[\varepsilon_{y,i+2}^2] = \sigma_x^2\sigma_y^2$ (times $i$ and $i+2$, independent)
-- $E[\varepsilon_{x,i+1}^2\,\varepsilon_{y,i+1}^2] = \kappa_{22}\sigma_x^2\sigma_y^2$ (same time $i+1$, fourth joint moment)
-- $E[\varepsilon_{x,i+1}^2]\,E[\varepsilon_{y,i+2}^2] = \sigma_x^2\sigma_y^2$ (times $i+1$ and $i+2$, independent)
-
-All other terms have at least one factor with mean zero and independent of the rest, so they vanish. Therefore,
-
-$$E[(e_{x,i}^{(1)})^2\,(e_{y,i+1}^{(1)})^2] = (\kappa_{22} + 3)\sigma_x^2\sigma_y^2.$$
-
-By the same calculation with indices shifted by 1, $E[(e_{x,i+1}^{(1)})^2\,(e_{y,i}^{(1)})^2] = (\kappa_{22}+3)\sigma_x^2\sigma_y^2$.
-
-**Term 2: $E[e_{x,i}^{(1)}\,e_{y,i+1}^{(1)}\,e_{x,i+1}^{(1)}\,e_{y,i}^{(1)}]$.** Expanding in $\varepsilon$ variables,
-
-$$E[(\varepsilon_{x,i} - \varepsilon_{x,i+1})(\varepsilon_{y,i+1} - \varepsilon_{y,i+2})(\varepsilon_{x,i+1} - \varepsilon_{x,i+2})(\varepsilon_{y,i} - \varepsilon_{y,i+1})].$$
-
-This is a product of 16 terms after full expansion. By the same independence argument, a term survives only if it reduces to a same-time $(X,Y)$ pair raised to even powers. Under $H_0$ ($\sigma_{xy} = 0$), the only such term is
-
-$$E[\varepsilon_{x,i+1}^2\,\varepsilon_{y,i+1}^2] = \kappa_{22}\sigma_x^2\sigma_y^2$$
-
-from the contribution $(-\varepsilon_{x,i+1})(-\varepsilon_{y,i+1})(-\varepsilon_{x,i+1})(-\varepsilon_{y,i+1}) = \varepsilon_{x,i+1}^2\varepsilon_{y,i+1}^2$. All other products either involve a mean-zero factor independent of the rest, or two factors of $\sigma_{xy} = 0$. Therefore,
-
-$$E[e_{x,i}^{(1)}\,e_{y,i+1}^{(1)}\,e_{x,i+1}^{(1)}\,e_{y,i}^{(1)}] = \kappa_{22}\sigma_x^2\sigma_y^2.$$
-
-**Collecting $E[A_i^2]$.**
-
-$$E[A_i^2] = (\kappa_{22}+3)\sigma_x^2\sigma_y^2 + 2\kappa_{22}\sigma_x^2\sigma_y^2 + (\kappa_{22}+3)\sigma_x^2\sigma_y^2 = (4\kappa_{22}+6)\sigma_x^2\sigma_y^2.$$
-
-**Change-point term $E[B_i^2]$.** Since $B_i$ is linear in errors with coefficients $h_{x,j}^{(1)}, h_{y,j}^{(1)}$, and these are nonzero only when $j$ is a change-point index, $E[B_i^2]$ is nonzero for at most $O(L)$ values of $i$. Therefore $\sum_i E[B_i^2] = O(L)$, so
-
-$$\frac{1}{n}\sum_i E[S_i^2] = (4\kappa_{22}+6)\sigma_x^2\sigma_y^2 + O(L/n) \;\to\; (4\kappa_{22}+6)\sigma_x^2\sigma_y^2.$$
-
-Solving for $\kappa_{22}$ and replacing expectations with sample averages gives
-
-$$\hat\kappa_{22} = \frac{\overline{S_i^2}\,/\,(\hat\sigma_x^2\hat\sigma_y^2) - 6}{4}.$$
-
-This contrasts with the difference-based estimator, where the change-point contribution enters the denominator at $O(n)$ through $\omega_x^2\omega_y^2$.
-:::
-
-## Computing $E[(s_i^{(k)})^2]$
-
-::: {.callout-note collapse="true"}
-## Derivation: $E[(s_i^{(k)})^2]$
-
-**Expanding $s_i^{(k)}$.** Since $X_i - X_{i+k} = h_{x,i}^{(k)} + e_{x,i}^{(k)}$ and $Y_i - Y_{i+k} = h_{y,i}^{(k)} + e_{y,i}^{(k)}$,
-
-$$s_i^{(k)} = h_{x,i}^{(k)}h_{y,i}^{(k)} + h_{x,i}^{(k)}e_{y,i}^{(k)} + e_{x,i}^{(k)}h_{y,i}^{(k)} + e_{x,i}^{(k)}e_{y,i}^{(k)}.$$
-
-**Squaring $S_i$.** Expanding $(s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)})^2$,
-
-$$S_i^2 = (s_i^{(1)})^2 + (s_{i+1}^{(1)})^2 + (s_i^{(2)})^2 + 2s_i^{(1)}s_{i+1}^{(1)} - 2s_i^{(1)}s_i^{(2)} - 2s_{i+1}^{(1)}s_i^{(2)}.$$
-
-**Expectation of $(s_i^{(k)})^2$.** Squaring the four-term expansion gives ten distinct terms,
-
-\begin{align}
-(s_i^{(k)})^2 &= (h_{x,i}^{(k)})^2(h_{y,i}^{(k)})^2 \\
-              &+ (h_{x,i}^{(k)})^2(e_{y,i}^{(k)})^2 + (e_{x,i}^{(k)})^2(h_{y,i}^{(k)})^2 + (e_{x,i}^{(k)})^2(e_{y,i}^{(k)})^2 \\
-              &+ 2h_{x,i}^{(k)}h_{y,i}^{(k)}\,h_{x,i}^{(k)}e_{y,i}^{(k)} + 2h_{x,i}^{(k)}h_{y,i}^{(k)}\,e_{x,i}^{(k)}h_{y,i}^{(k)} \\
-              &+ 2h_{x,i}^{(k)}h_{y,i}^{(k)}\,e_{x,i}^{(k)}e_{y,i}^{(k)} + 2h_{x,i}^{(k)}e_{y,i}^{(k)}\,e_{x,i}^{(k)}h_{y,i}^{(k)} \\
-              &+ 2h_{x,i}^{(k)}e_{y,i}^{(k)}\,e_{x,i}^{(k)}e_{y,i}^{(k)} + 2e_{x,i}^{(k)}h_{y,i}^{(k)}\,e_{x,i}^{(k)}e_{y,i}^{(k)}.
-\end{align}
-
-Taking expectations under $H_0$ ($\sigma_{xy} = 0$), six terms vanish:
-
-- Lines 3–4: $2h_{x,i}^{(k)}h_{y,i}^{(k)}\,h_{x,i}^{(k)}e_{y,i}^{(k)}$ and $2h_{x,i}^{(k)}h_{y,i}^{(k)}\,e_{x,i}^{(k)}h_{y,i}^{(k)}$ each contain a lone mean-zero error factor.
-- Lines 3–4: $2h_{x,i}^{(k)}h_{y,i}^{(k)}\,e_{x,i}^{(k)}e_{y,i}^{(k)}$ and $2h_{x,i}^{(k)}e_{y,i}^{(k)}\,e_{x,i}^{(k)}h_{y,i}^{(k)}$ reduce to $h_{x,i}^{(k)}h_{y,i}^{(k)} \cdot 2\sigma_{xy} = 0$.
-- Line 5: $2h_{x,i}^{(k)}e_{y,i}^{(k)}\,e_{x,i}^{(k)}e_{y,i}^{(k)}$ and $2e_{x,i}^{(k)}h_{y,i}^{(k)}\,e_{x,i}^{(k)}e_{y,i}^{(k)}$ involve $E[e_{x,i}^{(k)}(e_{y,i}^{(k)})^2]$ and $E[(e_{x,i}^{(k)})^2 e_{y,i}^{(k)}]$, which vanish by cross-time cancellation ($\mu_{12} - \mu_{12} = 0$).
-
-The four surviving terms give
-
-$$E[(s_i^{(k)})^2] = (h_{x,i}^{(k)})^2(h_{y,i}^{(k)})^2 + 2\sigma_y^2(h_{x,i}^{(k)})^2 + 2\sigma_x^2(h_{y,i}^{(k)})^2 + E[(e_{x,i}^{(k)})^2(e_{y,i}^{(k)})^2].$$
-
-**Cross terms.** The three cross terms in $S_i^2$ each give a product of two four-term expansions (16 terms each). For $s_i^{(1)} s_{i+1}^{(1)}$,
-
-\begin{align}
-s_i^{(1)} s_{i+1}^{(1)} &= h_{x,i}^{(1)}h_{y,i}^{(1)}\,h_{x,i+1}^{(1)}h_{y,i+1}^{(1)} + h_{x,i}^{(1)}h_{y,i}^{(1)}\,h_{x,i+1}^{(1)}e_{y,i+1}^{(1)} + h_{x,i}^{(1)}h_{y,i}^{(1)}\,e_{x,i+1}^{(1)}h_{y,i+1}^{(1)} + h_{x,i}^{(1)}h_{y,i}^{(1)}\,e_{x,i+1}^{(1)}e_{y,i+1}^{(1)} \\
-&+ h_{x,i}^{(1)}e_{y,i}^{(1)}\,h_{x,i+1}^{(1)}h_{y,i+1}^{(1)} + h_{x,i}^{(1)}e_{y,i}^{(1)}\,h_{x,i+1}^{(1)}e_{y,i+1}^{(1)} + h_{x,i}^{(1)}e_{y,i}^{(1)}\,e_{x,i+1}^{(1)}h_{y,i+1}^{(1)} + h_{x,i}^{(1)}e_{y,i}^{(1)}\,e_{x,i+1}^{(1)}e_{y,i+1}^{(1)} \\
-&+ e_{x,i}^{(1)}h_{y,i}^{(1)}\,h_{x,i+1}^{(1)}h_{y,i+1}^{(1)} + e_{x,i}^{(1)}h_{y,i}^{(1)}\,h_{x,i+1}^{(1)}e_{y,i+1}^{(1)} + e_{x,i}^{(1)}h_{y,i}^{(1)}\,e_{x,i+1}^{(1)}h_{y,i+1}^{(1)} + e_{x,i}^{(1)}h_{y,i}^{(1)}\,e_{x,i+1}^{(1)}e_{y,i+1}^{(1)} \\
-&+ e_{x,i}^{(1)}e_{y,i}^{(1)}\,h_{x,i+1}^{(1)}h_{y,i+1}^{(1)} + e_{x,i}^{(1)}e_{y,i}^{(1)}\,h_{x,i+1}^{(1)}e_{y,i+1}^{(1)} + e_{x,i}^{(1)}e_{y,i}^{(1)}\,e_{x,i+1}^{(1)}h_{y,i+1}^{(1)} + e_{x,i}^{(1)}e_{y,i}^{(1)}\,e_{x,i+1}^{(1)}e_{y,i+1}^{(1)}.
-\end{align}
-
-Taking expectations under $H_0$, terms with a lone mean-zero error factor vanish (terms 2, 3, 5, 9). Terms 4 and 13 reduce to $h_{x}h_{y} \cdot 2\sigma_{xy} = 0$. Terms 7 and 10 give $E[e_{y,i}^{(1)}e_{x,i+1}^{(1)}] = -\sigma_{xy} = 0$. The surviving terms are
-
-$$E[s_i^{(1)} s_{i+1}^{(1)}] = h_{x,i}^{(1)}h_{y,i}^{(1)}h_{x,i+1}^{(1)}h_{y,i+1}^{(1)} - \sigma_y^2 h_{x,i}^{(1)}h_{x,i+1}^{(1)} - \sigma_x^2 h_{y,i}^{(1)}h_{y,i+1}^{(1)} + E[e_{x,i}^{(1)}e_{y,i}^{(1)}e_{x,i+1}^{(1)}e_{y,i+1}^{(1)}].$$
-
-For $s_i^{(1)} s_i^{(2)}$,
-
-\begin{align}
-s_i^{(1)} s_i^{(2)} &= h_{x,i}^{(1)}h_{y,i}^{(1)}\,h_{x,i}^{(2)}h_{y,i}^{(2)} + h_{x,i}^{(1)}h_{y,i}^{(1)}\,h_{x,i}^{(2)}e_{y,i}^{(2)} + h_{x,i}^{(1)}h_{y,i}^{(1)}\,e_{x,i}^{(2)}h_{y,i}^{(2)} + h_{x,i}^{(1)}h_{y,i}^{(1)}\,e_{x,i}^{(2)}e_{y,i}^{(2)} \\
-&+ h_{x,i}^{(1)}e_{y,i}^{(1)}\,h_{x,i}^{(2)}h_{y,i}^{(2)} + h_{x,i}^{(1)}e_{y,i}^{(1)}\,h_{x,i}^{(2)}e_{y,i}^{(2)} + h_{x,i}^{(1)}e_{y,i}^{(1)}\,e_{x,i}^{(2)}h_{y,i}^{(2)} + h_{x,i}^{(1)}e_{y,i}^{(1)}\,e_{x,i}^{(2)}e_{y,i}^{(2)} \\
-&+ e_{x,i}^{(1)}h_{y,i}^{(1)}\,h_{x,i}^{(2)}h_{y,i}^{(2)} + e_{x,i}^{(1)}h_{y,i}^{(1)}\,h_{x,i}^{(2)}e_{y,i}^{(2)} + e_{x,i}^{(1)}h_{y,i}^{(1)}\,e_{x,i}^{(2)}h_{y,i}^{(2)} + e_{x,i}^{(1)}h_{y,i}^{(1)}\,e_{x,i}^{(2)}e_{y,i}^{(2)} \\
-&+ e_{x,i}^{(1)}e_{y,i}^{(1)}\,h_{x,i}^{(2)}h_{y,i}^{(2)} + e_{x,i}^{(1)}e_{y,i}^{(1)}\,h_{x,i}^{(2)}e_{y,i}^{(2)} + e_{x,i}^{(1)}e_{y,i}^{(1)}\,e_{x,i}^{(2)}h_{y,i}^{(2)} + e_{x,i}^{(1)}e_{y,i}^{(1)}\,e_{x,i}^{(2)}e_{y,i}^{(2)}.
-\end{align}
-
-Taking expectations under $H_0$, terms with a lone mean-zero error factor vanish (terms 2, 3, 5, 9). Terms 4 and 13 reduce to $h_xh_y \cdot 2\sigma_{xy} = 0$. Terms 7 and 10 give $E[e_{y,i}^{(1)}e_{x,i}^{(2)}] = \sigma_{xy} = 0$ and $E[e_{x,i}^{(1)}e_{y,i}^{(2)}] = \sigma_{xy} = 0$. The surviving terms are
-
-$$E[s_i^{(1)} s_i^{(2)}] = h_{x,i}^{(1)}h_{y,i}^{(1)}h_{x,i}^{(2)}h_{y,i}^{(2)} + \sigma_y^2 h_{x,i}^{(1)}h_{x,i}^{(2)} + \sigma_x^2 h_{y,i}^{(1)}h_{y,i}^{(2)} + E[e_{x,i}^{(1)}e_{y,i}^{(1)}e_{x,i}^{(2)}e_{y,i}^{(2)}],$$
-
-where $E[e_{y,i}^{(1)}e_{y,i}^{(2)}] = E[(\varepsilon_{y,i}-\varepsilon_{y,i+1})(\varepsilon_{y,i}-\varepsilon_{y,i+2})] = \sigma_y^2$ and similarly $E[e_{x,i}^{(1)}e_{x,i}^{(2)}] = \sigma_x^2$.
-
-For $s_{i+1}^{(1)} s_i^{(2)}$,
-
-\begin{align}
-s_{i+1}^{(1)} s_i^{(2)} &= h_{x,i+1}^{(1)}h_{y,i+1}^{(1)}\,h_{x,i}^{(2)}h_{y,i}^{(2)} + h_{x,i+1}^{(1)}h_{y,i+1}^{(1)}\,h_{x,i}^{(2)}e_{y,i}^{(2)} + h_{x,i+1}^{(1)}h_{y,i+1}^{(1)}\,e_{x,i}^{(2)}h_{y,i}^{(2)} + h_{x,i+1}^{(1)}h_{y,i+1}^{(1)}\,e_{x,i}^{(2)}e_{y,i}^{(2)} \\
-&+ h_{x,i+1}^{(1)}e_{y,i+1}^{(1)}\,h_{x,i}^{(2)}h_{y,i}^{(2)} + h_{x,i+1}^{(1)}e_{y,i+1}^{(1)}\,h_{x,i}^{(2)}e_{y,i}^{(2)} + h_{x,i+1}^{(1)}e_{y,i+1}^{(1)}\,e_{x,i}^{(2)}h_{y,i}^{(2)} + h_{x,i+1}^{(1)}e_{y,i+1}^{(1)}\,e_{x,i}^{(2)}e_{y,i}^{(2)} \\
-&+ e_{x,i+1}^{(1)}h_{y,i+1}^{(1)}\,h_{x,i}^{(2)}h_{y,i}^{(2)} + e_{x,i+1}^{(1)}h_{y,i+1}^{(1)}\,h_{x,i}^{(2)}e_{y,i}^{(2)} + e_{x,i+1}^{(1)}h_{y,i+1}^{(1)}\,e_{x,i}^{(2)}h_{y,i}^{(2)} + e_{x,i+1}^{(1)}h_{y,i+1}^{(1)}\,e_{x,i}^{(2)}e_{y,i}^{(2)} \\
-&+ e_{x,i+1}^{(1)}e_{y,i+1}^{(1)}\,h_{x,i}^{(2)}h_{y,i}^{(2)} + e_{x,i+1}^{(1)}e_{y,i+1}^{(1)}\,h_{x,i}^{(2)}e_{y,i}^{(2)} + e_{x,i+1}^{(1)}e_{y,i+1}^{(1)}\,e_{x,i}^{(2)}h_{y,i}^{(2)} + e_{x,i+1}^{(1)}e_{y,i+1}^{(1)}\,e_{x,i}^{(2)}e_{y,i}^{(2)}.
-\end{align}
-
-Taking expectations under $H_0$ by the same argument, terms 2, 3, 5, 9 vanish; terms 4, 13 reduce to $2\sigma_{xy} = 0$; terms 7 and 10 give $E[e_{y,i+1}^{(1)}e_{x,i}^{(2)}] = \sigma_{xy} = 0$ and $E[e_{x,i+1}^{(1)}e_{y,i}^{(2)}] = \sigma_{xy} = 0$. The surviving terms are
-
-$$E[s_{i+1}^{(1)} s_i^{(2)}] = h_{x,i+1}^{(1)}h_{y,i+1}^{(1)}h_{x,i}^{(2)}h_{y,i}^{(2)} + \sigma_y^2 h_{x,i+1}^{(1)}h_{x,i}^{(2)} + \sigma_x^2 h_{y,i+1}^{(1)}h_{y,i}^{(2)} + E[e_{x,i+1}^{(1)}e_{y,i+1}^{(1)}e_{x,i}^{(2)}e_{y,i}^{(2)}],$$
-
-where $E[e_{y,i+1}^{(1)}e_{y,i}^{(2)}] = E[(\varepsilon_{y,i+1}-\varepsilon_{y,i+2})(\varepsilon_{y,i}-\varepsilon_{y,i+2})] = \sigma_y^2$ and similarly $E[e_{x,i+1}^{(1)}e_{x,i}^{(2)}] = \sigma_x^2$.
-
-By the same argument, instantiating at $(i+1, k=1)$ and $(i, k=2)$,
-
-\begin{align}
-E[(s_{i+1}^{(1)})^2] &= (h_{x,i+1}^{(1)})^2(h_{y,i+1}^{(1)})^2 + 2\sigma_y^2(h_{x,i+1}^{(1)})^2 + 2\sigma_x^2(h_{y,i+1}^{(1)})^2 + E[(e_{x,i+1}^{(1)})^2(e_{y,i+1}^{(1)})^2], \\
-E[(s_i^{(2)})^2] &= (h_{x,i}^{(2)})^2(h_{y,i}^{(2)})^2 + 2\sigma_y^2(h_{x,i}^{(2)})^2 + 2\sigma_x^2(h_{y,i}^{(2)})^2 + E[(e_{x,i}^{(2)})^2(e_{y,i}^{(2)})^2].
-\end{align}
-
-**Collecting $E[S_i^2]$.** Using $E[S_i^2] = E[(s_i^{(1)})^2] + E[(s_{i+1}^{(1)})^2] + E[(s_i^{(2)})^2] + 2E[s_i^{(1)}s_{i+1}^{(1)}] - 2E[s_i^{(1)}s_i^{(2)}] - 2E[s_{i+1}^{(1)}s_i^{(2)}]$ and substituting the six expressions above,
-
-\begin{align}
-E[S_i^2]
-&= \bigl[(h_{x,i}^{(1)})^2(h_{y,i}^{(1)})^2 + 2\sigma_y^2(h_{x,i}^{(1)})^2 + 2\sigma_x^2(h_{y,i}^{(1)})^2 + E[(e_{x,i}^{(1)})^2(e_{y,i}^{(1)})^2]\bigr] \\
-&+ \bigl[(h_{x,i+1}^{(1)})^2(h_{y,i+1}^{(1)})^2 + 2\sigma_y^2(h_{x,i+1}^{(1)})^2 + 2\sigma_x^2(h_{y,i+1}^{(1)})^2 + E[(e_{x,i+1}^{(1)})^2(e_{y,i+1}^{(1)})^2]\bigr] \\
-&+ \bigl[(h_{x,i}^{(2)})^2(h_{y,i}^{(2)})^2 + 2\sigma_y^2(h_{x,i}^{(2)})^2 + 2\sigma_x^2(h_{y,i}^{(2)})^2 + E[(e_{x,i}^{(2)})^2(e_{y,i}^{(2)})^2]\bigr] \\
-&+ 2\bigl[h_{x,i}^{(1)}h_{y,i}^{(1)}h_{x,i+1}^{(1)}h_{y,i+1}^{(1)} - \sigma_y^2 h_{x,i}^{(1)}h_{x,i+1}^{(1)} - \sigma_x^2 h_{y,i}^{(1)}h_{y,i+1}^{(1)} + E[e_{x,i}^{(1)}e_{y,i}^{(1)}e_{x,i+1}^{(1)}e_{y,i+1}^{(1)}]\bigr] \\
-&- 2\bigl[h_{x,i}^{(1)}h_{y,i}^{(1)}h_{x,i}^{(2)}h_{y,i}^{(2)} + \sigma_y^2 h_{x,i}^{(1)}h_{x,i}^{(2)} + \sigma_x^2 h_{y,i}^{(1)}h_{y,i}^{(2)} + E[e_{x,i}^{(1)}e_{y,i}^{(1)}e_{x,i}^{(2)}e_{y,i}^{(2)}]\bigr] \\
-&- 2\bigl[h_{x,i+1}^{(1)}h_{y,i+1}^{(1)}h_{x,i}^{(2)}h_{y,i}^{(2)} + \sigma_y^2 h_{x,i+1}^{(1)}h_{x,i}^{(2)} + \sigma_x^2 h_{y,i+1}^{(1)}h_{y,i}^{(2)} + E[e_{x,i+1}^{(1)}e_{y,i+1}^{(1)}e_{x,i}^{(2)}e_{y,i}^{(2)}]\bigr].
-\end{align}
-
-We group terms by type.
-
-**$h^4$ terms.** Collecting the fourth-degree $h$ terms,
-
-\begin{align}
-&(h_{x,i}^{(1)})^2(h_{y,i}^{(1)})^2 + (h_{x,i+1}^{(1)})^2(h_{y,i+1}^{(1)})^2 + (h_{x,i}^{(2)})^2(h_{y,i}^{(2)})^2 \\
-&\quad + 2h_{x,i}^{(1)}h_{y,i}^{(1)}h_{x,i+1}^{(1)}h_{y,i+1}^{(1)} - 2h_{x,i}^{(1)}h_{y,i}^{(1)}h_{x,i}^{(2)}h_{y,i}^{(2)} - 2h_{x,i+1}^{(1)}h_{y,i+1}^{(1)}h_{x,i}^{(2)}h_{y,i}^{(2)}.
-\end{align}
-
-Setting $u = h_{x,i}^{(1)}h_{y,i}^{(1)}$, $v = h_{x,i+1}^{(1)}h_{y,i+1}^{(1)}$, $w = h_{x,i}^{(2)}h_{y,i}^{(2)}$, this is $u^2 + v^2 + w^2 + 2uv - 2uw - 2vw = (u + v - w)^2$. Using $h_{x,i}^{(2)} = h_{x,i}^{(1)} + h_{x,i+1}^{(1)}$ and expanding $w$,
-
-$$u + v - w = h_{x,i}^{(1)}h_{y,i}^{(1)} + h_{x,i+1}^{(1)}h_{y,i+1}^{(1)} - (h_{x,i}^{(1)} + h_{x,i+1}^{(1)})(h_{y,i}^{(1)} + h_{y,i+1}^{(1)}) = -h_{x,i}^{(1)}h_{y,i+1}^{(1)} - h_{x,i+1}^{(1)}h_{y,i}^{(1)},$$
-
-so the $h^4$ combination equals $(h_{x,i}^{(1)}h_{y,i+1}^{(1)} + h_{x,i+1}^{(1)}h_{y,i}^{(1)})^2$.
-
-**$\sigma^2 h^2$ terms.** Let $a = h_{x,i}^{(1)}$, $b = h_{x,i+1}^{(1)}$, so $h_{x,i}^{(2)} = a + b$. The coefficient of $\sigma_y^2$ from the $h_x^2$ contributions is
-
-$$2a^2 + 2b^2 + 2(a+b)^2 - 2ab - 2a(a+b) - 2b(a+b) = 2(a^2 + b^2 - ab),$$
-
-so the $\sigma^2 h^2$ terms are
-
-$$2\sigma_y^2\bigl[(h_{x,i}^{(1)})^2 + (h_{x,i+1}^{(1)})^2 - h_{x,i}^{(1)}h_{x,i+1}^{(1)}\bigr] + 2\sigma_x^2\bigl[(h_{y,i}^{(1)})^2 + (h_{y,i+1}^{(1)})^2 - h_{y,i}^{(1)}h_{y,i+1}^{(1)}\bigr].$$
-
-**Fourth-moment terms.** Setting $D_j^{(k)} = e_{x,j}^{(k)}e_{y,j}^{(k)}$, the fourth-moment combination is
-
-$$E[(D_i^{(1)})^2] + E[(D_{i+1}^{(1)})^2] + E[(D_i^{(2)})^2] + 2E[D_i^{(1)}D_{i+1}^{(1)}] - 2E[D_i^{(1)}D_i^{(2)}] - 2E[D_{i+1}^{(1)}D_i^{(2)}] = E\bigl[(D_i^{(1)} + D_{i+1}^{(1)} - D_i^{(2)})^2\bigr].$$
-
-Since $e_{x,j}^{(2)} = e_{x,j}^{(1)} + e_{x,j+1}^{(1)}$ and analogously for $y$,
-
-$$D_i^{(2)} = (e_{x,i}^{(1)} + e_{x,i+1}^{(1)})(e_{y,i}^{(1)} + e_{y,i+1}^{(1)}) = D_i^{(1)} + e_{x,i}^{(1)}e_{y,i+1}^{(1)} + e_{x,i+1}^{(1)}e_{y,i}^{(1)} + D_{i+1}^{(1)},$$
-
-so $D_i^{(1)} + D_{i+1}^{(1)} - D_i^{(2)} = -(e_{x,i}^{(1)}e_{y,i+1}^{(1)} + e_{x,i+1}^{(1)}e_{y,i}^{(1)}) = A_i$. Therefore the fourth-moment combination equals $E[A_i^2] = (4\kappa_{22}+6)\sigma_x^2\sigma_y^2$.
-
-**Final result.**
-
-$$E[S_i^2] = (h_{x,i}^{(1)}h_{y,i+1}^{(1)} + h_{x,i+1}^{(1)}h_{y,i}^{(1)})^2 + 2\sigma_y^2\bigl[(h_{x,i}^{(1)})^2 + (h_{x,i+1}^{(1)})^2 - h_{x,i}^{(1)}h_{x,i+1}^{(1)}\bigr] + 2\sigma_x^2\bigl[(h_{y,i}^{(1)})^2 + (h_{y,i+1}^{(1)})^2 - h_{y,i}^{(1)}h_{y,i+1}^{(1)}\bigr] + (4\kappa_{22}+6)\sigma_x^2\sigma_y^2.$$
-
-The first three terms are supported only at change-point indices, so summing over $i$ and dividing by $n$ gives
-
-$$\frac{1}{n}\sum_i E[S_i^2] = (4\kappa_{22}+6)\sigma_x^2\sigma_y^2 + O(L/n) \;\to\; (4\kappa_{22}+6)\sigma_x^2\sigma_y^2,$$
-
-confirming $\hat\kappa_{22} = (\overline{S_i^2}/(\hat\sigma_x^2\hat\sigma_y^2) - 6)/4$.
-
-:::
-
-```{R}
-#| echo: false
+```{r}
+#| cache: true
 #| message: false
-#| warning: false
-#devtools::load_all()
-#params <- scenario(2, L = 4)
-#
-#pval <- map_dbl(1:10000, ~{
-#  # Generate Uncorrelated, but Dependent Data
-#  ex <- rnorm(params$n)
-#  ey <- (ex^2 - 1) / sqrt(2)
-#  X <- params$h[,1] + ex
-#  Y <- params$h[,2] + ey
-#  ece.test(cbind(X, Y))$p.value
-#})
-#
-#hist(pval, breaks=10, freq=FALSE, main="Distribution of p-Values for Uncorrelated Data")
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(purrr)
+
+params <- scenario(2, L = 4, err_type = "exponential")
+
+run_k22_sim <- function(data_gen, n_sim = 1000) {
+  map_dbl(seq_len(n_sim), \(.) {
+    n   <- params$n
+    X   <- data_gen(params)
+    S   <- lag_terms(X)
+    W   <- (1 / n^2) * (
+      t(S) %*% S +
+        t(rotate(S)) %*% S + t(S) %*% rotate(S) +
+        t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
+    )
+    sx  <- sqrt(ece_pair(X[,1], X[,1])$cov)
+    sy  <- sqrt(ece_pair(X[,2], X[,2])$cov)
+    wx2 <- ece.complexity(X[,1])
+    wy2 <- ece.complexity(X[,2])
+    n * as.numeric(W) / (4 * sx^2 * sy^2) - wx2 / sx^2 - wy2 / sy^2 - 5/2
+  }, .progress = TRUE)
+}
+
+gen_independent <- function(params) generate_data(params)
+
+gen_dependent <- function(params) {
+  ex <- rnorm(params$n)
+  ey <- (ex^2 - 1) / sqrt(2)
+  cbind(params$h[,1] + ex, params$h[,2] + ey)
+}
+
+k22_indep <- run_k22_sim(gen_independent)
+k22_dep   <- run_k22_sim(gen_dependent)
+```
+
+```{r}
+# True k22 for dependent case: (1/2) E[ex^2 (ex^2 - 1)^2] = (1/2)(15 - 6 + 1) = 5
+ex_large <- rnorm(1e6)
+ey_large <- (ex_large^2 - 1) / sqrt(2)
+k22_dep_true <- mean(ex_large^2 * ey_large^2)
+
+tibble::tribble(
+  ~scenario,    ~true_k22,             ~estimated_k22,
+  "independent", params$kappa$k22,     mean(k22_indep),
+  "dependent",   k22_dep_true,         mean(k22_dep)
+)
 ```
 
 
