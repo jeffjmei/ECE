@@ -131,7 +131,7 @@ test_that("A_k matches lag_diff", {
 })
 
 test_that("X^T A Y matches equiv.cov", {
-  expect_equal(as.numeric(X %*% A %*% Y), equiv.cov(X, Y))
+  expect_equal(as.numeric(X %*% A %*% Y), ece.cov(X, Y))
 })
 ```
 
