@@ -46,7 +46,7 @@ The simulation below confirms this. The histogram shows the corrected t-statisti
 ```{r}
 #| message: false
 #| echo: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 
 make_config <- function(n, K, s12 = 0, signal = 1) {
   seg_len <- ceiling(n / (K + 1))

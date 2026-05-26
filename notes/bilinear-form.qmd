@@ -64,7 +64,7 @@ and for $\ell \geq 4$ one shows by induction that $a_{\ell - 1} = 0$. Together w
 ```{r}
 #| message: false
 #| warning: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 library(testthat)
 
 n <- 10
@@ -110,7 +110,7 @@ $$
 ```{r}
 #| message: false
 #| warning: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 
 set.seed(1)
 n <- 10

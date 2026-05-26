@@ -43,7 +43,7 @@ The second term $\sigma_{xy}(\operatorname{tr}(A_+) - 1)$ is always negative (wh
 ```{r}
 #| message: false
 #| warning: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 library(testthat)
 
 n <- 40; L <- 2

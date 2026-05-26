@@ -121,7 +121,7 @@ We run two scenarios with exponential mean structure ($L = 4$):
 ```{r}
 #| cache: true
 #| message: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 library(purrr)
 
 params <- scenario(2, L = 4, err_type = "exponential")

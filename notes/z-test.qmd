@@ -227,7 +227,7 @@ $$
 
 ```{r}
 #| message: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 library(testthat)
 params <- scenario(2, r = 0.5, L = 4)
 params_scale <- params
@@ -254,7 +254,7 @@ We verify that $v^2 = \nabla g(\mu_Z)^T \Sigma_Z \nabla g(\mu_Z)$ by checking th
 
 ```{r}
 #| message: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 library(testthat)
 params <- scenario(2, r = 0.5, L = 4)
 test_that("formula matches matrix for scenario 2", {
@@ -281,7 +281,7 @@ For each error type, we run 500 outer replicates. In each replicate, we draw 10 
 ```{r}
 #| message: false
 #| echo: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 library(tidyverse)
 ```
 

@@ -185,7 +185,7 @@ The magnitude of $V - V_G$ depends on how far the joint cumulants depart from th
 #| message: false
 #| echo: false
 #| cache: true
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 
 err_types <- c("normal", "exponential", "t", "lognormal")
 
@@ -229,7 +229,7 @@ knitr::kable(make_kappa_table(0), digits = 3,
 
 ```{r}
 #| message: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 
 params <- scenario(2, n = 1000, L = 4, r = 0.3, err_type = "exponential")
 

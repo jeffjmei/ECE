@@ -69,7 +69,7 @@ Because $F$ is unitary ($F F^* = I$), the decomposition $A = F^* \Lambda F$ is e
 ```{r}
 #| message: false
 #| warning: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 library(testthat)
 
 n <- 8
@@ -221,7 +221,7 @@ $$
 ```{r}
 #| message: false
 #| warning: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 library(testthat)
 
 n <- 40; L <- 2
@@ -269,7 +269,7 @@ Both terms are $O(1/n)$. The signal-dependent term vanishes at the same frequenc
 ```{r}
 #| message: false
 #| warning: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 library(testthat)
 
 n <- 40; L <- 2
@@ -338,7 +338,7 @@ The expected bias vanishes asymptotically — the ECE is nearly unbiased in expe
 ```{r}
 #| message: false
 #| warning: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 library(testthat)
 
 n <- 100; L <- 2
@@ -377,7 +377,7 @@ Each misspecification has a characteristic frequency signature. The left panel s
 #| message: false
 #| warning: false
 #| fig-height: 12
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 
 n <- 100; L <- 2
 set.seed(42)
@@ -439,7 +439,7 @@ A natural conjecture is that steeper linear signals shift spectral energy to hig
 #| message: false
 #| warning: false
 #| fig-height: 4
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 
 n <- 100; L <- 2
 
@@ -498,7 +498,7 @@ Each eigenvalue $\lambda_j = \sum_{k=0}^{n-1} a_k \omega^{jk}$ is a sum of $n$ c
 ```{r}
 #| message: false
 #| warning: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 
 n <- 10
 L <- 2

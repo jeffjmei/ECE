@@ -44,7 +44,7 @@ $$a^* = G^+ b$$
 ```{r}
 #| message: false
 #| warning: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 library(testthat)
 
 n <- 20

@@ -49,7 +49,7 @@ Let $C_1 = \operatorname{circ}(0, 1, 0, \ldots, 0)$ be the elementary shift-by-o
 ```{r}
 #| message: false
 #| warning: false
-devtools::load_all("~/Documents/Research/Code/ECE")
+devtools::load_all("..")
 library(testthat)
 
 n <- 6
