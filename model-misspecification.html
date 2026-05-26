@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>6&nbsp; Model Misspecification – ECE Notes</title>
+<title>13&nbsp; Model Misspecification – ECE Notes</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,8 +65,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./positive-semidefinite.html" rel="next">
-<link href="./computational-solution.html" rel="prev">
+<link href="./package.html" rel="next">
+<link href="./positive-semidefinite.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -146,7 +146,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./model-misspecification.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Model Misspecification</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./positive-semidefinite.html">In Progress</a></li><li class="breadcrumb-item"><a href="./model-misspecification.html"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Model Misspecification</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -177,46 +177,10 @@ window.Quarto = {
  <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Preface</span></span></a>
   </div>
 </li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./model-assumptions.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Model Assumptions</span></span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./lagged-differences.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Lagged Differences</span></span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./bilinear-form.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Bilinear Form</span></span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./computational-solution.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Computational Solution</span></span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./model-misspecification.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Model Misspecification</span></span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./positive-semidefinite.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></span></a>
-  </div>
-</li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
- <span class="menu-text">Appendices</span></a>
+ <span class="menu-text">Estimation</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -224,14 +188,148 @@ window.Quarto = {
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./model-assumptions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Model Assumptions</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./lagged-differences.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Lagged Differences</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./bilinear-form.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Bilinear Form</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Inference</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./z-test.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Z-Test</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./multiplier-bootstrap-test.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Multiplier Bootstrap Test</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./parametric-bootstrap-test.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Parametric Bootstrap Test</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./independence-test.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Independence Test</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Numerical Studies</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./simulation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Simulation Design</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./type-i-error.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Type I Error</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./power.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Power</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">In Progress</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./positive-semidefinite.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./model-misspecification.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Model Misspecification</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./package.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Package</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./computational-solution.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Computational Solution</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./mean-removal.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Mean Removal</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./math-background.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Mathematical Background</span></span></a>
+ <span class="menu-text"><span class="chapter-number">C</span>&nbsp; <span class="chapter-title">Mathematical Background</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./math-results.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Other Mathematical Results</span></span></a>
+ <span class="menu-text"><span class="chapter-number">D</span>&nbsp; <span class="chapter-title">Other Mathematical Results</span></span></a>
   </div>
 </li>
       </ul>
@@ -246,25 +344,28 @@ window.Quarto = {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#circulant-matrices-and-the-dft" id="toc-circulant-matrices-and-the-dft" class="nav-link active" data-scroll-target="#circulant-matrices-and-the-dft"><span class="header-section-number">6.1</span> Circulant Matrices and the DFT</a></li>
-  <li><a href="#closed-form-bias" id="toc-closed-form-bias" class="nav-link" data-scroll-target="#closed-form-bias"><span class="header-section-number">6.2</span> Closed-Form Bias</a></li>
-  <li><a href="#closed-form-variance" id="toc-closed-form-variance" class="nav-link" data-scroll-target="#closed-form-variance"><span class="header-section-number">6.3</span> Closed-Form Variance</a></li>
-  <li><a href="#case-study-sinusoidal-mean" id="toc-case-study-sinusoidal-mean" class="nav-link" data-scroll-target="#case-study-sinusoidal-mean"><span class="header-section-number">6.4</span> Case Study: Sinusoidal Mean</a>
+  <li><a href="#key-concepts" id="toc-key-concepts" class="nav-link active" data-scroll-target="#key-concepts"><span class="header-section-number">13.1</span> Key Concepts</a></li>
+  <li><a href="#circulant-matrices-and-the-dft" id="toc-circulant-matrices-and-the-dft" class="nav-link" data-scroll-target="#circulant-matrices-and-the-dft"><span class="header-section-number">13.2</span> Circulant Matrices and the DFT</a></li>
+  <li><a href="#closed-form-bias" id="toc-closed-form-bias" class="nav-link" data-scroll-target="#closed-form-bias"><span class="header-section-number">13.3</span> Closed-Form Bias</a></li>
+  <li><a href="#closed-form-variance" id="toc-closed-form-variance" class="nav-link" data-scroll-target="#closed-form-variance"><span class="header-section-number">13.4</span> Closed-Form Variance</a></li>
+  <li><a href="#case-study-sinusoidal-mean" id="toc-case-study-sinusoidal-mean" class="nav-link" data-scroll-target="#case-study-sinusoidal-mean"><span class="header-section-number">13.5</span> Case Study: Sinusoidal Mean</a>
   <ul class="collapse">
-  <li><a href="#bias" id="toc-bias" class="nav-link" data-scroll-target="#bias"><span class="header-section-number">6.4.1</span> Bias</a></li>
-  <li><a href="#variance" id="toc-variance" class="nav-link" data-scroll-target="#variance"><span class="header-section-number">6.4.2</span> Variance</a></li>
+  <li><a href="#bias" id="toc-bias" class="nav-link" data-scroll-target="#bias"><span class="header-section-number">13.5.1</span> Bias</a></li>
+  <li><a href="#variance" id="toc-variance" class="nav-link" data-scroll-target="#variance"><span class="header-section-number">13.5.2</span> Variance</a></li>
   </ul></li>
-  <li><a href="#case-study-random-walk-mean" id="toc-case-study-random-walk-mean" class="nav-link" data-scroll-target="#case-study-random-walk-mean"><span class="header-section-number">6.5</span> Case Study: Random Walk Mean</a></li>
-  <li><a href="#eigenvalue-visualization" id="toc-eigenvalue-visualization" class="nav-link" data-scroll-target="#eigenvalue-visualization"><span class="header-section-number">6.6</span> Eigenvalue Visualization</a></li>
+  <li><a href="#case-study-random-walk-mean" id="toc-case-study-random-walk-mean" class="nav-link" data-scroll-target="#case-study-random-walk-mean"><span class="header-section-number">13.6</span> Case Study: Random Walk Mean</a></li>
+  <li><a href="#spectral-fingerprints-of-common-misspecifications" id="toc-spectral-fingerprints-of-common-misspecifications" class="nav-link" data-scroll-target="#spectral-fingerprints-of-common-misspecifications"><span class="header-section-number">13.7</span> Spectral Fingerprints of Common Misspecifications</a></li>
+  <li><a href="#linear-signals-at-different-slopes" id="toc-linear-signals-at-different-slopes" class="nav-link" data-scroll-target="#linear-signals-at-different-slopes"><span class="header-section-number">13.8</span> Linear Signals at Different Slopes</a></li>
+  <li><a href="#eigenvalue-visualization" id="toc-eigenvalue-visualization" class="nav-link" data-scroll-target="#eigenvalue-visualization"><span class="header-section-number">13.9</span> Eigenvalue Visualization</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./positive-semidefinite.html">In Progress</a></li><li class="breadcrumb-item"><a href="./model-misspecification.html"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Model Misspecification</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Model Misspecification</span></h1>
+<h1 class="title"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Model Misspecification</span></h1>
 </div>
 
 
@@ -281,8 +382,34 @@ window.Quarto = {
 </header>
 
 
-<section id="circulant-matrices-and-the-dft" class="level2" data-number="6.1">
-<h2 data-number="6.1" class="anchored" data-anchor-id="circulant-matrices-and-the-dft"><span class="header-section-number">6.1</span> Circulant Matrices and the DFT</h2>
+<section id="key-concepts" class="level2" data-number="13.1">
+<h2 data-number="13.1" class="anchored" data-anchor-id="key-concepts"><span class="header-section-number">13.1</span> Key Concepts</h2>
+<p><strong>The signal <span class="math inline">\(\theta\)</span>.</strong> A vector <span class="math inline">\((\theta_0, \ldots, \theta_{n-1})\)</span> where <span class="math inline">\(\theta_i\)</span> is the true mean of the time series at time <span class="math inline">\(i\)</span>. The ECE is designed for piecewise-constant <span class="math inline">\(\theta\)</span>; misspecification means <span class="math inline">\(\theta\)</span> has some other shape.</p>
+<p><strong>Frequency index <span class="math inline">\(j\)</span>.</strong> An integer from <span class="math inline">\(0\)</span> to <span class="math inline">\(n-1\)</span> labeling a sinusoidal component. Specifically, <span class="math inline">\(j\)</span> counts how many complete oscillations the sinusoid <span class="math inline">\(\cos(2\pi j i / n)\)</span> makes as <span class="math inline">\(i\)</span> runs from <span class="math inline">\(0\)</span> to <span class="math inline">\(n-1\)</span>:</p>
+<ul>
+<li><span class="math inline">\(j = 0\)</span>: flat constant — no oscillations</li>
+<li><span class="math inline">\(j = 1\)</span>: one slow wave across the whole window</li>
+<li><span class="math inline">\(j = n/2\)</span>: the fastest possible — alternates sign at every step (Nyquist)</li>
+</ul>
+<p>The plot below shows what each of these looks like concretely.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="model-misspecification_files/figure-html/unnamed-chunk-1-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>The DFT.</strong> The Discrete Fourier Transform rewrites <span class="math inline">\(\theta\)</span> as a sum of sinusoids — one at each frequency <span class="math inline">\(j\)</span>. The complex coefficient <span class="math inline">\(\tilde\theta_j\)</span> says how much of <span class="math inline">\(\theta\)</span> oscillates at rate <span class="math inline">\(j\)</span>.</p>
+<p><strong>Energy <span class="math inline">\(|\tilde\theta_j|^2/n\)</span>.</strong> How much of <span class="math inline">\(\theta\)</span>’s total variation comes from frequency <span class="math inline">\(j\)</span>. A tall bar at <span class="math inline">\(j = 5\)</span> means <span class="math inline">\(\theta\)</span> has a strong 5-cycle-per-window oscillation. By Parseval’s theorem, the energies sum to <span class="math inline">\(\|\theta\|^2/n\)</span>.</p>
+<p><strong>Eigenvalues <span class="math inline">\(\lambda_j\)</span>.</strong> The ECE matrix <span class="math inline">\(A\)</span> acts differently on each frequency: it scales sinusoidal components by <span class="math inline">\(\lambda_j\)</span>. Small <span class="math inline">\(|\lambda_j|\)</span> means the ECE ignores energy at that frequency; large <span class="math inline">\(|\lambda_j|\)</span> means energy there leaks into the bias.</p>
+<p><strong>The bias formula.</strong> Because of the eigendecomposition <span class="math inline">\(A = Q\Lambda Q^*\)</span>, the bias simplifies to a frequency-by-frequency weighted sum:</p>
+<p><span class="math display">\[\theta^T A \theta = \sum_{j=0}^{n-1} \lambda_j \cdot \frac{|\tilde\theta_j|^2}{n}\]</span></p>
+<p>This is the central formula for understanding misspecification: the bias is the dot product between the signal’s energy profile and the ECE’s frequency sensitivity. Wherever <span class="math inline">\(\lambda_j \approx 0\)</span>, that frequency contributes nothing to the bias regardless of how much energy <span class="math inline">\(\theta\)</span> places there.</p>
+</section>
+<section id="circulant-matrices-and-the-dft" class="level2" data-number="13.2">
+<h2 data-number="13.2" class="anchored" data-anchor-id="circulant-matrices-and-the-dft"><span class="header-section-number">13.2</span> Circulant Matrices and the DFT</h2>
 <p>Every symmetric circulant <span class="math inline">\(A = \operatorname{circ}(a)\)</span> is diagonalized by the DFT matrix <span class="math inline">\(F \in \mathbb{C}^{n \times n}\)</span>,</p>
 <p><span class="math display">\[
 A = F^* \Lambda F,
@@ -306,7 +433,7 @@ DFT and eigendecomposition are the same thing for circulants
 <div id="callout-1" class="callout-1-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">"~/Documents/Research/Code/ECE"</span>)</span>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">".."</span>)</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(testthat)</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">8</span></span>
@@ -339,7 +466,7 @@ DFT and eigendecomposition are the same thing for circulants
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(lambda_fft, lambda_eig, <span class="at">tolerance =</span> <span class="fl">1e-10</span>)</span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Test passed 🌈</code></pre>
+<pre><code>Test passed 🎊</code></pre>
 </div>
 </div>
 </div>
@@ -357,8 +484,8 @@ DFT and eigendecomposition are the same thing for circulants
 \]</span></p>
 <p>is nonzero. Its magnitude depends on which eigenvalues <span class="math inline">\(\lambda_j\)</span> are large and how much energy <span class="math inline">\(\tilde{\theta}_x\)</span>, <span class="math inline">\(\tilde{\theta}_y\)</span> place at the corresponding frequencies.</p>
 </section>
-<section id="closed-form-bias" class="level2" data-number="6.2">
-<h2 data-number="6.2" class="anchored" data-anchor-id="closed-form-bias"><span class="header-section-number">6.2</span> Closed-Form Bias</h2>
+<section id="closed-form-bias" class="level2" data-number="13.3">
+<h2 data-number="13.3" class="anchored" data-anchor-id="closed-form-bias"><span class="header-section-number">13.3</span> Closed-Form Bias</h2>
 <p>Since <span class="math inline">\(A = \sum_{k=1}^L c_k A_k\)</span> with <span class="math inline">\(c_k = H_{1,k} = \frac{2L+1-3k}{nL(L-1)}\)</span> (see Other Mathematical Results), the bias decomposes as</p>
 <p><span class="math display">\[
 \theta_x^T A \theta_y = \sum_{k=1}^L c_k\, T_k(\theta_x, \theta_y),
@@ -381,8 +508,8 @@ DFT and eigendecomposition are the same thing for circulants
 \]</span></p>
 <p>The bias is therefore controlled by <span class="math inline">\(\max_j |\lambda_j|\)</span>, which from the <span class="math inline">\(L=2\)</span> formula is largest near the Nyquist frequency <span class="math inline">\(j = n/2\)</span>. Misspecification is most harmful when the mean vectors have energy concentrated at high frequencies.</p>
 </section>
-<section id="closed-form-variance" class="level2" data-number="6.3">
-<h2 data-number="6.3" class="anchored" data-anchor-id="closed-form-variance"><span class="header-section-number">6.3</span> Closed-Form Variance</h2>
+<section id="closed-form-variance" class="level2" data-number="13.4">
+<h2 data-number="13.4" class="anchored" data-anchor-id="closed-form-variance"><span class="header-section-number">13.4</span> Closed-Form Variance</h2>
 <p>The variance of <span class="math inline">\(X^T A Y\)</span> is (see the Bilinear Form chapter):</p>
 <p><span class="math display">\[
 \operatorname{Var}(X^T A Y) = \sigma_y^2\,\theta_x^T A^2 \theta_x + \sigma_x^2\,\theta_y^T A^2 \theta_y + 2\sigma_{xy}\,\theta_x^T A^2 \theta_y + (\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2).
@@ -403,11 +530,11 @@ DFT and eigendecomposition are the same thing for circulants
 \]</span></p>
 <p>The signal-dependent variance is controlled by the same Nyquist-dominated <span class="math inline">\(\max_j|\lambda_j|\)</span> as the bias.</p>
 </section>
-<section id="case-study-sinusoidal-mean" class="level2" data-number="6.4">
-<h2 data-number="6.4" class="anchored" data-anchor-id="case-study-sinusoidal-mean"><span class="header-section-number">6.4</span> Case Study: Sinusoidal Mean</h2>
+<section id="case-study-sinusoidal-mean" class="level2" data-number="13.5">
+<h2 data-number="13.5" class="anchored" data-anchor-id="case-study-sinusoidal-mean"><span class="header-section-number">13.5</span> Case Study: Sinusoidal Mean</h2>
 <p>Suppose <span class="math inline">\(\theta_x = \theta_y = \theta\)</span> with <span class="math inline">\(\theta_i = A\sin(2\pi fi/n)\)</span> for integer frequency <span class="math inline">\(1 \leq f &lt; n/2\)</span> and amplitude <span class="math inline">\(A &gt; 0\)</span>. This is misspecified since a sinusoid is not piecewise constant.</p>
-<section id="bias" class="level3" data-number="6.4.1">
-<h3 data-number="6.4.1" class="anchored" data-anchor-id="bias"><span class="header-section-number">6.4.1</span> Bias</h3>
+<section id="bias" class="level3" data-number="13.5.1">
+<h3 data-number="13.5.1" class="anchored" data-anchor-id="bias"><span class="header-section-number">13.5.1</span> Bias</h3>
 <p><strong>Computing <span class="math inline">\(T_k(\theta, \theta)\)</span>.</strong> Applying the sum-to-product identity <span class="math inline">\(\sin\alpha - \sin\beta = 2\cos\!\left(\frac{\alpha+\beta}{2}\right)\sin\!\left(\frac{\alpha-\beta}{2}\right)\)</span>,</p>
 <p><span class="math display">\[
 \theta_i - \theta_{i+k} = -2A\sin\!\left(\frac{\pi fk}{n}\right)\cos\!\left(\frac{2\pi fi}{n} + \frac{\pi fk}{n}\right).
@@ -426,7 +553,7 @@ T_k(\theta, \theta) = 2nA^2\sin^2\!\left(\frac{\pi fk}{n}\right).
 \]</span></p>
 <p><strong>Interpretation.</strong> The bias depends on frequency and amplitude but not on phase. It is zero at <span class="math inline">\(f = 0\)</span> (constant — well specified) and at <span class="math inline">\(f = n/4\)</span> (where <span class="math inline">\(\cos(2\pi f/n) = 0\)</span>), negative for <span class="math inline">\(f &lt; n/4\)</span>, and positive for <span class="math inline">\(f &gt; n/4\)</span>. It grows as <span class="math inline">\(A^2\)</span> and is largest near the Nyquist frequency <span class="math inline">\(f = n/2\)</span>, consistent with the general bound <span class="math inline">\(|\text{bias}| \leq \max_j|\lambda_j| \cdot \|\theta\|_2^2\)</span>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">"~/Documents/Research/Code/ECE"</span>)</span>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">".."</span>)</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(testthat)</span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">40</span>; L <span class="ot">&lt;-</span> <span class="dv">2</span></span>
@@ -456,7 +583,7 @@ T_k(\theta, \theta) = 2nA^2\sin^2\!\left(\frac{\pi fk}{n}\right).
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="model-misspecification_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="model-misspecification_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -464,8 +591,8 @@ T_k(\theta, \theta) = 2nA^2\sin^2\!\left(\frac{\pi fk}{n}\right).
 <p><strong>Application to scenario 14.</strong> Scenario 14 sets <span class="math inline">\(\theta_i = \sin(2\pi i / 365)\)</span> — a yearly cycle sampled at daily resolution. With <span class="math inline">\(n = 100\)</span> observations, the signal has effective DFT bin <span class="math inline">\(j \approx n/365 \approx 0.27\)</span>, well below <span class="math inline">\(j = 1\)</span>. Since <span class="math inline">\(\lambda_j \approx 0\)</span> near <span class="math inline">\(j = 0\)</span>, the formula predicts negligible bias: <span class="math inline">\(|\text{bias}| \approx 2\sin^2(\pi/365) \approx 1.5 \times 10^{-4}\)</span> per unit amplitude squared. Numerically the bias is of order <span class="math inline">\(10^{-5}\)</span>, confirming that the ECE is effectively unbiased in this scenario despite the misspecification — the yearly cycle is too slow relative to the observation window to contaminate the estimate.</p>
 <p>With <span class="math inline">\(n = 1000\)</span> observations, the window covers approximately 2.7 full periods and the effective bin shifts to <span class="math inline">\(j \approx 2.74\)</span>. The bias is now <span class="math inline">\(\approx -1.6 \times 10^{-4}\)</span> — negative since <span class="math inline">\(j &lt; n/4 = 250\)</span>, and consistent with the formula prediction of <span class="math inline">\(-1.5 \times 10^{-4}\)</span>. Despite the larger signal (<span class="math inline">\(\|\theta\|^2 \approx 499\)</span>), the bias remains negligible: the yearly cycle is still low-frequency relative to <span class="math inline">\(n\)</span>.</p>
 </section>
-<section id="variance" class="level3" data-number="6.4.2">
-<h3 data-number="6.4.2" class="anchored" data-anchor-id="variance"><span class="header-section-number">6.4.2</span> Variance</h3>
+<section id="variance" class="level3" data-number="13.5.2">
+<h3 data-number="13.5.2" class="anchored" data-anchor-id="variance"><span class="header-section-number">13.5.2</span> Variance</h3>
 <p>With <span class="math inline">\(\theta_x = \theta_y = \theta\)</span>, the closed-form variance simplifies to</p>
 <p><span class="math display">\[\operatorname{Var}(X^T A Y) = (\sigma_x^2 + \sigma_y^2 + 2\sigma_{xy})\,\theta^T A^2 \theta + (\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2).\]</span></p>
 <p><strong>Computing <span class="math inline">\(\theta^T A^2 \theta\)</span>.</strong> Since <span class="math inline">\(\theta_i = A\sin(2\pi fi/n)\)</span> lies in the eigenspace of <span class="math inline">\(A\)</span> at frequency <span class="math inline">\(f\)</span> and <span class="math inline">\(\lambda_f = \lambda_{n-f}\)</span>, we have <span class="math inline">\(A\theta = \lambda_f\,\theta\)</span>. Therefore <span class="math inline">\(\theta^T A^2 \theta = \lambda_f^2\|\theta\|^2 = \frac{nA^2}{2}\lambda_f^2\)</span>.</p>
@@ -473,7 +600,7 @@ T_k(\theta, \theta) = 2nA^2\sin^2\!\left(\frac{\pi fk}{n}\right).
 <p><span class="math display">\[\operatorname{Var}(X^T A Y) = \frac{8A^2}{n}(\sigma_x^2 + \sigma_y^2 + 2\sigma_{xy})\cos^2\!\left(\frac{2\pi f}{n}\right)\sin^4\!\left(\frac{\pi f}{n}\right) + (\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2).\]</span></p>
 <p>Both terms are <span class="math inline">\(O(1/n)\)</span>. The signal-dependent term vanishes at the same frequencies as the bias (<span class="math inline">\(f = 0\)</span> and <span class="math inline">\(f = n/4\)</span>).</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">"~/Documents/Research/Code/ECE"</span>)</span>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">".."</span>)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(testthat)</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">40</span>; L <span class="ot">&lt;-</span> <span class="dv">2</span></span>
@@ -490,7 +617,7 @@ T_k(\theta, \theta) = 2nA^2\sin^2\!\left(\frac{\pi fk}{n}\right).
 <span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>  }</span>
 <span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Test passed 🎉</code></pre>
+<pre><code>Test passed 🌈</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>var_signal_numerical <span class="ot">&lt;-</span> <span class="fu">sapply</span>(freqs, <span class="cf">function</span>(f) {</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  theta <span class="ot">&lt;-</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> f <span class="sc">*</span> (<span class="dv">0</span><span class="sc">:</span>(n <span class="sc">-</span> <span class="dv">1</span>)) <span class="sc">/</span> n)</span>
@@ -502,18 +629,39 @@ T_k(\theta, \theta) = 2nA^2\sin^2\!\left(\frac{\pi fk}{n}\right).
 <span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(var_signal_numerical, var_signal_formula, <span class="at">tolerance =</span> <span class="fl">1e-10</span>)</span>
 <span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Test passed 😀</code></pre>
+<pre><code>Test passed 🎊</code></pre>
 </div>
 </div>
 </section>
 </section>
-<section id="case-study-random-walk-mean" class="level2" data-number="6.5">
-<h2 data-number="6.5" class="anchored" data-anchor-id="case-study-random-walk-mean"><span class="header-section-number">6.5</span> Case Study: Random Walk Mean</h2>
+<section id="case-study-random-walk-mean" class="level2" data-number="13.6">
+<h2 data-number="13.6" class="anchored" data-anchor-id="case-study-random-walk-mean"><span class="header-section-number">13.6</span> Case Study: Random Walk Mean</h2>
 <p>Suppose <span class="math inline">\(\theta_x = \theta_y = \theta\)</span> where <span class="math inline">\(\theta_i = \sum_{j=1}^i \xi_j\)</span> is a random walk with i.i.d. increments <span class="math inline">\(\xi_j \sim (0, \sigma^2)\)</span>. This corresponds to scenario 13.</p>
 <p><strong>Expected bias is <span class="math inline">\(O(1/n)\)</span>.</strong> Since <span class="math inline">\(\theta_i - \theta_{i+k} = \xi_{i+1} + \cdots + \xi_{i+k}\)</span> is a sum of <span class="math inline">\(k\)</span> independent increments,</p>
 <p><span class="math display">\[
 E\bigl[(\theta_i - \theta_{i+k})^2\bigr] = k\sigma^2,
 \]</span></p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-2-contents" aria-controls="callout-2" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Why <span class="math inline">\(E[(\theta_i - \theta_{i+k})^2] = k\sigma^2\)</span>
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-2" class="callout-2-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>The lag-<span class="math inline">\(k\)</span> difference telescopes into a sum of exactly <span class="math inline">\(k\)</span> consecutive increments:</p>
+<p><span class="math display">\[\theta_i - \theta_{i+k} = -(\xi_{i+1} + \cdots + \xi_{i+k})\]</span></p>
+<p>Since the <span class="math inline">\(\xi_t\)</span> are i.i.d. with mean 0 and variance <span class="math inline">\(\sigma^2\)</span>, squaring and taking expectations gives:</p>
+<p><span class="math display">\[E[(\theta_i - \theta_{i+k})^2] = \sum_{s=i+1}^{i+k} \sum_{t=i+1}^{i+k} E[\xi_s \xi_t] = \sum_{s=i+1}^{i+k} \sigma^2 = k\sigma^2\]</span></p>
+<p>where the cross terms <span class="math inline">\(E[\xi_s \xi_t] = 0\)</span> for <span class="math inline">\(s \neq t\)</span> by independence.</p>
+<p>Summing over <span class="math inline">\(i = 1, \ldots, n-k\)</span> (the valid pairs) then gives <span class="math inline">\(E[T_k] = (n-k)k\sigma^2\)</span>. For <span class="math inline">\(k \ll n\)</span> this is approximately <span class="math inline">\(nk\sigma^2\)</span>, linear in <span class="math inline">\(k\)</span>.</p>
+</div>
+</div>
+</div>
 <p>so <span class="math inline">\(E[T_k(\theta,\theta)] = (n-k)k\sigma^2\)</span>, which is approximately linear in <span class="math inline">\(k\)</span> for <span class="math inline">\(k \ll n\)</span>. Since the ECE is constructed to cancel exactly a linear trend in <span class="math inline">\(k \mapsto T_k\)</span>,</p>
 <p><span class="math display">\[
 E[\theta^T A \theta] = \frac{1}{2n}\bigl(2(n-1)\sigma^2 - 2(n-2)\sigma^2\bigr) = \frac{\sigma^2}{n} \to 0.
@@ -522,7 +670,7 @@ E[\theta^T A \theta] = \frac{1}{2n}\bigl(2(n-1)\sigma^2 - 2(n-2)\sigma^2\bigr) =
 <p><strong>Spectral interpretation.</strong> The power spectral density of a random walk concentrates at low frequencies: <span class="math inline">\(E[|\tilde{\theta}_j|^2] \propto 1/\sin^2(\pi j/n)\)</span>. Combined with <span class="math inline">\(\lambda_j \propto -\cos(2\pi j/n)\sin^2(\pi j/n)\)</span>, the expected bias is proportional to <span class="math inline">\(\sum_j \cos(2\pi j/n) = 0\)</span>, confirming the result.</p>
 <p><strong>Individual realizations.</strong> While <span class="math inline">\(E[\theta^T A \theta] \approx 0\)</span>, each realization of the random walk produces a nonzero bias. The distribution of realized biases has mean <span class="math inline">\(\approx \sigma^2/n\)</span> and standard deviation that grows with <span class="math inline">\(\sigma^2\)</span>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">"~/Documents/Research/Code/ECE"</span>)</span>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">".."</span>)</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(testthat)</span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">100</span>; L <span class="ot">&lt;-</span> <span class="dv">2</span></span>
@@ -556,45 +704,123 @@ E[\theta^T A \theta] = \frac{1}{2n}\bigl(2(n-1)\sigma^2 - 2(n-2)\sigma^2\bigr) =
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="model-misspecification_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="model-misspecification_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
 </section>
-<section id="eigenvalue-visualization" class="level2" data-number="6.6">
-<h2 data-number="6.6" class="anchored" data-anchor-id="eigenvalue-visualization"><span class="header-section-number">6.6</span> Eigenvalue Visualization</h2>
-<p>Each eigenvalue <span class="math inline">\(\lambda_j = \sum_{k=0}^{n-1} a_k \omega^{jk}\)</span> is a sum of <span class="math inline">\(n\)</span> complex numbers. The plot below shows the individual terms <span class="math inline">\(a_k \omega^{jk}\)</span> for <span class="math inline">\(k = 0, \ldots, n-1\)</span> as arrows in the complex plane, for each <span class="math inline">\(j\)</span>. The red star marks the sum <span class="math inline">\(\lambda_j\)</span>, which is always real.</p>
+<section id="spectral-fingerprints-of-common-misspecifications" class="level2" data-number="13.7">
+<h2 data-number="13.7" class="anchored" data-anchor-id="spectral-fingerprints-of-common-misspecifications"><span class="header-section-number">13.7</span> Spectral Fingerprints of Common Misspecifications</h2>
+<p>Each misspecification has a characteristic frequency signature. The left panel shows <span class="math inline">\(\theta_i\)</span>; the right panel shows its power spectrum <span class="math inline">\(|\tilde\theta_j|^2/n\)</span> (bars, left axis) together with the ECE eigenvalues <span class="math inline">\(\lambda_j\)</span> (red line, right axis). The bias <span class="math inline">\(\theta^T A \theta = \sum_j \lambda_j |\tilde\theta_j|^2/n\)</span> is the inner product between the two curves — large only when signal energy and <span class="math inline">\(|\lambda_j|\)</span> overlap at the same frequencies.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">"~/Documents/Research/Code/ECE"</span>)</span>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">".."</span>)</span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">10</span></span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>L <span class="ot">&lt;-</span> <span class="dv">2</span></span>
-<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="fu">ece_first_row</span>(n, L)</span>
-<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>a[<span class="fu">abs</span>(a) <span class="sc">&lt;</span> <span class="fl">1e-10</span>] <span class="ot">&lt;-</span> <span class="dv">0</span></span>
-<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>omega <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span><span class="dv">2</span>i <span class="sc">*</span> pi <span class="sc">/</span> n)</span>
-<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">5</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">3</span>, <span class="dv">2</span>, <span class="dv">1</span>))</span>
-<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">0</span><span class="sc">:</span>(n <span class="sc">-</span> <span class="dv">1</span>)) {</span>
-<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>  k     <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span>(n <span class="sc">-</span> <span class="dv">1</span>)</span>
-<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>  terms <span class="ot">&lt;-</span> a <span class="sc">*</span> omega<span class="sc">^</span>(j <span class="sc">*</span> k)</span>
-<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>  lim   <span class="ot">&lt;-</span> <span class="fu">max</span>(<span class="fu">abs</span>(<span class="fu">c</span>(<span class="fu">Re</span>(terms), <span class="fu">Im</span>(terms))), <span class="fl">0.5</span>) <span class="sc">*</span> <span class="fl">1.3</span></span>
-<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(<span class="fu">Re</span>(terms), <span class="fu">Im</span>(terms),</span>
-<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">xlim =</span> <span class="fu">c</span>(<span class="sc">-</span>lim, lim), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span>lim, lim),</span>
-<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">xlab =</span> <span class="st">"Re"</span>, <span class="at">ylab =</span> <span class="st">"Im"</span>, <span class="at">asp =</span> <span class="dv">1</span>,</span>
-<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">main =</span> <span class="fu">bquote</span>(j <span class="sc">==</span> .(j) <span class="sc">~</span> <span class="st">","</span> <span class="sc">~</span> lambda[.(j)] <span class="sc">==</span> .(<span class="fu">round</span>(<span class="fu">Re</span>(<span class="fu">sum</span>(terms)), <span class="dv">3</span>))),</span>
-<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">col =</span> <span class="st">"steelblue"</span></span>
-<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">v =</span> <span class="dv">0</span>, <span class="at">col =</span> <span class="st">"grey80"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
-<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrows</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="fu">Re</span>(terms), <span class="fu">Im</span>(terms), <span class="at">length =</span> <span class="fl">0.07</span>, <span class="at">col =</span> <span class="st">"steelblue"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>)</span>
-<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">points</span>(<span class="fu">Re</span>(<span class="fu">sum</span>(terms)), <span class="fu">Im</span>(<span class="fu">sum</span>(terms)), <span class="at">pch =</span> <span class="dv">8</span>, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">cex =</span> <span class="fl">1.5</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
-<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">100</span>; L <span class="ot">&lt;-</span> <span class="dv">2</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>a          <span class="ot">&lt;-</span> <span class="fu">ece_reg_row</span>(n, L)</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>A_mat      <span class="ot">&lt;-</span> <span class="fu">circ</span>(a) <span class="sc">/</span> n</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>lambda_all <span class="ot">&lt;-</span> <span class="fu">Re</span>(<span class="fu">fft</span>(a) <span class="sc">/</span> n)</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>j_pos      <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">:</span>(n <span class="sc">/</span> <span class="dv">2</span>)          <span class="co"># unique positive-frequency indices (1-based)</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>lambda_pos <span class="ot">&lt;-</span> lambda_all[j_pos <span class="sc">+</span> <span class="dv">1</span>]</span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>make_scenario <span class="ot">&lt;-</span> <span class="cf">function</span>(name, theta) {</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>  bias  <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">t</span>(theta) <span class="sc">%*%</span> A_mat <span class="sc">%*%</span> theta)</span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>  power <span class="ot">&lt;-</span> <span class="fu">Mod</span>(<span class="fu">fft</span>(theta))<span class="sc">^</span><span class="dv">2</span> <span class="sc">/</span> n  <span class="co"># Parseval-normalised</span></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">name =</span> name, <span class="at">theta =</span> theta, <span class="at">bias =</span> bias, <span class="at">power =</span> power[j_pos <span class="sc">+</span> <span class="dv">1</span>])</span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>scenarios <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_scenario</span>(<span class="st">"Linear"</span>,         (<span class="dv">0</span><span class="sc">:</span>(n <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">-</span> (n <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">/</span> <span class="dv">2</span>) <span class="sc">/</span> n),</span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_scenario</span>(<span class="st">"Step (-1 to 1)"</span>, <span class="fu">ifelse</span>(<span class="dv">0</span><span class="sc">:</span>(n <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">&lt;</span> n <span class="sc">/</span> <span class="dv">2</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)),</span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_scenario</span>(<span class="st">"Sinusoid"</span>,       <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> <span class="dv">10</span> <span class="sc">*</span> (<span class="dv">0</span><span class="sc">:</span>(n <span class="sc">-</span> <span class="dv">1</span>)) <span class="sc">/</span> n)),</span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_scenario</span>(<span class="st">"Random Walk"</span>,    <span class="fu">cumsum</span>(<span class="fu">rnorm</span>(n)))</span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="fl">3.5</span>, <span class="fl">3.5</span>, <span class="fl">2.5</span>, <span class="fl">4.5</span>))</span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (sc <span class="cf">in</span> scenarios) {</span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a>  <span class="do">## Left: time domain</span></span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(<span class="dv">0</span><span class="sc">:</span>(n <span class="sc">-</span> <span class="dv">1</span>), sc<span class="sc">$</span>theta, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lwd =</span> <span class="fl">1.5</span>, <span class="at">col =</span> <span class="st">"steelblue"</span>,</span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a>       <span class="at">xlab =</span> <span class="st">"i"</span>, <span class="at">ylab =</span> <span class="fu">expression</span>(theta[i]),</span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a>       <span class="at">main =</span> <span class="fu">bquote</span>(.(sc<span class="sc">$</span>name) <span class="sc">~</span> <span class="st">"  [bias ="</span> <span class="sc">~</span> .(<span class="fu">round</span>(sc<span class="sc">$</span>bias, <span class="dv">5</span>)) <span class="sc">~</span> <span class="st">"]"</span>))</span>
+<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a>  <span class="do">## Right: power spectrum (primary axis) + lambda_j (secondary axis)</span></span>
+<span id="cb15-34"><a href="#cb15-34" aria-hidden="true" tabindex="-1"></a>  ylim_power <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fu">max</span>(sc<span class="sc">$</span>power) <span class="sc">*</span> <span class="fl">1.15</span>)</span>
+<span id="cb15-35"><a href="#cb15-35" aria-hidden="true" tabindex="-1"></a>  ylim_lam   <span class="ot">&lt;-</span> <span class="fu">range</span>(lambda_pos) <span class="sc">*</span> <span class="fu">c</span>(<span class="fl">1.2</span>, <span class="fl">1.2</span>)</span>
+<span id="cb15-36"><a href="#cb15-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-37"><a href="#cb15-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(j_pos, sc<span class="sc">$</span>power, <span class="at">type =</span> <span class="st">"h"</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
+<span id="cb15-38"><a href="#cb15-38" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">adjustcolor</span>(<span class="st">"steelblue"</span>, <span class="fl">0.6</span>),</span>
+<span id="cb15-39"><a href="#cb15-39" aria-hidden="true" tabindex="-1"></a>       <span class="at">xlab =</span> <span class="st">"Frequency j"</span>, <span class="at">ylab =</span> <span class="fu">expression</span>(<span class="st">"|"</span> <span class="sc">~</span> <span class="fu">tilde</span>(theta)[j] <span class="sc">~</span> <span class="st">"|"</span><span class="sc">^</span><span class="dv">2</span> <span class="sc">/</span> n),</span>
+<span id="cb15-40"><a href="#cb15-40" aria-hidden="true" tabindex="-1"></a>       <span class="at">main =</span> <span class="st">"Spectrum"</span>,</span>
+<span id="cb15-41"><a href="#cb15-41" aria-hidden="true" tabindex="-1"></a>       <span class="at">ylim =</span> ylim_power)</span>
+<span id="cb15-42"><a href="#cb15-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">col =</span> <span class="st">"grey70"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb15-43"><a href="#cb15-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-44"><a href="#cb15-44" aria-hidden="true" tabindex="-1"></a>  <span class="fu">par</span>(<span class="at">new =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb15-45"><a href="#cb15-45" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(j_pos, lambda_pos, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">col =</span> <span class="st">"firebrick"</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
+<span id="cb15-46"><a href="#cb15-46" aria-hidden="true" tabindex="-1"></a>       <span class="at">axes =</span> <span class="cn">FALSE</span>, <span class="at">xlab =</span> <span class="st">""</span>, <span class="at">ylab =</span> <span class="st">""</span>,</span>
+<span id="cb15-47"><a href="#cb15-47" aria-hidden="true" tabindex="-1"></a>       <span class="at">ylim =</span> ylim_lam)</span>
+<span id="cb15-48"><a href="#cb15-48" aria-hidden="true" tabindex="-1"></a>  <span class="fu">axis</span>(<span class="dv">4</span>, <span class="at">col =</span> <span class="st">"firebrick"</span>, <span class="at">col.axis =</span> <span class="st">"firebrick"</span>, <span class="at">las =</span> <span class="dv">1</span>)</span>
+<span id="cb15-49"><a href="#cb15-49" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mtext</span>(<span class="fu">expression</span>(lambda[j]), <span class="at">side =</span> <span class="dv">4</span>, <span class="at">line =</span> <span class="dv">3</span>, <span class="at">col =</span> <span class="st">"firebrick"</span>)</span>
+<span id="cb15-50"><a href="#cb15-50" aria-hidden="true" tabindex="-1"></a>  <span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">col =</span> <span class="st">"firebrick"</span>, <span class="at">lty =</span> <span class="dv">3</span>, <span class="at">lwd =</span> <span class="fl">0.8</span>)</span>
+<span id="cb15-51"><a href="#cb15-51" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="model-misspecification_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="model-misspecification_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="linear-signals-at-different-slopes" class="level2" data-number="13.8">
+<h2 data-number="13.8" class="anchored" data-anchor-id="linear-signals-at-different-slopes"><span class="header-section-number">13.8</span> Linear Signals at Different Slopes</h2>
+<p>A natural conjecture is that steeper linear signals shift spectral energy to higher frequencies, producing more bias. The figures below test this: <span class="math inline">\(\theta_i = m \cdot (i/n - 0.5)\)</span> for slopes <span class="math inline">\(m = 1, 2, 5, 10\)</span>.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="model-misspecification_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The spectral shape is identical across all slopes — energy concentrates at low <span class="math inline">\(j\)</span> in every case. What changes is only the scale: the bars grow as <span class="math inline">\(m^2\)</span>. Since <span class="math inline">\(\lambda_j \approx 0\)</span> at those low frequencies, the bias remains small even for steep slopes. A linear signal is inherently low-frequency, and the ECE is insensitive to low-frequency structure by construction.</p>
+</section>
+<section id="eigenvalue-visualization" class="level2" data-number="13.9">
+<h2 data-number="13.9" class="anchored" data-anchor-id="eigenvalue-visualization"><span class="header-section-number">13.9</span> Eigenvalue Visualization</h2>
+<p>Each eigenvalue <span class="math inline">\(\lambda_j = \sum_{k=0}^{n-1} a_k \omega^{jk}\)</span> is a sum of <span class="math inline">\(n\)</span> complex numbers. The plot below shows the individual terms <span class="math inline">\(a_k \omega^{jk}\)</span> for <span class="math inline">\(k = 0, \ldots, n-1\)</span> as arrows in the complex plane, for each <span class="math inline">\(j\)</span>. The red star marks the sum <span class="math inline">\(\lambda_j\)</span>, which is always real.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">".."</span>)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">10</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>L <span class="ot">&lt;-</span> <span class="dv">2</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="fu">ece_first_row</span>(n, L)</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>a[<span class="fu">abs</span>(a) <span class="sc">&lt;</span> <span class="fl">1e-10</span>] <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>omega <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span><span class="dv">2</span>i <span class="sc">*</span> pi <span class="sc">/</span> n)</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">5</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">3</span>, <span class="dv">2</span>, <span class="dv">1</span>))</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">0</span><span class="sc">:</span>(n <span class="sc">-</span> <span class="dv">1</span>)) {</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>  k     <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span>(n <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>  terms <span class="ot">&lt;-</span> a <span class="sc">*</span> omega<span class="sc">^</span>(j <span class="sc">*</span> k)</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>  lim   <span class="ot">&lt;-</span> <span class="fu">max</span>(<span class="fu">abs</span>(<span class="fu">c</span>(<span class="fu">Re</span>(terms), <span class="fu">Im</span>(terms))), <span class="fl">0.5</span>) <span class="sc">*</span> <span class="fl">1.3</span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(<span class="fu">Re</span>(terms), <span class="fu">Im</span>(terms),</span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">xlim =</span> <span class="fu">c</span>(<span class="sc">-</span>lim, lim), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span>lim, lim),</span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">xlab =</span> <span class="st">"Re"</span>, <span class="at">ylab =</span> <span class="st">"Im"</span>, <span class="at">asp =</span> <span class="dv">1</span>,</span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">main =</span> <span class="fu">bquote</span>(j <span class="sc">==</span> .(j) <span class="sc">~</span> <span class="st">","</span> <span class="sc">~</span> lambda[.(j)] <span class="sc">==</span> .(<span class="fu">round</span>(<span class="fu">Re</span>(<span class="fu">sum</span>(terms)), <span class="dv">3</span>))),</span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">col =</span> <span class="st">"steelblue"</span></span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">v =</span> <span class="dv">0</span>, <span class="at">col =</span> <span class="st">"grey80"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrows</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="fu">Re</span>(terms), <span class="fu">Im</span>(terms), <span class="at">length =</span> <span class="fl">0.07</span>, <span class="at">col =</span> <span class="st">"steelblue"</span>, <span class="at">lwd =</span> <span class="fl">1.2</span>)</span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">points</span>(<span class="fu">Re</span>(<span class="fu">sum</span>(terms)), <span class="fu">Im</span>(<span class="fu">sum</span>(terms)), <span class="at">pch =</span> <span class="dv">8</span>, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">cex =</span> <span class="fl">1.5</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb16-25"><a href="#cb16-25" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="model-misspecification_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -1005,13 +1231,13 @@ E[\theta^T A \theta] = \frac{1}{2n}\bigl(2(n-1)\sigma^2 - 2(n-2)\sigma^2\bigr) =
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./computational-solution.html" class="pagination-link" aria-label="Computational Solution">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Computational Solution</span></span>
+      <a href="./positive-semidefinite.html" class="pagination-link" aria-label="Positive Semidefinite">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./positive-semidefinite.html" class="pagination-link" aria-label="Positive Semidefinite">
-        <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./package.html" class="pagination-link" aria-label="Package">
+        <span class="nav-page-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Package</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

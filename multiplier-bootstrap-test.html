@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Appendix A — Computational Solution – ECE Notes</title>
+<title>6&nbsp; Multiplier Bootstrap Test – ECE Notes</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,8 +65,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./mean-removal.html" rel="next">
-<link href="./package.html" rel="prev">
+<link href="./parametric-bootstrap-test.html" rel="next">
+<link href="./z-test.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -146,7 +146,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./computational-solution.html">Appendices</a></li><li class="breadcrumb-item"><a href="./computational-solution.html"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Computational Solution</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./z-test.html">Inference</a></li><li class="breadcrumb-item"><a href="./multiplier-bootstrap-test.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Multiplier Bootstrap Test</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -223,7 +223,7 @@ window.Quarto = {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./multiplier-bootstrap-test.html" class="sidebar-item-text sidebar-link">
+  <a href="./multiplier-bootstrap-test.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Multiplier Bootstrap Test</span></span></a>
   </div>
 </li>
@@ -310,7 +310,7 @@ window.Quarto = {
       <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./computational-solution.html" class="sidebar-item-text sidebar-link active">
+  <a href="./computational-solution.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Computational Solution</span></span></a>
   </div>
 </li>
@@ -344,22 +344,18 @@ window.Quarto = {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction"><span class="header-section-number">A.1</span> Introduction</a></li>
-  <li><a href="#svd-for-identifying-the-null-space" id="toc-svd-for-identifying-the-null-space" class="nav-link" data-scroll-target="#svd-for-identifying-the-null-space"><span class="header-section-number">A.2</span> SVD for Identifying the Null Space</a>
-  <ul class="collapse">
-  <li><a href="#connection-to-the-null-space" id="toc-connection-to-the-null-space" class="nav-link" data-scroll-target="#connection-to-the-null-space"><span class="header-section-number">A.2.1</span> Connection to the Null Space</a></li>
-  <li><a href="#steps-to-identify-the-null-space" id="toc-steps-to-identify-the-null-space" class="nav-link" data-scroll-target="#steps-to-identify-the-null-space"><span class="header-section-number">A.2.2</span> Steps to Identify the Null Space</a></li>
-  </ul></li>
-  <li><a href="#pseudoinverse-and-min-norm-solution" id="toc-pseudoinverse-and-min-norm-solution" class="nav-link" data-scroll-target="#pseudoinverse-and-min-norm-solution"><span class="header-section-number">A.3</span> Pseudoinverse and Min-Norm Solution</a></li>
+  <li><a href="#notation" id="toc-notation" class="nav-link active" data-scroll-target="#notation"><span class="header-section-number">6.1</span> Notation</a></li>
+  <li><a href="#multiplier-bootstrap" id="toc-multiplier-bootstrap" class="nav-link" data-scroll-target="#multiplier-bootstrap"><span class="header-section-number">6.2</span> Multiplier Bootstrap</a></li>
+  <li><a href="#cauchy-combination-test" id="toc-cauchy-combination-test" class="nav-link" data-scroll-target="#cauchy-combination-test"><span class="header-section-number">6.3</span> Cauchy Combination Test</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./computational-solution.html">Appendices</a></li><li class="breadcrumb-item"><a href="./computational-solution.html"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Computational Solution</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./z-test.html">Inference</a></li><li class="breadcrumb-item"><a href="./multiplier-bootstrap-test.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Multiplier Bootstrap Test</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Appendix A — Computational Solution</h1>
+<h1 class="title"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Multiplier Bootstrap Test</span></h1>
 </div>
 
 
@@ -376,45 +372,152 @@ window.Quarto = {
 </header>
 
 
-<section id="introduction" class="level2" data-number="A.1">
-<h2 data-number="A.1" class="anchored" data-anchor-id="introduction"><span class="header-section-number">A.1</span> Introduction</h2>
-<p>TODO: Add content for computational results chapter.</p>
+<p><img src="assets/bs-multiplier-diagram.png" class="img-fluid"></p>
+<p>We test the hypotheses <span class="math display">\[H_0: \Sigma = I_p \quad \text{vs} \quad H_1: \Sigma \neq I_p.\]</span> Equivalently, this is a test of whether all off-diagonal entries <span class="math inline">\(\sigma_{xy} = 0\)</span>, which are precisely the quantities estimated by the ECE.</p>
+<p><strong>Outline.</strong> The Multiplier Bootstrap provides a distribution-free null distribution for a sum of mean-zero independent terms. The ECE satisfies neither condition directly: its summands are neither mean-zero nor independent. We address each in turn. First, we reparametrize the ECE as a sum of terms <span class="math inline">\(s_i^{(k)}\)</span> that are mean-zero under <span class="math inline">\(H_0\)</span>. Second, we partition these terms into three subsequences, each comprising independent terms. Each subsequence yields a p-value via the Multiplier Bootstrap. Finally, since the three subsequences are mutually dependent, we combine their p-values using the Cauchy Combination Test.</p>
+<section id="notation" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="notation"><span class="header-section-number">6.1</span> Notation</h2>
+<p>Using circular indexing <span class="math inline">\(i := [(i-1) \bmod n] + 1\)</span>, define the <span class="math inline">\(k\)</span>-lagged sum <span class="math display">\[T_k(X, Y) = \sum_{i=1}^n (X_i - X_{i+k})(Y_i - Y_{i+k}).\]</span></p>
+<p>For notational convenience, define <span class="math inline">\(s_i^{(k)} = (X_i - X_{i+k})(Y_i - Y_{i+k})\)</span>, so that <span class="math display">\[T_k(X,Y) = \sum_{i=1}^n s_i^{(k)}.\]</span></p>
 </section>
-<section id="svd-for-identifying-the-null-space" class="level2" data-number="A.2">
-<h2 data-number="A.2" class="anchored" data-anchor-id="svd-for-identifying-the-null-space"><span class="header-section-number">A.2</span> SVD for Identifying the Null Space</h2>
-<p>Given the constraint matrix <span class="math inline">\(G \in \mathbb{R}^{m \times n}\)</span>, the singular value decomposition is: <span class="math display">\[G = U \Sigma V^T\]</span> where <span class="math inline">\(U \in \mathbb{R}^{m \times m}\)</span> and <span class="math inline">\(V \in \mathbb{R}^{n \times n}\)</span> are orthogonal matrices, and <span class="math inline">\(\Sigma\)</span> is a diagonal matrix with singular values <span class="math inline">\(\sigma_1 \geq \sigma_2 \geq \cdots \geq \sigma_{\min(m,n)} \geq 0\)</span>.</p>
-<section id="connection-to-the-null-space" class="level3" data-number="A.2.1">
-<h3 data-number="A.2.1" class="anchored" data-anchor-id="connection-to-the-null-space"><span class="header-section-number">A.2.1</span> Connection to the Null Space</h3>
-<p>The null space of <span class="math inline">\(G\)</span> is: <span class="math display">\[\text{null}(G) = \{a \in \mathbb{R}^n : Ga = 0\}\]</span></p>
-<p>If <span class="math inline">\(G\)</span> has rank <span class="math inline">\(r &lt; n\)</span>, the right singular vectors corresponding to zero singular values span the null space: <span class="math display">\[\text{null}(G) = \text{span}\{v_{r+1}, v_{r+2}, \ldots, v_n\}\]</span> where <span class="math inline">\(v_i\)</span> are the columns of <span class="math inline">\(V\)</span>.</p>
-</section>
-<section id="steps-to-identify-the-null-space" class="level3" data-number="A.2.2">
-<h3 data-number="A.2.2" class="anchored" data-anchor-id="steps-to-identify-the-null-space"><span class="header-section-number">A.2.2</span> Steps to Identify the Null Space</h3>
-<ol type="1">
-<li>Compute the SVD: <span class="math inline">\(G = U \Sigma V^T\)</span></li>
-<li>Identify the rank <span class="math inline">\(r\)</span> as the number of non-zero singular values</li>
-<li>Extract the right singular vectors <span class="math inline">\(v_{r+1}, \ldots, v_n\)</span> corresponding to the zero singular values</li>
-<li>The null space basis is <span class="math inline">\(\text{null}(G) = \text{span}\{v_{r+1}, \ldots, v_n\}\)</span></li>
-</ol>
-</section>
-</section>
-<section id="pseudoinverse-and-min-norm-solution" class="level2" data-number="A.3">
-<h2 data-number="A.3" class="anchored" data-anchor-id="pseudoinverse-and-min-norm-solution"><span class="header-section-number">A.3</span> Pseudoinverse and Min-Norm Solution</h2>
-<p>The Moore-Penrose pseudoinverse <span class="math inline">\(G^+\)</span> is defined via SVD as: <span class="math display">\[G^+ = V \Sigma^+ U^T\]</span> where <span class="math inline">\(\Sigma^+\)</span> is obtained by taking reciprocals of the non-zero singular values and transposing.</p>
-<p><span class="math inline">\(G^+\)</span> simultaneously solves two optimality problems. When <span class="math inline">\(b \notin \text{col}(G)\)</span> the system <span class="math inline">\(Ga = b\)</span> is inconsistent, and <span class="math inline">\(G^+b\)</span> is the least-squares solution minimizing <span class="math inline">\(\|Ga - b\|_2^2\)</span>. When the system is consistent but underdetermined, <span class="math inline">\(G^+b\)</span> is the minimum-norm solution among all exact solutions.</p>
-<p>For a system <span class="math inline">\(Ga = b\)</span>, the general solution is: <span class="math display">\[a = G^+ b + \sum_{i=r+1}^{n} c_i v_i\]</span> where the second term spans <span class="math inline">\(\text{null}(G)\)</span>. The norm of the general solution is: <span class="math display">\[\|a\|^2 = \|G^+ b\|^2 + \sum_{i=r+1}^{n} c_i^2\]</span> since <span class="math inline">\(G^+ b\)</span> lies in the row space of <span class="math inline">\(G\)</span>, which is orthogonal to <span class="math inline">\(\text{null}(G)\)</span>. This is minimized by setting all <span class="math inline">\(c_i = 0\)</span>, giving the minimum-norm solution: <span class="math display">\[a^* = G^+ b\]</span></p>
+<section id="multiplier-bootstrap" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="multiplier-bootstrap"><span class="header-section-number">6.2</span> Multiplier Bootstrap</h2>
+<p>The Multiplier Bootstrap requires each summand to be mean-zero. The terms <span class="math inline">\(s_i^{(k)}\)</span> do not satisfy this directly.</p>
+<p><strong>Making Terms Mean Zero.</strong></p>
+<p>Under circular indexing, shifting all indices by 1 leaves <span class="math inline">\(T_1\)</span> unchanged: <span class="math display">\[T_1(X,Y) = \sum_{i=1}^n s_i^{(1)} = \sum_{i=1}^n s_{i+1}^{(1)}.\]</span> Therefore <span class="math inline">\(2T_1(X,Y) = \sum_{i=1}^n \left(s_i^{(1)} + s_{i+1}^{(1)}\right)\)</span>, and the ECE numerator becomes <span class="math display">\[2T_1(X,Y) - T_2(X,Y) = \sum_{i=1}^n \underbrace{\left(s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}\right)}_{S_i}.\]</span></p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Proof: <span class="math inline">\(S_i\)</span> is mean-zero under <span class="math inline">\(H_0\)</span>
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Define <span class="math inline">\(h_i^{(k)} = (\theta_{x,i} - \theta_{x,i+k})(\theta_{y,i} - \theta_{y,i+k})\)</span> and <span class="math inline">\(e_i^{(k)} = (\varepsilon_{x,i} - \varepsilon_{x,i+k})(\varepsilon_{y,i} - \varepsilon_{y,i+k})\)</span>. Since cross terms have mean zero, <span class="math inline">\(\mathbb{E}[s_i^{(k)}] = h_i^{(k)} + 2\sigma_{xy}\)</span>. Therefore <span class="math display">\[\mathbb{E}[S_i] = h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)} + 2\sigma_{xy}.\]</span> Under <span class="math inline">\(H_0\)</span> (<span class="math inline">\(\sigma_{xy} = 0\)</span>), it remains to show <span class="math inline">\(h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)} = 0\)</span>. We consider two cases.</p>
+<p>If there is a change point at <span class="math inline">\(i\)</span>: minimum segment length 2 forces <span class="math inline">\(\theta_{i+1} = \theta_{i+2}\)</span>, so <span class="math inline">\(h_{i+1}^{(1)} = 0\)</span> and <span class="math inline">\(h_i^{(2)} = h_i^{(1)}\)</span>. Hence <span class="math inline">\(h_i^{(1)} + 0 - h_i^{(1)} = 0\)</span>.</p>
+<p>If there is a change point at <span class="math inline">\(i+1\)</span>: then <span class="math inline">\(\theta_i = \theta_{i+1}\)</span>, so <span class="math inline">\(h_i^{(1)} = 0\)</span> and <span class="math inline">\(h_i^{(2)} = h_{i+1}^{(1)}\)</span>. Hence <span class="math inline">\(0 + h_{i+1}^{(1)} - h_{i+1}^{(1)} = 0\)</span>.</p>
+<p>If there is no change point at either index, all terms are zero. Hence <span class="math inline">\(\mathbb{E}[S_i] = 0\)</span> under <span class="math inline">\(H_0\)</span>.</p>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-2-contents" aria-controls="callout-2" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Code: <span class="math inline">\(S_i\)</span> is mean-zero under <span class="math inline">\(H_0\)</span>
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-2" class="callout-2-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">".."</span>)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(testthat)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">20</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>L <span class="ot">&lt;-</span> <span class="dv">3</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"optimization-based solution matches ece_min_norm"</span>, {</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(<span class="fu">ece_optim</span>(n, L), <span class="fu">ece_min_norm</span>(n, L), <span class="at">tolerance =</span> <span class="fl">1e-4</span>)</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>config <span class="ot">&lt;-</span> <span class="fu">scenario</span>(<span class="dv">2</span>, <span class="at">n=</span><span class="dv">1000</span>, <span class="at">L=</span><span class="dv">2</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>means <span class="ot">&lt;-</span> <span class="fu">replicate</span>(<span class="dv">1000</span>, {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  X <span class="ot">&lt;-</span> <span class="fu">generate_data</span>(config)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(<span class="fu">lag_terms</span>(X))</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(means, <span class="at">breaks=</span><span class="dv">40</span>, <span class="at">xlab=</span><span class="fu">expression</span>(<span class="fu">bar</span>(d)))</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v=</span><span class="dv">0</span>, <span class="at">col=</span><span class="st">"red"</span>, <span class="at">lty=</span><span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="multiplier-bootstrap-test_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">t.test</span>(means)<span class="sc">$</span>conf.int</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Test passed 🥳</code></pre>
+<pre><code>[1] -0.006708336  0.007618692
+attr(,"conf.level")
+[1] 0.95</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><strong>Making Terms Independent.</strong></p>
+<p>Each <span class="math inline">\(S_i\)</span> depends only on observations <span class="math inline">\(X_i, X_{i+1}, X_{i+2}\)</span> (and the same for <span class="math inline">\(Y\)</span>), so <span class="math inline">\(S_i\)</span> and <span class="math inline">\(S_j\)</span> are independent whenever <span class="math inline">\(|i - j| \geq 3\)</span>. This motivates partitioning by residue mod 3: <span class="math display">\[\{S_1, S_4, S_7, \ldots\}, \quad \{S_2, S_5, S_8, \ldots\}, \quad \{S_3, S_6, S_9, \ldots\}.\]</span> Within each subsequence, consecutive terms are at least 3 apart, so the terms are independent. However, the three subsequences share observations and are mutually dependent, so their p-values cannot be combined trivially.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-3-contents" aria-controls="callout-3" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Code: All Subsequences are Independent
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-3" class="callout-3-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>config <span class="ot">&lt;-</span> <span class="fu">scenario</span>(<span class="dv">2</span>, <span class="at">n=</span><span class="dv">1000</span>, <span class="at">L=</span><span class="dv">2</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>pval <span class="ot">&lt;-</span> <span class="fu">replicate</span>(<span class="dv">1000</span>, {</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  X <span class="ot">&lt;-</span> <span class="fu">generate_data</span>(config)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> <span class="fu">lag_terms</span>(X)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  splits <span class="ot">&lt;-</span> <span class="fu">split_indep</span>(d)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">map_dbl</span>(splits, \(s) <span class="fu">Box.test</span>(s, <span class="at">lag=</span><span class="dv">10</span>, <span class="at">type=</span><span class="st">"Ljung-Box"</span>)<span class="sc">$</span>p.value)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>}) <span class="sc">|&gt;</span> <span class="fu">t</span>()</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="fu">colMeans</span>(pval <span class="sc">&lt;</span> <span class="fl">0.05</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.051 0.044 0.045</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="multiplier-bootstrap-test_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="cauchy-combination-test" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="cauchy-combination-test"><span class="header-section-number">6.3</span> Cauchy Combination Test</h2>
+<p>Given p-values <span class="math inline">\(p_1, p_2, p_3\)</span> from the three subsequences, the CCT statistic is <span class="math display">\[T = \sum_{j=1}^3 w_j \tan\!\left(\left(\tfrac{1}{2} - p_j\right)\pi\right),\]</span> where <span class="math inline">\(w_j &gt; 0\)</span> are weights with <span class="math inline">\(\sum_j w_j = 1\)</span>, typically <span class="math inline">\(w_j = 1/3\)</span>. Under <span class="math inline">\(H_0\)</span>, each <span class="math inline">\(p_j\)</span> is uniformly distributed on <span class="math inline">\([0,1]\)</span>, so each summand is standard Cauchy. The key property of the CCT is that <span class="math inline">\(T\)</span> is approximately standard Cauchy under <span class="math inline">\(H_0\)</span> regardless of the dependence structure among the <span class="math inline">\(p_j\)</span>. The combined p-value is the upper-tail probability <span class="math inline">\(p = 1 - F_{\mathrm{Cauchy}}(T)\)</span>, where <span class="math inline">\(F_{\mathrm{Cauchy}}(t) = \frac{1}{2} + \frac{\arctan(t)}{\pi}\)</span> is the standard Cauchy CDF. Substituting, <span class="math display">\[p = 1 - \frac{1}{2} - \frac{\arctan(T)}{\pi} = \frac{1}{2} - \frac{\arctan(T)}{\pi}.\]</span></p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-4-contents" aria-controls="callout-4" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Code: Combined P-value is Uniform Under <span class="math inline">\(H_0\)</span>
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-4" class="callout-4-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>config <span class="ot">&lt;-</span> <span class="fu">scenario</span>(<span class="dv">2</span>, <span class="at">n=</span><span class="dv">1000</span>, <span class="at">L=</span><span class="dv">2</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>pvals <span class="ot">&lt;-</span> <span class="fu">replicate</span>(<span class="dv">1000</span>, {</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  X <span class="ot">&lt;-</span> <span class="fu">generate_data</span>(config)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ece.test</span>(X, <span class="at">type=</span><span class="st">"bs.multiplier"</span>, <span class="at">B=</span><span class="dv">500</span>)<span class="sc">$</span>p.value</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(pvals, <span class="at">breaks=</span><span class="dv">10</span>, <span class="at">xlab=</span><span class="st">"p-value"</span>, <span class="at">main=</span><span class="st">""</span>, <span class="at">freq=</span><span class="cn">FALSE</span>)</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h=</span><span class="dv">1</span>, <span class="at">col=</span><span class="st">"red"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="multiplier-bootstrap-test_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(pvals <span class="sc">&lt;</span> <span class="fl">0.05</span>)  <span class="co"># ~0.05</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.051</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 
@@ -823,13 +926,13 @@ window.Quarto = {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./package.html" class="pagination-link" aria-label="Package">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Package</span></span>
+      <a href="./z-test.html" class="pagination-link" aria-label="Z-Test">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Z-Test</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./mean-removal.html" class="pagination-link" aria-label="Mean Removal">
-        <span class="nav-page-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Mean Removal</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./parametric-bootstrap-test.html" class="pagination-link" aria-label="Parametric Bootstrap Test">
+        <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Parametric Bootstrap Test</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

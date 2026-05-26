@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Appendix A — Computational Solution – ECE Notes</title>
+<title>11&nbsp; Power – ECE Notes</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,8 +65,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./mean-removal.html" rel="next">
-<link href="./package.html" rel="prev">
+<link href="./positive-semidefinite.html" rel="next">
+<link href="./type-i-error.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -146,7 +146,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./computational-solution.html">Appendices</a></li><li class="breadcrumb-item"><a href="./computational-solution.html"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Computational Solution</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./simulation.html">Numerical Studies</a></li><li class="breadcrumb-item"><a href="./power.html"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Power</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -264,7 +264,7 @@ window.Quarto = {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./power.html" class="sidebar-item-text sidebar-link">
+  <a href="./power.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Power</span></span></a>
   </div>
 </li>
@@ -310,7 +310,7 @@ window.Quarto = {
       <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./computational-solution.html" class="sidebar-item-text sidebar-link active">
+  <a href="./computational-solution.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Computational Solution</span></span></a>
   </div>
 </li>
@@ -344,22 +344,20 @@ window.Quarto = {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction"><span class="header-section-number">A.1</span> Introduction</a></li>
-  <li><a href="#svd-for-identifying-the-null-space" id="toc-svd-for-identifying-the-null-space" class="nav-link" data-scroll-target="#svd-for-identifying-the-null-space"><span class="header-section-number">A.2</span> SVD for Identifying the Null Space</a>
-  <ul class="collapse">
-  <li><a href="#connection-to-the-null-space" id="toc-connection-to-the-null-space" class="nav-link" data-scroll-target="#connection-to-the-null-space"><span class="header-section-number">A.2.1</span> Connection to the Null Space</a></li>
-  <li><a href="#steps-to-identify-the-null-space" id="toc-steps-to-identify-the-null-space" class="nav-link" data-scroll-target="#steps-to-identify-the-null-space"><span class="header-section-number">A.2.2</span> Steps to Identify the Null Space</a></li>
-  </ul></li>
-  <li><a href="#pseudoinverse-and-min-norm-solution" id="toc-pseudoinverse-and-min-norm-solution" class="nav-link" data-scroll-target="#pseudoinverse-and-min-norm-solution"><span class="header-section-number">A.3</span> Pseudoinverse and Min-Norm Solution</a></li>
+  <li><a href="#z-test-gaussian-vs.-kappa" id="toc-z-test-gaussian-vs.-kappa" class="nav-link active" data-scroll-target="#z-test-gaussian-vs.-kappa"><span class="header-section-number">11.1</span> Z-Test: Gaussian vs.&nbsp;Kappa</a></li>
+  <li><a href="#z-test-vs.-bootstrap-methods" id="toc-z-test-vs.-bootstrap-methods" class="nav-link" data-scroll-target="#z-test-vs.-bootstrap-methods"><span class="header-section-number">11.2</span> Z-Test vs.&nbsp;Bootstrap Methods</a></li>
+  <li><a href="#for-p-2" id="toc-for-p-2" class="nav-link" data-scroll-target="#for-p-2"><span class="header-section-number">11.3</span> For <span class="math inline">\(p &gt; 2\)</span></a></li>
+  <li><a href="#variance-difference-general-vs.-gaussian" id="toc-variance-difference-general-vs.-gaussian" class="nav-link" data-scroll-target="#variance-difference-general-vs.-gaussian"><span class="header-section-number">11.4</span> Variance Difference: General vs.&nbsp;Gaussian</a></li>
+  <li><a href="#cumulants-by-distribution" id="toc-cumulants-by-distribution" class="nav-link" data-scroll-target="#cumulants-by-distribution"><span class="header-section-number">11.5</span> Cumulants by Distribution</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./computational-solution.html">Appendices</a></li><li class="breadcrumb-item"><a href="./computational-solution.html"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Computational Solution</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./simulation.html">Numerical Studies</a></li><li class="breadcrumb-item"><a href="./power.html"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Power</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Appendix A — Computational Solution</h1>
+<h1 class="title"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Power</span></h1>
 </div>
 
 
@@ -376,45 +374,246 @@ window.Quarto = {
 </header>
 
 
-<section id="introduction" class="level2" data-number="A.1">
-<h2 data-number="A.1" class="anchored" data-anchor-id="introduction"><span class="header-section-number">A.1</span> Introduction</h2>
-<p>TODO: Add content for computational results chapter.</p>
+<section id="z-test-gaussian-vs.-kappa" class="level2" data-number="11.1">
+<h2 data-number="11.1" class="anchored" data-anchor-id="z-test-gaussian-vs.-kappa"><span class="header-section-number">11.1</span> Z-Test: Gaussian vs.&nbsp;Kappa</h2>
+<p>We compare <code>z.test.gaussian</code> and <code>z.test.kappa</code> at <span class="math inline">\(n = 200\)</span>, <span class="math inline">\(p = 2\)</span>, across scenarios and error distributions.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" aria-current="page">normal</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false">exponential</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<p><img src="power_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid" width="672"></p>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<p><img src="power_files/figure-html/unnamed-chunk-2-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</div>
 </section>
-<section id="svd-for-identifying-the-null-space" class="level2" data-number="A.2">
-<h2 data-number="A.2" class="anchored" data-anchor-id="svd-for-identifying-the-null-space"><span class="header-section-number">A.2</span> SVD for Identifying the Null Space</h2>
-<p>Given the constraint matrix <span class="math inline">\(G \in \mathbb{R}^{m \times n}\)</span>, the singular value decomposition is: <span class="math display">\[G = U \Sigma V^T\]</span> where <span class="math inline">\(U \in \mathbb{R}^{m \times m}\)</span> and <span class="math inline">\(V \in \mathbb{R}^{n \times n}\)</span> are orthogonal matrices, and <span class="math inline">\(\Sigma\)</span> is a diagonal matrix with singular values <span class="math inline">\(\sigma_1 \geq \sigma_2 \geq \cdots \geq \sigma_{\min(m,n)} \geq 0\)</span>.</p>
-<section id="connection-to-the-null-space" class="level3" data-number="A.2.1">
-<h3 data-number="A.2.1" class="anchored" data-anchor-id="connection-to-the-null-space"><span class="header-section-number">A.2.1</span> Connection to the Null Space</h3>
-<p>The null space of <span class="math inline">\(G\)</span> is: <span class="math display">\[\text{null}(G) = \{a \in \mathbb{R}^n : Ga = 0\}\]</span></p>
-<p>If <span class="math inline">\(G\)</span> has rank <span class="math inline">\(r &lt; n\)</span>, the right singular vectors corresponding to zero singular values span the null space: <span class="math display">\[\text{null}(G) = \text{span}\{v_{r+1}, v_{r+2}, \ldots, v_n\}\]</span> where <span class="math inline">\(v_i\)</span> are the columns of <span class="math inline">\(V\)</span>.</p>
+<section id="z-test-vs.-bootstrap-methods" class="level2" data-number="11.2">
+<h2 data-number="11.2" class="anchored" data-anchor-id="z-test-vs.-bootstrap-methods"><span class="header-section-number">11.2</span> Z-Test vs.&nbsp;Bootstrap Methods</h2>
+<p>We compare all four methods at <span class="math inline">\(n = 200\)</span>, <span class="math inline">\(p = 2\)</span>, across scenarios and error distributions.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true">normal</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false">exponential</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<p><img src="power_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid" width="672"></p>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<p><img src="power_files/figure-html/unnamed-chunk-3-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</div>
 </section>
-<section id="steps-to-identify-the-null-space" class="level3" data-number="A.2.2">
-<h3 data-number="A.2.2" class="anchored" data-anchor-id="steps-to-identify-the-null-space"><span class="header-section-number">A.2.2</span> Steps to Identify the Null Space</h3>
-<ol type="1">
-<li>Compute the SVD: <span class="math inline">\(G = U \Sigma V^T\)</span></li>
-<li>Identify the rank <span class="math inline">\(r\)</span> as the number of non-zero singular values</li>
-<li>Extract the right singular vectors <span class="math inline">\(v_{r+1}, \ldots, v_n\)</span> corresponding to the zero singular values</li>
-<li>The null space basis is <span class="math inline">\(\text{null}(G) = \text{span}\{v_{r+1}, \ldots, v_n\}\)</span></li>
-</ol>
+<section id="for-p-2" class="level2" data-number="11.3">
+<h2 data-number="11.3" class="anchored" data-anchor-id="for-p-2"><span class="header-section-number">11.3</span> For <span class="math inline">\(p &gt; 2\)</span></h2>
+<p>We compare <code>bs.multiplier</code> and <code>bs.parametric</code> at <span class="math inline">\(n = 200\)</span>, <span class="math inline">\(p \in \{3, 5, 10\}\)</span>, across scenarios and error distributions.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true">normal</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false">exponential</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<p><img src="power_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid" width="672"></p>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<p><img src="power_files/figure-html/unnamed-chunk-4-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</div>
 </section>
+<section id="variance-difference-general-vs.-gaussian" class="level2" data-number="11.4">
+<h2 data-number="11.4" class="anchored" data-anchor-id="variance-difference-general-vs.-gaussian"><span class="header-section-number">11.4</span> Variance Difference: General vs.&nbsp;Gaussian</h2>
+<p>Recall the asymptotic variance under the general and Gaussian assumptions: <span class="math display">\[
+V = \frac{1}{n}\left[(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y}\right) + \frac{\rho^2}{4}(\kappa_{40}+2\kappa_{22}+\kappa_{04}) - \rho(\kappa_{31}+\kappa_{13}) + \frac{5}{2}(1-\rho^2)^2 + \kappa_{22}\right],
+\]</span> <span class="math display">\[
+V_G = \frac{1}{n}(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y} + \frac{7}{2}(1-\rho^2)\right).
+\]</span> The jump-noise terms cancel, giving <span class="math display">\[
+V - V_G = \frac{1}{n}\left[\frac{\rho^2}{4}(\kappa_{40}+2\kappa_{22}+\kappa_{04}) - \rho(\kappa_{31}+\kappa_{13}) + \kappa_{22} - (1-\rho^2)^2\right].
+\]</span> This is zero under the Gaussian assumption and measures the excess variance due to non-Gaussianity.</p>
 </section>
-<section id="pseudoinverse-and-min-norm-solution" class="level2" data-number="A.3">
-<h2 data-number="A.3" class="anchored" data-anchor-id="pseudoinverse-and-min-norm-solution"><span class="header-section-number">A.3</span> Pseudoinverse and Min-Norm Solution</h2>
-<p>The Moore-Penrose pseudoinverse <span class="math inline">\(G^+\)</span> is defined via SVD as: <span class="math display">\[G^+ = V \Sigma^+ U^T\]</span> where <span class="math inline">\(\Sigma^+\)</span> is obtained by taking reciprocals of the non-zero singular values and transposing.</p>
-<p><span class="math inline">\(G^+\)</span> simultaneously solves two optimality problems. When <span class="math inline">\(b \notin \text{col}(G)\)</span> the system <span class="math inline">\(Ga = b\)</span> is inconsistent, and <span class="math inline">\(G^+b\)</span> is the least-squares solution minimizing <span class="math inline">\(\|Ga - b\|_2^2\)</span>. When the system is consistent but underdetermined, <span class="math inline">\(G^+b\)</span> is the minimum-norm solution among all exact solutions.</p>
-<p>For a system <span class="math inline">\(Ga = b\)</span>, the general solution is: <span class="math display">\[a = G^+ b + \sum_{i=r+1}^{n} c_i v_i\]</span> where the second term spans <span class="math inline">\(\text{null}(G)\)</span>. The norm of the general solution is: <span class="math display">\[\|a\|^2 = \|G^+ b\|^2 + \sum_{i=r+1}^{n} c_i^2\]</span> since <span class="math inline">\(G^+ b\)</span> lies in the row space of <span class="math inline">\(G\)</span>, which is orthogonal to <span class="math inline">\(\text{null}(G)\)</span>. This is minimized by setting all <span class="math inline">\(c_i = 0\)</span>, giving the minimum-norm solution: <span class="math display">\[a^* = G^+ b\]</span></p>
+<section id="cumulants-by-distribution" class="level2" data-number="11.5">
+<h2 data-number="11.5" class="anchored" data-anchor-id="cumulants-by-distribution"><span class="header-section-number">11.5</span> Cumulants by Distribution</h2>
+<p>The magnitude of <span class="math inline">\(V - V_G\)</span> depends on how far the joint cumulants depart from their Gaussian values. The tables below report <span class="math inline">\((\kappa_{40}, \kappa_{31}, \kappa_{22}, \kappa_{13}, \kappa_{04})\)</span> and <span class="math inline">\(n(V - V_G)\)</span> for each supported error distribution, estimated via <span class="math inline">\(10^7\)</span> samples.</p>
+<p><strong><span class="math inline">\(\rho = 0.3\)</span></strong></p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 13%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 13%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Distribution</th>
+<th style="text-align: right;"><span class="math inline">\(\kappa_{40}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\kappa_{31}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\kappa_{22}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\kappa_{13}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\kappa_{04}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(n(V - V_G)\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">normal</td>
+<td style="text-align: right;">2.999</td>
+<td style="text-align: right;">0.900</td>
+<td style="text-align: right;">1.180</td>
+<td style="text-align: right;">0.900</td>
+<td style="text-align: right;">3.000</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">exponential</td>
+<td style="text-align: right;">8.974</td>
+<td style="text-align: right;">2.691</td>
+<td style="text-align: right;">1.719</td>
+<td style="text-align: right;">1.069</td>
+<td style="text-align: right;">8.033</td>
+<td style="text-align: right;">0.223</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">t</td>
+<td style="text-align: right;">8.219</td>
+<td style="text-align: right;">2.466</td>
+<td style="text-align: right;">1.670</td>
+<td style="text-align: right;">0.935</td>
+<td style="text-align: right;">8.399</td>
+<td style="text-align: right;">0.271</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">lognormal</td>
+<td style="text-align: right;">109.802</td>
+<td style="text-align: right;">32.778</td>
+<td style="text-align: right;">10.674</td>
+<td style="text-align: right;">3.597</td>
+<td style="text-align: right;">93.595</td>
+<td style="text-align: right;">3.991</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong><span class="math inline">\(\rho = 0\)</span></strong></p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 13%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 13%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Distribution</th>
+<th style="text-align: right;"><span class="math inline">\(\kappa_{40}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\kappa_{31}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\kappa_{22}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\kappa_{13}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\kappa_{04}\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(n(V - V_G)\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">normal</td>
+<td style="text-align: right;">2.998</td>
+<td style="text-align: right;">-0.001</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">-0.001</td>
+<td style="text-align: right;">3.004</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">exponential</td>
+<td style="text-align: right;">8.958</td>
+<td style="text-align: right;">0.003</td>
+<td style="text-align: right;">1.007</td>
+<td style="text-align: right;">0.013</td>
+<td style="text-align: right;">9.049</td>
+<td style="text-align: right;">0.007</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">t</td>
+<td style="text-align: right;">12.010</td>
+<td style="text-align: right;">0.073</td>
+<td style="text-align: right;">1.002</td>
+<td style="text-align: right;">0.005</td>
+<td style="text-align: right;">8.450</td>
+<td style="text-align: right;">0.002</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">lognormal</td>
+<td style="text-align: right;">96.363</td>
+<td style="text-align: right;">-0.017</td>
+<td style="text-align: right;">0.956</td>
+<td style="text-align: right;">-0.234</td>
+<td style="text-align: right;">106.310</td>
+<td style="text-align: right;">-0.044</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Computational verification
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">".."</span>)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(testthat)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">20</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>L <span class="ot">&lt;-</span> <span class="dv">3</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"optimization-based solution matches ece_min_norm"</span>, {</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(<span class="fu">ece_optim</span>(n, L), <span class="fu">ece_min_norm</span>(n, L), <span class="at">tolerance =</span> <span class="fl">1e-4</span>)</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>params <span class="ot">&lt;-</span> <span class="fu">scenario</span>(<span class="dv">2</span>, <span class="at">n =</span> <span class="dv">1000</span>, <span class="at">L =</span> <span class="dv">4</span>, <span class="at">r =</span> <span class="fl">0.3</span>, <span class="at">err_type =</span> <span class="st">"exponential"</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>n   <span class="ot">&lt;-</span> params<span class="sc">$</span>n</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>sx  <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(params<span class="sc">$</span>S[<span class="dv">1</span>, <span class="dv">1</span>])</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>sy  <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(params<span class="sc">$</span>S[<span class="dv">2</span>, <span class="dv">2</span>])</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>sxy <span class="ot">&lt;-</span> params<span class="sc">$</span>S[<span class="dv">1</span>, <span class="dv">2</span>]</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>rho <span class="ot">&lt;-</span> sxy <span class="sc">/</span> (sx <span class="sc">*</span> sy)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>hx  <span class="ot">&lt;-</span> params<span class="sc">$</span>h[, <span class="dv">1</span>]</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>hy  <span class="ot">&lt;-</span> params<span class="sc">$</span>h[, <span class="dv">2</span>]</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>k   <span class="ot">&lt;-</span> params<span class="sc">$</span>kappa</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>omega <span class="ot">&lt;-</span> (<span class="dv">1</span> <span class="sc">-</span> rho<span class="sc">^</span><span class="dv">2</span>) <span class="sc">*</span> (</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">lag_diff</span>(hx) <span class="sc">/</span> (n <span class="sc">*</span> sx<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">lag_diff</span>(hy) <span class="sc">/</span> (n <span class="sc">*</span> sy<span class="sc">^</span><span class="dv">2</span>) <span class="sc">-</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="dv">2</span> <span class="sc">*</span> rho <span class="sc">*</span> <span class="fu">lag_diff</span>(hx, hy) <span class="sc">/</span> (n <span class="sc">*</span> sx <span class="sc">*</span> sy)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>V_general <span class="ot">&lt;-</span> (<span class="dv">1</span><span class="sc">/</span>n) <span class="sc">*</span> (</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  omega <span class="sc">+</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  rho<span class="sc">^</span><span class="dv">2</span><span class="sc">/</span><span class="dv">4</span> <span class="sc">*</span> (k<span class="sc">$</span>k40 <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>k<span class="sc">$</span>k22 <span class="sc">+</span> k<span class="sc">$</span>k04) <span class="sc">-</span> rho<span class="sc">*</span>(k<span class="sc">$</span>k31 <span class="sc">+</span> k<span class="sc">$</span>k13) <span class="sc">+</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  <span class="dv">5</span><span class="sc">/</span><span class="dv">2</span> <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">-</span> rho<span class="sc">^</span><span class="dv">2</span>)<span class="sc">^</span><span class="dv">2</span> <span class="sc">+</span> k<span class="sc">$</span>k22</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>V_gaussian <span class="ot">&lt;-</span> (<span class="dv">1</span><span class="sc">/</span>n) <span class="sc">*</span> (omega <span class="sc">+</span> <span class="dv">7</span><span class="sc">/</span><span class="dv">2</span> <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">-</span> rho<span class="sc">^</span><span class="dv">2</span>)<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  <span class="at">V_diff_direct  =</span> V_general <span class="sc">-</span> V_gaussian,</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  <span class="at">V_diff_formula =</span> (<span class="dv">1</span><span class="sc">/</span>n) <span class="sc">*</span> (</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    rho<span class="sc">^</span><span class="dv">2</span><span class="sc">/</span><span class="dv">4</span> <span class="sc">*</span> (k<span class="sc">$</span>k40 <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>k<span class="sc">$</span>k22 <span class="sc">+</span> k<span class="sc">$</span>k04) <span class="sc">-</span> rho<span class="sc">*</span>(k<span class="sc">$</span>k31 <span class="sc">+</span> k<span class="sc">$</span>k13) <span class="sc">+</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    k<span class="sc">$</span>k22 <span class="sc">-</span> (<span class="dv">1</span> <span class="sc">-</span> rho<span class="sc">^</span><span class="dv">2</span>)<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Test passed 🥳</code></pre>
+<pre><code>  V_diff_direct V_diff_formula
+1  0.0002212678   0.0002212678</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 
@@ -823,13 +1022,13 @@ window.Quarto = {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./package.html" class="pagination-link" aria-label="Package">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Package</span></span>
+      <a href="./type-i-error.html" class="pagination-link" aria-label="Type I Error">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Type I Error</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./mean-removal.html" class="pagination-link" aria-label="Mean Removal">
-        <span class="nav-page-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Mean Removal</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./positive-semidefinite.html" class="pagination-link" aria-label="Positive Semidefinite">
+        <span class="nav-page-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

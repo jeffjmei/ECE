@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Appendix B — Other Mathematical Results – ECE Notes</title>
+<title>Appendix D — Other Mathematical Results – ECE Notes</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -110,7 +110,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./math-background.html">Appendices</a></li><li class="breadcrumb-item"><a href="./math-results.html"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Other Mathematical Results</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./computational-solution.html">Appendices</a></li><li class="breadcrumb-item"><a href="./math-results.html"><span class="chapter-number">D</span>&nbsp; <span class="chapter-title">Other Mathematical Results</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -141,46 +141,10 @@ window.Quarto = {
  <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Preface</span></span></a>
   </div>
 </li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./model-assumptions.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Model Assumptions</span></span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./lagged-differences.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Lagged Differences</span></span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./bilinear-form.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Bilinear Form</span></span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./computational-solution.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Computational Solution</span></span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./model-misspecification.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Model Misspecification</span></span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./positive-semidefinite.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></span></a>
-  </div>
-</li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
- <span class="menu-text">Appendices</span></a>
+ <span class="menu-text">Estimation</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -188,14 +152,148 @@ window.Quarto = {
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./model-assumptions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Model Assumptions</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./lagged-differences.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Lagged Differences</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./bilinear-form.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Bilinear Form</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Inference</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./z-test.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Z-Test</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./multiplier-bootstrap-test.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Multiplier Bootstrap Test</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./parametric-bootstrap-test.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Parametric Bootstrap Test</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./independence-test.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Independence Test</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Numerical Studies</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./simulation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Simulation Design</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./type-i-error.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Type I Error</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./power.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Power</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">In Progress</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./positive-semidefinite.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./model-misspecification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Model Misspecification</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./package.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Package</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./computational-solution.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Computational Solution</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./mean-removal.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Mean Removal</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./math-background.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Mathematical Background</span></span></a>
+ <span class="menu-text"><span class="chapter-number">C</span>&nbsp; <span class="chapter-title">Mathematical Background</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./math-results.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Other Mathematical Results</span></span></a>
+ <span class="menu-text"><span class="chapter-number">D</span>&nbsp; <span class="chapter-title">Other Mathematical Results</span></span></a>
   </div>
 </li>
       </ul>
@@ -210,18 +308,18 @@ window.Quarto = {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#properties-of-a2" id="toc-properties-of-a2" class="nav-link active" data-scroll-target="#properties-of-a2"><span class="header-section-number">B.1</span> Properties of <span class="math inline">\(A^2\)</span></a></li>
-  <li><a href="#lower-bound-on-operatornametra2" id="toc-lower-bound-on-operatornametra2" class="nav-link" data-scroll-target="#lower-bound-on-operatornametra2"><span class="header-section-number">B.2</span> Lower Bound on <span class="math inline">\(\operatorname{tr}(A^2)\)</span></a></li>
-  <li><a href="#closed-form-of-ktk-1kt" id="toc-closed-form-of-ktk-1kt" class="nav-link" data-scroll-target="#closed-form-of-ktk-1kt"><span class="header-section-number">B.3</span> Closed Form of <span class="math inline">\((K^TK)^{-1}K^T\)</span></a></li>
+  <li><a href="#properties-of-a2" id="toc-properties-of-a2" class="nav-link active" data-scroll-target="#properties-of-a2"><span class="header-section-number">D.1</span> Properties of <span class="math inline">\(A^2\)</span></a></li>
+  <li><a href="#lower-bound-on-operatornametra2" id="toc-lower-bound-on-operatornametra2" class="nav-link" data-scroll-target="#lower-bound-on-operatornametra2"><span class="header-section-number">D.2</span> Lower Bound on <span class="math inline">\(\operatorname{tr}(A^2)\)</span></a></li>
+  <li><a href="#closed-form-of-ktk-1kt" id="toc-closed-form-of-ktk-1kt" class="nav-link" data-scroll-target="#closed-form-of-ktk-1kt"><span class="header-section-number">D.3</span> Closed Form of <span class="math inline">\((K^TK)^{-1}K^T\)</span></a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./math-background.html">Appendices</a></li><li class="breadcrumb-item"><a href="./math-results.html"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Other Mathematical Results</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./computational-solution.html">Appendices</a></li><li class="breadcrumb-item"><a href="./math-results.html"><span class="chapter-number">D</span>&nbsp; <span class="chapter-title">Other Mathematical Results</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Appendix B — Other Mathematical Results</h1>
+<h1 class="title">Appendix D — Other Mathematical Results</h1>
 </div>
 
 
@@ -238,8 +336,8 @@ window.Quarto = {
 </header>
 
 
-<section id="properties-of-a2" class="level2" data-number="B.1">
-<h2 data-number="B.1" class="anchored" data-anchor-id="properties-of-a2"><span class="header-section-number">B.1</span> Properties of <span class="math inline">\(A^2\)</span></h2>
+<section id="properties-of-a2" class="level2" data-number="D.1">
+<h2 data-number="D.1" class="anchored" data-anchor-id="properties-of-a2"><span class="header-section-number">D.1</span> Properties of <span class="math inline">\(A^2\)</span></h2>
 <p>Let <span class="math inline">\(A\)</span> be a symmetric circulant with first row <span class="math inline">\((a_0, a_1, \ldots, a_{n-1})\)</span> and eigenvalues <span class="math inline">\(\lambda_0, \ldots, \lambda_{n-1}\)</span>.</p>
 <p><strong>Structure.</strong> Since the product of two circulants is circulant and <span class="math inline">\((A^2)^T = (A^T)^2 = A^2\)</span>, <span class="math inline">\(A^2\)</span> is also a symmetric circulant. Its first row has <span class="math inline">\(j\)</span>-th entry given by the autocorrelation</p>
 <p><span class="math display">\[
@@ -256,16 +354,16 @@ window.Quarto = {
 \]</span></p>
 <p>where the last equality uses the symmetry <span class="math inline">\(a_k = a_{n-k}\)</span>.</p>
 </section>
-<section id="lower-bound-on-operatornametra2" class="level2" data-number="B.2">
-<h2 data-number="B.2" class="anchored" data-anchor-id="lower-bound-on-operatornametra2"><span class="header-section-number">B.2</span> Lower Bound on <span class="math inline">\(\operatorname{tr}(A^2)\)</span></h2>
+<section id="lower-bound-on-operatornametra2" class="level2" data-number="D.2">
+<h2 data-number="D.2" class="anchored" data-anchor-id="lower-bound-on-operatornametra2"><span class="header-section-number">D.2</span> Lower Bound on <span class="math inline">\(\operatorname{tr}(A^2)\)</span></h2>
 <p>Since <span class="math inline">\(\operatorname{tr}(A) = \sum_i \lambda_i = 1\)</span> and <span class="math inline">\(\operatorname{tr}(A^2) = \sum_i \lambda_i^2\)</span>, Jensen’s inequality gives</p>
 <p><span class="math display">\[
 \operatorname{tr}(A^2) = \sum_i \lambda_i^2 \geq \frac{\left(\sum_i \lambda_i\right)^2}{n} = \frac{1}{n},
 \]</span></p>
 <p>with equality when all eigenvalues are equal. Thus the noise contribution <span class="math inline">\((\sigma_x^2\sigma_y^2 + \sigma_{xy}^2)\operatorname{tr}(A^2) = O(1/n)\)</span>, which shows the estimator is consistent.</p>
 </section>
-<section id="closed-form-of-ktk-1kt" class="level2" data-number="B.3">
-<h2 data-number="B.3" class="anchored" data-anchor-id="closed-form-of-ktk-1kt"><span class="header-section-number">B.3</span> Closed Form of <span class="math inline">\((K^TK)^{-1}K^T\)</span></h2>
+<section id="closed-form-of-ktk-1kt" class="level2" data-number="D.3">
+<h2 data-number="D.3" class="anchored" data-anchor-id="closed-form-of-ktk-1kt"><span class="header-section-number">D.3</span> Closed Form of <span class="math inline">\((K^TK)^{-1}K^T\)</span></h2>
 <p>The design matrix is <span class="math inline">\(K \in \mathbb{R}^{L \times 2}\)</span> with <span class="math inline">\(K_{k,1} = 1\)</span> and <span class="math inline">\(K_{k,2} = k\)</span> for <span class="math inline">\(k = 1, \ldots, L\)</span>. We use the Gaussian sum identities</p>
 <p><span class="math display">\[\sum_{k=1}^L 1 = L, \qquad \sum_{k=1}^L k = \frac{L(L+1)}{2}, \qquad \sum_{k=1}^L k^2 = \frac{L(L+1)(2L+1)}{6}.\]</span></p>
 <p><strong>Step 1: Compute <span class="math inline">\(K^TK\)</span>.</strong></p>
@@ -698,7 +796,7 @@ window.Quarto = {
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
       <a href="./math-background.html" class="pagination-link" aria-label="Mathematical Background">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Mathematical Background</span></span>
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">C</span>&nbsp; <span class="chapter-title">Mathematical Background</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">

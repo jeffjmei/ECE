@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Appendix A — Computational Solution – ECE Notes</title>
+<title>14&nbsp; Package – ECE Notes</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,8 +65,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./mean-removal.html" rel="next">
-<link href="./package.html" rel="prev">
+<link href="./computational-solution.html" rel="next">
+<link href="./model-misspecification.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -105,35 +105,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   }
 }</script>
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN") {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 </head>
 
@@ -146,7 +117,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./computational-solution.html">Appendices</a></li><li class="breadcrumb-item"><a href="./computational-solution.html"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Computational Solution</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./positive-semidefinite.html">In Progress</a></li><li class="breadcrumb-item"><a href="./package.html"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Package</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -293,7 +264,7 @@ window.Quarto = {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./package.html" class="sidebar-item-text sidebar-link">
+  <a href="./package.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Package</span></span></a>
   </div>
 </li>
@@ -310,7 +281,7 @@ window.Quarto = {
       <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./computational-solution.html" class="sidebar-item-text sidebar-link active">
+  <a href="./computational-solution.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Computational Solution</span></span></a>
   </div>
 </li>
@@ -344,22 +315,36 @@ window.Quarto = {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction"><span class="header-section-number">A.1</span> Introduction</a></li>
-  <li><a href="#svd-for-identifying-the-null-space" id="toc-svd-for-identifying-the-null-space" class="nav-link" data-scroll-target="#svd-for-identifying-the-null-space"><span class="header-section-number">A.2</span> SVD for Identifying the Null Space</a>
+  <li><a href="#naming-conventions" id="toc-naming-conventions" class="nav-link active" data-scroll-target="#naming-conventions"><span class="header-section-number">14.1</span> Naming Conventions</a></li>
+  <li><a href="#design-decisions" id="toc-design-decisions" class="nav-link" data-scroll-target="#design-decisions"><span class="header-section-number">14.2</span> Design Decisions</a>
   <ul class="collapse">
-  <li><a href="#connection-to-the-null-space" id="toc-connection-to-the-null-space" class="nav-link" data-scroll-target="#connection-to-the-null-space"><span class="header-section-number">A.2.1</span> Connection to the Null Space</a></li>
-  <li><a href="#steps-to-identify-the-null-space" id="toc-steps-to-identify-the-null-space" class="nav-link" data-scroll-target="#steps-to-identify-the-null-space"><span class="header-section-number">A.2.2</span> Steps to Identify the Null Space</a></li>
+  <li><a href="#ece_pair-internal" id="toc-ece_pair-internal" class="nav-link" data-scroll-target="#ece_pair-internal"><span class="header-section-number">14.2.1</span> <code>ece_pair</code> (internal)</a></li>
+  <li><a href="#ece.cov" id="toc-ece.cov" class="nav-link" data-scroll-target="#ece.cov"><span class="header-section-number">14.2.2</span> <code>ece.cov</code></a></li>
+  <li><a href="#ece.complexity" id="toc-ece.complexity" class="nav-link" data-scroll-target="#ece.complexity"><span class="header-section-number">14.2.3</span> <code>ece.complexity</code></a></li>
+  <li><a href="#ece.test" id="toc-ece.test" class="nav-link" data-scroll-target="#ece.test"><span class="header-section-number">14.2.4</span> <code>ece.test</code></a></li>
+  <li><a href="#var_corr_est" id="toc-var_corr_est" class="nav-link" data-scroll-target="#var_corr_est"><span class="header-section-number">14.2.5</span> <code>var_corr_est</code></a></li>
   </ul></li>
-  <li><a href="#pseudoinverse-and-min-norm-solution" id="toc-pseudoinverse-and-min-norm-solution" class="nav-link" data-scroll-target="#pseudoinverse-and-min-norm-solution"><span class="header-section-number">A.3</span> Pseudoinverse and Min-Norm Solution</a></li>
+  <li><a href="#refactor-checklist" id="toc-refactor-checklist" class="nav-link" data-scroll-target="#refactor-checklist"><span class="header-section-number">14.3</span> Refactor Checklist</a>
+  <ul class="collapse">
+  <li><a href="#completed" id="toc-completed" class="nav-link" data-scroll-target="#completed"><span class="header-section-number">14.3.1</span> Completed</a></li>
+  <li><a href="#pending" id="toc-pending" class="nav-link" data-scroll-target="#pending"><span class="header-section-number">14.3.2</span> Pending</a></li>
+  </ul></li>
+  <li><a href="#usage" id="toc-usage" class="nav-link" data-scroll-target="#usage"><span class="header-section-number">15</span> Usage</a>
+  <ul class="collapse">
+  <li><a href="#simulation" id="toc-simulation" class="nav-link" data-scroll-target="#simulation"><span class="header-section-number">15.1</span> Simulation</a></li>
+  <li><a href="#estimation" id="toc-estimation" class="nav-link" data-scroll-target="#estimation"><span class="header-section-number">15.2</span> Estimation</a></li>
+  <li><a href="#inference" id="toc-inference" class="nav-link" data-scroll-target="#inference"><span class="header-section-number">15.3</span> Inference</a></li>
+  <li><a href="#alternative-methods" id="toc-alternative-methods" class="nav-link" data-scroll-target="#alternative-methods"><span class="header-section-number">15.4</span> Alternative Methods</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./computational-solution.html">Appendices</a></li><li class="breadcrumb-item"><a href="./computational-solution.html"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Computational Solution</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./positive-semidefinite.html">In Progress</a></li><li class="breadcrumb-item"><a href="./package.html"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Package</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Appendix A — Computational Solution</h1>
+<h1 class="title"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Package</span></h1>
 </div>
 
 
@@ -376,49 +361,194 @@ window.Quarto = {
 </header>
 
 
-<section id="introduction" class="level2" data-number="A.1">
-<h2 data-number="A.1" class="anchored" data-anchor-id="introduction"><span class="header-section-number">A.1</span> Introduction</h2>
-<p>TODO: Add content for computational results chapter.</p>
+<p>Working notes on the R package API design and refactoring decisions. This chapter will be removed or reorganized once the refactor is merged.</p>
+<section id="naming-conventions" class="level2" data-number="14.1">
+<h2 data-number="14.1" class="anchored" data-anchor-id="naming-conventions"><span class="header-section-number">14.1</span> Naming Conventions</h2>
+<p>Public-facing functions use dot notation to mirror base R (e.g., <code>cor.test</code>, <code>cov</code>):</p>
+<ul>
+<li><code>ece.cov</code> — equivariant covariance estimator (replaces <code>equiv.cov</code>)</li>
+<li><code>ece.cor</code> — equivariant correlation estimator (corresponds to <code>cor</code>)</li>
+<li><code>ece.complexity</code> — mean heterogeneity / complexity of the series</li>
+<li><code>ece.se</code> — asymptotic standard error of the correlation estimator</li>
+<li><code>ece.test</code> — hypothesis test for correlation (corresponds to <code>cor.test</code>)</li>
+</ul>
+<p>Internal helpers use snake_case (e.g., <code>ece_pair</code>, <code>var_corr_est</code>).</p>
 </section>
-<section id="svd-for-identifying-the-null-space" class="level2" data-number="A.2">
-<h2 data-number="A.2" class="anchored" data-anchor-id="svd-for-identifying-the-null-space"><span class="header-section-number">A.2</span> SVD for Identifying the Null Space</h2>
-<p>Given the constraint matrix <span class="math inline">\(G \in \mathbb{R}^{m \times n}\)</span>, the singular value decomposition is: <span class="math display">\[G = U \Sigma V^T\]</span> where <span class="math inline">\(U \in \mathbb{R}^{m \times m}\)</span> and <span class="math inline">\(V \in \mathbb{R}^{n \times n}\)</span> are orthogonal matrices, and <span class="math inline">\(\Sigma\)</span> is a diagonal matrix with singular values <span class="math inline">\(\sigma_1 \geq \sigma_2 \geq \cdots \geq \sigma_{\min(m,n)} \geq 0\)</span>.</p>
-<section id="connection-to-the-null-space" class="level3" data-number="A.2.1">
-<h3 data-number="A.2.1" class="anchored" data-anchor-id="connection-to-the-null-space"><span class="header-section-number">A.2.1</span> Connection to the Null Space</h3>
-<p>The null space of <span class="math inline">\(G\)</span> is: <span class="math display">\[\text{null}(G) = \{a \in \mathbb{R}^n : Ga = 0\}\]</span></p>
-<p>If <span class="math inline">\(G\)</span> has rank <span class="math inline">\(r &lt; n\)</span>, the right singular vectors corresponding to zero singular values span the null space: <span class="math display">\[\text{null}(G) = \text{span}\{v_{r+1}, v_{r+2}, \ldots, v_n\}\]</span> where <span class="math inline">\(v_i\)</span> are the columns of <span class="math inline">\(V\)</span>.</p>
+<section id="design-decisions" class="level2" data-number="14.2">
+<h2 data-number="14.2" class="anchored" data-anchor-id="design-decisions"><span class="header-section-number">14.2</span> Design Decisions</h2>
+<section id="ece_pair-internal" class="level3" data-number="14.2.1">
+<h3 data-number="14.2.1" class="anchored" data-anchor-id="ece_pair-internal"><span class="header-section-number">14.2.1</span> <code>ece_pair</code> (internal)</h3>
+<p>The internal workhorse for pairwise computation. Returns <code>list(cov, complexity)</code> for a single pair of vectors. Not exported. Pulled out of <code>equiv.cov</code> (formerly <code>compute_equiv</code>).</p>
 </section>
-<section id="steps-to-identify-the-null-space" class="level3" data-number="A.2.2">
-<h3 data-number="A.2.2" class="anchored" data-anchor-id="steps-to-identify-the-null-space"><span class="header-section-number">A.2.2</span> Steps to Identify the Null Space</h3>
-<ol type="1">
-<li>Compute the SVD: <span class="math inline">\(G = U \Sigma V^T\)</span></li>
-<li>Identify the rank <span class="math inline">\(r\)</span> as the number of non-zero singular values</li>
-<li>Extract the right singular vectors <span class="math inline">\(v_{r+1}, \ldots, v_n\)</span> corresponding to the zero singular values</li>
-<li>The null space basis is <span class="math inline">\(\text{null}(G) = \text{span}\{v_{r+1}, \ldots, v_n\}\)</span></li>
-</ol>
+<section id="ece.cov" class="level3" data-number="14.2.2">
+<h3 data-number="14.2.2" class="anchored" data-anchor-id="ece.cov"><span class="header-section-number">14.2.2</span> <code>ece.cov</code></h3>
+<p>Mirrors the interface of base <code>cov()</code>: two vectors → scalar, matrix → p×p matrix. Calls <code>ece_pair</code> internally.</p>
+</section>
+<section id="ece.complexity" class="level3" data-number="14.2.3">
+<h3 data-number="14.2.3" class="anchored" data-anchor-id="ece.complexity"><span class="header-section-number">14.2.3</span> <code>ece.complexity</code></h3>
+<p>Captures the slope of lagged differences as a function of lag. Large values indicate large or frequent mean shifts. Same interface as <code>ece.cov</code>.</p>
+</section>
+<section id="ece.test" class="level3" data-number="14.2.4">
+<h3 data-number="14.2.4" class="anchored" data-anchor-id="ece.test"><span class="header-section-number">14.2.4</span> <code>ece.test</code></h3>
+<p>Accepts an n×2 matrix only (no <code>Y = NULL</code>). Dispatches on <code>type</code>:</p>
+<ul>
+<li><code>type = "z.test"</code> — asymptotic normal test based on <code>ece.cor</code></li>
+<li><code>type = "bs.multiplier"</code> — multiplier bootstrap test (planned)</li>
+</ul>
+<p>Returns <code>list(estimate, p.value)</code>. <code>conf.int</code> was dropped as it was not functional.</p>
+</section>
+<section id="var_corr_est" class="level3" data-number="14.2.5">
+<h3 data-number="14.2.5" class="anchored" data-anchor-id="var_corr_est"><span class="header-section-number">14.2.5</span> <code>var_corr_est</code></h3>
+<p>Now takes scalars <code>(n, sx, sy, sxy, wx, wy, wxy)</code> directly instead of an <code>ece_obj</code>. Renamed to <code>ece.se</code> at the public level.</p>
 </section>
 </section>
-<section id="pseudoinverse-and-min-norm-solution" class="level2" data-number="A.3">
-<h2 data-number="A.3" class="anchored" data-anchor-id="pseudoinverse-and-min-norm-solution"><span class="header-section-number">A.3</span> Pseudoinverse and Min-Norm Solution</h2>
-<p>The Moore-Penrose pseudoinverse <span class="math inline">\(G^+\)</span> is defined via SVD as: <span class="math display">\[G^+ = V \Sigma^+ U^T\]</span> where <span class="math inline">\(\Sigma^+\)</span> is obtained by taking reciprocals of the non-zero singular values and transposing.</p>
-<p><span class="math inline">\(G^+\)</span> simultaneously solves two optimality problems. When <span class="math inline">\(b \notin \text{col}(G)\)</span> the system <span class="math inline">\(Ga = b\)</span> is inconsistent, and <span class="math inline">\(G^+b\)</span> is the least-squares solution minimizing <span class="math inline">\(\|Ga - b\|_2^2\)</span>. When the system is consistent but underdetermined, <span class="math inline">\(G^+b\)</span> is the minimum-norm solution among all exact solutions.</p>
-<p>For a system <span class="math inline">\(Ga = b\)</span>, the general solution is: <span class="math display">\[a = G^+ b + \sum_{i=r+1}^{n} c_i v_i\]</span> where the second term spans <span class="math inline">\(\text{null}(G)\)</span>. The norm of the general solution is: <span class="math display">\[\|a\|^2 = \|G^+ b\|^2 + \sum_{i=r+1}^{n} c_i^2\]</span> since <span class="math inline">\(G^+ b\)</span> lies in the row space of <span class="math inline">\(G\)</span>, which is orthogonal to <span class="math inline">\(\text{null}(G)\)</span>. This is minimized by setting all <span class="math inline">\(c_i = 0\)</span>, giving the minimum-norm solution: <span class="math display">\[a^* = G^+ b\]</span></p>
+<section id="refactor-checklist" class="level2" data-number="14.3">
+<h2 data-number="14.3" class="anchored" data-anchor-id="refactor-checklist"><span class="header-section-number">14.3</span> Refactor Checklist</h2>
+<section id="completed" class="level3" data-number="14.3.1">
+<h3 data-number="14.3.1" class="anchored" data-anchor-id="completed"><span class="header-section-number">14.3.1</span> Completed</h3>
+<ul class="task-list">
+<li><label><input type="checkbox" checked="">Develop unit testing suite</label></li>
+<li><label><input type="checkbox" checked=""><code>lag_diff</code>: inputs lowercased, <code>y = x</code> default</label></li>
+<li><label><input type="checkbox" checked=""><code>ece.cov</code> corresponds to <code>cov</code>; helper pulled out as <code>ece_pair</code>; <code>ece.complexity</code> added as a separate function</label></li>
+<li><label><input type="checkbox" checked=""><code>ece.cor</code> corresponds to <code>cor</code></label></li>
+<li><label><input type="checkbox" checked=""><code>var_corr_est</code> renamed to <code>ece.se</code>; decoupled from <code>ece_obj</code></label></li>
+<li><label><input type="checkbox" checked=""><code>ece.test</code>: matrix-only input, drop <code>conf.int</code>, add <code>type</code> argument</label></li>
+</ul>
+</section>
+<section id="pending" class="level3" data-number="14.3.2">
+<h3 data-number="14.3.2" class="anchored" data-anchor-id="pending"><span class="header-section-number">14.3.2</span> Pending</h3>
+<section id="immediate-cleanup-finish-what-we-started" class="level4" data-number="14.3.2.1">
+<h4 data-number="14.3.2.1" class="anchored" data-anchor-id="immediate-cleanup-finish-what-we-started"><span class="header-section-number">14.3.2.1</span> 1. Immediate cleanup (finish what we started)</h4>
+<ul class="task-list">
+<li><label><input type="checkbox">Delete <code>equiv.cov</code></label></li>
+<li><label><input type="checkbox">Resolve <code>ece_obj</code> design pattern — consider renaming to <code>ece.fit</code></label></li>
+<li><label><input type="checkbox">Rewrite <code>theory-estimators.R</code> — naming is poor throughout</label></li>
+</ul>
+</section>
+<section id="core-utilities" class="level4" data-number="14.3.2.2">
+<h4 data-number="14.3.2.2" class="anchored" data-anchor-id="core-utilities"><span class="header-section-number">14.3.2.2</span> 2. Core utilities</h4>
+<ul class="task-list">
+<li><label><input type="checkbox"><code>lag_terms</code> — new function; test that it sums to <code>lag_diff</code>; use <code>X - rotate(X, k = 1)</code></label></li>
+<li><label><input type="checkbox"><code>mod_idx</code> — poor name; only used once; consider moving or inlining</label></li>
+<li><label><input type="checkbox"><code>circ.eigendecomp</code> — new feature</label></li>
+</ul>
+</section>
+<section id="data-generation-layer" class="level4" data-number="14.3.2.3">
+<h4 data-number="14.3.2.3" class="anchored" data-anchor-id="data-generation-layer"><span class="header-section-number">14.3.2.3</span> 3. Data generation layer</h4>
+<ul class="task-list">
+<li><label><input type="checkbox"><code>demean</code> should not take <code>params</code> as a parameter</label></li>
+<li><label><input type="checkbox"><code>generate_data</code>: <code>scenario13</code> breaks the interface; needs fixing</label></li>
+<li><label><input type="checkbox">Resolve inconsistency between <code>config</code> and <code>params</code></label></li>
+</ul>
+</section>
+<section id="structural-refactors" class="level4" data-number="14.3.2.4">
+<h4 data-number="14.3.2.4" class="anchored" data-anchor-id="structural-refactors"><span class="header-section-number">14.3.2.4</span> 4. Structural refactors</h4>
+<ul class="task-list">
+<li><label><input type="checkbox"><code>utils.R</code> — clean up <code>_vec</code> / <code>_mat</code> / dispatch triple pattern</label></li>
+<li><label><input type="checkbox"><code>scenario.R</code> — consolidate ~30 numbered functions into a parameterized form</label></li>
+<li><label><input type="checkbox"><code>X</code> should be accepted as a multivariate matrix throughout</label></li>
+</ul>
+</section>
+<section id="tests" class="level4" data-number="14.3.2.5">
+<h4 data-number="14.3.2.5" class="anchored" data-anchor-id="tests"><span class="header-section-number">14.3.2.5</span> 5. Tests</h4>
+<ul class="task-list">
+<li><label><input type="checkbox">New unit-test file for mathematical facts</label>
+<ul class="task-list">
+<li><label><input type="checkbox"><code>lag_diff</code> corresponds to <code>lag_mat</code></label></li>
+<li><label><input type="checkbox">Two representations of variance</label></li>
+</ul></li>
+<li><label><input type="checkbox">Tests for untested functions in <code>utils.R</code> and <code>theory.R</code></label></li>
+</ul>
+</section>
+<section id="new-features-and-fixes" class="level4" data-number="14.3.2.6">
+<h4 data-number="14.3.2.6" class="anchored" data-anchor-id="new-features-and-fixes"><span class="header-section-number">14.3.2.6</span> 6. New features and fixes</h4>
+<ul class="task-list">
+<li><label><input type="checkbox"><code>demean.test</code></label></li>
+<li><label><input type="checkbox"><code>segment.test</code>: fix degrees of freedom</label></li>
+<li><label><input type="checkbox"><code>ece.test</code>: add <code>type = "bs.multiplier"</code></label></li>
+</ul>
+</section>
+<section id="simulation-and-documentation" class="level4" data-number="14.3.2.7">
+<h4 data-number="14.3.2.7" class="anchored" data-anchor-id="simulation-and-documentation"><span class="header-section-number">14.3.2.7</span> 7. Simulation and documentation</h4>
+<ul class="task-list">
+<li><label><input type="checkbox">Produce master simulation file (like RCV)</label></li>
+</ul>
+<hr>
+</section>
+</section>
+</section>
+<section id="usage" class="level1" data-number="15">
+<h1 data-number="15"><span class="header-section-number">15</span> Usage</h1>
+<section id="simulation" class="level2" data-number="15.1">
+<h2 data-number="15.1" class="anchored" data-anchor-id="simulation"><span class="header-section-number">15.1</span> Simulation</h2>
+<p>To evaluate ECE, we have produced many simulation scenarios.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">".."</span>)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(testthat)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">20</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>L <span class="ot">&lt;-</span> <span class="dv">3</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"optimization-based solution matches ece_min_norm"</span>, {</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expect_equal</span>(<span class="fu">ece_optim</span>(n, L), <span class="fu">ece_min_norm</span>(n, L), <span class="at">tolerance =</span> <span class="fl">1e-4</span>)</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Generating Data</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>config <span class="ot">&lt;-</span> <span class="fu">scenario</span>(<span class="dv">1</span>, <span class="at">n=</span><span class="dv">1000</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>X <span class="ot">&lt;-</span> <span class="fu">generate_data</span>(config)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="estimation" class="level2" data-number="15.2">
+<h2 data-number="15.2" class="anchored" data-anchor-id="estimation"><span class="header-section-number">15.2</span> Estimation</h2>
+<p>To get the covariance of a matrix</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ece.cov</span>(X) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Test passed 🥳</code></pre>
+<pre><code>            [,1]        [,2]
+[1,]  0.90512008 -0.03307591
+[2,] -0.03307591  1.04293657</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ece.complexity</span>(X)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           [,1]        [,2]
+[1,] 0.14653693  0.05983723
+[2,] 0.05983723 -0.08701686</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">#ece.cor(X) # </span><span class="al">TODO</span><span class="co">: this doesn't exist</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="inference" class="level2" data-number="15.3">
+<h2 data-number="15.3" class="anchored" data-anchor-id="inference"><span class="header-section-number">15.3</span> Inference</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ece.test</span>(X, <span class="at">type=</span><span class="st">"z.test"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>$estimate
+[1] -0.03404315
+
+$se
+[1] 0.05978673
+
+$conf.int
+[1] -0.15122299  0.08313668
+attr(,"conf.level")
+[1] 0.95
+
+$p.value
+[1] 0.569078</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ece.test</span>(X, <span class="at">type=</span><span class="st">"bs.multiplier"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>$p.value
+[1] 0.67353</code></pre>
 </div>
 </div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ece.cor.se</span>(X)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.05978673</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co">#ece.ci(X) # </span><span class="al">TODO</span><span class="co">: this doesn't exist</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="alternative-methods" class="level2" data-number="15.4">
+<h2 data-number="15.4" class="anchored" data-anchor-id="alternative-methods"><span class="header-section-number">15.4</span> Alternative Methods</h2>
+<p>IN DEVELOPMENT.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">fit.mean</span>(X, <span class="at">method=</span><span class="st">"PELT"</span>, <span class="at">args=</span>arg_list)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">remove.mean</span>(X, <span class="at">method=</span><span class="st">"PELT"</span>, <span class="at">args=</span>arg_list)</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="fu">resid_test</span>(X, <span class="at">method=</span><span class="st">"PELT"</span>, <span class="at">args=</span>arg_list)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
@@ -823,13 +953,13 @@ window.Quarto = {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./package.html" class="pagination-link" aria-label="Package">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Package</span></span>
+      <a href="./model-misspecification.html" class="pagination-link" aria-label="Model Misspecification">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Model Misspecification</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./mean-removal.html" class="pagination-link" aria-label="Mean Removal">
-        <span class="nav-page-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Mean Removal</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./computational-solution.html" class="pagination-link" aria-label="Computational Solution">
+        <span class="nav-page-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Computational Solution</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
