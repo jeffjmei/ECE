@@ -90,7 +90,8 @@ lag_diff <- function(x, y = x, k = 1) {
 #' @seealso [lag_diff()], [lag_terms()]
 #'
 #' @examples
-#' x <- rnorm(50); y <- rnorm(50)
+#' x <- rnorm(50)
+#' y <- rnorm(50)
 #' sum(lag_term(x, y)) # equals 2*lag_diff(x,y,k=1) - lag_diff(x,y,k=2)
 #'
 #' @export
@@ -141,4 +142,10 @@ lag_terms <- function(x) {
 split_indep <- function(x, stride = 3) {
   x <- as.matrix(x)
   map(1:stride, \(r) x[seq(r, nrow(x), stride), , drop = FALSE])
+}
+
+make_psd <- function(S) {
+  eig <- eigen(S)
+  eig$values <- pmax(eig$values, 0)
+  eig$vectors %*% diag(eig$values) %*% t(eig$vectors)
 }

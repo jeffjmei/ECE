@@ -104,7 +104,7 @@ Now takes scalars `(n, sx, sy, sxy, wx, wy, wxy)` directly instead of an `ece_ob
 ```{R}
 #| echo: false
 #| message: false
-devtools::load_all()
+devtools::load_all("..")
 ```
 
 ## Simulation
@@ -135,7 +135,7 @@ ece.test(X, type="bs.multiplier")
 ```
 
 ```{R}
-ece.se(X)
+ece.cor.se(X)
 #ece.ci(X) # TODO: this doesn't exist
 ```
 
