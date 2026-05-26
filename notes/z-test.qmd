@@ -452,12 +452,12 @@ tibble(
   )) |>
   ggplot(aes(x = p)) +
   geom_histogram(aes(y = after_stat(density)),
-    breaks = seq(0, 1, by = 0.05), fill = "steelblue", color = "white", alpha = 0.8
+    breaks = seq(0, 1, by = 0.10), fill = "steelblue", color = "white", alpha = 0.8
   ) +
   geom_hline(yintercept = 1, color = "firebrick", linetype = "dashed") +
   facet_wrap(~method) +
   labs(x = "p-value", y = "density",
-       title = "P-value distributions under H₀: ρ = 0 (B = 10,000)") +
+       title = "P-value distributions under H₀: ρ = 0 (nsim = 10,000)") +
   theme_minimal()
 ```
 

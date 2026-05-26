@@ -8,6 +8,8 @@ title: "Multiplier Bootstrap Test"
 devtools::load_all()
 ```
 
+![](assets/bs-multiplier-diagram.png)
+
 We test the hypotheses
 $$H_0: \Sigma = I_p \quad \text{vs} \quad H_1: \Sigma \neq I_p.$$
 Equivalently, this is a test of whether all off-diagonal entries $\sigma_{xy} = 0$, which are precisely the quantities estimated by the ECE.

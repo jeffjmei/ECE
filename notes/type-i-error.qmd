@@ -24,6 +24,7 @@ We compare `z.test.gaussian` and `z.test.kappa` at $r = 0$, $p = 2$, across samp
 
 ```{r}
 #| echo: false
+#| warning: false
 #| results: asis
 dat <- results |>
   filter(p == 2, r == 0, method %in% c("z.test.gaussian", "z.test.kappa"), metric == "power") |>
@@ -69,6 +70,7 @@ We compare all four methods at $r = 0$, $p = 2$, across sample sizes, scenarios,
 
 ```{r}
 #| echo: false
+#| warning: false
 #| results: asis
 dat2 <- results |>
   filter(p == 2, r == 0, method %in% c("z.test.gaussian", "z.test.kappa", "bs.multiplier", "bs.parametric"), metric == "power") |>
