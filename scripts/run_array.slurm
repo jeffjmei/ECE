@@ -5,8 +5,8 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=2:00:00
-#SBATCH --mem=1G
+#SBATCH --time=3:00:00
+#SBATCH --mem=3G
 #SBATCH --output=logs/%A_%a.out
 #SBATCH --error=logs/%A_%a.err
 #SBATCH --open-mode=append

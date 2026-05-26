@@ -3,7 +3,7 @@ library(dplyr)
 
 base_params <- list(
   n        = c(200, 500, 1000, 2000),
-  p        = c(3, 5, 10),
+  p        = c(5, 10),
   cov_type = c("compound", "ar1"),
   r        = c(0, 0.1, 0.2, 0.3, 0.4),
   amp      = c(1),
@@ -12,8 +12,10 @@ base_params <- list(
   n_sims   = 10000
 )
 
-bs_methods <- c("bs.multiplier", "bs.parametric")
-zt_methods <- c("z.test.gaussian", "z.test.kappa")
+# bs_methods <- c("bs.multiplier", "bs.parametric")
+# zt_methods <- c("z.test.gaussian", "z.test.kappa")
+bs_methods <- c("bs.parametric")
+
 
 make_scenario <- function(scenario_id, extra = list()) {
   bs <- do.call(crossing, c(
@@ -25,6 +27,7 @@ make_scenario <- function(scenario_id, extra = list()) {
     list(method = zt_methods), extra
   ))
   bind_rows(bs, zt)
+  bs
 }
 
 config_grid <- bind_rows(
