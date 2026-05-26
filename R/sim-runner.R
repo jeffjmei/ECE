@@ -30,23 +30,31 @@ run_sim <- function(config_row, N = 1000) {
   set.seed(config_row$seed)
   start_time <- proc.time()
   p_vals <- replicate(N, {
-    X <- generate_data(params)
-    test.diag(X, method = config_row$method, B = config_row$B, params = params)$p.value
+    tryCatch({
+      X <- generate_data(params)
+      test.diag(X, method = config_row$method, B = config_row$B, params = params)$p.value
+    }, error = function(e) {
+      message("Replicate error: ", conditionMessage(e))
+      NA_real_
+    })
   })
   end_time <- proc.time()
   runtime <- (end_time - start_time)[["elapsed"]] / 60
 
-  config_row |>
+  base_row <- config_row |>
     dplyr::mutate(
-      metric          = "power",
-      metric_val      = mean(p_vals < 0.10),
       n_sim           = N,
       runtime         = runtime,
       timestamp       = Sys.time(),
       scenario_params = jsonlite::toJSON(params$scenario_param),
       method_params   = if (config_row$method %in% c("bs.multiplier", "bs.parametric"))
         jsonlite::toJSON(list(B = config_row$B)) else jsonlite::toJSON(list())
-    ) |>
+    )
+
+  dplyr::bind_rows(
+    dplyr::mutate(base_row, metric = "power",    metric_val = mean(p_vals < 0.10, na.rm = TRUE)),
+    dplyr::mutate(base_row, metric = "n_errors", metric_val = sum(is.na(p_vals)))
+  ) |>
     dplyr::select(
       scenario, n, p, cov_type, r, amp, err_type, method, seed,
       metric, metric_val, n_sim, runtime, timestamp, scenario_params, method_params
