@@ -32,14 +32,14 @@ The Multiplier Bootstrap requires each summand to be mean-zero. The terms $s_i^{
 
 Under circular indexing, shifting all indices by 1 leaves $T_1$ unchanged:
 $$T_1(X,Y) = \sum_{i=1}^n s_i^{(1)} = \sum_{i=1}^n s_{i+1}^{(1)}.$$
-Therefore $2T_1(X,Y) = \sum_{i=1}^n \left(s_i^{(1)} + s_{i+1}^{(1)}\right)$, and the ECE numerator becomes
-$$2T_1(X,Y) - T_2(X,Y) = \sum_{i=1}^n \underbrace{\left(s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}\right)}_{S_i}.$$
+Therefore $2T_1(X,Y) = \sum_{i=1}^n \left(s_i^{(1)} + s_{i+1}^{(1)}\right)$, and the ECE estimator becomes
+$$\hat\sigma_{xy} = \frac{2T_1(X,Y) - T_2(X,Y)}{2n} = \frac{1}{n}\sum_{i=1}^n \underbrace{\frac{s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}}{2}}_{S_i} = \bar{S}.$$
 
 ::: {.callout-note collapse="true"}
 ## Proof: $S_i$ is mean-zero under $H_0$
 
 Define $h_i^{(k)} = (\theta_{x,i} - \theta_{x,i+k})(\theta_{y,i} - \theta_{y,i+k})$ and $e_i^{(k)} = (\varepsilon_{x,i} - \varepsilon_{x,i+k})(\varepsilon_{y,i} - \varepsilon_{y,i+k})$. Since cross terms have mean zero, $\mathbb{E}[s_i^{(k)}] = h_i^{(k)} + 2\sigma_{xy}$. Therefore
-$$\mathbb{E}[S_i] = h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)} + 2\sigma_{xy}.$$
+$$\mathbb{E}[S_i] = \tfrac{1}{2}\bigl(h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)}\bigr) + \sigma_{xy}.$$
 Under $H_0$ ($\sigma_{xy} = 0$), it remains to show $h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)} = 0$. We consider two cases.
 
 If there is a change point at $i$: minimum segment length 2 forces $\theta_{i+1} = \theta_{i+2}$, so $h_{i+1}^{(1)} = 0$ and $h_i^{(2)} = h_i^{(1)}$. Hence $h_i^{(1)} + 0 - h_i^{(1)} = 0$.
@@ -56,9 +56,9 @@ If there is no change point at either index, all terms are zero. Hence $\mathbb{
 config <- scenario(2, n=1000, L=2)
 means <- replicate(1000, {
   X <- generate_data(config)
-  mean(lag_terms(X))
+  mean(ece_terms(X))
 })
-hist(means, breaks=40, xlab=expression(bar(d)))
+hist(means, breaks=40, xlab=expression(bar(S)))
 abline(v=0, col="red", lty=2)
 t.test(means)$conf.int
 ```
@@ -76,7 +76,7 @@ Within each subsequence, consecutive terms are at least 3 apart, so the terms ar
 config <- scenario(2, n=1000, L=2)
 pval <- replicate(1000, {
   X <- generate_data(config)
-  d <- lag_terms(X)
+  d <- ece_terms(X)
   splits <- split_indep(d)
   map_dbl(splits, \(s) Box.test(s, lag=10, type="Ljung-Box")$p.value)
 }) |> t()

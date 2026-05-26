@@ -77,8 +77,8 @@ lag_diff <- function(x, y = x, k = 1) {
 
 #' Element-wise Lag Term
 #'
-#' Computes the element-wise contributions whose sum equals
-#' \eqn{2 \cdot \mathrm{lag\_diff}(x, y, k=1) - \mathrm{lag\_diff}(x, y, k=2)}.
+#' Computes the element-wise contributions whose mean equals [ece.cov()]:
+#' \eqn{\mathrm{lag\_diff}(x, y, k=1) - \mathrm{lag\_diff}(x, y, k=2) / 2}.
 #' Each element has mean zero under independence, making this the building
 #' block for the bootstrap multiplier test.
 #'
@@ -87,21 +87,21 @@ lag_diff <- function(x, y = x, k = 1) {
 #'
 #' @return A numeric vector of the same length as \code{x}.
 #'
-#' @seealso [lag_diff()], [lag_terms()]
+#' @seealso [lag_diff()], [ece_terms()]
 #'
 #' @examples
 #' x <- rnorm(50)
 #' y <- rnorm(50)
-#' sum(lag_term(x, y)) # equals 2*lag_diff(x,y,k=1) - lag_diff(x,y,k=2)
+#' mean(lag_term(x, y)) # approximates ece.cov(x, y)
 #'
 #' @export
 lag_term <- function(x, y = x) {
   ((x - rotate(x, 1)) * (y - rotate(y, 1)) +
     (rotate(x, 1) - rotate(x, 2)) * (rotate(y, 1) - rotate(y, 2)) -
-    (x - rotate(x, 2)) * (y - rotate(y, 2)))
+    (x - rotate(x, 2)) * (y - rotate(y, 2))) / 2
 }
 
-#' Pairwise Lag Terms for a Multivariate Series
+#' Pairwise ECE Terms for a Multivariate Series
 #'
 #' Computes [lag_term()] for all \eqn{\binom{p}{2}} column pairs of a matrix,
 #' returning the results as a matrix of columns.
@@ -115,10 +115,10 @@ lag_term <- function(x, y = x) {
 #'
 #' @examples
 #' X <- matrix(rnorm(300), ncol = 3)
-#' lag_terms(X) # 100 x 3 matrix of pairwise lag terms
+#' ece_terms(X) # 100 x 3 matrix of pairwise ECE terms
 #'
 #' @export
-lag_terms <- function(x) {
+ece_terms <- function(x) {
   p <- ncol(x)
   idx <- combn(p, 2)
   do.call(cbind, map2(idx[1, ], idx[2, ], \(i, j) lag_term(x[, i], x[, j])))
@@ -138,7 +138,7 @@ lag_terms <- function(x) {
 #' @return A list of \code{stride} matrices. Subsequences may differ in length
 #'   by one row when \code{nrow(x)} is not divisible by \code{stride}.
 #'
-#' @seealso [lag_terms()]
+#' @seealso [ece_terms()]
 split_indep <- function(x, stride = 3) {
   x <- as.matrix(x)
   map(1:stride, \(r) x[seq(r, nrow(x), stride), , drop = FALSE])

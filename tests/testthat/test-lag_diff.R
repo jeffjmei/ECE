@@ -18,10 +18,10 @@ test_that("lag_diff agrees with matrix multiplication via lag_mat", {
   expect_equal(lag_diff(x, y, k = 1), as.numeric(t(x) %*% lag_mat(n, 1) %*% y))
 })
 
-test_that("sum of lag_term equals 2*lag_diff(k=1) - lag_diff(k=2)", {
+test_that("mean of lag_term equals ece.cov", {
   x <- rnorm(50)
   y <- rnorm(50)
-  expect_equal(sum(lag_term(x, y)), 2 * lag_diff(x, y, k = 1) - lag_diff(x, y, k = 2))
+  expect_equal(mean(lag_term(x, y)), ece.cov(x, y))
 })
 
 test_that("lag_term has mean zero under independence", {
@@ -30,14 +30,14 @@ test_that("lag_term has mean zero under independence", {
   expect_lt(abs(mean(means)), 0.05)
 })
 
-test_that("lag_terms returns C(p, 2) columns", {
-  expect_equal(ncol(lag_terms(matrix(rnorm(300), ncol = 3))), 3)
-  expect_equal(ncol(lag_terms(matrix(rnorm(400), ncol = 4))), 6)
+test_that("ece_terms returns C(p, 2) columns", {
+  expect_equal(ncol(ece_terms(matrix(rnorm(300), ncol = 3))), 3)
+  expect_equal(ncol(ece_terms(matrix(rnorm(400), ncol = 4))), 6)
 })
 
-test_that("lag_terms columns agree with lag_term on each pair", {
+test_that("ece_terms columns agree with lag_term on each pair", {
   X <- matrix(rnorm(300), ncol = 3)
-  lt <- lag_terms(X)
+  lt <- ece_terms(X)
   expect_equal(lt[, 1], lag_term(X[, 1], X[, 2]))
   expect_equal(lt[, 2], lag_term(X[, 1], X[, 3]))
   expect_equal(lt[, 3], lag_term(X[, 2], X[, 3]))

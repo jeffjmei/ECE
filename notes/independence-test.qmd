@@ -19,16 +19,15 @@ A robust test plugs in $\hat\kappa_{22}$.
 
 ## Estimating $\kappa_{22}$ via $V$
 
-Let $s_i^{(k)} = (X_i - X_{i+k})(Y_i - Y_{i+k})$ and $S_i = s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}$ as in the Multiplier Bootstrap chapter, so that
+Let $s_i^{(k)} = (X_i - X_{i+k})(Y_i - Y_{i+k})$ and $S_i = \frac{s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}}{2}$ as in the Multiplier Bootstrap chapter, so that
 $$
-\bar{S} = \frac{1}{n}\sum_{i=1}^n S_i = \frac{2T_1(X,Y) - T_2(X,Y)}{n}
-$$
-is twice the ECE covariance estimator. Define the lag-2 variance estimate
+\bar{S} = \frac{1}{n}\sum_{i=1}^n S_i = \frac{2T_1(X,Y) - T_2(X,Y)}{2n} = \hat\sigma_{xy}.
+$$ Define the lag-2 variance estimate
 $$
 V := \widehat{\operatorname{Var}}(\bar{S}) = \frac{1}{n^2}\!\left(\sum_{i=1}^n S_i^2 + \sum_{i=1}^n (S_i S_{i+1} + S_{i+1} S_i) + \sum_{i=1}^n (S_i S_{i+2} + S_{i+2} S_i)\right).
 $$
 
-Since $\bar S = (2T_1 - T_2)/n$, we have $V \approx \operatorname{Var}(2T_1 - T_2)/n^2$. Under $H_0$ ($\sigma_{xy} = 0$), the variance on the right has a closed form in $\kappa_{22}$, so we can solve for $\kappa_{22}$ from $V$.
+Since $\bar S = (2T_1 - T_2)/(2n)$, we have $V \approx \operatorname{Var}(2T_1 - T_2)/(4n^2)$. Under $H_0$ ($\sigma_{xy} = 0$), the variance on the right has a closed form in $\kappa_{22}$, so we can solve for $\kappa_{22}$ from $V$.
 
 ::: {.callout-note collapse="true"}
 ## Derivation: $\operatorname{Var}(2T_1 - T_2)$ from $\Sigma_Z$
@@ -45,8 +44,8 @@ and simplifying,
 $$\operatorname{Var}(2T_1 - T_2) = 2n\bigl[(2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2\bigr]. \qquad\square$$
 :::
 
-Since $nV \approx \operatorname{Var}(2T_1-T_2)/n$, substituting and solving gives
-$$\hat\kappa_{22} = \frac{nV}{4\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.$$
+Since $4n^2 V \approx \operatorname{Var}(2T_1-T_2)$, substituting and solving gives
+$$\hat\kappa_{22} = \frac{nV}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.$$
 
 ### Simulation: Does $\hat\kappa_{22}$ Recover the Truth?
 
@@ -65,7 +64,7 @@ params <- scenario(2, L = 4, err_type = "exponential")
 
 estimate_k22 <- function(X, params) {
   n   <- params$n
-  S   <- lag_terms(X)
+  S   <- ece_terms(X)
   W   <- (1 / n^2) * (
     t(S) %*% S +
       t(rotate(S)) %*% S + t(S) %*% rotate(S) +
@@ -75,7 +74,7 @@ estimate_k22 <- function(X, params) {
   sy  <- sqrt(ece_pair(X[,2], X[,2])$cov)
   wx2 <- ece.complexity(X[,1])
   wy2 <- ece.complexity(X[,2])
-  n * as.numeric(W) / (4 * sx^2 * sy^2) - wx2 / sx^2 - wy2 / sy^2 - 5/2
+  n * as.numeric(W) / (sx^2 * sy^2) - wx2 / sx^2 - wy2 / sy^2 - 5/2
 }
 
 k22_indep <- map_dbl(1:1000, \(.) {

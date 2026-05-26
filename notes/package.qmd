@@ -64,7 +64,7 @@ Now takes scalars `(n, sx, sy, sxy, wx, wy, wxy)` directly instead of an `ece_ob
 
 #### 2. Core utilities
 
-- [ ] `lag_terms` — new function; test that it sums to `lag_diff`; use `X - rotate(X, k = 1)`
+- [ ] `ece_terms` — new function; test that it sums to `lag_diff`; use `X - rotate(X, k = 1)`
 - [ ] `mod_idx` — poor name; only used once; consider moving or inlining
 - [ ] `circ.eigendecomp` — new feature
 

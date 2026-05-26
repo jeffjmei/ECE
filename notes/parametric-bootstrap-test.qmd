@@ -12,7 +12,7 @@ devtools::load_all()
 
 ## Parametric Bootstrap Test
 
-Let $S_i \in \mathbb{R}^p$ denote the vector of lag terms across all pairs at index $i$. To test $H_0$, we need the variance of $\bar{S} = \frac{1}{n}\sum_{i=1}^n S_i$.
+Let $S_i \in \mathbb{R}^{\binom{p}{2}}$ denote the vector of ECE terms across all pairs at index $i$, so that $\bar{S}_j = \hat\sigma_{x_j y_j}$ for each pair $j$. To test $H_0$, we need the variance of $\bar{S} = \frac{1}{n}\sum_{i=1}^n S_i$.
 
 Since $S_i$ depends only on observations at indices $i, i+1, i+2$, terms separated by 3 or more indices are independent. The variance therefore has bandwidth 2:
 \begin{align*}
@@ -56,7 +56,7 @@ config <- scenario(2, n = 1000, L = 2)
 sims <- map(1:10000, ~ {
   X <- generate_data(config)
   n <- nrow(X)
-  S <- lag_terms(X)
+  S <- ece_terms(X)
   list(
     S_bar = colMeans(S),
     W     = as.numeric(

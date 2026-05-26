@@ -129,7 +129,7 @@ z_test <- function(X, conf.level = 0.95, params = NULL) {
 # Multiplier bootstrap test via independent subsequence splitting and Cauchy combination.
 bs_multiplier_test <- function(X, B = 1000) {
   # Make Terms Mean Zero and Independent
-  splits <- lag_terms(X) |> split_indep()
+  splits <- ece_terms(X) |> split_indep()
 
   # Apply Bootstrap Multiplier
   bs_pval <- splits |>
@@ -148,7 +148,7 @@ bs_multiplier_test <- function(X, B = 1000) {
 bs_parametric_test <- function(X, B = 1000) {
   # Calculate Variance of ECE Terms
   n <- nrow(X)
-  S <- lag_terms(X)
+  S <- ece_terms(X)
   W <- (1 / n^2) * (
     t(S) %*% S +
       t(rotate(S)) %*% S + t(S) %*% rotate(S) +
