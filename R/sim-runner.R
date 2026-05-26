@@ -46,9 +46,9 @@ run_sim <- function(config_row, N = 1000) {
       n_sim           = N,
       runtime         = runtime,
       timestamp       = Sys.time(),
-      scenario_params = jsonlite::toJSON(params$scenario_param),
-      method_params   = if (config_row$method %in% c("bs.multiplier", "bs.parametric"))
-        jsonlite::toJSON(list(B = config_row$B)) else jsonlite::toJSON(list())
+      scenario_params = as.character(jsonlite::toJSON(params$scenario_param)),
+      method_params   = as.character(if (config_row$method %in% c("bs.multiplier", "bs.parametric"))
+        jsonlite::toJSON(list(B = config_row$B)) else jsonlite::toJSON(list()))
     )
 
   dplyr::bind_rows(
