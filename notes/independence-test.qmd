@@ -2,172 +2,165 @@
 title: "Independence Test"
 ---
 
-# Independence Test
+## Classical Theory
 
-The asymptotic variance of $\hat{\rho}$ under the null ($\rho = 0$) is
+For jointly Gaussian $(X, Y)$, zero correlation and independence are equivalent, so testing $H_0: \rho = 0$ is also a test of $H_0: X \perp Y$. The statistic $T = \sqrt{n-2}\,\hat\rho / \sqrt{1 - \hat\rho^2}$ follows an exact $t_{n-2}$ null distribution.
+
+Without the Gaussian assumption, $\rho = 0$ no longer implies independence — for example, $X \sim N(0,1)$ and $Y = X^2$ satisfy $\operatorname{Cov}(X, Y) = 0$ but $X \not\perp Y$. Two approaches handle the non-Gaussian case:
+
+- **Permutation test.** Permuting $Y$ breaks any dependence on $X$ while preserving marginals, giving an exact test of $H_0: X \perp Y$ under any distribution.
+- **Asymptotic test of independence.** Under $H_0: X \perp Y$, the errors are independent, so $\kappa_{22} = 1$ and $\sqrt{n}\,\hat\rho \xrightarrow{d} N(0, 1)$.
+
+For the weaker null $H_0: \rho = 0$ without assuming independence, $\kappa_{22}$ need not equal 1, and the asymptotic variance is
 $$
-v^2 = \frac{1}{n} \left(\omega_x^2 + \omega_y^2 + \kappa_{22} + \frac{5}{2}\right). 
+v^2 = \frac{1}{n} \left(\omega_x^2 + \omega_y^2 + \kappa_{22} + \frac{5}{2}\right).
 $$
-If we assume $\varepsilon_x$ and $\varepsilon_y$ are independent, then $\kappa_{22} = 1$. 
+A robust test plugs in $\hat\kappa_{22}$.
 
-```{R} 
-pearson_permutation_test <- function(x, y, B = 10000, seed = NULL) {
-  if (!is.null(seed)) set.seed(seed)
-  
-  n <- length(x)
-  r_obs <- cor(x, y)
-  
-  r_perm <- numeric(B)
-  for (b in seq_len(B)) {
-    r_perm[b] <- cor(x, sample(y, size = n, replace = FALSE))
-  }
-  
-  pval <- (1 + sum(abs(r_perm) >= abs(r_obs))) / (B + 1)
-  
-  list(r = r_obs, p.value = pval, B = B)
-}
+## Estimating $\kappa_{22}$ via $V$
 
-pearson_robust_zero_corr_test <- function(x, y) {
-  n <- length(x)
-  
-  xc <- x - mean(x)
-  yc <- y - mean(y)
-  
-  sx2 <- mean(xc^2)
-  sy2 <- mean(yc^2)
-  
-  r <- mean(xc * yc) / sqrt(sx2 * sy2)
-  
-  kappa22_hat <- mean(xc^2 * yc^2) / (sx2 * sy2)
-  
-  Z <- sqrt(n) * r / sqrt(kappa22_hat)
-  pval <- 2 * pnorm(-abs(Z))
-  
-  list(
-    r = r,
-    kappa22_hat = kappa22_hat,
-    statistic = Z,
-    p.value = pval
-  )
-}
-```
+Let $s_i^{(k)} = (X_i - X_{i+k})(Y_i - Y_{i+k})$ and $S_i = s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}$ as in the Multiplier Bootstrap chapter, so that
+$$
+\bar{S} = \frac{1}{n}\sum_{i=1}^n S_i = \frac{2T_1(X,Y) - T_2(X,Y)}{n}
+$$
+is twice the ECE covariance estimator. Define the lag-2 variance estimate
+$$
+V := \widehat{\operatorname{Var}}(\bar{S}) = \frac{1}{n^2}\!\left(\sum_{i=1}^n S_i^2 + \sum_{i=1}^n (S_i S_{i+1} + S_{i+1} S_i) + \sum_{i=1}^n (S_i S_{i+2} + S_{i+2} S_i)\right).
+$$
 
-
-| Setting                  | Null hypothesis                    | Finite-sample calibration                  | Asymptotic calibration                  | p-value                                   |   |    |
-| ------------------------ | ---------------------------------- | ------------------------------------------ | --------------------------------------- | ----------------------------------------- | - | -- |
-| Gaussian                 | (\rho=0), equivalent to (X\perp Y) | Exact (t_{n-2})                            | (\sqrt n r\Rightarrow N(0,1))           | (2P(t_{n-2}\ge                            | T | )) |
-| Independent non-Gaussian | (X\perp Y)                         | Permutation exact; classical (t) not exact | (\sqrt n r\Rightarrow N(0,1))           | permutation or normal approximation       |   |    |
-| Merely uncorrelated      | (\rho=0), dependence allowed       | No distribution-free exact law             | (\sqrt n r\Rightarrow N(0,\kappa_{22})) | robust normal using (\widehat\kappa_{22}) |   |    |
-
-Let $X \sim N(0, 1)$ and $Y = X^2$. Then, $Cov(X,Y) = E(X^3) - E(X) E(X^2) = 0$. That is, $X$ and $Y$ have zero correlation, but they are clearly no independent.
-
-## Estimating $\kappa_{22}$ via $W$
-
-Since `lag_terms(X) |> mean() / 2 == ece.cov(X[,1], X[,2])`, the sample mean of the $S_i$ terms satisfies
-
-$$\bar S = \frac{2T_1(X,Y) - T_2(X,Y)}{n},$$
-
-so the parametric bootstrap variance $W = \widehat{\operatorname{Var}}(\bar S)$ estimates $\operatorname{Var}((2T_1-T_2)/n)$. This variance has a closed form containing $\kappa_{22}$, so we can solve for $\kappa_{22}$ directly from $W$.
-
-Under $H_0$ ($\sigma_{xy} = 0$), applying $\operatorname{Var}(2Z_5 - Z_6) = 4[\Sigma_Z]_{55} - 4[\Sigma_Z]_{56} + [\Sigma_Z]_{66}$ to the entries of $\Sigma_Z$ gives
-
-$$\operatorname{Var}(2T_1 - T_2) = 2n\!\left[(2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2\right].$$
-
-Since $W = \operatorname{Var}(2T_1 - T_2)/n^2$, solving for $\kappa_{22}$:
-
-$$\hat\kappa_{22} = \frac{nW}{4\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2},$$
-
-where $\hat\omega_x^2 = (T_2(X,X) - T_1(X,X))/n$ and $\hat\omega_y^2 = (T_2(Y,Y) - T_1(Y,Y))/n$.
+Since $\bar S = (2T_1 - T_2)/n$, we have $V \approx \operatorname{Var}(2T_1 - T_2)/n^2$. Under $H_0$ ($\sigma_{xy} = 0$), the variance on the right has a closed form in $\kappa_{22}$, so we can solve for $\kappa_{22}$ from $V$.
 
 ::: {.callout-note collapse="true"}
 ## Derivation: $\operatorname{Var}(2T_1 - T_2)$ from $\Sigma_Z$
 
-From the $\Sigma_Z$ table, under $H_0$ ($\sigma_{xy} = \omega_{xy} = 0$):
-
+Under $H_0$ ($\sigma_{xy} = 0$),
+$$
+\operatorname{Var}(2T_1 - T_2) = 4[\Sigma_Z]_{55} - 4[\Sigma_Z]_{56} + [\Sigma_Z]_{66}.
+$$
+Plugging in the $\Sigma_Z$ entries from the Z-Test chapter,
 $$[\Sigma_Z]_{55} = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2,$$
 $$[\Sigma_Z]_{56} = 4n\sigma_x^2\sigma_y^2\kappa_{22} + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2,$$
-$$[\Sigma_Z]_{66} = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) + 4n\sigma_y^2\omega_x^2 + 4n\sigma_x^2\omega_y^2.$$
-
-Substituting into $4[\Sigma_Z]_{55} - 4[\Sigma_Z]_{56} + [\Sigma_Z]_{66}$:
-
-- **$\sigma_x^2\sigma_y^2$ coefficient:** $4\cdot 2(2\kappa_{22}+1) - 4\cdot 4\kappa_{22} + 2(2\kappa_{22}+1) = 4\kappa_{22} + 10 = 2(2\kappa_{22}+5)$.
-- **$\sigma_y^2\omega_x^2$ coefficient:** $4\cdot 2 - 4\cdot 2 + 4 = 4$.
-- **$\sigma_x^2\omega_y^2$ coefficient:** $4\cdot 2 - 4\cdot 2 + 4 = 4$.
-
-Therefore $\operatorname{Var}(2T_1 - T_2) = 2n[(2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2]$.
-
-Since $W = \operatorname{Var}(2T_1-T_2)/n^2$, we have $nW/2 = (2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2$. Solving:
-
-$$\kappa_{22} = \frac{nW/2 - 2\sigma_y^2\omega_x^2 - 2\sigma_x^2\omega_y^2}{2\sigma_x^2\sigma_y^2} - \frac{5}{2} \cdot \frac{1}{1} = \frac{nW}{4\sigma_x^2\sigma_y^2} - \frac{\omega_x^2}{\sigma_x^2} - \frac{\omega_y^2}{\sigma_y^2} - \frac{5}{2}. \quad\square$$
+$$[\Sigma_Z]_{66} = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) + 4n\sigma_y^2\omega_x^2 + 4n\sigma_x^2\omega_y^2,$$
+and simplifying,
+$$\operatorname{Var}(2T_1 - T_2) = 2n\bigl[(2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2\bigr]. \qquad\square$$
 :::
 
-In code, using the parametric bootstrap $W$ already computed:
-
-```{r}
-#| eval: false
-wx2 <- (lag_diff(X[,1], X[,1], k=2) - lag_diff(X[,1], X[,1], k=1)) / n
-wy2 <- (lag_diff(X[,2], X[,2], k=2) - lag_diff(X[,2], X[,2], k=1)) / n
-
-k22 <- n * as.numeric(W) / (4 * sx^2 * sy^2) - wx2 / sx^2 - wy2 / sy^2 - 5/2
-```
+Since $nV \approx \operatorname{Var}(2T_1-T_2)/n$, substituting and solving gives
+$$\hat\kappa_{22} = \frac{nV}{4\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.$$
 
 ### Simulation: Does $\hat\kappa_{22}$ Recover the Truth?
 
-We run two scenarios with exponential mean structure ($L = 4$):
-
-- **Independent:** errors drawn from $\text{Exp}(1) - 1$, independent across series. True $\kappa_{22} = E[\varepsilon_x^2]E[\varepsilon_y^2]/(\sigma_x^2\sigma_y^2) = 1$.
-- **Dependent:** $\varepsilon_x \sim N(0,1)$, $\varepsilon_y = (\varepsilon_x^2 - 1)/\sqrt{2}$. Zero correlation but strong dependence. True $\kappa_{22} = E[\varepsilon_x^2 \varepsilon_y^2] = \tfrac{1}{2}E[\varepsilon_x^2(\varepsilon_x^2-1)^2] = 5$.
+```{r}
+#| message: false
+#| echo: false
+devtools::load_all("..")
+library(purrr)
+library(ggplot2)
+```
 
 ```{r}
 #| cache: true
-#| message: false
-devtools::load_all("..")
-library(purrr)
-
+#| echo: false
 params <- scenario(2, L = 4, err_type = "exponential")
 
-run_k22_sim <- function(data_gen, n_sim = 1000) {
-  map_dbl(seq_len(n_sim), \(.) {
-    n   <- params$n
-    X   <- data_gen(params)
-    S   <- lag_terms(X)
-    W   <- (1 / n^2) * (
-      t(S) %*% S +
-        t(rotate(S)) %*% S + t(S) %*% rotate(S) +
-        t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
-    )
-    sx  <- sqrt(ece_pair(X[,1], X[,1])$cov)
-    sy  <- sqrt(ece_pair(X[,2], X[,2])$cov)
-    wx2 <- ece.complexity(X[,1])
-    wy2 <- ece.complexity(X[,2])
-    n * as.numeric(W) / (4 * sx^2 * sy^2) - wx2 / sx^2 - wy2 / sy^2 - 5/2
-  }, .progress = TRUE)
+estimate_k22 <- function(X, params) {
+  n   <- params$n
+  S   <- lag_terms(X)
+  W   <- (1 / n^2) * (
+    t(S) %*% S +
+      t(rotate(S)) %*% S + t(S) %*% rotate(S) +
+      t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
+  )
+  sx  <- sqrt(ece_pair(X[,1], X[,1])$cov)
+  sy  <- sqrt(ece_pair(X[,2], X[,2])$cov)
+  wx2 <- ece.complexity(X[,1])
+  wy2 <- ece.complexity(X[,2])
+  n * as.numeric(W) / (4 * sx^2 * sy^2) - wx2 / sx^2 - wy2 / sy^2 - 5/2
 }
 
-gen_independent <- function(params) generate_data(params)
+k22_indep <- map_dbl(1:1000, \(.) {
+  estimate_k22(generate_data(params), params)
+})
 
-gen_dependent <- function(params) {
+k22_dep <- map_dbl(1:1000, \(.) {
   ex <- rnorm(params$n)
   ey <- (ex^2 - 1) / sqrt(2)
-  cbind(params$h[,1] + ex, params$h[,2] + ey)
-}
+  X  <- cbind(params$h[,1] + ex, params$h[,2] + ey)
+  estimate_k22(X, params)
+})
 
-k22_indep <- run_k22_sim(gen_independent)
-k22_dep   <- run_k22_sim(gen_dependent)
+lambda_vals <- c(0, 0.5, 1/sqrt(2), 1)
+k22_true    <- 1 + 4 * lambda_vals^2
+
+sim_results <- map(lambda_vals, \(lam) {
+  map_dbl(1:1000, \(.) {
+    ex <- rnorm(params$n)
+    ey <- lam * (ex^2 - 1) / sqrt(2) + sqrt(1 - lam^2) * rnorm(params$n)
+    X  <- cbind(params$h[,1] + ex, params$h[,2] + ey)
+    estimate_k22(X, params)
+  })
+})
 ```
 
 ```{r}
-# True k22 for dependent case: (1/2) E[ex^2 (ex^2 - 1)^2] = (1/2)(15 - 6 + 1) = 5
-ex_large <- rnorm(1e6)
-ey_large <- (ex_large^2 - 1) / sqrt(2)
-k22_dep_true <- mean(ex_large^2 * ey_large^2)
-
-tibble::tribble(
-  ~scenario,    ~true_k22,             ~estimated_k22,
-  "independent", params$kappa$k22,     mean(k22_indep),
-  "dependent",   k22_dep_true,         mean(k22_dep)
-)
+#| echo: false
+make_k22_plot <- function(sim, true_k22) {
+  tibble::tibble(k22 = sim) |>
+    ggplot(aes(x = k22)) +
+    geom_histogram(bins = 40, fill = "steelblue", color = "white", alpha = 0.8) +
+    geom_vline(xintercept = true_k22, color = "firebrick") +
+    geom_vline(xintercept = mean(sim), linetype = "dashed") +
+    labs(x = expression(hat(kappa)[22]), y = "count",
+         subtitle = "Red = true, dashed = sample mean") +
+    theme_minimal()
+}
 ```
+
+To check the formula for $\hat\kappa_{22}$, we simulate 1000 datasets and compare the distribution of $\hat\kappa_{22}$ to the true value. If the formula is correct, the sample mean (dashed line) should be close to the true value (red line). We consider three cases: independent errors ($\kappa_{22} = 1$), a strongly dependent case ($\kappa_{22} = 5$), and a one-parameter family interpolating between the two.
+
+::: {.panel-tabset}
+
+## Independent ($\kappa_{22} = 1$)
+
+```{r}
+#| echo: false
+make_k22_plot(k22_indep, true_k22 = params$kappa$k22)
+```
+
+## Dependent ($\kappa_{22} = 5$)
+
+```{r}
+#| echo: false
+make_k22_plot(k22_dep, true_k22 = 5)
+```
+
+## $\lambda$-Mixing
+
+Using $\varepsilon_y = \lambda(\varepsilon_x^2-1)/\sqrt{2} + \sqrt{1-\lambda^2}\,\eta$ with $\varepsilon_x, \eta \stackrel{iid}{\sim} N(0,1)$, which gives $\sigma_{xy} = 0$ and $\kappa_{22} = 1 + 4\lambda^2$.
+
+```{r}
+#| echo: false
+sim_df <- tibble::tibble(
+  k22   = unlist(sim_results),
+  group = factor(rep(round(k22_true, 1), each = 1000),
+                 labels = paste0("κ₂₂ = ", round(k22_true, 1)))
+)
+ref_df <- tibble::tibble(
+  group = factor(round(k22_true, 1),
+                 labels = paste0("κ₂₂ = ", round(k22_true, 1))),
+  true  = k22_true
+)
+
+ggplot(sim_df, aes(x = k22, fill = group, color = group)) +
+  geom_histogram(bins = 50, position = "identity", alpha = 0.4, linewidth = 0) +
+  geom_vline(data = ref_df, aes(xintercept = true, color = group), linewidth = 0.9) +
+  scale_fill_brewer(palette = "Set1", name = NULL) +
+  scale_color_brewer(palette = "Set1", name = NULL) +
+  labs(x = expression(hat(kappa)[22]), y = "count") +
+  theme_minimal()
+```
+
+:::
 
 
 
