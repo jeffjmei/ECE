@@ -110,6 +110,56 @@ iwalk(plots2, \(plot, err_type) {
 cat(":::\n")
 ```
 
+## For $p > 2$
+
+We compare `bs.multiplier` and `bs.parametric` at $n = 200$, $p \in \{3, 5, 10\}$, across scenarios and error distributions.
+
+```{r}
+#| echo: false
+#| warning: false
+#| results: asis
+dat3 <- results |>
+  filter(p %in% c(3, 5, 10), n == 200, method %in% c("bs.multiplier", "bs.parametric"), metric == "power") |>
+  filter(scenario == 1 | (scenario == 2 & scenario_params == "{\\L\\:[4]}")) |>
+  mutate(
+    err_type = factor(err_type, levels = c("normal", "exponential")),
+    method   = factor(method, levels = names(method_colors)),
+    p        = factor(p, levels = c(3, 5, 10), labels = c("p = 3", "p = 5", "p = 10")),
+    cov_type = factor(cov_type, levels = c("ar1", "compound"))
+  )
+
+y_range3 <- range(dat3$metric_val)
+
+plots3 <- dat3 |>
+  group_by(err_type) |>
+  group_map(\(d, g) {
+    ggplot(d, aes(x = r, y = metric_val, color = method, linetype = cov_type)) +
+      geom_hline(yintercept = 0.10, linetype = "dashed", color = "gray50") +
+      geom_line() +
+      geom_point() +
+      facet_grid(p ~ scenario, labeller = labeller(scenario = c(
+        "1" = "No Change Points",
+        "2" = "Change Points (L = 4)"
+      ))) +
+      scale_color_manual(values = method_colors) +
+      scale_linetype_manual(values = c("ar1" = "dashed", "compound" = "solid")) +
+      scale_y_continuous(limits = y_range3) +
+      labs(x = expression(paste("Correlation (", rho, ")")), y = "Power",
+           color = "Method", linetype = "Covariance type") +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+  }) |>
+  setNames(levels(dat3$err_type))
+
+cat("::: {.panel-tabset}\n\n")
+iwalk(plots3, \(plot, err_type) {
+  cat(paste0("## ", err_type, "\n\n"))
+  print(plot)
+  cat("\n\n")
+})
+cat(":::\n")
+```
+
 ## Variance Difference: General vs. Gaussian
 
 Recall the asymptotic variance under the general and Gaussian assumptions:
