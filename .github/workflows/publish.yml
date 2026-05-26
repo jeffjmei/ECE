@@ -21,7 +21,7 @@ jobs:
       - name: Install R dependencies
         shell: Rscript {0}
         run: |
-          install.packages(c("devtools", "testthat"))
+          install.packages(c("devtools", "testthat", "tidyverse", "purrr"))
           devtools::install(".", quiet = TRUE)
 
       - name: Publish to GitHub Pages
