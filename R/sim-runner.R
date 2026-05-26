@@ -12,6 +12,7 @@ test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...)
 run_sim <- function(config_row, N = 1000) {
   standard_cols <- c("scenario", "n", "p", "cov_type", "r", "amp", "err_type", "method", "B", "seed", "n_sims")
   extra_params <- as.list(config_row[setdiff(names(config_row), standard_cols)])
+  extra_params <- extra_params[!is.na(extra_params)]
 
   params <- do.call(scenario, c(
     list(

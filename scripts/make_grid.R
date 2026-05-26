@@ -12,28 +12,21 @@ base_params <- list(
   n_sims   = 10000
 )
 
-# bs_methods <- c("bs.multiplier", "bs.parametric")
-# zt_methods <- c("z.test.gaussian", "z.test.kappa")
-bs_methods <- c("bs.parametric")
-
-
-make_scenario <- function(scenario_id, extra = list()) {
-  bs <- do.call(crossing, c(
-    list(scenario = scenario_id), base_params,
-    list(method = bs_methods, B = 1000), extra
-  ))
-  zt <- do.call(crossing, c(
-    list(scenario = scenario_id), base_params,
-    list(method = zt_methods), extra
-  ))
-  bind_rows(bs, zt)
-  bs
-}
-
-config_grid <- bind_rows(
-  make_scenario(1),
-  make_scenario(2, list(L = 4))
+scenario_specs <- tribble(
+  ~scenario, ~L,
+  1,         NA_real_,
+  2,         4
 )
+
+method_specs <- tribble(
+  ~method,           ~B,
+  "bs.parametric",   1000,
+  "z.test.gaussian", NA_real_
+)
+
+config_grid <- do.call(crossing, base_params) |>
+  crossing(scenario_specs) |>
+  crossing(method_specs)
 
 write.csv(config_grid, "scripts/param_grid.csv", row.names = FALSE)
 message("Wrote ", nrow(config_grid), " configurations to scripts/param_grid.csv")
