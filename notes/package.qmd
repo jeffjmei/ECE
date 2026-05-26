@@ -113,7 +113,7 @@ To evaluate ECE, we have produced many simulation scenarios.
 
 ```{R}
 # Generating Data
-config <- scenario(10, n=1000)
+config <- scenario(1, n=1000)
 X <- generate_data(config)
 ```
 
