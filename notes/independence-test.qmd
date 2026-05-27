@@ -82,6 +82,35 @@ $$
 $$
 By symmetry ($x \leftrightarrow y$), the same construction applied to $(Y, Y)$ yields $\hat\kappa_{04} = nV_{yy}/\hat\sigma_y^4 - 4\hat\omega_y^2/\hat\sigma_y^2 - 4$.
 
+## Estimating $\kappa_{31}$ via $C_{xx,xy}$
+
+The cumulant $\kappa_{31}$ appears in the cross-covariances between the $(X,X)$ and $(X,Y)$ blocks of $\Sigma_Z$. Define the lag-2 cross-covariance
+$$
+C_{xx,xy} := \frac{1}{n^2}\,(\mathbf{S}^{xx})^\top(I + C_1 + C_1^\top + C_2 + C_2^\top)\mathbf{S}^{xy},
+$$
+which estimates $\operatorname{Cov}(\bar S^{xx}, \bar S^{xy}) = \operatorname{Cov}(2T_1(X,X) - T_2(X,X),\; 2T_1(X,Y) - T_2(X,Y))/(4n^2)$.
+
+::: {.callout-note collapse="true"}
+## Derivation: $\operatorname{Cov}(2T_1(X,X) - T_2(X,X),\; 2T_1(X,Y) - T_2(X,Y))$ from $\Sigma_Z$
+
+$$
+\operatorname{Cov}(2T_1(X,X) - T_2(X,X),\; 2T_1(X,Y) - T_2(X,Y)) = 4[\Sigma_Z]_{15} - 2[\Sigma_Z]_{16} - 2[\Sigma_Z]_{25} + [\Sigma_Z]_{26}.
+$$
+The relevant entries from the Z-Test chapter are
+$$[\Sigma_Z]_{15} = 4n\sigma_x^3\sigma_y\kappa_{31} + 4n\sigma_{xy}\omega_x^2 + 4n\sigma_x^2\omega_{xy},$$
+$$[\Sigma_Z]_{16} = 4n\sigma_x^3\sigma_y\kappa_{31} - 4n\sigma_x^2\sigma_{xy} + 4n\sigma_{xy}\omega_x^2 + 4n\sigma_x^2\omega_{xy},$$
+$$[\Sigma_Z]_{25} = 4n\sigma_x^3\sigma_y\kappa_{31} - 4n\sigma_x^2\sigma_{xy} + 4n\sigma_{xy}\omega_x^2 + 4n\sigma_x^2\omega_{xy},$$
+$$[\Sigma_Z]_{26} = 4n\sigma_x^3\sigma_y\kappa_{31} + 8n\sigma_{xy}\omega_x^2 + 8n\sigma_x^2\omega_{xy}.$$
+Collecting terms:
+$$\operatorname{Cov}(2T_1(X,X) - T_2(X,X),\; 2T_1(X,Y) - T_2(X,Y)) = 4n\sigma_x^3\sigma_y\kappa_{31} + 16n\sigma_x^2\sigma_{xy} + 8n\sigma_{xy}\omega_x^2 + 8n\sigma_x^2\omega_{xy}. \qquad\square$$
+:::
+
+Since $4n^2 C_{xx,xy} \approx \operatorname{Cov}(2T_1(X,X) - T_2(X,X),\; 2T_1(X,Y) - T_2(X,Y))$, substituting and solving gives
+$$
+\hat\kappa_{31} = \frac{nC_{xx,xy}}{\hat\sigma_x^3\hat\sigma_y} - \frac{4\hat\sigma_{xy}}{\hat\sigma_x\hat\sigma_y} - \frac{2\hat\sigma_{xy}\hat\omega_x^2}{\hat\sigma_x^3\hat\sigma_y} - \frac{2\hat\omega_{xy}}{\hat\sigma_x\hat\sigma_y}.
+$$
+By symmetry ($x \leftrightarrow y$), the same construction with $C_{yy,xy}$ yields $\hat\kappa_{13}$.
+
 ### Simulation: Does $\hat\kappa_{22}$ Recover the Truth?
 
 ```{r}
