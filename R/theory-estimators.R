@@ -37,4 +37,3 @@ var_Qh_est <- function(n, sx, sy, sxy, wx, wy, wxy, k22, k = 1) {
     2 * n * k * sx^2 * wy +
     4 * n * k * sxy * wxy
 }
-
