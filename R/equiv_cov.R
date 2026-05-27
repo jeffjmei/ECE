@@ -99,6 +99,45 @@ ece.cor <- function(x, y = NULL, L = 2) {
 #' ece.complexity(X)
 #'
 #' @export
+#' Equivariant Kurtosis Estimator (kappa_22)
+#'
+#' Estimates the cross-kurtosis parameter \eqn{\kappa_{22}} from data by
+#' inverting the variance formula for the ECE covariance estimator.
+#'
+#' @param X An \eqn{n \times 2} numeric matrix.
+#' @param rho If \code{0}, the cross-covariance \eqn{\sigma_{xy}} is set to
+#'   zero (null assumption). If \code{NULL} (default), \eqn{\sigma_{xy}} is
+#'   estimated from data.
+#'
+#' @return A scalar estimate of \eqn{\kappa_{22}}.
+#'
+#' @seealso [ece.complexity()], [ece.cov()]
+#'
+#' @export
+ece.k22 <- function(X, rho = NULL) {
+  if (!is.matrix(X) || ncol(X) != 2) stop("X must be an n x 2 matrix")
+  n <- nrow(X)
+  S <- ece_terms(X)
+  W <- (1 / n^2) * (
+    t(S) %*% S +
+      t(rotate(S)) %*% S + t(S) %*% rotate(S) +
+      t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
+  )
+  sx2 <- ece.cov(X[, 1])
+  sy2 <- ece.cov(X[, 2])
+  sxy <- if (!is.null(rho) && rho == 0) 0 else ece.cov(X[, 1], X[, 2])
+
+  wx2 <- ece.complexity(X[, 1])
+  wy2 <- ece.complexity(X[, 2])
+  wxy <- ece.complexity(X[, 1], X[, 2])
+
+  n * W[1, 1] / (sx2 * sy2) -
+    (3 / 2) * sxy^2 / (sx2 * sy2) -
+    2 * sxy * wxy / (sx2 * sy2) -
+    wx2 / sx2 - wy2 / sy2 -
+    5 / 2
+}
+
 ece.complexity <- function(x, y = NULL, L = 2) {
   if (is.matrix(x)) {
     p <- ncol(x)

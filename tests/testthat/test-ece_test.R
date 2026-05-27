@@ -1,3 +1,25 @@
+test_that("formula and matrix SE agree (Gaussian kappa, nonzero rho)", {
+  set.seed(1)
+  params <- scenario(2, n = 200, r = 0.3, L = 4)
+  X <- generate_data(params)
+  expect_equal(
+    ece.cor.se(X, kappa = "gaussian"),
+    ece_cor_se_ref(X, params = NULL),
+    tolerance = 1e-10
+  )
+})
+
+test_that("formula and matrix SE agree (oracle kappa)", {
+  set.seed(1)
+  params <- scenario(2, n = 200, r = 0.3, L = 4)
+  X <- generate_data(params)
+  expect_equal(
+    ece.cor.se(X, kappa = params$kappa),
+    ece_cor_se_ref(X, params = params),
+    tolerance = 1e-10
+  )
+})
+
 test_that("p-value is a valid probability", {
   params <- scenario(2, n = 1000, r = 0, L = 4)
 

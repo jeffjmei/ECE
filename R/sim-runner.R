@@ -1,10 +1,10 @@
 test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...) {
   b_arg <- if (!is.null(B)) list(B = B) else list()
   switch(method,
-    bs.multiplier   = do.call(ece.test, c(list(X, type = "bs.multiplier"), b_arg, list(...))),
-    bs.parametric   = do.call(ece.test, c(list(X, type = "bs.parametric"),  b_arg, list(...))),
-    z.test.gaussian = ece.test(X, type = "z.test", ...),
-    z.test.kappa    = ece.test(X, type = "z.test", params = params, ...),
+    bs.multiplier      = do.call(ece.test, c(list(X, type = "bs.multiplier"), b_arg, list(...))),
+    bs.parametric      = do.call(ece.test, c(list(X, type = "bs.parametric"),  b_arg, list(...))),
+    z.test.gaussian    = ece.test(X, type = "z.test", kappa = "gaussian", ...),
+    z.test.oracle.kappa = ece.test(X, type = "z.test", kappa = params$kappa, ...),
     stop("Unknown method: ", method)
   )
 }

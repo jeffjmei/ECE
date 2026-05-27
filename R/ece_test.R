@@ -1,26 +1,8 @@
-#' Standard Error of the ECE Correlation Estimator
-#'
-#' Computes the asymptotic standard error of the equivariant correlation estimator
-#' for a bivariate time series.
-#'
-#' @param x A numeric vector, or an \eqn{n \times 2} matrix with series in columns.
-#' @param y A numeric vector of the same length as \code{x}. Ignored if \code{x} is a matrix.
-#' @param L A positive integer giving the minimum segment length (default 2).
-#' @param params Optional list of oracle parameters. If \code{params$kappa} is present,
-#'   those cumulants are used instead of the Gaussian assumption.
-#'
-#' @return A scalar standard error.
-#'
-#' @examples
-#' x <- rnorm(100)
-#' y <- rnorm(100)
-#' ece.cor.se(x, y)
-#'
-#' X <- matrix(rnorm(200), ncol = 2)
-#' ece.cor.se(X)
-#'
-#' @export
-ece.cor.se <- function(x, y = NULL, L = 2, params = NULL) {
+# Delta-method SE via the full 6x6 Sigma_Z matrix. Kept only for agreement
+# tests against the closed-form ece.cor.se. Not exported; named to avoid
+# collision with ece.cor.se.matrix(params) in theory.R.
+# nolint start
+ece_cor_se_ref <- function(x, y = NULL, L = 2, params = NULL) {
   if (is.matrix(x)) {
     if (ncol(x) != 2) stop("matrix input must have exactly 2 columns")
     y <- x[, 2]
@@ -39,18 +21,10 @@ ece.cor.se <- function(x, y = NULL, L = 2, params = NULL) {
   rxy <- sxy / (sx * sy)
 
   if (is.null(params)) {
-    k40 <- 3
-    k04 <- 3
-    k31 <- 3 * rxy
-    k13 <- 3 * rxy
-    k22 <- 1 + 2 * rxy^2
+    k40 <- 3; k04 <- 3; k31 <- 3 * rxy; k13 <- 3 * rxy; k22 <- 1 + 2 * rxy^2
   } else {
     k <- params$kappa
-    k40 <- k$k40
-    k04 <- k$k04
-    k31 <- k$k31
-    k13 <- k$k13
-    k22 <- k$k22
+    k40 <- k$k40; k04 <- k$k04; k31 <- k$k31; k13 <- k$k13; k22 <- k$k22
   }
 
   S11 <- var_Tk_est(n, sx, wx, k40, k = 1)
@@ -97,6 +71,68 @@ ece.cor.se <- function(x, y = NULL, L = 2, params = NULL) {
   )
   sqrt(as.numeric(t(dg_mu) %*% S_u %*% dg_mu))
 }
+# nolint end
+
+#' Standard Error of the ECE Correlation Estimator
+#'
+#' Computes the asymptotic standard error of the equivariant correlation
+#' estimator for a bivariate time series using the closed-form delta-method
+#' expression.
+#'
+#' @param x A numeric vector, or an \eqn{n \times 2} matrix with series in columns.
+#' @param y A numeric vector of the same length as \code{x}. Ignored if \code{x} is a matrix.
+#' @param L A positive integer giving the minimum segment length (default 2).
+#' @param kappa Either the string \code{"gaussian"} to use Gaussian cumulants, or
+#'   a named list with any of \code{k22}, \code{k40}, \code{k04}, \code{k31},
+#'   \code{k13}. Missing list entries fall back to Gaussian values.
+#' @param rho If \code{0}, forces \eqn{\sigma_{xy} = 0} in the SE formula (null
+#'   assumption). If \code{NULL} (default), \eqn{\sigma_{xy}} is estimated from data.
+#'
+#' @return A scalar standard error.
+#'
+#' @examples
+#' x <- rnorm(100)
+#' y <- rnorm(100)
+#' ece.cor.se(x, y, kappa = "gaussian")
+#'
+#' X <- matrix(rnorm(200), ncol = 2)
+#' ece.cor.se(X, kappa = "gaussian")
+#'
+#' @export
+ece.cor.se <- function(x, y = NULL, L = 2, kappa, rho = NULL) {
+  if (is.matrix(x)) {
+    if (ncol(x) != 2) stop("matrix input must have exactly 2 columns")
+    y <- x[, 2]
+    x <- x[, 1]
+  }
+  n   <- length(x)
+  sx  <- sqrt(ece.cov(x, L = L))
+  sy  <- sqrt(ece.cov(y, L = L))
+  wx2 <- ece.complexity(x, L = L)
+  wy2 <- ece.complexity(y, L = L)
+  wxy <- ece.complexity(x, y, L = L)
+  sxy <- if (!is.null(rho) && rho == 0) 0 else ece.cov(x, y, L = L)
+  rxy <- sxy / (sx * sy)
+
+  if (is.character(kappa) && kappa == "gaussian") {
+    k22 <- 1 + 2 * rxy^2; k40 <- 3; k04 <- 3; k31 <- 3 * rxy; k13 <- 3 * rxy
+  } else {
+    k22 <- if (!is.null(kappa$k22)) kappa$k22 else 1 + 2 * rxy^2
+    k40 <- if (!is.null(kappa$k40)) kappa$k40 else 3
+    k04 <- if (!is.null(kappa$k04)) kappa$k04 else 3
+    k31 <- if (!is.null(kappa$k31)) kappa$k31 else 3 * rxy
+    k13 <- if (!is.null(kappa$k13)) kappa$k13 else 3 * rxy
+  }
+
+  sqrt(
+    (1 / n) * (
+      (1 - rxy^2) * (wx2 / sx^2 + wy2 / sy^2 - 2 * rxy * wxy / (sx * sy)) +
+      rxy^2 / 4 * (k40 + 2 * k22 + k04) -
+      rxy * (k31 + k13) + k22 +
+      5 / 2 * (1 - rxy^2)^2
+    )
+  )
+}
 
 # Simulates the null distribution of max|colMeans(Z * s)| via Gaussian multiplier
 # bootstrap, where Z is an iid N(0,1) vector independent of s.
@@ -113,11 +149,11 @@ cauchy_combine <- function(pvals) {
 }
 
 # Asymptotic z-test for zero correlation based on the equivariant correlation estimator.
-z_test <- function(X, conf.level = 0.95, params = NULL) {
+z_test <- function(X, conf.level = 0.95, kappa = "gaussian", rho = NULL) {
   if (ncol(X) != 2) stop("type = 'z.test' requires a 2-column matrix")
   rxy <- ece.cor(X)[1, 2]
-  se <- ece.cor.se(X[, 1], X[, 2], params = params)
-  ci <- rxy + c(-1, 1) * qnorm((1 + conf.level) / 2) * se
+  se  <- ece.cor.se(X[, 1], X[, 2], kappa = kappa, rho = rho)
+  ci  <- rxy + c(-1, 1) * qnorm((1 + conf.level) / 2) * se
   list(
     estimate = rxy,
     se       = se,
@@ -196,10 +232,11 @@ bs_parametric_test <- function(X, B = 1000) {
 #' ece.test(X, type = "bs.parametric")
 #'
 #' @export
-ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95, params = NULL) {
+ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95,
+                    kappa = "gaussian", rho = NULL) {
   X <- as.matrix(X)
   if (type == "z.test") {
-    z_test(X, conf.level = conf.level, params = params)
+    z_test(X, conf.level = conf.level, kappa = kappa, rho = rho)
   } else if (type == "bs.multiplier") {
     bs_multiplier_test(X, B)
   } else if (type == "bs.parametric") {
