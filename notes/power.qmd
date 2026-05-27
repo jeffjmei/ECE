@@ -182,6 +182,58 @@ cat(":::\n")
 
 :::
 
+::: {.callout-note collapse="true" title="Z-Test (Gaussian) is more powerful than Z-Test (Null, Gaussian): estimating ρ improves the SE"}
+
+$n = 200$, $p = 2$.
+
+- **Z-Test (Gaussian)** uses the unrestricted SE — the denominator includes $\hat{\rho}$
+- **Z-Test (Null, Gaussian)** plugs in $\rho = 0$ under $H_0$, giving a less efficient SE
+- This mirrors classical theory: the Wald statistic (unrestricted SE) is generally more powerful than the score statistic (null SE) at alternatives away from zero
+
+```{r}
+#| echo: false
+#| warning: false
+#| results: asis
+dat5 <- results |>
+  filter(p == 2, n == 200, method %in% c("z.test.null.gaussian", "z.test.gaussian"), metric == "power") |>
+  filter(scenario == 1 | (scenario == 2 & scenario_params == "{\\L\\:[4]}")) |>
+  mutate(
+    err_type = factor(err_type, levels = c("normal", "exponential")),
+    method   = factor(method, levels = names(method_colors))
+  )
+
+y_range5 <- range(dat5$metric_val)
+
+plots5 <- dat5 |>
+  group_by(err_type) |>
+  group_map(\(d, g) {
+    ggplot(d, aes(x = r, y = metric_val, color = method)) +
+      geom_hline(yintercept = 0.10, linetype = "dashed", color = "gray50") +
+      geom_line() +
+      geom_point() +
+      facet_wrap(~scenario, labeller = labeller(scenario = c(
+        "1" = "No Change Points",
+        "2" = "Change Points (L = 4)"
+      ))) +
+      scale_color_manual(values = method_colors, labels = method_labels) +
+      scale_y_continuous(limits = y_range5) +
+      labs(x = expression(paste("Correlation (", rho, ")")), y = "Power", color = "Method") +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+  }) |>
+  setNames(levels(dat5$err_type))
+
+cat("::: {.panel-tabset}\n\n")
+iwalk(plots5, \(plot, err_type) {
+  cat(paste0("## ", err_type, "\n\n"))
+  print(plot)
+  cat("\n\n")
+})
+cat(":::\n")
+```
+
+:::
+
 ::: {.callout-note collapse="true" title="Bootstrap (Parametric) outperforms Bootstrap (Multiplier) at p = 3; higher dimensions unavailable"}
 
 $n = 200$, $p \in \{3, 5, 10\}$.
