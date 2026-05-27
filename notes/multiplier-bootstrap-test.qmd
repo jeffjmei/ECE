@@ -6,6 +6,7 @@ title: "Multiplier Bootstrap Test"
 #| echo: false
 #| message: false
 devtools::load_all()
+library(tidyverse)
 ```
 
 ![](assets/bs-multiplier-diagram.png)
@@ -118,3 +119,38 @@ abline(h=1, col="red")
 mean(pvals < 0.05)  # ~0.05
 ```
 :::
+
+```{r}
+#| echo: false
+params <- scenario(2, n = 1000, L = 4, r = 0, err_type = "exponential")
+```
+
+```{r}
+#| echo: false
+#| cache: true
+set.seed(1)
+methods <- c("bs.multiplier", "bs.multiplier.nosplit")
+pval_list <- map(methods, \(m) {
+  map_dbl(1:5000, ~ test.diag(generate_data(params), method = m, B = 1000)$p.value)
+}) |> setNames(methods)
+```
+
+```{r}
+#| echo: false
+method_labels <- c(
+  "bs.multiplier"        = "BS Multiplier",
+  "bs.multiplier.nosplit" = "BS Multiplier (No Split)"
+)
+
+map_dfr(names(pval_list), \(m) tibble(method = m, p = pval_list[[m]])) |>
+  mutate(method = factor(method, levels = names(method_labels), labels = method_labels)) |>
+  ggplot(aes(x = p)) +
+  geom_histogram(aes(y = after_stat(density)),
+    breaks = seq(0, 1, by = 0.05), fill = "steelblue", color = "white", alpha = 0.8
+  ) +
+  geom_hline(yintercept = 1, color = "firebrick", linetype = "dashed") +
+  facet_wrap(~method) +
+  labs(x = "p-value", y = "density",
+       title = "P-value distributions under H₀: ρ = 0 (nsim = 5,000)") +
+  theme_minimal()
+```
