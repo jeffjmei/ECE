@@ -234,6 +234,57 @@ cat(":::\n")
 
 :::
 
+::: {.callout-note collapse="true" title="Z-Test (Null) and Bootstrap (Parametric) have nearly identical power"}
+
+$n = 200$, $p = 2$.
+
+- The two methods have similar power across scenarios and error distributions
+- This is unsurprising: the Z-Test (Null) estimates $\kappa_{22}$ via $\widehat{\text{Cov}}(S)$, which is the same quantity the parametric bootstrap variance estimate is based on
+
+```{r}
+#| echo: false
+#| warning: false
+#| results: asis
+dat6 <- results |>
+  filter(p == 2, n == 200, method %in% c("z.test.null", "bs.parametric"), metric == "power") |>
+  filter(scenario == 1 | (scenario == 2 & scenario_params == "{\\L\\:[4]}")) |>
+  mutate(
+    err_type = factor(err_type, levels = c("normal", "exponential")),
+    method   = factor(method, levels = names(method_colors))
+  )
+
+y_range6 <- range(dat6$metric_val)
+
+plots6 <- dat6 |>
+  group_by(err_type) |>
+  group_map(\(d, g) {
+    ggplot(d, aes(x = r, y = metric_val, color = method)) +
+      geom_hline(yintercept = 0.10, linetype = "dashed", color = "gray50") +
+      geom_line() +
+      geom_point() +
+      facet_wrap(~scenario, labeller = labeller(scenario = c(
+        "1" = "No Change Points",
+        "2" = "Change Points (L = 4)"
+      ))) +
+      scale_color_manual(values = method_colors, labels = method_labels) +
+      scale_y_continuous(limits = y_range6) +
+      labs(x = expression(paste("Correlation (", rho, ")")), y = "Power", color = "Method") +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+  }) |>
+  setNames(levels(dat6$err_type))
+
+cat("::: {.panel-tabset}\n\n")
+iwalk(plots6, \(plot, err_type) {
+  cat(paste0("## ", err_type, "\n\n"))
+  print(plot)
+  cat("\n\n")
+})
+cat(":::\n")
+```
+
+:::
+
 ::: {.callout-note collapse="true" title="Bootstrap (Parametric) outperforms Bootstrap (Multiplier) at p = 3; higher dimensions unavailable"}
 
 $n = 200$, $p \in \{3, 5, 10\}$.
