@@ -127,9 +127,12 @@ cat(":::\n")
 
 :::
 
-## For $p > 2$
+::: {.callout-note collapse="true" title="Bootstrap (Parametric) outperforms Bootstrap (Multiplier) at p = 3; higher dimensions unavailable"}
 
-We compare `bs.multiplier` and `bs.parametric` at $n = 200$, $p \in \{3, 5, 10\}$, across scenarios and error distributions.
+$n = 200$, $p \in \{3, 5, 10\}$.
+
+- **p = 3:** Bootstrap (Parametric) is more powerful than Bootstrap (Multiplier)
+- **p = 5, 10:** no results — the estimated covariance matrix $\hat{W}$ is sometimes not positive semi-definite, causing simulation errors
 
 ```{r}
 #| echo: false
@@ -176,6 +179,8 @@ iwalk(plots3, \(plot, err_type) {
 })
 cat(":::\n")
 ```
+
+:::
 
 ## Variance Difference: General vs. Gaussian
 
