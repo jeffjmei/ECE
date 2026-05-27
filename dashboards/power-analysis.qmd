@@ -96,7 +96,9 @@ power_data <- results |>
 power_p2 <- power_data |> filter(p == 2, amp == 1)
 power_pp  <- power_data |> filter(p >  2, amp == 1)
 
-n_choices <- sort(unique(power_data$n))
+n_choices      <- sort(unique(power_data$n))
+all_methods    <- sort(unique(results$method))
+default_methods <- c("z.test.gaussian", "z.test.oracle.kappa", "bs.multiplier", "bs.parametric")
 scenarios <- sort(unique(power_p2$scenario_label))
 
 plot_power <- function(data, by_p = FALSE) {
@@ -164,6 +166,12 @@ checkboxGroupInput(
   selected = "normal",
   inline   = TRUE
 )
+checkboxGroupInput(
+  "methods", "Methods:",
+  choices  = all_methods,
+  selected = default_methods,
+  inline   = TRUE
+)
 ```
 
 ::: {.panel-tabset}
@@ -177,7 +185,7 @@ plotlyOutput("t1_plot", height = "100vh")
 ```{r}
 #| context: server
 output$t1_plot <- renderPlotly({
-  plot_type1(type1_data |> filter(err_type %in% input$err_types))
+  plot_type1(type1_data |> filter(err_type %in% input$err_types, method %in% input$methods))
 })
 ```
 
@@ -206,12 +214,12 @@ lapply(scenarios, function(sc) {
     s <- sc
     output[[paste0("pw_", make.names(s))]] <- renderPlotly({
       n_val <- as.integer(input$n_sel)
-      plot_power(power_p2 |> filter(scenario_label == s, n == n_val, err_type %in% input$err_types))
+      plot_power(power_p2 |> filter(scenario_label == s, n == n_val, err_type %in% input$err_types, method %in% input$methods))
     })
     if (any(power_pp$scenario_label == s)) {
       output[[paste0("pwp_", make.names(s))]] <- renderPlotly({
         n_val <- as.integer(input$n_sel)
-        plot_power(power_pp |> filter(scenario_label == s, n == n_val, err_type %in% input$err_types), by_p = TRUE)
+        plot_power(power_pp |> filter(scenario_label == s, n == n_val, err_type %in% input$err_types, method %in% input$methods), by_p = TRUE)
       })
     }
   })
