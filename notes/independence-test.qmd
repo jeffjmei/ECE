@@ -55,6 +55,33 @@ $$\hat\kappa_{22} = \frac{nV}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{3}{2}\frac{\
 Under $H_0$ ($\hat\sigma_{xy} = 0$) the middle two terms vanish, yielding
 $$\hat\kappa_{22} = \frac{nV}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.$$
 
+## Estimating $\kappa_{40}$ via $V_{xx}$
+
+Applying the same construction to $(X, X)$ in place of $(X, Y)$: let $s_i^{(k)} = (X_i - X_{i+k})^2$ and $S_i^{xx} = (s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)})/2$, so that $\bar S^{xx} = (2T_1(X,X) - T_2(X,X))/(2n) = \hat\sigma_x^2$. Define
+$$
+V_{xx} := \widehat{\operatorname{Var}}(\bar S^{xx}) = \frac{1}{n^2}\,(\mathbf{S}^{xx})^\top(I + C_1 + C_1^\top + C_2 + C_2^\top)\mathbf{S}^{xx}.
+$$
+
+::: {.callout-note collapse="true"}
+## Derivation: $\operatorname{Var}(2T_1(X,X) - T_2(X,X))$ from $\Sigma_Z$
+
+$$
+\operatorname{Var}(2T_1 - T_2) = 4[\Sigma_Z]_{11} - 4[\Sigma_Z]_{12} + [\Sigma_Z]_{22}.
+$$
+Substituting the entries from the Z-Test chapter:
+$$[\Sigma_Z]_{11} = 4n\kappa_{40}\sigma_x^4 + 8n\sigma_x^2\omega_x^2,$$
+$$[\Sigma_Z]_{12} = 4n(\kappa_{40}-1)\sigma_x^4 + 8n\sigma_x^2\omega_x^2,$$
+$$[\Sigma_Z]_{22} = 4n\kappa_{40}\sigma_x^4 + 16n\sigma_x^2\omega_x^2.$$
+Collecting terms:
+$$\operatorname{Var}(2T_1(X,X) - T_2(X,X)) = 4n(\kappa_{40}+4)\sigma_x^4 + 16n\sigma_x^2\omega_x^2. \qquad\square$$
+:::
+
+Since $4n^2 V_{xx} \approx \operatorname{Var}(2T_1(X,X) - T_2(X,X))$, substituting and solving gives
+$$
+\hat\kappa_{40} = \frac{nV_{xx}}{\hat\sigma_x^4} - \frac{4\hat\omega_x^2}{\hat\sigma_x^2} - 4.
+$$
+By symmetry ($x \leftrightarrow y$), the same construction applied to $(Y, Y)$ yields $\hat\kappa_{04} = nV_{yy}/\hat\sigma_y^4 - 4\hat\omega_y^2/\hat\sigma_y^2 - 4$.
+
 ### Simulation: Does $\hat\kappa_{22}$ Recover the Truth?
 
 ```{r}
