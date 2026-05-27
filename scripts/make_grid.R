@@ -3,8 +3,8 @@ library(dplyr)
 
 base_params <- list(
   n        = c(200, 500, 1000, 2000),
-  p        = c(5, 10),
-  cov_type = c("compound", "ar1"),
+  p        = c(2),
+  cov_type = c("compound"),
   r        = c(0, 0.1, 0.2, 0.3, 0.4),
   amp      = c(1),
   err_type = c("normal", "exponential"),
@@ -19,9 +19,15 @@ scenario_specs <- tribble(
 )
 
 method_specs <- tribble(
-  ~method,           ~B,
-  "bs.parametric",   1000,
-  "z.test.gaussian", NA_real_
+  ~method,                  ~B,
+  "bs.multiplier",          1000,
+  "bs.multiplier.nosplit",  1000,
+  "bs.parametric",          1000,
+  "bs.parametric.psd",      1000,
+  "z.test.gaussian",        NA_real_,
+  "z.test.null",            NA_real_,
+  "z.test.null.gaussian",   NA_real_,
+  "z.test.oracle.kappa",    NA_real_
 )
 
 config_grid <- do.call(crossing, base_params) |>

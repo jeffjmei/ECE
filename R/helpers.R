@@ -146,6 +146,6 @@ split_indep <- function(x, stride = 3) {
 
 make_psd <- function(S) {
   eig <- eigen(S)
-  eig$values <- pmax(eig$values, 0)
-  eig$vectors %*% diag(eig$values) %*% t(eig$vectors)
+  vals <- pmax(eig$values, 0)
+  eig$vectors %*% diag(vals, nrow = length(vals)) %*% t(eig$vectors)
 }
