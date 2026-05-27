@@ -22,7 +22,11 @@ A robust test plugs in $\hat\kappa_{22}$.
 Let $s_i^{(k)} = (X_i - X_{i+k})(Y_i - Y_{i+k})$ and $S_i = \frac{s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}}{2}$ as in the Multiplier Bootstrap chapter, so that
 $$
 \bar{S} = \frac{1}{n}\sum_{i=1}^n S_i = \frac{2T_1(X,Y) - T_2(X,Y)}{2n} = \hat\sigma_{xy}.
-$$ Define the lag-2 variance estimate
+$$ Since $S_i$ depends only on indices $i-2, i-1, i$, terms at lags $\ge 3$ are independent, so
+$$
+\operatorname{Var}(\bar{S}) = \frac{1}{n^2}\!\left[\sum_i \operatorname{Var}(S_i) + 2\sum_i \operatorname{Cov}(S_i, S_{i+1}) + 2\sum_i \operatorname{Cov}(S_i, S_{i+2})\right].
+$$
+Replacing each population quantity with its sample analog gives the lag-2 variance estimate
 $$
 V := \widehat{\operatorname{Var}}(\bar{S}) = \frac{1}{n^2}\!\left(\sum_{i=1}^n S_i^2 + \sum_{i=1}^n (S_i S_{i+1} + S_{i+1} S_i) + \sum_{i=1}^n (S_i S_{i+2} + S_{i+2} S_i)\right),
 $$
@@ -34,23 +38,23 @@ $$
 Since $\bar S = (2T_1 - T_2)/(2n)$, we have $V \approx \operatorname{Var}(2T_1 - T_2)/(4n^2)$. The variance on the right has a general closed form; under $H_0$ ($\sigma_{xy} = 0$) it simplifies so we can solve for $\kappa_{22}$ from $V$.
 
 ::: {.callout-note collapse="true"}
-## Derivation: $\operatorname{Var}(2T_1 - T_2)$ from $\Sigma_Z$
+## Derivation: $\operatorname{Var}(\bar{S})$ from $\Sigma_Z$
 
-The variance of a linear combination of correlated statistics is
+Since $\bar{S} = (2T_1 - T_2)/(2n)$,
 $$
-\operatorname{Var}(2T_1 - T_2) = 4[\Sigma_Z]_{55} - 4[\Sigma_Z]_{56} + [\Sigma_Z]_{66}.
+\operatorname{Var}(\bar{S}) = \frac{1}{4n^2}\bigl(4[\Sigma_Z]_{55} - 4[\Sigma_Z]_{56} + [\Sigma_Z]_{66}\bigr).
 $$
 The general $\Sigma_Z$ entries from the Z-Test chapter are
 $$[\Sigma_Z]_{55} = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 2n\sigma_{xy}^2 + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2 + 4n\sigma_{xy}\omega_{xy},$$
 $$[\Sigma_Z]_{56} = 4n(\sigma_x^2\sigma_y^2\kappa_{22} - \sigma_{xy}^2) + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2 + 4n\sigma_{xy}\omega_{xy},$$
 $$[\Sigma_Z]_{66} = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 2n\sigma_{xy}^2 + 4n\sigma_y^2\omega_x^2 + 4n\sigma_x^2\omega_y^2 + 8n\sigma_{xy}\omega_{xy}.$$
 Substituting and collecting terms gives the general expression
-$$\operatorname{Var}(2T_1 - T_2) = 2n\bigl[(2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 3\sigma_{xy}^2 + 4\sigma_{xy}\omega_{xy} + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2\bigr].$$
+$$\operatorname{Var}(\bar{S}) = \frac{1}{2n}\bigl[(2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 3\sigma_{xy}^2 + 4\sigma_{xy}\omega_{xy} + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2\bigr].$$
 Under $H_0$ ($\sigma_{xy} = 0$) the last two terms vanish, yielding
-$$\operatorname{Var}(2T_1 - T_2) = 2n\bigl[(2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2\bigr]. \qquad\square$$
+$$\operatorname{Var}(\bar{S}) = \frac{1}{2n}\bigl[(2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2\bigr]. \qquad\square$$
 :::
 
-Since $4n^2 V \approx \operatorname{Var}(2T_1-T_2)$, substituting the general expression and solving gives
+Since $V \approx \operatorname{Var}(\bar{S})$, substituting the general expression and solving gives
 $$\hat\kappa_{22} = \frac{nV}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{3}{2}\frac{\hat\sigma_{xy}^2}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{2\hat\sigma_{xy}\hat\omega_{xy}}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.$$
 Under $H_0$ ($\hat\sigma_{xy} = 0$) the middle two terms vanish, yielding
 $$\hat\kappa_{22} = \frac{nV}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.$$
@@ -63,20 +67,21 @@ V_{xx} := \widehat{\operatorname{Var}}(\bar S^{xx}) = \frac{1}{n^2}\,(\tilde{\ma
 $$
 
 ::: {.callout-note collapse="true"}
-## Derivation: $\operatorname{Var}(2T_1(X,X) - T_2(X,X))$ from $\Sigma_Z$
+## Derivation: $\operatorname{Var}(\bar{S}^{xx})$ from $\Sigma_Z$
 
+Since $\bar{S}^{xx} = (2T_1(X,X) - T_2(X,X))/(2n)$,
 $$
-\operatorname{Var}(2T_1 - T_2) = 4[\Sigma_Z]_{11} - 4[\Sigma_Z]_{12} + [\Sigma_Z]_{22}.
+\operatorname{Var}(\bar{S}^{xx}) = \frac{1}{4n^2}\bigl(4[\Sigma_Z]_{11} - 4[\Sigma_Z]_{12} + [\Sigma_Z]_{22}\bigr).
 $$
 Substituting the entries from the Z-Test chapter:
 $$[\Sigma_Z]_{11} = 4n\kappa_{40}\sigma_x^4 + 8n\sigma_x^2\omega_x^2,$$
 $$[\Sigma_Z]_{12} = 4n(\kappa_{40}-1)\sigma_x^4 + 8n\sigma_x^2\omega_x^2,$$
 $$[\Sigma_Z]_{22} = 4n\kappa_{40}\sigma_x^4 + 16n\sigma_x^2\omega_x^2.$$
 Collecting terms:
-$$\operatorname{Var}(2T_1(X,X) - T_2(X,X)) = 4n(\kappa_{40}+4)\sigma_x^4 + 16n\sigma_x^2\omega_x^2. \qquad\square$$
+$$\operatorname{Var}(\bar{S}^{xx}) = \frac{1}{n}\bigl[(\kappa_{40}+4)\sigma_x^4 + 4\sigma_x^2\omega_x^2\bigr]. \qquad\square$$
 :::
 
-Since $4n^2 V_{xx} \approx \operatorname{Var}(2T_1(X,X) - T_2(X,X))$, substituting and solving gives
+Since $V_{xx} \approx \operatorname{Var}(\bar{S}^{xx})$, substituting and solving gives
 $$
 \hat\kappa_{40} = \frac{nV_{xx}}{\hat\sigma_x^4} - \frac{4\hat\omega_x^2}{\hat\sigma_x^2} - 4.
 $$
@@ -202,10 +207,11 @@ $$
 which estimates $\operatorname{Cov}(\bar S^{xx}, \bar S^{xy}) = \operatorname{Cov}(2T_1(X,X) - T_2(X,X),\; 2T_1(X,Y) - T_2(X,Y))/(4n^2)$.
 
 ::: {.callout-note collapse="true"}
-## Derivation: $\operatorname{Cov}(2T_1(X,X) - T_2(X,X),\; 2T_1(X,Y) - T_2(X,Y))$ from $\Sigma_Z$
+## Derivation: $\operatorname{Cov}(\bar{S}^{xx}, \bar{S}^{xy})$ from $\Sigma_Z$
 
+Since $\bar{S}^{xx} = (2T_1(X,X) - T_2(X,X))/(2n)$ and $\bar{S}^{xy} = (2T_1(X,Y) - T_2(X,Y))/(2n)$,
 $$
-\operatorname{Cov}(2T_1(X,X) - T_2(X,X),\; 2T_1(X,Y) - T_2(X,Y)) = 4[\Sigma_Z]_{15} - 2[\Sigma_Z]_{16} - 2[\Sigma_Z]_{25} + [\Sigma_Z]_{26}.
+\operatorname{Cov}(\bar{S}^{xx}, \bar{S}^{xy}) = \frac{1}{4n^2}\bigl(4[\Sigma_Z]_{15} - 2[\Sigma_Z]_{16} - 2[\Sigma_Z]_{25} + [\Sigma_Z]_{26}\bigr).
 $$
 The relevant entries from the Z-Test chapter are
 $$[\Sigma_Z]_{15} = 4n\sigma_x^3\sigma_y\kappa_{31} + 4n\sigma_{xy}\omega_x^2 + 4n\sigma_x^2\omega_{xy},$$
@@ -213,10 +219,10 @@ $$[\Sigma_Z]_{16} = 4n\sigma_x^3\sigma_y\kappa_{31} - 4n\sigma_x^2\sigma_{xy} + 
 $$[\Sigma_Z]_{25} = 4n\sigma_x^3\sigma_y\kappa_{31} - 4n\sigma_x^2\sigma_{xy} + 4n\sigma_{xy}\omega_x^2 + 4n\sigma_x^2\omega_{xy},$$
 $$[\Sigma_Z]_{26} = 4n\sigma_x^3\sigma_y\kappa_{31} + 8n\sigma_{xy}\omega_x^2 + 8n\sigma_x^2\omega_{xy}.$$
 Collecting terms:
-$$\operatorname{Cov}(2T_1(X,X) - T_2(X,X),\; 2T_1(X,Y) - T_2(X,Y)) = 4n\sigma_x^3\sigma_y\kappa_{31} + 16n\sigma_x^2\sigma_{xy} + 8n\sigma_{xy}\omega_x^2 + 8n\sigma_x^2\omega_{xy}. \qquad\square$$
+$$\operatorname{Cov}(\bar{S}^{xx}, \bar{S}^{xy}) = \frac{1}{n}\bigl[\sigma_x^3\sigma_y\kappa_{31} + 4\sigma_x^2\sigma_{xy} + 2\sigma_{xy}\omega_x^2 + 2\sigma_x^2\omega_{xy}\bigr]. \qquad\square$$
 :::
 
-Since $4n^2 C_{xx,xy} \approx \operatorname{Cov}(2T_1(X,X) - T_2(X,X),\; 2T_1(X,Y) - T_2(X,Y))$, substituting and solving gives
+Since $C_{xx,xy} \approx \operatorname{Cov}(\bar{S}^{xx}, \bar{S}^{xy})$, substituting and solving gives
 $$
 \hat\kappa_{31} = \frac{nC_{xx,xy}}{\hat\sigma_x^3\hat\sigma_y} - \frac{4\hat\sigma_{xy}}{\hat\sigma_x\hat\sigma_y} - \frac{2\hat\sigma_{xy}\hat\omega_x^2}{\hat\sigma_x^3\hat\sigma_y} - \frac{2\hat\omega_{xy}}{\hat\sigma_x\hat\sigma_y}.
 $$
