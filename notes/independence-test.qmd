@@ -202,9 +202,9 @@ ggplot(sim_df_k40, aes(x = k40, fill = group, color = group)) +
 
 The cumulant $\kappa_{31}$ appears in the cross-covariances between the $(X,X)$ and $(X,Y)$ blocks of $\Sigma_Z$. Define the lag-2 cross-covariance
 $$
-C_{xx,xy} := \frac{1}{n^2}\,(\mathbf{S}^{xx})^\top(I + C_1 + C_1^\top + C_2 + C_2^\top)\mathbf{S}^{xy},
+C_{xx,xy} := \frac{1}{n^2}\,(\tilde{\mathbf{S}}^{xx})^\top(I + C_1 + C_1^\top + C_2 + C_2^\top)\tilde{\mathbf{S}}^{xy}, \qquad \tilde S_i^{xx} = S_i^{xx} - \bar S^{xx},\quad \tilde S_i^{xy} = S_i^{xy} - \bar S^{xy},
 $$
-which estimates $\operatorname{Cov}(\bar S^{xx}, \bar S^{xy}) = \operatorname{Cov}(2T_1(X,X) - T_2(X,X),\; 2T_1(X,Y) - T_2(X,Y))/(4n^2)$.
+which estimates $\operatorname{Cov}(\bar S^{xx}, \bar S^{xy})$.
 
 ::: {.callout-note collapse="true"}
 ## Derivation: $\operatorname{Cov}(\bar{S}^{xx}, \bar{S}^{xy})$ from $\Sigma_Z$
