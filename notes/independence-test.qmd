@@ -59,7 +59,7 @@ $$\hat\kappa_{22} = \frac{nV}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x
 
 Applying the same construction to $(X, X)$ in place of $(X, Y)$: let $s_i^{(k)} = (X_i - X_{i+k})^2$ and $S_i^{xx} = (s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)})/2$, so that $\bar S^{xx} = (2T_1(X,X) - T_2(X,X))/(2n) = \hat\sigma_x^2$. Define
 $$
-V_{xx} := \widehat{\operatorname{Var}}(\bar S^{xx}) = \frac{1}{n^2}\,(\mathbf{S}^{xx})^\top(I + C_1 + C_1^\top + C_2 + C_2^\top)\mathbf{S}^{xx}.
+V_{xx} := \widehat{\operatorname{Var}}(\bar S^{xx}) = \frac{1}{n^2}\,(\tilde{\mathbf{S}}^{xx})^\top(I + C_1 + C_1^\top + C_2 + C_2^\top)\tilde{\mathbf{S}}^{xx}, \qquad \tilde S_i^{xx} = S_i^{xx} - \bar S^{xx}.
 $$
 
 ::: {.callout-note collapse="true"}
@@ -81,6 +81,117 @@ $$
 \hat\kappa_{40} = \frac{nV_{xx}}{\hat\sigma_x^4} - \frac{4\hat\omega_x^2}{\hat\sigma_x^2} - 4.
 $$
 By symmetry ($x \leftrightarrow y$), the same construction applied to $(Y, Y)$ yields $\hat\kappa_{04} = nV_{yy}/\hat\sigma_y^4 - 4\hat\omega_y^2/\hat\sigma_y^2 - 4$.
+
+### Simulation: Does $\hat\kappa_{40}$ Recover the Truth?
+
+```{r}
+#| message: false
+#| echo: false
+devtools::load_all("..")
+library(purrr)
+library(ggplot2)
+
+estimate_k40 <- function(X, params) {
+  n    <- params$n
+  Sxx  <- ece_terms(cbind(X[,1], X[,1]))
+  Sxx  <- Sxx - mean(Sxx)
+  Vxx  <- (1 / n^2) * as.numeric(
+    t(Sxx) %*% Sxx +
+      t(rotate(Sxx)) %*% Sxx + t(Sxx) %*% rotate(Sxx) +
+      t(rotate(Sxx, 2)) %*% Sxx + t(Sxx) %*% rotate(Sxx, 2)
+  )
+  sx2 <- ece.cov(X[,1])
+  wx2 <- ece.complexity(X[,1])
+  n * Vxx / sx2^2 - 4 * wx2 / sx2 - 4
+}
+```
+
+```{r}
+#| cache: true
+#| echo: false
+params     <- scenario(2, L = 4, err_type = "normal")
+params_exp <- scenario(2, L = 4, err_type = "exponential")
+
+
+k40_gaussian <- map_dbl(1:1000, \(.) estimate_k40(generate_data(params), params))
+k40_exp      <- map_dbl(1:1000, \(.) estimate_k40(generate_data(params_exp), params_exp))
+
+lambda_vals  <- c(0, 0.5, 1/sqrt(2), 1)
+k40_true     <- 12 * lambda_vals^4 + 3
+
+sim_results_k40 <- map(lambda_vals, \(lam) {
+  map_dbl(1:1000, \(.) {
+    z  <- rnorm(params$n)
+    ex <- lam * (z^2 - 1) / sqrt(2) + sqrt(1 - lam^2) * rnorm(params$n)
+    ey <- rnorm(params$n)
+    X  <- cbind(params$h[,1] + ex, params$h[,2] + ey)
+    estimate_k40(X, params)
+  })
+})
+```
+
+```{r}
+#| echo: false
+make_k40_plot <- function(sim, true_k40) {
+  tibble::tibble(k40 = sim) |>
+    ggplot(aes(x = k40)) +
+    geom_histogram(aes(y = after_stat(density)), bins = 40, fill = "steelblue", color = "white", alpha = 0.8) +
+    geom_vline(xintercept = true_k40, color = "firebrick") +
+    geom_vline(xintercept = mean(sim), linetype = "dashed") +
+    labs(x = expression(hat(kappa)[40]), y = "density",
+         subtitle = "Red = true, dashed = sample mean") +
+    theme_minimal()
+}
+```
+
+To check the formula for $\hat\kappa_{40}$, we simulate 1000 datasets and compare the distribution of $\hat\kappa_{40}$ to the true value. If the formula is correct, the sample mean (dashed line) should be close to the true value (red line). We consider three cases: Gaussian errors ($\kappa_{40} = 3$), exponential errors ($\kappa_{40} = 9$), and a one-parameter family interpolating between the two.
+
+::: {.panel-tabset}
+
+## Gaussian ($\kappa_{40} = 3$)
+
+```{r}
+#| echo: false
+make_k40_plot(k40_gaussian, true_k40 = params$kappa$k40)
+```
+
+## Exponential ($\kappa_{40} = 9$)
+
+```{r}
+#| echo: false
+make_k40_plot(k40_exp, true_k40 = params_exp$kappa$k40)
+```
+
+## $\lambda$-Mixing
+
+Using $\varepsilon_x = \lambda(z^2-1)/\sqrt{2} + \sqrt{1-\lambda^2}\,w$ with $z, w \stackrel{iid}{\sim} N(0,1)$, which gives $\kappa_{40} = 12\lambda^4 + 3$.
+
+```{r}
+#| echo: false
+sim_df_k40 <- tibble::tibble(
+  k40   = unlist(sim_results_k40),
+  group = factor(rep(round(k40_true, 1), each = 1000),
+                 labels = paste0("κ₄₀ = ", round(k40_true, 1)))
+)
+ref_df_k40 <- tibble::tibble(
+  group = factor(round(k40_true, 1),
+                 labels = paste0("κ₄₀ = ", round(k40_true, 1))),
+  true  = k40_true
+)
+mean_df_k40 <- sim_df_k40 |>
+  dplyr::summarise(mean_k40 = mean(k40), .by = group)
+
+ggplot(sim_df_k40, aes(x = k40, fill = group, color = group)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 50, position = "identity", alpha = 0.4, linewidth = 0) +
+  geom_vline(data = ref_df_k40, aes(xintercept = true, color = group), linewidth = 0.9) +
+  geom_vline(data = mean_df_k40, aes(xintercept = mean_k40, color = group), linetype = "dashed") +
+  scale_fill_brewer(palette = "Set1", name = NULL) +
+  scale_color_brewer(palette = "Set1", name = NULL) +
+  labs(x = expression(hat(kappa)[40]), y = "density") +
+  theme_minimal()
+```
+
+:::
 
 ## Estimating $\kappa_{31}$ via $C_{xx,xy}$
 
