@@ -162,6 +162,13 @@ z_test <- function(X, conf.level = 0.95, kappa = "gaussian", rho = NULL) {
   )
 }
 
+# Naive multiplier bootstrap test with no subsequence splitting (expected to be invalid).
+bs_multiplier_nosplit_test <- function(X, B = 1000) {
+  s <- ece_terms(X)
+  stat <- max(abs(colMeans(s)))
+  list(p.value = mean(bs_multiplier(s, B) > stat))
+}
+
 # Multiplier bootstrap test via independent subsequence splitting and Cauchy combination.
 bs_multiplier_test <- function(X, B = 1000) {
   # Make Terms Mean Zero and Independent
@@ -239,6 +246,8 @@ ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95,
     z_test(X, conf.level = conf.level, kappa = kappa, rho = rho)
   } else if (type == "bs.multiplier") {
     bs_multiplier_test(X, B)
+  } else if (type == "bs.multiplier.nosplit") {
+    bs_multiplier_nosplit_test(X, B)
   } else if (type == "bs.parametric") {
     bs_parametric_test(X, B)
   }
