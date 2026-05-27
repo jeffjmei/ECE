@@ -152,6 +152,20 @@ plot_power <- function(data, by_p = FALSE) {
 }
 ```
 
+```{r}
+selectInput(
+  "n_sel", "Sample Size (n):",
+  choices  = n_choices,
+  selected = n_choices[1]
+)
+checkboxGroupInput(
+  "err_types", "Error Type:",
+  choices  = c("normal", "exponential"),
+  selected = "normal",
+  inline   = TRUE
+)
+```
+
 ::: {.panel-tabset}
 
 ## Type I Error
@@ -162,14 +176,12 @@ plotlyOutput("t1_plot", height = "100vh")
 
 ```{r}
 #| context: server
-output$t1_plot <- renderPlotly(plot_type1(type1_data))
+output$t1_plot <- renderPlotly({
+  plot_type1(type1_data |> filter(err_type %in% input$err_types))
+})
 ```
 
 ## Power
-
-```{r}
-selectInput("n_sel", "Sample Size (n):", choices = n_choices, selected = n_choices[1])
-```
 
 ```{r}
 #| results: asis
@@ -194,12 +206,12 @@ lapply(scenarios, function(sc) {
     s <- sc
     output[[paste0("pw_", make.names(s))]] <- renderPlotly({
       n_val <- as.integer(input$n_sel)
-      plot_power(power_p2 |> filter(scenario_label == s, n == n_val))
+      plot_power(power_p2 |> filter(scenario_label == s, n == n_val, err_type %in% input$err_types))
     })
     if (any(power_pp$scenario_label == s)) {
       output[[paste0("pwp_", make.names(s))]] <- renderPlotly({
         n_val <- as.integer(input$n_sel)
-        plot_power(power_pp |> filter(scenario_label == s, n == n_val), by_p = TRUE)
+        plot_power(power_pp |> filter(scenario_label == s, n == n_val, err_type %in% input$err_types), by_p = TRUE)
       })
     }
   })
