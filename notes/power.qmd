@@ -11,23 +11,33 @@ devtools::load_all()
 results <- read_csv("../data/results.csv")
 
 method_colors <- c(
-  "z.test.gaussian" = "#E41A1C",
-  "z.test.kappa"    = "#377EB8",
-  "bs.multiplier"   = "#4DAF4A",
-  "bs.parametric"   = "#FF7F00"
+  "z.test.gaussian"     = "#E41A1C",
+  "z.test.oracle.kappa" = "#377EB8",
+  "bs.multiplier"       = "#4DAF4A",
+  "bs.parametric"       = "#FF7F00"
+)
+
+method_labels <- c(
+  "z.test.gaussian"     = "Z-Test (Gaussian)",
+  "z.test.oracle.kappa" = "Z-Test (Oracle κ₂₂)",
+  "bs.multiplier"       = "Bootstrap (Multiplier)",
+  "bs.parametric"       = "Bootstrap (Parametric)"
 )
 ```
 
-## Z-Test: Gaussian vs. Kappa
+::: {.callout-note collapse="true" title="The Gaussian z-test is nearly as powerful as knowing the true κ₂₂"}
 
-We compare `z.test.gaussian` and `z.test.kappa` at $n = 200$, $p = 2$, across scenarios and error distributions.
+$n = 200$, $p = 2$.
+
+- **Normal errors:** Z-Test (Gaussian) and Z-Test (Oracle κ₂₂) are indistinguishable
+- **Exponential errors:** Z-Test (Oracle κ₂₂) has a slight power advantage over Z-Test (Gaussian)
 
 ```{r}
 #| echo: false
 #| warning: false
 #| results: asis
 dat <- results |>
-  filter(p == 2, n == 200, method %in% c("z.test.gaussian", "z.test.kappa"), metric == "power") |>
+  filter(p == 2, n == 200, method %in% c("z.test.gaussian", "z.test.oracle.kappa"), metric == "power") |>
   filter(scenario == 1 | (scenario == 2 & scenario_params == "{\\L\\:[4]}")) |>
   mutate(
     err_type = factor(err_type, levels = c("normal", "exponential")),
@@ -47,7 +57,7 @@ plots <- dat |>
         "1" = "No Change Points",
         "2" = "Change Points (L = 4)"
       ))) +
-      scale_color_manual(values = method_colors) +
+      scale_color_manual(values = method_colors, labels = method_labels) +
       scale_y_continuous(limits = y_range) +
       labs(x = expression(paste("Correlation (", rho, ")")), y = "Power", color = "Method") +
       theme_minimal() +
@@ -63,6 +73,8 @@ iwalk(plots, \(plot, err_type) {
 })
 cat(":::\n")
 ```
+
+:::
 
 ## Z-Test vs. Bootstrap Methods
 
@@ -93,7 +105,7 @@ plots2 <- dat2 |>
         "1" = "No Change Points",
         "2" = "Change Points (L = 4)"
       ))) +
-      scale_color_manual(values = method_colors) +
+      scale_color_manual(values = method_colors, labels = method_labels) +
       scale_y_continuous(limits = y_range2) +
       labs(x = expression(paste("Correlation (", rho, ")")), y = "Power", color = "Method") +
       theme_minimal() +
@@ -141,7 +153,7 @@ plots3 <- dat3 |>
         "1" = "No Change Points",
         "2" = "Change Points (L = 4)"
       ))) +
-      scale_color_manual(values = method_colors) +
+      scale_color_manual(values = method_colors, labels = method_labels) +
       scale_linetype_manual(values = c("ar1" = "dashed", "compound" = "solid")) +
       scale_y_continuous(limits = y_range3) +
       labs(x = expression(paste("Correlation (", rho, ")")), y = "Power",
