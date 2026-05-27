@@ -76,16 +76,19 @@ cat(":::\n")
 
 :::
 
-## Z-Test vs. Bootstrap Methods
+::: {.callout-note collapse="true" title="Z-Test (Gaussian) is more powerful than bootstrap methods, regardless of error distribution"}
 
-We compare all four methods at $n = 200$, $p = 2$, across scenarios and error distributions.
+$n = 200$, $p = 2$.
+
+- **Power ranking:** Z-Test (Gaussian) > Bootstrap (Parametric) > Bootstrap (Multiplier)
+- **Error distribution:** power curves are similar across normal and exponential errors
 
 ```{r}
 #| echo: false
 #| warning: false
 #| results: asis
 dat2 <- results |>
-  filter(p == 2, n == 200, method %in% c("z.test.gaussian", "z.test.kappa", "bs.multiplier", "bs.parametric"), metric == "power") |>
+  filter(p == 2, n == 200, method %in% c("z.test.gaussian", "z.test.oracle.kappa", "bs.multiplier", "bs.parametric"), metric == "power") |>
   filter(scenario == 1 | (scenario == 2 & scenario_params == "{\\L\\:[4]}")) |>
   mutate(
     err_type = factor(err_type, levels = c("normal", "exponential")),
@@ -121,6 +124,8 @@ iwalk(plots2, \(plot, err_type) {
 })
 cat(":::\n")
 ```
+
+:::
 
 ## For $p > 2$
 
