@@ -29,6 +29,16 @@ method_labels <- c(
 )
 ```
 
+## Summary
+
+- **Overall ranking ($p = 2$):** Z-Test (Gaussian) > Z-Test (Oracle $\kappa_{22}$) $\approx$ Z-Test (Gaussian) > Z-Test (Null) $\approx$ Bootstrap (Parametric) > Bootstrap (Multiplier)
+- **Gaussian assumption vs oracle $\kappa_{22}$:** little difference in power; the Gaussian SE is nearly as good as knowing the true $\kappa_{22}$
+- **Wald vs score:** Z-Test (Gaussian) outperforms Z-Test (Null, Gaussian) because estimating $\hat{\rho}$ in the SE (Wald-type) is more efficient than plugging in $\rho = 0$ (score-type)
+- **Shared variance estimator:** Z-Test (Null) and Bootstrap (Parametric) track each other closely, as both rely on $\widehat{\text{Cov}}(S)$
+- **$p > 2$:** only bootstrap methods available; Bootstrap (Parametric) dominates Bootstrap (Multiplier)
+
+## $p = 2$
+
 ::: {.callout-note collapse="true" title="The Gaussian z-test is nearly as powerful as knowing the true κ₂₂"}
 
 $n = 200$, $p = 2$.
@@ -284,6 +294,8 @@ cat(":::\n")
 ```
 
 :::
+
+## $p > 2$
 
 ::: {.callout-note collapse="true" title="Bootstrap (Parametric) outperforms Bootstrap (Multiplier) at p = 3; higher dimensions unavailable"}
 
