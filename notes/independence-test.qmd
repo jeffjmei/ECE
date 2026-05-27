@@ -24,7 +24,11 @@ $$
 \bar{S} = \frac{1}{n}\sum_{i=1}^n S_i = \frac{2T_1(X,Y) - T_2(X,Y)}{2n} = \hat\sigma_{xy}.
 $$ Define the lag-2 variance estimate
 $$
-V := \widehat{\operatorname{Var}}(\bar{S}) = \frac{1}{n^2}\!\left(\sum_{i=1}^n S_i^2 + \sum_{i=1}^n (S_i S_{i+1} + S_{i+1} S_i) + \sum_{i=1}^n (S_i S_{i+2} + S_{i+2} S_i)\right).
+V := \widehat{\operatorname{Var}}(\bar{S}) = \frac{1}{n^2}\!\left(\sum_{i=1}^n S_i^2 + \sum_{i=1}^n (S_i S_{i+1} + S_{i+1} S_i) + \sum_{i=1}^n (S_i S_{i+2} + S_{i+2} S_i)\right),
+$$
+or in matrix form, writing $\mathbf{S} = (S_1, \ldots, S_n)^\top$,
+$$
+V = \frac{1}{n^2}\,\mathbf{S}^\top(I + C_1 + C_1^\top + C_2 + C_2^\top)\mathbf{S}.
 $$
 
 Since $\bar S = (2T_1 - T_2)/(2n)$, we have $V \approx \operatorname{Var}(2T_1 - T_2)/(4n^2)$. The variance on the right has a general closed form; under $H_0$ ($\sigma_{xy} = 0$) it simplifies so we can solve for $\kappa_{22}$ from $V$.
