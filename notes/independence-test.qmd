@@ -27,24 +27,28 @@ $$
 V := \widehat{\operatorname{Var}}(\bar{S}) = \frac{1}{n^2}\!\left(\sum_{i=1}^n S_i^2 + \sum_{i=1}^n (S_i S_{i+1} + S_{i+1} S_i) + \sum_{i=1}^n (S_i S_{i+2} + S_{i+2} S_i)\right).
 $$
 
-Since $\bar S = (2T_1 - T_2)/(2n)$, we have $V \approx \operatorname{Var}(2T_1 - T_2)/(4n^2)$. Under $H_0$ ($\sigma_{xy} = 0$), the variance on the right has a closed form in $\kappa_{22}$, so we can solve for $\kappa_{22}$ from $V$.
+Since $\bar S = (2T_1 - T_2)/(2n)$, we have $V \approx \operatorname{Var}(2T_1 - T_2)/(4n^2)$. The variance on the right has a general closed form; under $H_0$ ($\sigma_{xy} = 0$) it simplifies so we can solve for $\kappa_{22}$ from $V$.
 
 ::: {.callout-note collapse="true"}
 ## Derivation: $\operatorname{Var}(2T_1 - T_2)$ from $\Sigma_Z$
 
-Under $H_0$ ($\sigma_{xy} = 0$),
+The variance of a linear combination of correlated statistics is
 $$
 \operatorname{Var}(2T_1 - T_2) = 4[\Sigma_Z]_{55} - 4[\Sigma_Z]_{56} + [\Sigma_Z]_{66}.
 $$
-Plugging in the $\Sigma_Z$ entries from the Z-Test chapter,
-$$[\Sigma_Z]_{55} = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2,$$
-$$[\Sigma_Z]_{56} = 4n\sigma_x^2\sigma_y^2\kappa_{22} + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2,$$
-$$[\Sigma_Z]_{66} = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) + 4n\sigma_y^2\omega_x^2 + 4n\sigma_x^2\omega_y^2,$$
-and simplifying,
+The general $\Sigma_Z$ entries from the Z-Test chapter are
+$$[\Sigma_Z]_{55} = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 2n\sigma_{xy}^2 + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2 + 4n\sigma_{xy}\omega_{xy},$$
+$$[\Sigma_Z]_{56} = 4n(\sigma_x^2\sigma_y^2\kappa_{22} - \sigma_{xy}^2) + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2 + 4n\sigma_{xy}\omega_{xy},$$
+$$[\Sigma_Z]_{66} = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 2n\sigma_{xy}^2 + 4n\sigma_y^2\omega_x^2 + 4n\sigma_x^2\omega_y^2 + 8n\sigma_{xy}\omega_{xy}.$$
+Substituting and collecting terms gives the general expression
+$$\operatorname{Var}(2T_1 - T_2) = 2n\bigl[(2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 3\sigma_{xy}^2 + 4\sigma_{xy}\omega_{xy} + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2\bigr].$$
+Under $H_0$ ($\sigma_{xy} = 0$) the last two terms vanish, yielding
 $$\operatorname{Var}(2T_1 - T_2) = 2n\bigl[(2\kappa_{22}+5)\sigma_x^2\sigma_y^2 + 2\sigma_y^2\omega_x^2 + 2\sigma_x^2\omega_y^2\bigr]. \qquad\square$$
 :::
 
-Since $4n^2 V \approx \operatorname{Var}(2T_1-T_2)$, substituting and solving gives
+Since $4n^2 V \approx \operatorname{Var}(2T_1-T_2)$, substituting the general expression and solving gives
+$$\hat\kappa_{22} = \frac{nV}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{3}{2}\frac{\hat\sigma_{xy}^2}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{2\hat\sigma_{xy}\hat\omega_{xy}}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.$$
+Under $H_0$ ($\hat\sigma_{xy} = 0$) the middle two terms vanish, yielding
 $$\hat\kappa_{22} = \frac{nV}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.$$
 
 ### Simulation: Does $\hat\kappa_{22}$ Recover the Truth?
@@ -70,11 +74,13 @@ estimate_k22 <- function(X, params) {
       t(rotate(S)) %*% S + t(S) %*% rotate(S) +
       t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
   )
-  sx  <- sqrt(ece_pair(X[,1], X[,1])$cov)
-  sy  <- sqrt(ece_pair(X[,2], X[,2])$cov)
+  sx2 <- ece.cov(X[,1])
+  sy2 <- ece.cov(X[,2])
+  sxy <- ece.cov(X[,1], X[,2])
   wx2 <- ece.complexity(X[,1])
   wy2 <- ece.complexity(X[,2])
-  n * as.numeric(W) / (sx^2 * sy^2) - wx2 / sx^2 - wy2 / sy^2 - 5/2
+  wxy <- ece.complexity(X[,1], X[,2])
+  n * as.numeric(W) / (sx2 * sy2) - (3/2) * sxy^2 / (sx2 * sy2) - 2 * sxy * wxy / (sx2 * sy2) - wx2 / sx2 - wy2 / sy2 - 5/2
 }
 
 k22_indep <- map_dbl(1:1000, \(.) {
@@ -106,10 +112,10 @@ sim_results <- map(lambda_vals, \(lam) {
 make_k22_plot <- function(sim, true_k22) {
   tibble::tibble(k22 = sim) |>
     ggplot(aes(x = k22)) +
-    geom_histogram(bins = 40, fill = "steelblue", color = "white", alpha = 0.8) +
+    geom_histogram(aes(y = after_stat(density)), bins = 40, fill = "steelblue", color = "white", alpha = 0.8) +
     geom_vline(xintercept = true_k22, color = "firebrick") +
     geom_vline(xintercept = mean(sim), linetype = "dashed") +
-    labs(x = expression(hat(kappa)[22]), y = "count",
+    labs(x = expression(hat(kappa)[22]), y = "density",
          subtitle = "Red = true, dashed = sample mean") +
     theme_minimal()
 }
@@ -150,12 +156,16 @@ ref_df <- tibble::tibble(
   true  = k22_true
 )
 
+mean_df <- sim_df |>
+  dplyr::summarise(mean_k22 = mean(k22), .by = group)
+
 ggplot(sim_df, aes(x = k22, fill = group, color = group)) +
-  geom_histogram(bins = 50, position = "identity", alpha = 0.4, linewidth = 0) +
+  geom_histogram(aes(y = after_stat(density)), bins = 50, position = "identity", alpha = 0.4, linewidth = 0) +
   geom_vline(data = ref_df, aes(xintercept = true, color = group), linewidth = 0.9) +
+  geom_vline(data = mean_df, aes(xintercept = mean_k22, color = group), linetype = "dashed") +
   scale_fill_brewer(palette = "Set1", name = NULL) +
   scale_color_brewer(palette = "Set1", name = NULL) +
-  labs(x = expression(hat(kappa)[22]), y = "count") +
+  labs(x = expression(hat(kappa)[22]), y = "density") +
   theme_minimal()
 ```
 
