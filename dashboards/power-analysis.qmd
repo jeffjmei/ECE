@@ -86,25 +86,25 @@ results <- read_csv(
 
 # cov_type is irrelevant (AR1 == compound), drop duplicates
 type1_data <- results |>
-  filter(r == 0) |>
+  filter(metric == "power", r == 0) |>
   distinct(n, err_type, method_label, .keep_all = TRUE) |>
   mutate(n = factor(n))
 
 power_data <- results |>
-  filter(r != 0) |>
-  mutate(n = factor(n))
+  filter(metric == "power")
 
-power_p2 <- power_data |> filter(p == 2, amp == 1, r == 0.1)
-power_pp  <- power_data |> filter(p >  2, amp == 1, r == 0.1)
+power_p2 <- power_data |> filter(p == 2, amp == 1)
+power_pp  <- power_data |> filter(p >  2, amp == 1)
 
+n_choices <- sort(unique(power_data$n))
 scenarios <- sort(unique(power_p2$scenario_label))
 
 plot_power <- function(data, by_p = FALSE) {
   p <- data |>
     mutate(shape = ifelse(err_type == "exponential", 17, 16)) |>
-    arrange(method_label, err_type, n) |>
+    arrange(method_label, err_type, r) |>
     ggplot(aes(
-      x        = n,
+      x        = r,
       y        = metric_val,
       color    = method_label,
       group    = interaction(method_label, err_type),
@@ -114,7 +114,7 @@ plot_power <- function(data, by_p = FALSE) {
         scenario_label, "<br>",
         method_label, "<br>",
         err_type, "<br>",
-        "n = ", n, "<br>",
+        "r = ", r, "<br>",
         "power: ", metric_val
       )
     )) +
@@ -126,7 +126,7 @@ plot_power <- function(data, by_p = FALSE) {
         facet_grid(rows = vars(cov_type), cols = vars(p), labeller = label_both)
       else
         facet_wrap(vars(cov_type), labeller = label_both) } +
-    labs(y = "Power", x = "Sample Size", color = "Method") +
+    labs(y = "Power", x = "Correlation (r)", color = "Method") +
     theme_bw()
 
   pl <- ggplotly(p, tooltip = "text")
@@ -168,6 +168,10 @@ output$t1_plot <- renderPlotly(plot_type1(type1_data))
 ## Power
 
 ```{r}
+selectInput("n_sel", "Sample Size (n):", choices = n_choices, selected = n_choices[1])
+```
+
+```{r}
 #| results: asis
 #| echo: false
 cat("::: {.panel-tabset}\n\n")
@@ -189,11 +193,13 @@ lapply(scenarios, function(sc) {
   local({
     s <- sc
     output[[paste0("pw_", make.names(s))]] <- renderPlotly({
-      plot_power(power_p2 |> filter(scenario_label == s))
+      n_val <- as.integer(input$n_sel)
+      plot_power(power_p2 |> filter(scenario_label == s, n == n_val))
     })
     if (any(power_pp$scenario_label == s)) {
       output[[paste0("pwp_", make.names(s))]] <- renderPlotly({
-        plot_power(power_pp |> filter(scenario_label == s), by_p = TRUE)
+        n_val <- as.integer(input$n_sel)
+        plot_power(power_pp |> filter(scenario_label == s, n == n_val), by_p = TRUE)
       })
     }
   })
