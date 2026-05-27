@@ -419,43 +419,38 @@ cat(":::\n")
 ```
 
 
-```{R}
+```{r}
+#| echo: false
+params <- scenario(2, n = 1000, L = 4, r = 0, err_type = "exponential")
+```
+
+```{r}
 #| echo: false
 #| cache: true
 set.seed(1)
-pval_gaussian <- map_dbl(1:10000, ~{
-  X <- generate_data(params)
-  test.diag(X, method = "z.test.gaussian")$p.value
-})
+methods <- c("z.test.gaussian", "z.test.oracle.kappa", "z.test.null", "z.test.null.gaussian")
+pval_list <- map(methods, \(m) {
+  map_dbl(1:10000, ~ test.diag(generate_data(params), method = m)$p.value)
+}) |> setNames(methods)
 ```
 
-```{R}
+```{r}
 #| echo: false
-#| cache: true
-set.seed(1)
-pval_kappa <- map_dbl(1:10000, ~{
-  X <- generate_data(params)
-  test.diag(X, method = "z.test.kappa")$p.value
-})
-```
+method_labels <- c(
+  "z.test.gaussian"      = "Z-Test (Gaussian)",
+  "z.test.oracle.kappa"  = "Z-Test (Oracle Kappa)",
+  "z.test.null"          = "Z-Test (Null)",
+  "z.test.null.gaussian" = "Z-Test (Null, Gaussian)"
+)
 
-```{R}
-#| echo: false
-tibble(
-  gaussian = pval_gaussian,
-  kappa    = pval_kappa
-) |>
-  pivot_longer(everything(), names_to = "method", values_to = "p") |>
-  mutate(method = factor(method,
-    levels = c("gaussian", "kappa"),
-    labels = c("Z-Test (Gaussian)", "Z-Test (Kappa)")
-  )) |>
+map_dfr(names(pval_list), \(m) tibble(method = m, p = pval_list[[m]])) |>
+  mutate(method = factor(method, levels = names(method_labels), labels = method_labels)) |>
   ggplot(aes(x = p)) +
   geom_histogram(aes(y = after_stat(density)),
-    breaks = seq(0, 1, by = 0.10), fill = "steelblue", color = "white", alpha = 0.8
+    breaks = seq(0, 1, by = 0.05), fill = "steelblue", color = "white", alpha = 0.8
   ) +
   geom_hline(yintercept = 1, color = "firebrick", linetype = "dashed") +
-  facet_wrap(~method) +
+  facet_wrap(~method, nrow = 2) +
   labs(x = "p-value", y = "density",
        title = "P-value distributions under H₀: ρ = 0 (nsim = 10,000)") +
   theme_minimal()
