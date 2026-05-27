@@ -456,6 +456,111 @@ map_dfr(names(pval_list), \(m) tibble(method = m, p = pval_list[[m]])) |>
   theme_minimal()
 ```
 
+## Variance Difference: General vs. Gaussian
+
+Recall the asymptotic variance under the general and Gaussian assumptions:
+$$
+V = \frac{1}{n}\left[(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y}\right) + \frac{\rho^2}{4}(\kappa_{40}+2\kappa_{22}+\kappa_{04}) - \rho(\kappa_{31}+\kappa_{13}) + \frac{5}{2}(1-\rho^2)^2 + \kappa_{22}\right],
+$$
+$$
+V_G = \frac{1}{n}(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y} + \frac{7}{2}(1-\rho^2)\right).
+$$
+The jump-noise terms cancel, giving
+$$
+V - V_G = \frac{1}{n}\left[\frac{\rho^2}{4}(\kappa_{40}+2\kappa_{22}+\kappa_{04}) - \rho(\kappa_{31}+\kappa_{13}) + \kappa_{22} - (1-\rho^2)^2\right].
+$$
+This is zero under the Gaussian assumption and measures the excess variance due to non-Gaussianity.
+
+## Cumulants by Distribution
+
+The magnitude of $V - V_G$ depends on how far the joint cumulants depart from their Gaussian values. The tables below report $(\kappa_{40}, \kappa_{31}, \kappa_{22}, \kappa_{13}, \kappa_{04})$ and $n(V - V_G)$ for each supported error distribution, estimated via $10^7$ samples.
+
+**$\rho = 0.3$**
+
+```{r}
+#| message: false
+#| echo: false
+#| cache: true
+devtools::load_all("..")
+
+err_types <- c("normal", "exponential", "t", "lognormal")
+
+make_kappa_table <- function(rho) {
+  base <- scenario(1, n = 100, r = rho, err_type = "normal")
+  rows <- lapply(err_types, \(et) {
+    p <- modifyList(base, list(err_type = et))
+    p$kappa <- kappa_from_params(p)
+    k <- p$kappa
+    diff <- rho^2/4 * (k$k40 + 2*k$k22 + k$k04) - rho*(k$k31 + k$k13) +
+            k$k22 - (1 - rho^2)^2
+    data.frame(
+      Distribution = et,
+      k40 = k$k40, k31 = k$k31, k22 = k$k22, k13 = k$k13, k04 = k$k04,
+      diff = diff
+    )
+  })
+  do.call(rbind, rows)
+}
+
+knitr::kable(make_kappa_table(0.3), digits = 3,
+  col.names = c("Distribution", "$\\kappa_{40}$", "$\\kappa_{31}$",
+                "$\\kappa_{22}$", "$\\kappa_{13}$", "$\\kappa_{04}$",
+                "$n(V - V_G)$"))
+```
+
+**$\rho = 0$**
+
+```{r}
+#| message: false
+#| echo: false
+#| cache: true
+knitr::kable(make_kappa_table(0), digits = 3,
+  col.names = c("Distribution", "$\\kappa_{40}$", "$\\kappa_{31}$",
+                "$\\kappa_{22}$", "$\\kappa_{13}$", "$\\kappa_{04}$",
+                "$n(V - V_G)$"))
+```
+
+::: {.callout-note collapse="true"}
+## Computational verification
+
+```{r}
+#| message: false
+devtools::load_all("..")
+
+params <- scenario(2, n = 1000, L = 4, r = 0.3, err_type = "exponential")
+
+n   <- params$n
+sx  <- sqrt(params$S[1, 1])
+sy  <- sqrt(params$S[2, 2])
+sxy <- params$S[1, 2]
+rho <- sxy / (sx * sy)
+hx  <- params$h[, 1]
+hy  <- params$h[, 2]
+k   <- params$kappa
+
+omega <- (1 - rho^2) * (
+  lag_diff(hx) / (n * sx^2) +
+  lag_diff(hy) / (n * sy^2) -
+  2 * rho * lag_diff(hx, hy) / (n * sx * sy)
+)
+
+V_general <- (1/n) * (
+  omega +
+  rho^2/4 * (k$k40 + 2*k$k22 + k$k04) - rho*(k$k31 + k$k13) +
+  5/2 * (1 - rho^2)^2 + k$k22
+)
+V_gaussian <- (1/n) * (omega + 7/2 * (1 - rho^2)^2)
+
+data.frame(
+  V_diff_direct  = V_general - V_gaussian,
+  V_diff_formula = (1/n) * (
+    rho^2/4 * (k$k40 + 2*k$k22 + k$k04) - rho*(k$k31 + k$k13) +
+    k$k22 - (1 - rho^2)^2
+  )
+)
+```
+:::
+
 ::: {.callout-note collapse="true"}
 ## Test: Standard Error Converges (Exponential Errors, $\rho = 0.95$)
 
@@ -466,9 +571,10 @@ For strong correlation under non-Gaussian errors, the estimated SE shows noticea
 #| echo: false
 set.seed(42)
 params_se <- scenario(1, n = 1000, r = 0.95, err_type = "exponential")
+kappa_se  <- kappa_from_params(params_se)
 se_dist <- map_dbl(1:10000, ~ {
   X <- generate_data(params_se)
-  ece.cor.se(X)
+  ece.cor.se(X, kappa = kappa_se)
 })
 ```
 
@@ -492,9 +598,10 @@ set.seed(42)
 n_seq <- seq(200, 1000, by = 200)
 se_bias <- map_dfr(n_seq, \(n) {
   params <- scenario(1, n = n, r = 0.95, err_type = "exponential")
+  kappa  <- kappa_from_params(params)
   empirical <- map_dbl(1:10000, ~ {
     X <- generate_data(params)
-    ece.cor.se(X)
+    ece.cor.se(X, kappa = kappa)
   })
   tibble(n = n, bias = ece.cor.se.formula(params) - mean(empirical))
 })
