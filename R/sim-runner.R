@@ -4,6 +4,7 @@ test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...)
     bs.multiplier        = do.call(ece.test, c(list(X, type = "bs.multiplier"),        b_arg, list(...))),
     bs.multiplier.nosplit = do.call(ece.test, c(list(X, type = "bs.multiplier.nosplit"), b_arg, list(...))),
     bs.parametric        = do.call(ece.test, c(list(X, type = "bs.parametric"),        b_arg, list(...))),
+    bs.parametric.psd    = do.call(ece.test, c(list(X, type = "bs.parametric.psd"),    b_arg, list(...))),
     z.test.gaussian      = ece.test(X, type = "z.test", kappa = "gaussian", ...),
     z.test.oracle.kappa  = ece.test(X, type = "z.test", kappa = params$kappa, ...),
     z.test.null          = ece.test(X, type = "z.test", kappa = list(k22 = ece.k22(X, rho = 0)), rho = 0, ...),

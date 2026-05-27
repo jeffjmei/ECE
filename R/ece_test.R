@@ -188,7 +188,7 @@ bs_multiplier_test <- function(X, B = 1000) {
 }
 
 # Parametric bootstrap test using a bandwidth-2 HAC variance estimate of the lag terms.
-bs_parametric_test <- function(X, B = 1000) {
+bs_parametric_test <- function(X, B = 1000, force_psd = FALSE) {
   # Calculate Variance of ECE Terms
   n <- nrow(X)
   S <- ece_terms(X)
@@ -197,6 +197,7 @@ bs_parametric_test <- function(X, B = 1000) {
       t(rotate(S)) %*% S + t(S) %*% rotate(S) +
       t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
   )
+  if (force_psd) W <- make_psd(W)
 
   # Boostrap Test
   S_bs <- MASS::mvrnorm(n = B, mu = rep(0, ncol(W)), Sigma = W)
@@ -250,5 +251,7 @@ ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95,
     bs_multiplier_nosplit_test(X, B)
   } else if (type == "bs.parametric") {
     bs_parametric_test(X, B)
+  } else if (type == "bs.parametric.psd") {
+    bs_parametric_test(X, B, force_psd = TRUE)
   }
 }
