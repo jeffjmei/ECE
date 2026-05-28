@@ -7,7 +7,7 @@ test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...)
     bs.parametric.psd    = do.call(ece.test, c(list(X, type = "bs.parametric.psd"),    b_arg, list(...))),
     z.test.gaussian      = ece.test(X, type = "z.test", kappa = "gaussian", ...),
     z.test.oracle.kappa  = ece.test(X, type = "z.test", kappa = params$kappa, ...),
-    z.test.null          = ece.test(X, type = "z.test", kappa = list(k22 = ece.k22(X, rho = 0)), rho = 0, ...),
+    z.test.null          = ece.test(X, type = "z.test", kappa = ece.kappa(X, rho = 0), rho = 0, ...),
     z.test.null.gaussian = ece.test(X, type = "z.test", kappa = "gaussian", rho = 0, ...),
     stop("Unknown method: ", method)
   )

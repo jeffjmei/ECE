@@ -99,43 +99,59 @@ ece.cor <- function(x, y = NULL, L = 2) {
 #' ece.complexity(X)
 #'
 #' @export
-#' Equivariant Kurtosis Estimator (kappa_22)
-#'
-#' Estimates the cross-kurtosis parameter \eqn{\kappa_{22}} from data by
-#' inverting the variance formula for the ECE covariance estimator.
-#'
-#' @param X An \eqn{n \times 2} numeric matrix.
-#' @param rho If \code{0}, the cross-covariance \eqn{\sigma_{xy}} is set to
-#'   zero (null assumption). If \code{NULL} (default), \eqn{\sigma_{xy}} is
-#'   estimated from data.
-#'
-#' @return A scalar estimate of \eqn{\kappa_{22}}.
-#'
-#' @seealso [ece.complexity()], [ece.cov()]
-#'
-#' @export
-ece.k22 <- function(X, rho = NULL) {
-  if (!is.matrix(X) || ncol(X) != 2) stop("X must be an n x 2 matrix")
-  n <- nrow(X)
-  S <- ece_terms(X)
-  W <- (1 / n^2) * (
+
+ece.kappa <- function(x, y = NULL, rho = NULL) {
+  if (is.matrix(x)) {
+    if (ncol(x) != 2) stop("matrix input must have exactly 2 columns")
+    y <- x[, 2]
+    x <- x[, 1]
+  }
+
+  n <- length(x)
+  Sxx <- ece_terms(cbind(x, x))
+  Syy <- ece_terms(cbind(y, y))
+  Sxy <- ece_terms(cbind(x, y))
+
+  # Get Covariance (Must Center)
+  S <- cbind(Sxx, Syy, Sxy) |> scale(scale = FALSE) # center
+  V <- (1 / n^2) * (
     t(S) %*% S +
       t(rotate(S)) %*% S + t(S) %*% rotate(S) +
       t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
   )
-  sx2 <- ece.cov(X[, 1])
-  sy2 <- ece.cov(X[, 2])
-  sxy <- if (!is.null(rho) && rho == 0) 0 else ece.cov(X[, 1], X[, 2])
 
-  wx2 <- ece.complexity(X[, 1])
-  wy2 <- ece.complexity(X[, 2])
-  wxy <- ece.complexity(X[, 1], X[, 2])
+  sx <- sqrt(mean(Sxx))
+  sy <- sqrt(mean(Syy))
+  sxy <- if (!is.null(rho) && rho == 0) 0 else mean(Sxy)
 
-  n * W[1, 1] / (sx2 * sy2) -
-    (3 / 2) * sxy^2 / (sx2 * sy2) -
-    2 * sxy * wxy / (sx2 * sy2) -
-    wx2 / sx2 - wy2 / sy2 -
-    5 / 2
+  wx <- sqrt(ece.complexity(x, x))
+  wy <- sqrt(ece.complexity(y, y))
+  wxy <- ece.complexity(x, y)
+
+  # Calculate Kappa
+  k40 <- n * V[1, 1] / sx^4 - 4 * wx^2 / sx^2 - 4
+  k04 <- n * V[2, 2] / sy^4 - 4 * wy^2 / sy^2 - 4
+  k22 <- n * V[3, 3] / (sx^2 * sy^2) -
+    3 / 2 * sxy^2 / (sx^2 * sy^2) -
+    2 * sxy * wxy / (sx^2 * sy^2) -
+    wx^2 / sx^2 -
+    wy^2 / sy^2 - 5 / 2
+  k31 <- n * V[1, 3] / (sx^3 * sy) -
+    4 * sxy / (sx * sy) -
+    2 * sxy * wx^2 / (sx^3 * sy) -
+    2 * wxy / (sx * sy)
+  k13 <- n * V[2, 3] / (sy^3 * sx) -
+    4 * sxy / (sx * sy) -
+    2 * sxy * wy^2 / (sy^3 * sx) -
+    2 * wxy / (sx * sy)
+
+  list(
+    k40 = k40,
+    k31 = k31,
+    k22 = k22,
+    k13 = k13,
+    k04 = k04
+  )
 }
 
 ece.complexity <- function(x, y = NULL, L = 2) {
