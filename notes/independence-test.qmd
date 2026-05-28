@@ -350,3 +350,118 @@ ggplot(sim_df, aes(x = k22, fill = group, color = group)) +
 
 
 
+## Estimating $\kappa_{22}$ via Lag Product Moments
+
+Under the ECE model $X_i = \theta_{x,i} + \varepsilon_{x,i}$, $Y_i = \theta_{y,i} + \varepsilon_{y,i}$ with iid mean-zero errors, define $\kappa_{22} = E[\varepsilon_{x,i}^2\varepsilon_{y,i}^2]/(\sigma_x^2\sigma_y^2)$, which equals 1 under independence. Write $T_k(\theta_x, \theta_y) = \sum_{i=1}^n (\theta_{x,i} - \theta_{x,i+k})(\theta_{y,i} - \theta_{y,i+k})$ for the signal-difference inner product and
+$$
+\boxed{T_k^{(2)}(X, Y) = \sum_{i=1}^n (X_i - X_{i+k})^2(Y_i - Y_{i+k})^2}
+$$
+for its squared analog (applicable to any pair of sequences).
+
+The strategy is to compute $E[T_k^{(2)}(X, Y)]$ exactly and solve for $\kappa_{22}$.
+
+::: {.callout-note collapse="true"}
+## Lemma: $\operatorname{Cov}\bigl((X_i - X_{i+k})^2,\,(Y_i - Y_{i+k})^2\bigr)$
+
+Write $X_i - X_{i+k} = (\theta_{x,i} - \theta_{x,i+k}) + (\varepsilon_{x,i} - \varepsilon_{x,i+k})$ and $Y_i - Y_{i+k} = (\theta_{y,i} - \theta_{y,i+k}) + (\varepsilon_{y,i} - \varepsilon_{y,i+k})$. Since the signal differences are constants,
+$$
+\begin{aligned}
+&\operatorname{Cov}\bigl((X_i-X_{i+k})^2,\,(Y_i-Y_{i+k})^2\bigr) \\
+&\quad= 4(\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i}-\theta_{y,i+k})\operatorname{Cov}(\varepsilon_{x,i}-\varepsilon_{x,i+k},\,\varepsilon_{y,i}-\varepsilon_{y,i+k}) \\
+&\quad\phantom{=}\; + 2(\theta_{x,i}-\theta_{x,i+k})\operatorname{Cov}(\varepsilon_{x,i}-\varepsilon_{x,i+k},\,(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2) \\
+&\quad\phantom{=}\; + 2(\theta_{y,i}-\theta_{y,i+k})\operatorname{Cov}((\varepsilon_{x,i}-\varepsilon_{x,i+k})^2,\,\varepsilon_{y,i}-\varepsilon_{y,i+k}) \\
+&\quad\phantom{=}\; + \operatorname{Cov}((\varepsilon_{x,i}-\varepsilon_{x,i+k})^2,\,(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2).
+\end{aligned}
+$$
+The four pieces:
+
+- $\operatorname{Cov}(\varepsilon_{x,i}-\varepsilon_{x,i+k},\,\varepsilon_{y,i}-\varepsilon_{y,i+k}) = \sigma_{xy} + \sigma_{xy} = 2\sigma_{xy}$.
+
+- $\operatorname{Cov}(\varepsilon_{x,i}-\varepsilon_{x,i+k},\,(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2) = 0$: since $E[\varepsilon_{x,i}-\varepsilon_{x,i+k}] = 0$, this equals $E[(\varepsilon_{x,i}-\varepsilon_{x,i+k})(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2]$. Swapping $i \leftrightarrow i+k$ negates $\varepsilon_{x,i}-\varepsilon_{x,i+k}$ but fixes $(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2$; since the pairs are iid the expectation is unchanged, so it equals its own negative and must be 0. By symmetry $\operatorname{Cov}((\varepsilon_{x,i}-\varepsilon_{x,i+k})^2,\,\varepsilon_{y,i}-\varepsilon_{y,i+k}) = 0$.
+
+- For $\operatorname{Cov}((\varepsilon_{x,i}-\varepsilon_{x,i+k})^2,\,(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2)$: expanding using independence between time $i$ and time $i+k$ (and mean-zero errors),
+$$
+E[(\varepsilon_{x,i}-\varepsilon_{x,i+k})^2(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2] = 2E[\varepsilon_{x}^2\varepsilon_{y}^2] + 2\sigma_x^2\sigma_y^2 + 4\sigma_{xy}^2 = 2\kappa_{22}\sigma_x^2\sigma_y^2 + 2\sigma_x^2\sigma_y^2 + 4\sigma_{xy}^2,
+$$
+while $E[(\varepsilon_{x,i}-\varepsilon_{x,i+k})^2]E[(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2] = 4\sigma_x^2\sigma_y^2$, so $\operatorname{Cov}((\varepsilon_{x,i}-\varepsilon_{x,i+k})^2,\,(\varepsilon_{y,i}-\varepsilon_{y,i+k})^2) = 2(\kappa_{22}-1)\sigma_x^2\sigma_y^2 + 4\sigma_{xy}^2$.
+
+Combining:
+$$
+\operatorname{Cov}\bigl((X_i-X_{i+k})^2,\,(Y_i-Y_{i+k})^2\bigr) = 8\sigma_{xy}(\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i}-\theta_{y,i+k}) + 2(\kappa_{22}-1)\sigma_x^2\sigma_y^2 + 4\sigma_{xy}^2. \qquad\square
+$$
+:::
+
+::: {.callout-note collapse="true"}
+## Lemma: $E[T_k^{(2)}(X, Y)]$
+
+**Exact expectation.** Applying $E[AB] = \operatorname{Cov}(A,B) + E[A]E[B]$ to each term and summing, using the lemma and $E\!\left[\sum_i(X_i-X_{i+k})^2\right] = T_k(\theta_x,\theta_x) + 2n\sigma_x^2$:
+$$
+\begin{aligned}
+E[T_k^{(2)}(X, Y)]
+&= 2n(\kappa_{22}-1)\sigma_x^2\sigma_y^2 + 8\sigma_{xy}T_k(\theta_x,\theta_y) + 4n\sigma_{xy}^2 \\
+&\quad + T_k^{(2)}(\theta_x, \theta_y) + 2\sigma_y^2 T_k(\theta_x,\theta_x) + 2\sigma_x^2 T_k(\theta_y,\theta_y) + 4n\sigma_x^2\sigma_y^2.
+\end{aligned}
+$$
+:::
+
+::: {.callout-warning}
+## Remark
+As with $2T_1(\theta_x,\theta_y) - T_2(\theta_x,\theta_y) = 0$, we have $2T_1^{(2)}(\theta_x,\theta_y) - T_2^{(2)}(\theta_x,\theta_y) = 0$.
+:::
+
+**Linear combination.** Applying the exact expectation at $k=1$ and $k=2$ and forming $2E[T_1^{(2)}(X,Y)] - E[T_2^{(2)}(X,Y)]$, all $\theta$-dependent terms vanish by the remark and the standard property applied to $(X,X)$ and $(Y,Y)$:
+$$
+2E[T_1^{(2)}(X,Y)] - E[T_2^{(2)}(X,Y)] = 
+\boxed{2n(\kappa_{22}+1)\sigma_x^2\sigma_y^2 + 4n\sigma_{xy}^2.}
+$$
+
+Solving for $\kappa_{22}$:
+$$
+\kappa_{22} = \frac{2E[T_1^{(2)}(X,Y)] - E[T_2^{(2)}(X,Y)]}{2n\sigma_x^2\sigma_y^2} - \frac{2\sigma_{xy}^2}{\sigma_x^2\sigma_y^2} - 1.
+$$
+
+Plugging in estimates:
+$$
+\boxed{
+\hat\kappa_{22} = \frac{2T_1^{(2)}(X,Y) - T_2^{(2)}(X,Y)}{2n\hat\sigma_x^2\hat\sigma_y^2} - \frac{2\hat\sigma_{xy}^2}{\hat\sigma_x^2\hat\sigma_y^2} - 1.
+}
+$$
+
+### Simulation: Does $\hat\kappa_{22}$ (Lag Product) Recover the Truth?
+
+```{r}
+#| message: false
+#| echo: false
+devtools::load_all("..")
+library(purrr)
+library(ggplot2)
+
+ece.k22.lagprod <- function(x, y) {
+  n   <- length(x)
+  t1  <- sum((x - rotate(x, 1))^2 * (y - rotate(y, 1))^2)
+  t2  <- sum((x - rotate(x, 2))^2 * (y - rotate(y, 2))^2)
+  sx2 <- ece.cov(x)
+  sy2 <- ece.cov(y)
+  sxy <- ece.cov(x, y)
+
+  (2 * t1 - t2) / (2 * n * sx2 * sy2) -
+    2 * sxy^2 / (sx2 * sy2) -
+    1
+}
+```
+
+```{r}
+#| cache: true
+#| echo: false
+params <- scenario(2, L = 100)
+
+sim_k22_lag <- map_dbl(1:1000, \(.) {
+  X <- generate_data(params)
+  ece.k22.lagprod(X[,1], X[,2])
+})
+```
+
+```{r}
+#| echo: false
+make_k22_plot(sim_k22_lag, true_k22 = params$kappa$k22)
+```
