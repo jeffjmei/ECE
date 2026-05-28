@@ -75,6 +75,10 @@ lag_diff <- function(x, y = x, k = 1) {
   sum((x - rotate(x, k)) * (y - rotate(y, k)))
 }
 
+lag_diff2 <- function(x, y, k = 1) {
+  sum((x - rotate(x, k))^2 * (y - rotate(y, k))^2)
+}
+
 #' Element-wise Lag Term
 #'
 #' Computes the element-wise contributions whose mean equals [ece.cov()]:
