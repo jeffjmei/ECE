@@ -22,8 +22,10 @@ mean_sin_wave <- function(n, p, amp, period = 365, ...) {
 }
 
 scenario <- function(scenario_num = 1, n = 1000, p = 2, r = 0, amp = 1,
-                     cov_type = "compound", err_type = "normal", seed = 1, ...) {
-  S <- make_cov(r, p, cov_type)
+                     cov_type = "compound", err_type = "normal", seed = 1,
+                     sigma = rep(1, p), ...) {
+  D <- diag(sigma)
+  S <- D %*% make_cov(r, p, cov_type) %*% D
 
   ms <- switch(as.character(scenario_num),
     "1" = mean_flat(n, p, amp, ...),
