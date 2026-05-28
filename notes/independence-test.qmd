@@ -402,6 +402,50 @@ E[T_k^{(2)}(X, Y)]
 &\quad + T_k^{(2)}(\theta_x, \theta_y) + 2\sigma_y^2 T_k(\theta_x,\theta_x) + 2\sigma_x^2 T_k(\theta_y,\theta_y) + 4n\sigma_x^2\sigma_y^2.
 \end{aligned}
 $$
+
+::: {.callout-tip collapse="true"}
+## Simulation: Verifying $E[T_k^{(2)}(X, Y)]$
+
+We simulate 1000 datasets from scenario 2 with $n = 500$ observations, $L = 4$ change points (frequent relative to $n$), exponential errors, and heterogeneous marginal variances ($\sigma_x^2 = 4$, $\sigma_y^2 = 0.25$). For each dataset we compute $T_2^{(2)}(X, Y)$ and compare its distribution to the formula value (red line).
+
+```{r}
+#| echo: false
+#| cache: true
+#| message: false
+params <- scenario(2, L = 4, err_type = "exponential", sigma = c(2, 0.5))
+k   <- 2
+n   <- params$n
+hx  <- params$h[, 1]; hy <- params$h[, 2]
+k22 <- params$kappa$k22
+sx  <- sqrt(params$S[1, 1]); sy <- sqrt(params$S[2, 2]); sxy <- params$S[1, 2]
+
+target <- 2 * n * (k22 - 1) * sx^2 * sy^2 +
+  8 * sxy * lag_diff(hx, hy, k = k) + 4 * n * sxy^2 +
+  lag_diff2(hx, hy, k = k) +
+  2 * sy^2 * lag_diff(hx, hx, k = k) +
+  2 * sx^2 * lag_diff(hy, hy, k = k) +
+  4 * n * sx^2 * sy^2
+
+lag2 <- map_dbl(1:1000, ~ {
+  X <- generate_data(params)
+  lag_diff2(X[, 1], X[, 2], k = k)
+})
+
+```
+```{R}
+#| echo: false
+tibble::tibble(val = lag2) |>
+  ggplot(aes(x = val)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 40,
+                 fill = "steelblue", color = "white", alpha = 0.8) +
+  geom_vline(xintercept = target, color = "firebrick") +
+  geom_vline(xintercept = mean(lag2), linetype = "dashed") +
+  labs(x = expression(T[k]^{(2)}(X, Y)), y = "density",
+       subtitle = "Red = formula, dashed = sample mean") +
+  theme_minimal()
+```
+:::
+
 :::
 
 ::: {.callout-warning}
