@@ -471,6 +471,47 @@ $$
 }
 $$
 
+::: {.callout-tip collapse="true"}
+## Simulation: Verifying $\hat\kappa_{22}$ (Lag Product)
+
+We simulate 10,000 datasets from scenario 2 with $L = 4$ change points, exponential errors, and heterogeneous marginal variances ($\sigma_x^2 = 4$, $\sigma_y^2 = 0.25$). The sample mean of $\hat\kappa_{22}$ (dashed) should fall on the true value (red).
+
+```{r}
+#| echo: false
+#| cache: true
+#| message: false
+params <- scenario(2, L = 4, err_type = "exponential", sigma = c(2, 0.5))
+k22    <- params$kappa$k22
+
+k22_est <- function(x, y) {
+  n   <- length(x)
+  sx2 <- ece.cov(x, x)
+  sy2 <- ece.cov(y, y)
+  sxy <- ece.cov(x, y)
+  (2 * lag_diff2(x, y, k = 1) - lag_diff2(x, y, k = 2)) / (2 * n * sx2 * sy2) -
+    2 * sxy^2 / (sx2 * sy2) - 1
+}
+
+k22_sim <- map_dbl(1:10000, ~ {
+  X <- generate_data(params)
+  k22_est(X[, 1], X[, 2])
+})
+```
+```{r}
+#| echo: false
+tibble::tibble(val = k22_sim) |>
+  ggplot(aes(x = val)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 40,
+                 fill = "steelblue", color = "white", alpha = 0.8) +
+  geom_vline(xintercept = k22, color = "firebrick") +
+  geom_vline(xintercept = mean(k22_sim), linetype = "dashed") +
+  labs(x = expression(hat(kappa)[22]), y = "density",
+       subtitle = "Red = true, dashed = sample mean") +
+  theme_minimal()
+```
+
+:::
+
 ### Simulation: Does $\hat\kappa_{22}$ (Lag Product) Recover the Truth?
 
 ```{r}
