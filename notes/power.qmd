@@ -352,4 +352,81 @@ cat(":::\n")
 
 :::
 
+--- 
 
+::: {.callout-note collapse="true" title="PSD correction to Parametric Bootstrap solves problem."}
+
+```{R}
+#| echo: false
+#| warning: false
+#| message: false
+
+# Load Data
+results <- read_csv("../data/raw/results-2026-05-27_18-35.csv")
+err_df <- results |> 
+  filter(method %in% c("bs.parametric", "bs.parametric.psd")) |> 
+  pivot_wider(names_from=metric, values_from=metric_val) |> 
+  mutate(err_pct = n_errors / n_sim)
+
+# Table: Percent Not PSD
+err_df |> 
+  filter(method == "bs.parametric") |> 
+  filter(n==500, p==10) |>
+  filter(
+    scenario == 1, 
+    cov_type == "compound", 
+    err_type == "exponential"
+  ) |>
+  select(n, p, r, method, err_pct)
+  # 6-7% Errors: scenario=1, compound, n=500, p=10, normal
+  # 30%  Errors: scenario=1, compound, n=500, p=10, exponential
+
+# Plot 
+err_df |> 
+  filter(method %in% c("bs.parametric", "bs.parametric.psd")) |> 
+  filter(n == 500, scenario == 1, p == 10) |> 
+  filter(
+    cov_type=="compound"    
+  ) |> 
+  ggplot(aes(x=r, y=power, color=method)) + 
+  geom_point() +  
+  geom_line() + 
+  geom_hline(yintercept = 0.10) + 
+  facet_grid(p ~ err_type)
+```
+
+**Conclusion**
+When `bs.parametric` estimates a non-PSD matrix, it simply fails. In my simulations, since we run many replicates, single replicates may still fail, but we can still get a sense of the power for the ones that did not fail. One question we have is whether or not doing a post-hoc eigenvalue projection to a PSD covariance matrix will change the results significantly.  
+
+In the case where there is up to 30% failures -- meaning there in 30% of the simulations, we were unable to produce a PSD covariance matrix, we see that the correction hardly changes the power curve. 
+
+
+```{R}
+#| echo: false
+#| warning: false
+#| message: false
+err_df |> 
+  filter(method == "bs.parametric") |> 
+  filter(n==200, p==10) |>
+  filter(
+    scenario == 1, 
+    cov_type == "compound", 
+    err_type == "exponential"
+  ) |>
+  select(n, p, r, method, err_pct)
+
+err_df |> 
+  filter(method %in% c("bs.parametric", "bs.parametric.psd")) |> 
+  filter(n == 200, scenario == 1, p == 10) |> 
+  filter(
+    cov_type=="compound"    
+  ) |> 
+  ggplot(aes(x=r, y=power, color=method)) + 
+  geom_point() +  
+  geom_line() + 
+  geom_hline(yintercept = 0.10) + 
+  facet_grid(p ~ err_type)
+```
+In the above case where there is 100% failures -- meaning we were unable to produce a PSD covariance matrix in any of the repliates, we are still able to obtain a power-curve, but the type I error is clearly deflated. 
+
+:::
