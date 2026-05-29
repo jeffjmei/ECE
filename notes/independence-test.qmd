@@ -23,7 +23,7 @@ A robust test plugs in $\hat\kappa_{22}$.
 
 Let $s_i^{(k)} = (X_i - X_{i+k})(Y_i - Y_{i+k})$ and $S_i = \frac{s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}}{2}$ as in the Multiplier Bootstrap chapter, so that
 $$
-\bar{S} = \frac{1}{n}\sum_{i=1}^n S_i = \frac{2T_1(X,Y) - T_2(X,Y)}{2n} = \hat\sigma_{xy}.
+\boxed{\bar{S} = \frac{1}{n}\sum_{i=1}^n S_i = \frac{2T_1(X,Y) - T_2(X,Y)}{2n} = \hat\sigma_{xy}.}
 $$ Since $S_i$ depends only on indices $i-2, i-1, i$, terms at lags $\ge 3$ are independent, so
 $$
 \operatorname{Var}(\bar{S}) = \frac{1}{n^2}\!\left[\sum_i \operatorname{Var}(S_i) + 2\sum_i \operatorname{Cov}(S_i, S_{i+1}) + 2\sum_i \operatorname{Cov}(S_i, S_{i+2})\right].
@@ -34,7 +34,7 @@ V := \widehat{\operatorname{Var}}(\bar{S}) = \frac{1}{n^2}\!\left(\sum_{i=1}^n S
 $$
 or in matrix form, writing $\mathbf{S} = (S_1, \ldots, S_n)^\top$,
 $$
-V = \frac{1}{n^2}\,\mathbf{S}^\top(I + C_1 + C_1^\top + C_2 + C_2^\top)\mathbf{S}.
+\boxed{V = \frac{1}{n^2}\,\mathbf{S}^\top(I + C_1 + C_1^\top + C_2 + C_2^\top)\mathbf{S}.}
 $$
 
 Since $\bar S = (2T_1 - T_2)/(2n)$, we have $V \approx \operatorname{Var}(2T_1 - T_2)/(4n^2)$. The variance on the right has a general closed form; under $H_0$ ($\sigma_{xy} = 0$) it simplifies so we can solve for $\kappa_{22}$ from $V$.
@@ -57,9 +57,104 @@ $$\operatorname{Var}(\bar{S}) = \frac{1}{2n}\bigl[(2\kappa_{22}+5)\sigma_x^2\sig
 :::
 
 Since $V \approx \operatorname{Var}(\bar{S})$, substituting the general expression and solving gives
-$$\hat\kappa_{22} = \frac{nV}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{3}{2}\frac{\hat\sigma_{xy}^2}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{2\hat\sigma_{xy}\hat\omega_{xy}}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.$$
+$$\boxed{\hat\kappa_{22} = \frac{nV}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{3}{2}\frac{\hat\sigma_{xy}^2}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{2\hat\sigma_{xy}\hat\omega_{xy}}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.}$$
 Under $H_0$ ($\hat\sigma_{xy} = 0$) the middle two terms vanish, yielding
 $$\hat\kappa_{22} = \frac{nV}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.$$
+
+::: {.callout-tip collapse="true"}
+## Simulation: Verifying $\hat\kappa_{22}$ via $V_{xy}$
+
+```{r}
+#| echo: false
+#| message: false
+devtools::load_all("..")
+library(purrr)
+library(ggplot2)
+```
+
+```{r}
+#| echo: false
+#| cache: true
+#| message: false
+params <- scenario(2, L = 4, err_type = "normal")
+
+k22_indep <- map_dbl(1:1000, ~ {
+  X <- generate_data(params)
+  ece.kappa(X)$k22
+})
+
+k22_dep <- map_dbl(1:1000, ~ {
+  ex <- rnorm(params$n)
+  ey <- (ex^2 - 1) / sqrt(2)
+  X  <- cbind(params$h[,1] + ex, params$h[,2] + ey)
+  ece.kappa(X)$k22
+})
+
+lambda_vals <- c(0, 0.5, 1/sqrt(2), 1)
+k22_true    <- 1 + 4 * lambda_vals^2
+
+sim_results <- map(lambda_vals, \(lam) {
+  map_dbl(1:1000, ~ {
+    ex <- rnorm(params$n)
+    ey <- lam * (ex^2 - 1) / sqrt(2) + sqrt(1 - lam^2) * rnorm(params$n)
+    X  <- cbind(params$h[,1] + ex, params$h[,2] + ey)
+    ece.kappa(X)$k22
+  })
+})
+```
+
+::: {.panel-tabset}
+
+## Independent ($\kappa_{22} = 1$)
+
+Scenario 2, $L = 4$, Gaussian independent errors. Under independence $\kappa_{22} = 1$ regardless of marginals.
+
+```{r}
+#| echo: false
+make_sim_hist(k22_indep, true = params$kappa$k22, expression(hat(kappa)[22]))
+```
+
+## Dependent ($\kappa_{22} = 5$)
+
+Using $\varepsilon_y = (\varepsilon_x^2 - 1)/\sqrt{2}$ with $\varepsilon_x \sim N(0,1)$, giving $\sigma_{xy} = 0$ and $\kappa_{22} = 5$.
+
+```{r}
+#| echo: false
+make_sim_hist(k22_dep, true = 5, expression(hat(kappa)[22]))
+```
+
+## $\lambda$-Mixing
+
+Using $\varepsilon_y = \lambda(\varepsilon_x^2-1)/\sqrt{2} + \sqrt{1-\lambda^2}\,\eta$ with $\varepsilon_x, \eta \stackrel{iid}{\sim} N(0,1)$, which gives $\sigma_{xy} = 0$ and $\kappa_{22} = 1 + 4\lambda^2$.
+
+```{r}
+#| echo: false
+sim_df <- tibble::tibble(
+  k22   = unlist(sim_results),
+  group = factor(rep(round(k22_true, 1), each = 1000),
+                 labels = paste0("κ₂₂ = ", round(k22_true, 1)))
+)
+ref_df <- tibble::tibble(
+  group = factor(round(k22_true, 1),
+                 labels = paste0("κ₂₂ = ", round(k22_true, 1))),
+  true  = k22_true
+)
+mean_df <- sim_df |>
+  dplyr::summarise(mean_k22 = mean(k22), .by = group)
+
+ggplot(sim_df, aes(x = k22, fill = group, color = group)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 50, position = "identity", alpha = 0.4, linewidth = 0) +
+  geom_vline(data = ref_df, aes(xintercept = true, color = group), linewidth = 0.9) +
+  geom_vline(data = mean_df, aes(xintercept = mean_k22, color = group), linetype = "dashed") +
+  scale_fill_brewer(palette = "Set1", name = NULL) +
+  scale_color_brewer(palette = "Set1", name = NULL) +
+  labs(x = expression(hat(kappa)[22]), y = "density") +
+  theme_minimal()
+```
+
+:::
+
+:::
 
 ### Estimating $\kappa_{40}$ via $V_{xx}$
 
@@ -85,43 +180,22 @@ $$\operatorname{Var}(\bar{S}^{xx}) = \frac{1}{n}\bigl[(\kappa_{40}+4)\sigma_x^4 
 
 Since $V_{xx} \approx \operatorname{Var}(\bar{S}^{xx})$, substituting and solving gives
 $$
-\hat\kappa_{40} = \frac{nV_{xx}}{\hat\sigma_x^4} - \frac{4\hat\omega_x^2}{\hat\sigma_x^2} - 4.
+\boxed{\hat\kappa_{40} = \frac{nV_{xx}}{\hat\sigma_x^4} - \frac{4\hat\omega_x^2}{\hat\sigma_x^2} - 4.}
 $$
 By symmetry ($x \leftrightarrow y$), the same construction applied to $(Y, Y)$ yields $\hat\kappa_{04} = nV_{yy}/\hat\sigma_y^4 - 4\hat\omega_y^2/\hat\sigma_y^2 - 4$.
 
-#### Simulation: Does $\hat\kappa_{40}$ Recover the Truth?
+::: {.callout-tip collapse="true"}
+## Simulation: Verifying $\hat\kappa_{40}$
 
 ```{r}
-#| message: false
 #| echo: false
-devtools::load_all("..")
-library(purrr)
-library(ggplot2)
-
-estimate_k40 <- function(X, params) {
-  n    <- params$n
-  Sxx  <- ece_terms(cbind(X[,1], X[,1]))
-  Sxx  <- Sxx - mean(Sxx)
-  Vxx  <- (1 / n^2) * as.numeric(
-    t(Sxx) %*% Sxx +
-      t(rotate(Sxx)) %*% Sxx + t(Sxx) %*% rotate(Sxx) +
-      t(rotate(Sxx, 2)) %*% Sxx + t(Sxx) %*% rotate(Sxx, 2)
-  )
-  sx2 <- ece.cov(X[,1])
-  wx2 <- ece.complexity(X[,1])
-  n * Vxx / sx2^2 - 4 * wx2 / sx2 - 4
-}
-```
-
-```{r}
 #| cache: true
-#| echo: false
+#| message: false
 params     <- scenario(2, L = 4, err_type = "normal")
 params_exp <- scenario(2, L = 4, err_type = "exponential")
 
-
-k40_gaussian <- map_dbl(1:1000, \(.) estimate_k40(generate_data(params), params))
-k40_exp      <- map_dbl(1:1000, \(.) estimate_k40(generate_data(params_exp), params_exp))
+k40_gaussian <- map_dbl(1:1000, ~ ece.kappa(generate_data(params))$k40)
+k40_exp      <- map_dbl(1:1000, ~ ece.kappa(generate_data(params_exp))$k40)
 
 lambda_vals  <- c(0, 0.5, 1/sqrt(2), 1)
 k40_true     <- 12 * lambda_vals^4 + 3
@@ -132,41 +206,29 @@ sim_results_k40 <- map(lambda_vals, \(lam) {
     ex <- lam * (z^2 - 1) / sqrt(2) + sqrt(1 - lam^2) * rnorm(params$n)
     ey <- rnorm(params$n)
     X  <- cbind(params$h[,1] + ex, params$h[,2] + ey)
-    estimate_k40(X, params)
+    ece.kappa(X)$k40
   })
 })
 ```
-
-```{r}
-#| echo: false
-make_k40_plot <- function(sim, true_k40) {
-  tibble::tibble(k40 = sim) |>
-    ggplot(aes(x = k40)) +
-    geom_histogram(aes(y = after_stat(density)), bins = 40, fill = "steelblue", color = "white", alpha = 0.8) +
-    geom_vline(xintercept = true_k40, color = "firebrick") +
-    geom_vline(xintercept = mean(sim), linetype = "dashed") +
-    labs(x = expression(hat(kappa)[40]), y = "density",
-         subtitle = "Red = true, dashed = sample mean") +
-    theme_minimal()
-}
-```
-
-To check the formula for $\hat\kappa_{40}$, we simulate 1000 datasets and compare the distribution of $\hat\kappa_{40}$ to the true value. If the formula is correct, the sample mean (dashed line) should be close to the true value (red line). We consider three cases: Gaussian errors ($\kappa_{40} = 3$), exponential errors ($\kappa_{40} = 9$), and a one-parameter family interpolating between the two.
 
 ::: {.panel-tabset}
 
 ## Gaussian ($\kappa_{40} = 3$)
 
+Scenario 2, $L = 4$, Gaussian errors ($\kappa_{40} = 3$).
+
 ```{r}
 #| echo: false
-make_k40_plot(k40_gaussian, true_k40 = params$kappa$k40)
+make_sim_hist(k40_gaussian, true = params$kappa$k40, expression(hat(kappa)[40]))
 ```
 
 ## Exponential ($\kappa_{40} = 9$)
 
+Scenario 2, $L = 4$, exponential errors ($\kappa_{40} = 9$).
+
 ```{r}
 #| echo: false
-make_k40_plot(k40_exp, true_k40 = params_exp$kappa$k40)
+make_sim_hist(k40_exp, true = params_exp$kappa$k40, expression(hat(kappa)[40]))
 ```
 
 ## $\lambda$-Mixing
@@ -200,6 +262,8 @@ ggplot(sim_df_k40, aes(x = k40, fill = group, color = group)) +
 
 :::
 
+:::
+
 ### Estimating $\kappa_{31}$ via $C_{xx,xy}$
 
 The cumulant $\kappa_{31}$ appears in the cross-covariances between the $(X,X)$ and $(X,Y)$ blocks of $\Sigma_Z$. Define the lag-2 cross-covariance
@@ -230,166 +294,92 @@ $$
 $$
 By symmetry ($x \leftrightarrow y$), the same construction with $C_{yy,xy}$ yields $\hat\kappa_{13}$.
 
-#### Simulation: Does $\hat\kappa_{22}$ Recover the Truth?
+::: {.callout-tip collapse="true"}
+## Simulation: Verifying $\hat\kappa_{31}$
 
 ```{r}
-#| message: false
 #| echo: false
-devtools::load_all("..")
-library(purrr)
-library(ggplot2)
-```
-
-```{r}
 #| cache: true
-#| echo: false
-params <- scenario(2, L = 4, err_type = "exponential")
+#| message: false
+params <- scenario(2, L = 4, err_type = "normal")
 
-estimate_k22 <- function(X, params) {
-  n   <- params$n
-  S   <- ece_terms(X)
-  W   <- (1 / n^2) * (
-    t(S) %*% S +
-      t(rotate(S)) %*% S + t(S) %*% rotate(S) +
-      t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
-  )
-  sx2 <- ece.cov(X[,1])
-  sy2 <- ece.cov(X[,2])
-  sxy <- ece.cov(X[,1], X[,2])
-  wx2 <- ece.complexity(X[,1])
-  wy2 <- ece.complexity(X[,2])
-  wxy <- ece.complexity(X[,1], X[,2])
-  n * as.numeric(W) / (sx2 * sy2) - (3/2) * sxy^2 / (sx2 * sy2) - 2 * sxy * wxy / (sx2 * sy2) - wx2 / sx2 - wy2 / sy2 - 5/2
-}
-
-k22_indep <- map_dbl(1:1000, \(.) {
-  estimate_k22(generate_data(params), params)
+k31_indep <- map_dbl(1:1000, ~ {
+  X <- generate_data(params)
+  ece.kappa(X)$k31
 })
 
-k22_dep <- map_dbl(1:1000, \(.) {
+k31_dep <- map_dbl(1:1000, ~ {
   ex <- rnorm(params$n)
-  ey <- (ex^2 - 1) / sqrt(2)
-  X  <- cbind(params$h[,1] + ex, params$h[,2] + ey)
-  estimate_k22(X, params)
+  X  <- cbind(params$h[,1] + ex, params$h[,2] + ex)
+  ece.kappa(X)$k31
 })
 
-lambda_vals <- c(0, 0.5, 1/sqrt(2), 1)
-k22_true    <- 1 + 4 * lambda_vals^2
+lambda_vals_k31 <- c(0, 0.5, 1/sqrt(2), 1)
+k31_true        <- 3 * lambda_vals_k31
 
-sim_results <- map(lambda_vals, \(lam) {
+sim_results_k31 <- map(lambda_vals_k31, \(lam) {
   map_dbl(1:1000, \(.) {
     ex <- rnorm(params$n)
-    ey <- lam * (ex^2 - 1) / sqrt(2) + sqrt(1 - lam^2) * rnorm(params$n)
+    ey <- lam * ex + sqrt(1 - lam^2) * rnorm(params$n)
     X  <- cbind(params$h[,1] + ex, params$h[,2] + ey)
-    estimate_k22(X, params)
+    ece.kappa(X)$k31
   })
 })
 ```
 
-```{r}
-#| echo: false
-make_k22_plot <- function(sim, true_k22) {
-  tibble::tibble(k22 = sim) |>
-    ggplot(aes(x = k22)) +
-    geom_histogram(aes(y = after_stat(density)), bins = 40, fill = "steelblue", color = "white", alpha = 0.8) +
-    geom_vline(xintercept = true_k22, color = "firebrick") +
-    geom_vline(xintercept = mean(sim), linetype = "dashed") +
-    labs(x = expression(hat(kappa)[22]), y = "density",
-         subtitle = "Red = true, dashed = sample mean") +
-    theme_minimal()
-}
-```
-
-To check the formula for $\hat\kappa_{22}$, we simulate 1000 datasets and compare the distribution of $\hat\kappa_{22}$ to the true value. If the formula is correct, the sample mean (dashed line) should be close to the true value (red line). We consider three cases: independent errors ($\kappa_{22} = 1$), a strongly dependent case ($\kappa_{22} = 5$), and a one-parameter family interpolating between the two.
-
 ::: {.panel-tabset}
 
-## Independent ($\kappa_{22} = 1$)
+## Independent ($\kappa_{31} = 0$)
+
+Scenario 2, $L = 4$, Gaussian independent errors. Under independence $\kappa_{31} = 0$.
 
 ```{r}
 #| echo: false
-make_k22_plot(k22_indep, true_k22 = params$kappa$k22)
+make_sim_hist(k31_indep, true = params$kappa$k31, expression(hat(kappa)[31]))
 ```
 
-## Dependent ($\kappa_{22} = 5$)
+## Dependent ($\kappa_{31} = 3$)
+
+Using $\varepsilon_y = \varepsilon_x$ with $\varepsilon_x \sim N(0,1)$, giving $\sigma_{xy} = \sigma_x^2$ and $\kappa_{31} = \kappa_{40} = 3$.
 
 ```{r}
 #| echo: false
-make_k22_plot(k22_dep, true_k22 = 5)
+make_sim_hist(k31_dep, true = 3, expression(hat(kappa)[31]))
 ```
 
 ## $\lambda$-Mixing
 
-Using $\varepsilon_y = \lambda(\varepsilon_x^2-1)/\sqrt{2} + \sqrt{1-\lambda^2}\,\eta$ with $\varepsilon_x, \eta \stackrel{iid}{\sim} N(0,1)$, which gives $\sigma_{xy} = 0$ and $\kappa_{22} = 1 + 4\lambda^2$.
+Using $\varepsilon_y = \lambda\varepsilon_x + \sqrt{1-\lambda^2}\,\eta$ with $\varepsilon_x, \eta \stackrel{iid}{\sim} N(0,1)$, which gives $\kappa_{31} = 3\lambda$.
 
 ```{r}
 #| echo: false
-sim_df <- tibble::tibble(
-  k22   = unlist(sim_results),
-  group = factor(rep(round(k22_true, 1), each = 1000),
-                 labels = paste0("κ₂₂ = ", round(k22_true, 1)))
+sim_df_k31 <- tibble::tibble(
+  k31   = unlist(sim_results_k31),
+  group = factor(rep(round(k31_true, 2), each = 1000),
+                 labels = paste0("κ₃₁ = ", round(k31_true, 2)))
 )
-ref_df <- tibble::tibble(
-  group = factor(round(k22_true, 1),
-                 labels = paste0("κ₂₂ = ", round(k22_true, 1))),
-  true  = k22_true
+ref_df_k31 <- tibble::tibble(
+  group = factor(round(k31_true, 2),
+                 labels = paste0("κ₃₁ = ", round(k31_true, 2))),
+  true  = k31_true
 )
+mean_df_k31 <- sim_df_k31 |>
+  dplyr::summarise(mean_k31 = mean(k31), .by = group)
 
-mean_df <- sim_df |>
-  dplyr::summarise(mean_k22 = mean(k22), .by = group)
-
-ggplot(sim_df, aes(x = k22, fill = group, color = group)) +
+ggplot(sim_df_k31, aes(x = k31, fill = group, color = group)) +
   geom_histogram(aes(y = after_stat(density)), bins = 50, position = "identity", alpha = 0.4, linewidth = 0) +
-  geom_vline(data = ref_df, aes(xintercept = true, color = group), linewidth = 0.9) +
-  geom_vline(data = mean_df, aes(xintercept = mean_k22, color = group), linetype = "dashed") +
+  geom_vline(data = ref_df_k31, aes(xintercept = true, color = group), linewidth = 0.9) +
+  geom_vline(data = mean_df_k31, aes(xintercept = mean_k31, color = group), linetype = "dashed") +
   scale_fill_brewer(palette = "Set1", name = NULL) +
   scale_color_brewer(palette = "Set1", name = NULL) +
-  labs(x = expression(hat(kappa)[22]), y = "density") +
+  labs(x = expression(hat(kappa)[31]), y = "density") +
   theme_minimal()
 ```
 
 :::
 
+:::
 
-
-### Simulation: Does $\hat\kappa_{22}$ (Lag Product) Recover the Truth?
-
-```{r}
-#| message: false
-#| echo: false
-devtools::load_all("..")
-library(purrr)
-library(ggplot2)
-
-ece.k22.lagprod <- function(x, y) {
-  n   <- length(x)
-  t1  <- sum((x - rotate(x, 1))^2 * (y - rotate(y, 1))^2)
-  t2  <- sum((x - rotate(x, 2))^2 * (y - rotate(y, 2))^2)
-  sx2 <- ece.cov(x)
-  sy2 <- ece.cov(y)
-  sxy <- ece.cov(x, y)
-
-  (2 * t1 - t2) / (2 * n * sx2 * sy2) -
-    2 * sxy^2 / (sx2 * sy2) -
-    1
-}
-```
-
-```{r}
-#| cache: true
-#| echo: false
-params <- scenario(2, L = 100)
-
-sim_k22_lag <- map_dbl(1:1000, \(.) {
-  X <- generate_data(params)
-  ece.k22.lagprod(X[,1], X[,2])
-})
-```
-
-```{r}
-#| echo: false
-make_k22_plot(sim_k22_lag, true_k22 = params$kappa$k22)
-```
 
 ## Estimating $\kappa_{22}$ via Moments
 
