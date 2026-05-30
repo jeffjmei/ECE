@@ -1,3 +1,33 @@
+make_overlap_hist <- function(sims, xlab = "value", colors = NULL) {
+  nms <- names(sims)
+  if (is.null(colors)) {
+    palette <- c("#E41A1C", "#377EB8", "#4DAF4A", "#FF7F00", "#984EA3", "#A65628")
+    colors  <- setNames(palette[seq_along(sims)], nms)
+  } else if (is.null(names(colors))) {
+    colors <- setNames(colors, nms)
+  }
+
+  dat   <- purrr::map_dfr(nms, \(nm) tibble::tibble(val = sims[[nm]], group = nm))
+  means <- tibble::tibble(group = nms, mean = purrr::map_dbl(sims, mean))
+
+  ggplot2::ggplot(dat, ggplot2::aes(x = val, fill = group)) +
+    ggplot2::geom_histogram(
+      ggplot2::aes(y = ggplot2::after_stat(density)),
+      bins = 40, color = "white", alpha = 0.6, position = "identity"
+    ) +
+    ggplot2::geom_vline(
+      data = means,
+      ggplot2::aes(xintercept = mean, color = group),
+      linetype = "dashed"
+    ) +
+    ggplot2::scale_fill_manual(values  = colors) +
+    ggplot2::scale_color_manual(values = colors, guide = "none") +
+    ggplot2::labs(x = xlab, y = "Density", fill = "Estimator",
+                  subtitle = "Dashed = sample mean") +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(legend.position = "bottom")
+}
+
 make_sim_hist <- function(sim, true, xlab) {
   tibble::tibble(val = sim) |>
     ggplot2::ggplot(ggplot2::aes(x = val)) +
