@@ -23,9 +23,11 @@ A robust test plugs in $\hat\kappa_{22}$.
 
 --- 
 
-## Numerical Results: Estimating $\kappa_{22}$ 
+## Numerical Results: Estimating $\kappa_{22}$
 
-```{R} 
+No single estimator dominates: the regression estimator has lower variance in most scenarios, but the matrix estimator wins when change-point amplitude is large.
+
+```{R}
 #| echo: false
 
 # Compare k22 Estimators
@@ -94,31 +96,78 @@ simulate_k22 <- function(params){
 
 ```
 
-```{R} 
+```{R}
+#| cache: true
 #| echo: false
+param_grid <- tribble(
+  ~label,                        ~scen, ~r,   ~err_type,      ~amp, ~L,
+  "Scenario 1, Normal",           1,     0,    "normal",       1,    NA,
+  "Scenario 1, Exponential",      1,     0,    "exponential",  1,    NA,
+  "Scenario 1 (r = 0.5), Exp.",  1,     0.5,  "exponential",  1,    NA,
+  "Scenario 2, Normal",           2,     0,    "normal",       1,    4,
+  "Scenario 2, Exponential",      2,     0,    "exponential",  1,    4,
+  "Scenario 2 (amp = 2), Exp.",  2,     0,    "exponential",  2,    4
+)
 
-# Run Simulation
-params <- scenario(1, amp=1, r=0, err_type="normal")
-sim_k22 <- simulate_k22(params)
-sim_k22_regress <- sim_k22 |> map_dbl("regress")
-sim_k22_matrix <- sim_k22 |> map_dbl("matrix")
+k22_grid <- pmap(param_grid, function(label, scen, r, err_type, amp, L) {
+  params <- if (is.na(L)) {
+    scenario(scen, r = r, err_type = err_type, amp = amp)
+  } else {
+    scenario(scen, r = r, err_type = err_type, amp = amp, L = L)
+  }
+  sim    <- simulate_k22(params)
+  list(
+    label       = label,
+    var_regress = var(map_dbl(sim, "regress")),
+    var_matrix  = var(map_dbl(sim, "matrix")),
+    sim         = sim
+  )
+})
 
-# Plot Results
-xx <- seq(min(unlist(sim_k22)), max(unlist(sim_k22)), length.out=20)
-hist(sim_k22_regress, breaks=xx, col=rgb(1, 0, 0, 0.5))
-hist(sim_k22_matrix, breaks=xx, col=rgb(0, 1, 0, 0.5), add=TRUE)
-var(sim_k22_regress)
-var(sim_k22_matrix)
+k22_var_tbl <- map_dfr(k22_grid, \(g) tibble(
+  Scenario               = g$label,
+  `Var(k22-Regression)`  = round(g$var_regress, 2),
+  `Var(k22-Covariance)`  = round(g$var_matrix,  2)
+))
+
 ```
 
-| Scenario | Error Type | Var(Regression) | Var(Matrix) |
-| - | - | - | - | 
-| 1 | Normal | 0.07 | 0.21 | 
-| 1 | Exponential | 0.41 | 0.60 | 
-| 1 (r=0.5) | Exponential | 1.36 | 1.99 | 
-| 2 | Normal | 0.66 | 0.50 | 
-| 2 | Exponential | 1.14 | 1.03 | 
-| 2 (amp=2) | Exponential | 19.70 | 5.61 | 
+```{R}
+#| echo: false
+knitr::kable(k22_var_tbl)
+```
+
+::: {.panel-tabset}
+
+## Regression Dominates
+
+```{R}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression = map_dbl(k22_grid[[1]]$sim, "regress"),
+    Covariance = map_dbl(k22_grid[[1]]$sim, "matrix")
+  ),
+  xlab   = expression(hat(kappa)[22]),
+  colors = c(Regression = "#E41A1C", Covariance = "#377EB8")
+) + ggplot2::labs(title = "Scenario 1, normal errors, n = 200, ρ = 0")
+```
+
+## Covariance Dominates
+
+```{R}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression = map_dbl(k22_grid[[4]]$sim, "regress"),
+    Covariance = map_dbl(k22_grid[[4]]$sim, "matrix")
+  ),
+  xlab   = expression(hat(kappa)[22]),
+  colors = c(Regression = "#E41A1C", Covariance = "#377EB8")
+) + ggplot2::labs(title = "Scenario 2, normal errors, n = 200, ρ = 0, L = 4")
+```
+
+:::
 
 
 --- 
@@ -147,8 +196,6 @@ tbl <- cbind(dist, kappa_tbl, se)
 tbl
 ```
 
-- Should $\kappa$ be changing with correlation?   
-- Kappa is changing even when seed is set as a parameter
 
 
 For $\rho = 0.5$, we get
@@ -176,11 +223,6 @@ tbl <- cbind(dist, kappa_tbl, se)
 tbl
 ```
 
-**Observations**:   
-
-- standard error in all of these is very close to gaussian
-- it's unsurprising, because the distributions themselves look gaussian
-- is there a scale-argument we can make? $\kappa$ is already scaled, so the standard error shouldn't change, even if we change $\sigma_x$ and $\sigma_y$. 
 
 ```{R} 
 #| echo: false
