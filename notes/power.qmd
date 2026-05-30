@@ -15,6 +15,7 @@ method_colors <- c(
   "z.test.oracle.kappa" = "#377EB8",
   "bs.multiplier"       = "#4DAF4A",
   "bs.parametric"       = "#FF7F00",
+  "bs.parametric.psd"   = "#0072B2",
   "z.test.null"         = "#984EA3",
   "z.test.null.gaussian" = "#A65628"
 )
@@ -24,6 +25,7 @@ method_labels <- c(
   "z.test.oracle.kappa" = "Z-Test (Oracle κ₂₂)",
   "bs.multiplier"       = "Bootstrap (Multiplier)",
   "bs.parametric"       = "Bootstrap (Parametric)",
+  "bs.parametric.psd"   = "Bootstrap (Parametric, PSD)",
   "z.test.null"         = "Z-Test (Null)",
   "z.test.null.gaussian" = "Z-Test (Null, Gaussian)"
 )
@@ -352,86 +354,93 @@ cat(":::\n")
 
 :::
 
---- 
+::: {.callout-note collapse="true" title="Parametric bootstrap power is recovered with PSD eigenvalue correction"}
 
-::: {.callout-note collapse="true" title="PSD correction to Parametric Bootstrap solves problem."}
+$\widehat{\text{Cov}}(S)$ may not always produce a PSD covariance matrix; consequently, we cannot sample from a non-PSD covariance matrix. The eigenvalue correction clips any negative eigenvalues of $\hat{W}$ to zero before sampling.
 
 ```{R}
 #| echo: false
 #| warning: false
 #| message: false
-
-# Load Data
-results <- read_csv("../data/raw/results-2026-05-27_18-35.csv")
-err_df <- results |> 
-  filter(method %in% c("bs.parametric", "bs.parametric.psd")) |> 
-  pivot_wider(names_from=metric, values_from=metric_val) |> 
+results_psd <- read_csv("../data/raw/results-2026-05-27_18-35.csv")
+err_df <- results_psd |>
+  filter(method %in% c("bs.parametric", "bs.parametric.psd")) |>
+  pivot_wider(names_from = metric, values_from = metric_val) |>
   mutate(err_pct = n_errors / n_sim)
-
-# Table: Percent Not PSD
-err_df |> 
-  filter(method == "bs.parametric") |> 
-  filter(n==500, p==10) |>
-  filter(
-    scenario == 1, 
-    cov_type == "compound", 
-    err_type == "exponential"
-  ) |>
-  select(n, p, r, method, err_pct)
-  # 6-7% Errors: scenario=1, compound, n=500, p=10, normal
-  # 30%  Errors: scenario=1, compound, n=500, p=10, exponential
-
-# Plot 
-err_df |> 
-  filter(method %in% c("bs.parametric", "bs.parametric.psd")) |> 
-  filter(n == 500, scenario == 1, p == 10) |> 
-  filter(
-    cov_type=="compound"    
-  ) |> 
-  ggplot(aes(x=r, y=power, color=method)) + 
-  geom_point() +  
-  geom_line() + 
-  geom_hline(yintercept = 0.10) + 
-  facet_grid(p ~ err_type)
 ```
 
-**Conclusion**
-When `bs.parametric` estimates a non-PSD matrix, it simply fails. In my simulations, since we run many replicates, single replicates may still fail, but we can still get a sense of the power for the ones that did not fail. One question we have is whether or not doing a post-hoc eigenvalue projection to a PSD covariance matrix will change the results significantly.  
+::: {.panel-tabset}
 
-In the case where there is up to 30% failures -- meaning there in 30% of the simulations, we were unable to produce a PSD covariance matrix, we see that the correction hardly changes the power curve. 
-
+## Low (~6–7% failure)
 
 ```{R}
 #| echo: false
 #| warning: false
-#| message: false
-err_df |> 
-  filter(method == "bs.parametric") |> 
-  filter(n==200, p==10) |>
-  filter(
-    scenario == 1, 
-    cov_type == "compound", 
-    err_type == "exponential"
-  ) |>
-  select(n, p, r, method, err_pct)
-
-err_df |> 
-  filter(method %in% c("bs.parametric", "bs.parametric.psd")) |> 
-  filter(n == 200, scenario == 1, p == 10) |> 
-  filter(
-    cov_type=="compound"    
-  ) |> 
-  ggplot(aes(x=r, y=power, color=method)) + 
-  geom_point() +  
-  geom_line() + 
-  geom_hline(yintercept = 0.10) + 
-  facet_grid(p ~ err_type)
+err_df |>
+  filter(n == 500, scenario == 1, p == 10, cov_type == "compound", err_type == "normal") |>
+  ggplot(aes(x = r, y = power, color = method)) +
+  geom_hline(yintercept = 0.10, linetype = "dashed", color = "gray50") +
+  geom_line() +
+  geom_point() +
+  scale_color_manual(values = method_colors, labels = method_labels) +
+  labs(
+    title = "n = 500, p = 10 — compound covariance, normal errors, no change points",
+    x = expression(paste("Correlation (", rho, ")")), y = "Power", color = "Method"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
 ```
-In the above case where there is 100% failures -- meaning we were unable to produce a PSD covariance matrix in any of the repliates, we are still able to obtain a power-curve, but the type I error is clearly deflated. 
+
+Under normal errors with $n = 500$, roughly 6–7% of replicates produce a non-PSD $\hat{W}$. The corrected curve is nearly indistinguishable from the uncorrected — the correction is harmless at low failure rates.
+
+## Moderate (~30% failure)
+
+```{R}
+#| echo: false
+#| warning: false
+err_df |>
+  filter(n == 500, scenario == 1, p == 10, cov_type == "compound", err_type == "exponential") |>
+  ggplot(aes(x = r, y = power, color = method)) +
+  geom_hline(yintercept = 0.10, linetype = "dashed", color = "gray50") +
+  geom_line() +
+  geom_point() +
+  scale_color_manual(values = method_colors, labels = method_labels) +
+  labs(
+    title = "n = 500, p = 10 — compound covariance, exponential errors, no change points",
+    x = expression(paste("Correlation (", rho, ")")), y = "Power", color = "Method"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+Under exponential errors with $n = 500$, roughly 30% of replicates produce a non-PSD $\hat{W}$. Even at this failure rate, the corrected curve continues to track the uncorrected closely — the correction is robust.
+
+## Extreme (100% failure)
+
+```{R}
+#| echo: false
+#| warning: false
+err_df |>
+  filter(n == 200, scenario == 1, p == 10, cov_type == "compound", err_type == "exponential") |>
+  ggplot(aes(x = r, y = power, color = method)) +
+  geom_hline(yintercept = 0.10, linetype = "dashed", color = "gray50") +
+  geom_line() +
+  geom_point() +
+  scale_color_manual(values = method_colors, labels = method_labels) +
+  labs(
+    title = "n = 200, p = 10 — compound covariance, exponential errors, no change points",
+    x = expression(paste("Correlation (", rho, ")")), y = "Power", color = "Method"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+Under exponential errors with $n = 200$, every replicate fails to produce a PSD $\hat{W}$ — no uncorrected curve exists. The corrected curve is the only available estimate. The Type I error is deflated rather than inflated — conservative behavior, which is preferable to anti-conservative.
 
 :::
 
---- 
+
+:::
 
 ::: {.callout-warning collapse="true" title="Parametric Bootstrap Power is suspiciously similar to Z-Test (Null) "}
 ## Parametric Bootstrap vs Z-Test (Null) 
