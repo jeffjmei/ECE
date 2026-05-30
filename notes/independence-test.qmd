@@ -20,3 +20,104 @@ A robust test plugs in $\hat\kappa_{22}$.
 {{< include kappa22-v.qmd >}}
 
 {{< include kappa22-moments.qmd >}}
+
+--- 
+
+## Numerical Results: Estimating $\kappa_{22}$ 
+
+```{R} 
+#| echo: false
+
+# Compare k22 Estimators
+ece.k22.regress <- function(x, y){
+  n <- length(x) # WARN: be careful if x is a matrix
+  sx2 <- ece.cov(x, x)
+  sy2 <- ece.cov(y, y)
+  sxy <- ece.cov(x, y)
+  (2 * lag_diff2(x, y, k=1) - lag_diff2(x, y, k=2)) / (2 * n * sx2 * sy2) - 
+    2 * sxy^2 / (sx2 * sy2) - 1
+}
+
+ece.k22.matrix <- function(x, y = NULL, rho = NULL) {
+  if (is.matrix(x)) {
+    if (ncol(x) != 2) stop("matrix input must have exactly 2 columns")
+    y <- x[, 2]
+    x <- x[, 1]
+  }
+
+  n <- length(x)
+  Sxx <- ece_terms(cbind(x, x))
+  Syy <- ece_terms(cbind(y, y))
+  Sxy <- ece_terms(cbind(x, y))
+
+  # Get Covariance (Must Center)
+  S <- cbind(Sxx, Syy, Sxy) |> scale(scale = FALSE) # center
+  V <- (1 / n^2) * (
+    t(S) %*% S +
+      t(rotate(S)) %*% S + t(S) %*% rotate(S) +
+      t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
+  )
+
+  sx2 <- mean(Sxx)
+  sy2 <- mean(Syy)
+  sxy <- if (!is.null(rho) && rho == 0) 0 else mean(Sxy)
+
+  wx2 <- ece.complexity(x, x)
+  wy2 <- ece.complexity(y, y)
+  wxy <- ece.complexity(x, y)
+
+  # Calculate Kappa
+  k22 <- n * V[3, 3] / (sx2 * sy2) -
+    3 / 2 * sxy^2 / (sx2 * sy2) -
+    2 * sxy * wxy / (sx2 * sy2) -
+    wx2 / sx2 -
+    wy2 / sy2 - 5 / 2
+  return(k22)
+}
+```
+
+```{R}
+#| cache: true
+#| echo: false
+
+# Simulation
+simulate_k22 <- function(params){
+  map(1:1000, ~{
+    X <- generate_data(params) 
+    x <- X[,1]; y <- X[,2]
+    list(
+      regress = ece.k22.regress(x, y),
+      matrix = ece.k22.matrix(x, y)
+    )
+  })
+}
+
+```
+
+```{R} 
+#| echo: false
+
+# Run Simulation
+params <- scenario(1, amp=1, r=0, err_type="normal")
+sim_k22 <- simulate_k22(params)
+sim_k22_regress <- sim_k22 |> map_dbl("regress")
+sim_k22_matrix <- sim_k22 |> map_dbl("matrix")
+
+# Plot Results
+xx <- seq(min(unlist(sim_k22)), max(unlist(sim_k22)), length.out=20)
+hist(sim_k22_regress, breaks=xx, col=rgb(1, 0, 0, 0.5))
+hist(sim_k22_matrix, breaks=xx, col=rgb(0, 1, 0, 0.5), add=TRUE)
+var(sim_k22_regress)
+var(sim_k22_matrix)
+```
+
+| Scenario | Error Type | Var(Regression) | Var(Matrix) |
+| - | - | - | - | 
+| 1 | Normal | 0.07 | 0.21 | 
+| 1 | Exponential | 0.41 | 0.60 | 
+| 1 (r=0.5) | Exponential | 1.36 | 1.99 | 
+| 2 | Normal | 0.66 | 0.50 | 
+| 2 | Exponential | 1.14 | 1.03 | 
+| 2 (amp=2) | Exponential | 19.70 | 5.61 | 
+
+
