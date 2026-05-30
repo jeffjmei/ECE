@@ -1,5 +1,5 @@
 kappa_from_params <- function(params) {
-  e  <- generate_err(modifyList(params, list(n = 1e7)))
+  e <- generate_err(modifyList(params, list(n = 1e7)))
   ex <- e[, 1] / sqrt(params$S[1, 1])
   ey <- e[, 2] / sqrt(params$S[2, 2])
   list(
@@ -24,6 +24,7 @@ mean_sin_wave <- function(n, p, amp, period = 365, ...) {
 scenario <- function(scenario_num = 1, n = 1000, p = 2, r = 0, amp = 1,
                      cov_type = "compound", err_type = "normal", seed = 1,
                      sigma = rep(1, p), ...) {
+  set.seed(seed)
   D <- diag(sigma)
   S <- D %*% make_cov(r, p, cov_type) %*% D
 
