@@ -442,50 +442,54 @@ Under exponential errors with $n = 200$, every replicate fails to produce a PSD 
 
 :::
 
-::: {.callout-warning collapse="true" title="Parametric Bootstrap Power is suspiciously similar to Z-Test (Null) "}
-## Parametric Bootstrap vs Z-Test (Null) 
-When there is non-trivial correlation, z-test (null) and `bs.parametric` are very similar.  
+::: {.callout-warning collapse="true" title="Parametric Bootstrap power is nearly identical to Z-Test (Null)"}
+## Parametric Bootstrap vs Z-Test (Null)
+When correlation is non-trivial, `bs.parametric` and `z.test.null` track each other closely. Both methods rely on $\widehat{\text{Cov}}(S)$: the parametric bootstrap uses it to characterize the sampling distribution, while Z-Test (Null) uses it to estimate $\kappa_{22}$.
 
-My guess as to why this is, is because both `z-test (null)` and `bs.parametric `use `Cov(S)`. `bs.parametric` uses it to characterize the parametric distribution to sample from. `z.test (null)` uses it to produce an estimator for `kappa22`. 
-
-```{R} 
+```{R}
 #| message: false
 #| echo: false
+#| fig-width: 8
+#| fig-height: 5
 
-# Read Data
-results <- read_csv("../data/results.csv") |> 
-  pivot_wider(names_from=metric, values_from=metric_val) 
-results <- read_csv("../data/raw/results-new-methods.csv") |> 
-  pivot_wider(names_from=metric, values_from=metric_val) 
+results_nm <- read_csv("../data/raw/results-new-methods.csv") |>
+  pivot_wider(names_from = metric, values_from = metric_val)
 
-# Figure: z.test.null - [METHOD]
-# - Hypothesis: z.test.null and bs.parametric are basically the same
-scenario_num <- 2
-sample_size <- 1000
-error_type <- "normal"
-rho <- 0.4
+null_ref <- results_nm |>
+  filter(p == 2, n == 200, method == "z.test.null") |>
+  filter(scenario == 1 | (scenario == 2 & scenario_params == "{\\L\\:[4]}")) |>
+  select(scenario, err_type, r, null_power = power)
 
-# Get Reference
-ztest_power <- results |> 
-  filter(
-    scenario == scenario_num, 
-    n == sample_size, 
-    err_type == error_type
-  ) |> 
-  filter(method == "z.test.null") |>
-  filter(r == rho) |> pull(power)
+dat_diff <- results_nm |>
+  filter(p == 2, n == 200) |>
+  filter(scenario == 1 | (scenario == 2 & scenario_params == "{\\L\\:[4]}")) |>
+  filter(!method %in% c("bs.parametric", "bs.multiplier.nosplit")) |>
+  left_join(null_ref, by = c("scenario", "err_type", "r")) |>
+  mutate(
+    power_diff = power - null_power,
+    err_type   = factor(err_type, levels = c("normal", "exponential")),
+    method     = factor(method, levels = names(method_colors))
+  )
 
-# Compare against other methods
-results |> 
-  filter(
-    scenario == scenario_num, 
-    n == sample_size, 
-    err_type == error_type
-  ) |> 
-  filter(r == rho) |> 
-  mutate(diff = power - ztest_power) |> 
-  select(method, power, diff) |> 
-  arrange(abs(diff))
+ggplot(dat_diff, aes(x = r, y = power_diff, color = method)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  geom_line() +
+  geom_point() +
+  facet_grid(
+    err_type ~ scenario,
+    labeller = labeller(
+      scenario = c("1" = "No Change Points", "2" = "Change Points (L = 4)"),
+      err_type = c("normal" = "Normal", "exponential" = "Exponential")
+    )
+  ) +
+  scale_color_manual(values = method_colors, labels = method_labels) +
+  labs(
+    x     = expression(paste("Correlation (", rho, ")")),
+    y     = "Power − Power(Z-Test Null)",
+    color = "Method"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
 ```
 :::
 
