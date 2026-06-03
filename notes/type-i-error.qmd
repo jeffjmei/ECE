@@ -1,5 +1,7 @@
 ---
 title: "Type I Error"
+execute:
+  echo: false
 ---
 
 ```{r}
@@ -8,104 +10,92 @@ title: "Type I Error"
 #| warning: false
 library(tidyverse)
 devtools::load_all()
-results <- read_csv("../data/results.csv")
+
+n_sim <- 10000
 
 method_colors <- c(
-  "z.test.gaussian" = "#E41A1C",
-  "z.test.kappa"    = "#377EB8",
-  "bs.multiplier"   = "#4DAF4A",
-  "bs.parametric"   = "#FF7F00"
+  "z.test.gaussian"      = "#E41A1C",
+  "z.test.oracle.kappa"  = "#377EB8",
+  "bs.multiplier"        = "#4DAF4A",
+  "bs.parametric"        = "#FF7F00",
+  "bs.parametric.psd"    = "#0072B2",
+  "z.test.null"          = "#984EA3",
+  "z.test.null.gaussian" = "#A65628"
 )
 ```
 
-## Z-Test: Gaussian vs. Kappa
-
-We compare `z.test.gaussian` and `z.test.kappa` at $r = 0$, $p = 2$, across sample sizes, scenarios, and error distributions.
+## $p = 2$: Z-Test Methods
 
 ```{r}
-#| echo: false
-#| warning: false
-#| results: asis
-dat <- results |>
-  filter(p == 2, r == 0, method %in% c("z.test.gaussian", "z.test.kappa"), metric == "power") |>
-  filter(scenario == 1 | (scenario == 2 & scenario_params == "{\\L\\:[4]}")) |>
-  mutate(
-    err_type = factor(err_type, levels = c("normal", "exponential")),
-    method   = factor(method, levels = names(method_colors))
-  )
+#| cache: true
+params_p2 <- scenario(2, L = 4, n = 1000, err_type = "exponential")
 
-y_range <- range(dat$metric_val)
-
-plots <- dat |>
-  group_by(err_type) |>
-  group_map(\(d, g) {
-    ggplot(d, aes(x = n, y = metric_val, color = method)) +
-      geom_hline(yintercept = 0.10, linetype = "dashed", color = "gray50") +
-      geom_line() +
-      geom_point() +
-      facet_wrap(~scenario, labeller = labeller(scenario = c(
-        "1" = "No Change Points",
-        "2" = "Change Points (L = 4)"
-      ))) +
-      scale_color_manual(values = method_colors) +
-      scale_y_continuous(limits = y_range) +
-      labs(x = "n", y = "Type I Error", color = "Method") +
-      theme_minimal() +
-      theme(legend.position = "bottom")
-  }) |>
-  setNames(levels(dat$err_type))
-
-cat("::: {.panel-tabset}\n\n")
-iwalk(plots, \(plot, err_type) {
-  cat(paste0("## ", err_type, "\n\n"))
-  print(plot)
-  cat("\n\n")
-})
-cat(":::\n")
+pvals_z_p2 <- list(
+  "Z-Test (Gaussian)"       = pcurve(params_p2, "z.test.gaussian",      n_sim = n_sim),
+  "Z-Test (Oracle κ₂₂)"    = pcurve(params_p2, "z.test.oracle.kappa",  n_sim = n_sim),
+  "Z-Test (Null)"           = pcurve(params_p2, "z.test.null",          n_sim = n_sim),
+  "Z-Test (Null, Gaussian)" = pcurve(params_p2, "z.test.null.gaussian", n_sim = n_sim)
+)
 ```
 
-## Z-Test vs. Bootstrap Methods
+```{r}
+#| echo: false
+plot_pcurve(pvals_z_p2, title = "p = 2 — Scenario 2 (L = 4), exponential errors, σ = (1, 1)")
+```
 
-We compare all four methods at $r = 0$, $p = 2$, across sample sizes, scenarios, and error distributions.
+## $p = 2$: Bootstrap Methods
+
+```{r}
+#| cache: true
+#| dependson: "params_p2"
+pvals_bs_p2 <- list(
+  "Bootstrap (Multiplier)"      = pcurve(params_p2, "bs.multiplier",     n_sim = n_sim),
+  "Bootstrap (Parametric, PSD)" = pcurve(params_p2, "bs.parametric.psd", n_sim = n_sim)
+)
+```
 
 ```{r}
 #| echo: false
-#| warning: false
-#| results: asis
-dat2 <- results |>
-  filter(p == 2, r == 0, method %in% c("z.test.gaussian", "z.test.kappa", "bs.multiplier", "bs.parametric"), metric == "power") |>
-  filter(scenario == 1 | (scenario == 2 & scenario_params == "{\\L\\:[4]}")) |>
+plot_pcurve(pvals_bs_p2, title = "p = 2 — Scenario 2 (L = 4), exponential errors, σ = (1, 1)")
+```
+
+## $p > 2$: Bootstrap Methods
+
+```{r}
+#| cache: true
+params_p3  <- scenario(2, L = 4, n = 1000, err_type = "exponential", p = 3)
+params_p5  <- scenario(2, L = 4, n = 1000, err_type = "exponential", p = 5)
+params_p10 <- scenario(2, L = 4, n = 1000, err_type = "exponential", p = 10)
+
+pvals_bs_pg2 <- bind_rows(
+  map_dfr(c("bs.multiplier", "bs.parametric.psd"), \(m)
+    tibble(p_value = pcurve(params_p3,  m, n_sim = n_sim), p = 3,  method = m)),
+  map_dfr(c("bs.multiplier", "bs.parametric.psd"), \(m)
+    tibble(p_value = pcurve(params_p5,  m, n_sim = n_sim), p = 5,  method = m)),
+  map_dfr(c("bs.multiplier", "bs.parametric.psd"), \(m)
+    tibble(p_value = pcurve(params_p10, m, n_sim = n_sim), p = 10, method = m))
+)
+```
+
+```{r}
+#| echo: false
+method_labels_bs <- c(
+  "bs.multiplier"     = "Bootstrap (Multiplier)",
+  "bs.parametric.psd" = "Bootstrap (Parametric, PSD)"
+)
+
+pvals_bs_pg2 |>
   mutate(
-    err_type = factor(err_type, levels = c("normal", "exponential")),
-    method   = factor(method, levels = names(method_colors))
-  )
-
-y_range2 <- range(dat2$metric_val)
-
-plots2 <- dat2 |>
-  group_by(err_type) |>
-  group_map(\(d, g) {
-    ggplot(d, aes(x = n, y = metric_val, color = method)) +
-      geom_hline(yintercept = 0.10, linetype = "dashed", color = "gray50") +
-      geom_line() +
-      geom_point() +
-      facet_wrap(~scenario, labeller = labeller(scenario = c(
-        "1" = "No Change Points",
-        "2" = "Change Points (L = 4)"
-      ))) +
-      scale_color_manual(values = method_colors) +
-      scale_y_continuous(limits = y_range2) +
-      labs(x = "n", y = "Type I Error", color = "Method") +
-      theme_minimal() +
-      theme(legend.position = "bottom")
-  }) |>
-  setNames(levels(dat2$err_type))
-
-cat("::: {.panel-tabset}\n\n")
-iwalk(plots2, \(plot, err_type) {
-  cat(paste0("## ", err_type, "\n\n"))
-  print(plot)
-  cat("\n\n")
-})
-cat(":::\n")
+    method = method_labels_bs[method],
+    p      = factor(p, labels = c("p = 3", "p = 5", "p = 10"))
+  ) |>
+  ggplot(aes(x = p_value)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 breaks = seq(0, 1, by = 0.05),
+                 fill = "steelblue", color = "white", alpha = 0.8) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
+  facet_grid(p ~ method) +
+  labs(x = "p-value", y = "Density",
+       title = "p > 2 — Scenario 2 (L = 4), exponential errors") +
+  theme_minimal()
 ```
