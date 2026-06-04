@@ -237,13 +237,30 @@ ggplot(sim_df_k40_reg, aes(x = k40, fill = group, color = group)) +
 Define the quartic ECE terms
 $$S_{xx,i}^{(4)} = \frac{(X_i - X_{i+1})^4 + (X_{i+1} - X_{i+2})^4 - (X_i - X_{i+2})^4}{2}.$$
 
-By the same change-point cancellation as `ece_terms` — minimum segment length 2 forces $\Delta\theta_i\Delta\theta_{i+1} = 0$, so both the $(\Delta\theta)^4$ terms and the $12\sigma_x^2(\Delta\theta)^2$ cross-terms vanish — $S_{xx,i}^{(4)}$ has **constant mean at every index**:
-$$E[S_{xx,i}^{(4)}] = (\kappa_{40} + 3)\sigma_x^4.$$
+Write $X_i - X_{i+k} = h_i^{(k)} + e_i^{(k)}$ where $h_i^{(k)} = \theta_{x,i} - \theta_{x,i+k}$ and $e_i^{(k)} = \varepsilon_{x,i} - \varepsilon_{x,i+k}$. Expanding:
+$$(h_i^{(k)} + e_i^{(k)})^4 = (h_i^{(k)})^4 + 4(h_i^{(k)})^3 e_i^{(k)} + 6(h_i^{(k)})^2(e_i^{(k)})^2 + 4h_i^{(k)}(e_i^{(k)})^3 + (e_i^{(k)})^4.$$
+Taking expectations, the odd cross-terms $4(h_i^{(k)})^3 e_i^{(k)}$ and $4h_i^{(k)}(e_i^{(k)})^3$ vanish: $E[e_i^{(k)}] = 0$ trivially, and by iid (even for asymmetric distributions),
+$$E\bigl[(e_i^{(k)})^3\bigr] = E[\varepsilon_x^3] - E[\varepsilon_x^3] = 0.$$
+The remaining three groups each cancel:
 
-The residual $+3$ arises because $S_{xx,i} = -(X_i - X_{i+1})(X_{i+1} - X_{i+2})$ shares $\varepsilon_{x,i+1}$ across its two factors, inflating the squared expectation. Since $S_{xx,i}$ and $S_{xx,i+3}$ use non-overlapping observations they are independent, so $E[S_{xx,i} \cdot S_{xx,i+3}] = \sigma_x^4$ at every index. Subtracting three times this lag-3 product gives constant mean $\kappa_{40}\sigma_x^4$:
+**Pure signal:**
+$$(h_i^{(1)})^4 + (h_{i+1}^{(1)})^4 - (h_i^{(2)})^4 = 0$$
+by the change-point argument (min segment length 2 forces $h_i^{(1)} = h_i^{(2)}$ and $h_{i+1}^{(1)} = 0$, or vice versa).
+
+**Signal–noise cross term:** $E[6h^2 e^2] = 12\sigma_x^2(h_i^{(k)})^2$, so the combination gives
+$$(h_i^{(1)})^2 + (h_{i+1}^{(1)})^2 - (h_i^{(2)})^2 = 0$$
+by the quadratic ECE cancellation.
+
+**Pure noise:** For any $k \geq 1$, $E[(e_i^{(k)})^4] = (2\kappa_{40}+6)\sigma_x^4$ by iid, so the combination gives
+$$\tfrac{1}{2}\bigl[(2\kappa_{40}+6) + (2\kappa_{40}+6) - (2\kappa_{40}+6)\bigr]\sigma_x^4 = (\kappa_{40}+3)\sigma_x^4.$$
+
+Hence $S_{xx,i}^{(4)}$ has **constant mean at every index**:
+$$E\bigl[S_{xx,i}^{(4)}\bigr] = (\kappa_{40}+3)\sigma_x^4.$$
+
+The residual $+3$ arises because $S_{xx,i}$ shares $\varepsilon_{x,i+1}$ across its two factors. Since $S_{xx,i}$ and $S_{xx,i+3}$ use non-overlapping observations, $E[S_{xx,i}\cdot S_{xx,i+3}] = \sigma_x^4$ at every index. Subtracting three times this lag-3 product gives constant mean $\kappa_{40}\sigma_x^4$:
 $$\hat\kappa_{40}^{\mathrm{MoM}} = \frac{\frac{1}{n}\sum_i \bigl[S_{xx,i}^{(4)} - 3\,S_{xx,i}\,S_{xx,i+3}\bigr]}{\bar S_{xx}^2}.$$
 
-With circular indexing $\sum_i S_{xx,i}^{(4)} = (2T_1^{(2)}(X,X) - T_2^{(2)}(X,X))/2$, so this is algebraically identical to the regression formula above when $\frac{1}{n}\sum S_{xx,i}S_{xx,i+3}$ is replaced by $\bar S_{xx}^2$.
+With circular indexing $\sum_i S_{xx,i}^{(4)} = (2T_1^{(2)}(X,X) - T_2^{(2)}(X,X))/2$, so this is algebraically identical to the regression formula above when $\tfrac{1}{n}\sum S_{xx,i}S_{xx,i+3}$ is replaced by $\bar S_{xx}^2$.
 :::
 
 ::: {.callout-tip collapse="true"}
