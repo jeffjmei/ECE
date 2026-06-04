@@ -135,7 +135,7 @@ ece.test(X, type="bs.multiplier")
 ```
 
 ```{R}
-ece.cor.se(X)
+ece.cor.se(X, kappa = "gaussian")
 #ece.ci(X) # TODO: this doesn't exist
 ```
 
