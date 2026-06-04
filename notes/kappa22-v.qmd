@@ -137,6 +137,34 @@ ggplot(sim_df, aes(x = k22, fill = group, color = group)) +
 
 :::
 
+### Estimating $\kappa_{22}$ via $V_{12}$
+
+An alternative estimator uses the cross-covariance $V_{12} = \widehat{\mathrm{Cov}}(\bar S^{xx}, \bar S^{yy})$ in place of $V_{xy}$. Since $S_{xx} = (2T_1(X,X) - T_2(X,X))/(2n)$ and $S_{yy} = (2T_1(Y,Y) - T_2(Y,Y))/(2n)$,
+
+$$
+\mathrm{Cov}(S_{xx}, S_{yy}) = \frac{1}{4n^2}\,\mathrm{Cov}\!\bigl(2T_1(X,X) - T_2(X,X),\; 2T_1(Y,Y) - T_2(Y,Y)\bigr).
+$$
+
+Expanding by bilinearity gives a linear combination of the four cross-diagonal $\Sigma_Z$ entries:
+
+$$
+4\,[\Sigma_Z]_{T_1(X,X),T_1(Y,Y)} - 2\,[\Sigma_Z]_{T_1(X,X),T_2(Y,Y)} - 2\,[\Sigma_Z]_{T_2(X,X),T_1(Y,Y)} + [\Sigma_Z]_{T_2(X,X),T_2(Y,Y)}.
+$$
+
+All four entries share the coefficient $4n\sigma_x^2\sigma_y^2$ on $(\kappa_{22}-1)$; the $\omega_{xy}$ terms cancel to $16n\sigma_{xy}\omega_{xy}$ and the $\sigma_{xy}^2$ terms collect to $8n\sigma_{xy}^2$. Dividing through by $4n^2$ gives the closed form
+
+$$
+\mathrm{Cov}(S_{xx}, S_{yy}) = \frac{1}{n}\!\left[\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 2\sigma_{xy}^2 + 4\sigma_{xy}\omega_{xy}\right].
+$$
+
+Solving for $\kappa_{22}$,
+
+$$
+\boxed{\hat\kappa_{22} = \frac{V_{12} - 8n\hat\sigma_{xy}^2 - 16n\hat\sigma_{xy}\hat\omega_{xy}}{4n\hat\sigma_x^2\hat\sigma_y^2} + 1,}
+$$
+
+which under $H_0: \rho = 0$ reduces to $\hat\kappa_{22} = V_{12}/(4n\hat\sigma_x^2\hat\sigma_y^2) + 1$, free of all $\omega$ corrections.
+
 ### Estimating $\kappa_{40}$ via $V_{xx}$
 
 Applying the same construction to $(X, X)$ in place of $(X, Y)$: let $s_i^{(k)} = (X_i - X_{i+k})^2$ and $S_i^{xx} = (s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)})/2$, so that $\bar S^{xx} = (2T_1(X,X) - T_2(X,X))/(2n) = \hat\sigma_x^2$. Define

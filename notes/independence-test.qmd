@@ -266,34 +266,6 @@ so the two estimators target the same $\kappa_{22}$ with a fixed, estimable offs
 
 Under $H_0: \rho = 0$, $\sigma_{xy} = 0$ and the $\omega_{xy}$ corrections vanish from $V_{12}$, while $V_{33}$ retains $\omega_x^2/\sigma_x^2$ and $\omega_y^2/\sigma_y^2$ corrections. The $V_{12}$-based estimator is therefore cleaner under the independence null.
 
-### Derivation from $\Sigma_Z$
-
-Since $S_{xx} = (2T_1(X,X) - T_2(X,X))/(2n)$ and $S_{yy} = (2T_1(Y,Y) - T_2(Y,Y))/(2n)$,
-
-$$
-\mathrm{Cov}(S_{xx}, S_{yy}) = \frac{1}{4n^2}\,\mathrm{Cov}\!\bigl(2T_1(X,X) - T_2(X,X),\; 2T_1(Y,Y) - T_2(Y,Y)\bigr).
-$$
-
-Expanding by bilinearity gives a linear combination of the four cross-diagonal $\Sigma_Z$ entries:
-
-$$
-4\,[\Sigma_Z]_{T_1(X,X),T_1(Y,Y)} - 2\,[\Sigma_Z]_{T_1(X,X),T_2(Y,Y)} - 2\,[\Sigma_Z]_{T_2(X,X),T_1(Y,Y)} + [\Sigma_Z]_{T_2(X,X),T_2(Y,Y)}.
-$$
-
-All four entries share the coefficient $4n\sigma_x^2\sigma_y^2$ on $(\kappa_{22}-1)$; the $\omega_{xy}$ terms cancel to $16n\sigma_{xy}\omega_{xy}$ and the $\sigma_{xy}^2$ terms collect to $8n\sigma_{xy}^2$. Dividing through by $4n^2$ gives the closed form
-
-$$
-\mathrm{Cov}(S_{xx}, S_{yy}) = \frac{1}{n}\!\left[\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 2\sigma_{xy}^2 + 4\sigma_{xy}\omega_{xy}\right].
-$$
-
-Solving for $\kappa_{22}$,
-
-$$
-\hat\kappa_{22} = \frac{V_{12} - 8n\sigma_{xy}^2 - 16n\sigma_{xy}\omega_{xy}}{4n\sigma_x^2\sigma_y^2} + 1,
-$$
-
-which under $H_0: \rho = 0$ reduces to $\hat\kappa_{22} = V_{12}/(4n\sigma_x^2\sigma_y^2) + 1$, free of all $\omega$ corrections.
-
 ### Relationship between $\mathrm{Var}(S_{xy})$ and $\mathrm{Cov}(S_{xx}, S_{yy})$
 
 The two entries of $V$ used to estimate $\kappa_{22}$ expand as
