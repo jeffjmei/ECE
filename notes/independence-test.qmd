@@ -133,6 +133,204 @@ ggplot(sim_df_mom, aes(x = k22, fill = group, color = group)) +
 
 :::
 
+### Estimating $\kappa_{40}$
+
+Define $T_k^{(2)}(X,X) = \sum_i (X_i - X_{i+k})^4$. Expanding the expectation and applying the change-point cancellation $2T_1^{(m)}(\theta_x) = T_2^{(m)}(\theta_x)$ at both the second and fourth powers gives
+$$2E[T_1^{(2)}(X,X)] - E[T_2^{(2)}(X,X)] = 2n(\kappa_{40}+3)\sigma_x^4,$$
+so
+$$\hat\kappa_{40} = \frac{2T_1^{(2)}(X,X) - T_2^{(2)}(X,X)}{2n\hat\sigma_x^4} - 3.$$
+
+::: {.callout-tip collapse="true"}
+## Simulation: Verifying $\hat\kappa_{40}$
+
+```{r}
+#| echo: false
+#| cache: true
+#| message: false
+k40_regress <- function(x) {
+  n   <- length(x)
+  sx2 <- ece.cov(x, x)
+  (2 * lag_diff2(x, x, k = 1) - lag_diff2(x, x, k = 2)) / (2 * n * sx2^2) - 3
+}
+
+params_k40_gauss <- scenario(2, L = 4, err_type = "normal")
+params_k40_exp   <- scenario(2, L = 4, err_type = "exponential")
+
+k40_gauss_reg <- map_dbl(1:1000, ~ {
+  X <- generate_data(params_k40_gauss)
+  k40_regress(X[, 1])
+})
+
+k40_exp_reg <- map_dbl(1:1000, ~ {
+  X <- generate_data(params_k40_exp)
+  k40_regress(X[, 1])
+})
+
+lambda_vals_k40 <- c(0, 0.5, 1/sqrt(2), 1)
+k40_true_reg    <- 12 * lambda_vals_k40^4 + 3
+
+sim_results_k40_reg <- map(lambda_vals_k40, \(lam) {
+  map_dbl(1:1000, \(.) {
+    z  <- rnorm(params_k40_gauss$n)
+    ex <- lam * (z^2 - 1) / sqrt(2) + sqrt(1 - lam^2) * rnorm(params_k40_gauss$n)
+    k40_regress(params_k40_gauss$h[, 1] + ex)
+  })
+})
+```
+
+::: {.panel-tabset}
+
+## Gaussian ($\kappa_{40} = 3$)
+
+Scenario 2, $L = 4$, Gaussian errors. Under Gaussianity $\kappa_{40} = 3$.
+
+```{r}
+#| echo: false
+make_sim_hist(k40_gauss_reg, true = params_k40_gauss$kappa$k40, expression(hat(kappa)[40]))
+```
+
+## Exponential ($\kappa_{40} = 9$)
+
+Scenario 2, $L = 4$, exponential errors ($\kappa_{40} = 9$).
+
+```{r}
+#| echo: false
+make_sim_hist(k40_exp_reg, true = params_k40_exp$kappa$k40, expression(hat(kappa)[40]))
+```
+
+## $\lambda$-Mixing
+
+Using $\varepsilon_x = \lambda(z^2-1)/\sqrt{2} + \sqrt{1-\lambda^2}\,w$ with $z, w \stackrel{iid}{\sim} N(0,1)$, which gives $\kappa_{40} = 12\lambda^4 + 3$.
+
+```{r}
+#| echo: false
+sim_df_k40_reg <- tibble::tibble(
+  k40   = unlist(sim_results_k40_reg),
+  group = factor(rep(round(k40_true_reg, 1), each = 1000),
+                 labels = paste0("κ₄₀ = ", round(k40_true_reg, 1)))
+)
+ref_df_k40_reg <- tibble::tibble(
+  group = factor(round(k40_true_reg, 1),
+                 labels = paste0("κ₄₀ = ", round(k40_true_reg, 1))),
+  true  = k40_true_reg
+)
+mean_df_k40_reg <- sim_df_k40_reg |>
+  dplyr::summarise(mean_k40 = mean(k40), .by = group)
+
+ggplot(sim_df_k40_reg, aes(x = k40, fill = group, color = group)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 50, position = "identity", alpha = 0.4, linewidth = 0) +
+  geom_vline(data = ref_df_k40_reg, aes(xintercept = true, color = group), linewidth = 0.9) +
+  geom_vline(data = mean_df_k40_reg, aes(xintercept = mean_k40, color = group), linetype = "dashed") +
+  scale_fill_brewer(palette = "Set1", name = NULL) +
+  scale_color_brewer(palette = "Set1", name = NULL) +
+  labs(x = expression(hat(kappa)[40]), y = "density") +
+  theme_minimal()
+```
+
+:::
+
+:::
+
+::: {.callout-note collapse="true"}
+## Alternative: Term-by-Term MoM via Quartic ECE Terms
+
+Define the quartic ECE terms
+$$S_{xx,i}^{(4)} = \frac{(X_i - X_{i+1})^4 + (X_{i+1} - X_{i+2})^4 - (X_i - X_{i+2})^4}{2}.$$
+
+By the same change-point cancellation as `ece_terms` — minimum segment length 2 forces $\Delta\theta_i\Delta\theta_{i+1} = 0$, so both the $(\Delta\theta)^4$ terms and the $12\sigma_x^2(\Delta\theta)^2$ cross-terms vanish — $S_{xx,i}^{(4)}$ has **constant mean at every index**:
+$$E[S_{xx,i}^{(4)}] = (\kappa_{40} + 3)\sigma_x^4.$$
+
+The residual $+3$ arises because $S_{xx,i} = -(X_i - X_{i+1})(X_{i+1} - X_{i+2})$ shares $\varepsilon_{x,i+1}$ across its two factors, inflating the squared expectation. Since $S_{xx,i}$ and $S_{xx,i+3}$ use non-overlapping observations they are independent, so $E[S_{xx,i} \cdot S_{xx,i+3}] = \sigma_x^4$ at every index. Subtracting three times this lag-3 product gives constant mean $\kappa_{40}\sigma_x^4$:
+$$\hat\kappa_{40}^{\mathrm{MoM}} = \frac{\frac{1}{n}\sum_i \bigl[S_{xx,i}^{(4)} - 3\,S_{xx,i}\,S_{xx,i+3}\bigr]}{\bar S_{xx}^2}.$$
+
+With circular indexing $\sum_i S_{xx,i}^{(4)} = (2T_1^{(2)}(X,X) - T_2^{(2)}(X,X))/2$, so this is algebraically identical to the regression formula above when $\frac{1}{n}\sum S_{xx,i}S_{xx,i+3}$ is replaced by $\bar S_{xx}^2$.
+:::
+
+::: {.callout-tip collapse="true"}
+## Simulation: Verifying $\hat\kappa_{40}^{\mathrm{MoM}}$
+
+```{r}
+#| echo: false
+#| cache: true
+#| message: false
+quartic_terms <- function(x) {
+  d1 <- (x - rotate(x, 1))^4
+  d2 <- (x - rotate(x, 2))^4
+  (d1 + rotate(d1, 1) - d2) / 2
+}
+
+k40_mom <- function(x) {
+  Sxx  <- ece_terms(cbind(x, x))
+  Sxx4 <- quartic_terms(x)
+  mean(Sxx4 - 3 * Sxx * rotate(Sxx, 3)) / mean(Sxx)^2
+}
+
+k40_gauss_mom <- map_dbl(1:1000, ~ {
+  X <- generate_data(params_k40_gauss)
+  k40_mom(X[, 1])
+})
+
+k40_exp_mom <- map_dbl(1:1000, ~ {
+  X <- generate_data(params_k40_exp)
+  k40_mom(X[, 1])
+})
+
+sim_results_k40_mom <- map(lambda_vals_k40, \(lam) {
+  map_dbl(1:1000, \(.) {
+    z  <- rnorm(params_k40_gauss$n)
+    ex <- lam * (z^2 - 1) / sqrt(2) + sqrt(1 - lam^2) * rnorm(params_k40_gauss$n)
+    k40_mom(params_k40_gauss$h[, 1] + ex)
+  })
+})
+```
+
+::: {.panel-tabset}
+
+## Gaussian ($\kappa_{40} = 3$)
+
+```{r}
+#| echo: false
+make_sim_hist(k40_gauss_mom, true = params_k40_gauss$kappa$k40, expression(hat(kappa)[40]^MoM))
+```
+
+## Exponential ($\kappa_{40} = 9$)
+
+```{r}
+#| echo: false
+make_sim_hist(k40_exp_mom, true = params_k40_exp$kappa$k40, expression(hat(kappa)[40]^MoM))
+```
+
+## $\lambda$-Mixing
+
+```{r}
+#| echo: false
+sim_df_k40_mom <- tibble::tibble(
+  k40   = unlist(sim_results_k40_mom),
+  group = factor(rep(round(k40_true_reg, 1), each = 1000),
+                 labels = paste0("κ₄₀ = ", round(k40_true_reg, 1)))
+)
+ref_df_k40_mom <- tibble::tibble(
+  group = factor(round(k40_true_reg, 1),
+                 labels = paste0("κ₄₀ = ", round(k40_true_reg, 1))),
+  true  = k40_true_reg
+)
+mean_df_k40_mom <- sim_df_k40_mom |>
+  dplyr::summarise(mean_k40 = mean(k40), .by = group)
+
+ggplot(sim_df_k40_mom, aes(x = k40, fill = group, color = group)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 50, position = "identity", alpha = 0.4, linewidth = 0) +
+  geom_vline(data = ref_df_k40_mom, aes(xintercept = true, color = group), linewidth = 0.9) +
+  geom_vline(data = mean_df_k40_mom, aes(xintercept = mean_k40, color = group), linetype = "dashed") +
+  scale_fill_brewer(palette = "Set1", name = NULL) +
+  scale_color_brewer(palette = "Set1", name = NULL) +
+  labs(x = expression(hat(kappa)[40]^MoM), y = "density") +
+  theme_minimal()
+```
+
+:::
+
+:::
+
 ---
 
 ## Numerical Results: Estimating $\kappa_{22}$
