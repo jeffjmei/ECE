@@ -245,54 +245,6 @@ make_overlap_hist(
 
 ---
 
-## Estimating $\kappa_{22}$ via $V$
-
-Since $S_{xx}$, $S_{yy}$, $S_{xy}$ estimate $\sigma_x^2 = E[\varepsilon_x^2]$, $\sigma_y^2 = E[\varepsilon_y^2]$, $\sigma_{xy} = E[\varepsilon_x\varepsilon_y]$, the CLT for sample averages gives
-
-$$
-n\,\mathrm{Cov}(S_{xx}, S_{yy}) \;\to\; \mathrm{Cov}(\varepsilon_x^2,\, \varepsilon_y^2) = \sigma_x^2\sigma_y^2(\kappa_{22} - 1),
-$$
-$$
-n\,\mathrm{Var}(S_{xy}) \;\to\; \mathrm{Var}(\varepsilon_x\varepsilon_y) = \sigma_x^2\sigma_y^2\kappa_{22} - \sigma_{xy}^2.
-$$
-
-Both $V_{12}$ and $V_{33}$ therefore contain $\kappa_{22}$. Their population counterparts differ by a known quantity:
-
-$$
-\mathrm{Var}(\varepsilon_x\varepsilon_y) - \mathrm{Cov}(\varepsilon_x^2,\varepsilon_y^2) = \sigma_x^2\sigma_y^2(1 - \rho^2),
-$$
-
-so the two estimators target the same $\kappa_{22}$ with a fixed, estimable offset — the natural setting for a GLS combination with weights determined by their asymptotic variances.
-
-Under $H_0: \rho = 0$, $\sigma_{xy} = 0$ and the $\omega_{xy}$ corrections vanish from $V_{12}$, while $V_{33}$ retains $\omega_x^2/\sigma_x^2$ and $\omega_y^2/\sigma_y^2$ corrections. The $V_{12}$-based estimator is therefore cleaner under the independence null.
-
-### Relationship between $\mathrm{Var}(S_{xy})$ and $\mathrm{Cov}(S_{xx}, S_{yy})$
-
-The two entries of $V$ used to estimate $\kappa_{22}$ expand as
-
-$$
-n\,\mathrm{Var}(S_{xy}) = \sigma_x^2\sigma_y^2\kappa_{22} + \tfrac{5}{2}\sigma_x^2\sigma_y^2 + \tfrac{3}{2}\sigma_{xy}^2 + \sigma_y^2\omega_x^2 + \sigma_x^2\omega_y^2 + 2\sigma_{xy}\omega_{xy},
-$$
-$$
-n\,\mathrm{Cov}(S_{xx}, S_{yy}) = \sigma_x^2\sigma_y^2(\kappa_{22}-1) + 2\sigma_{xy}^2 + 4\sigma_{xy}\omega_{xy}.
-$$
-
-Their difference is free of $\kappa_{22}$ at any $\rho$:
-
-$$
-n\bigl[\mathrm{Var}(S_{xy}) - \mathrm{Cov}(S_{xx}, S_{yy})\bigr] = \frac{7-\rho^2}{2}\,\sigma_x^2\sigma_y^2 + \sigma_y^2\omega_x^2 + \sigma_x^2\omega_y^2 - 2\sigma_{xy}\omega_{xy}.
-$$
-
-Dividing by $\sigma_x^2\sigma_y^2$, this gives a natural decomposition of $n\,\mathrm{Var}(S_{xy})/(\sigma_x^2\sigma_y^2)$:
-
-$$
-\underbrace{\frac{n\,\mathrm{Cov}(S_{xx},S_{yy})}{\sigma_x^2\sigma_y^2}}_{\kappa_{22} - 1 + 2\rho^2 + 4\rho\,\omega_{xy}/(\sigma_x\sigma_y)} + \underbrace{\frac{n\bigl[\mathrm{Var}(S_{xy}) - \mathrm{Cov}(S_{xx},S_{yy})\bigr]}{\sigma_x^2\sigma_y^2}}_{\frac{7-\rho^2}{2} + \omega_x^2/\sigma_x^2 + \omega_y^2/\sigma_y^2 - 2\rho\,\omega_{xy}/(\sigma_x\sigma_y)}.
-$$
-
-$\kappa_{22}$ is isolated in the first term at all $\rho$. The second term is the Gaussian-plus-change-point contribution, with its constant shifting from $7/2$ at $\rho = 0$ to $(7-\rho^2)/2$ in general. Under Gaussian errors ($\kappa_{22} = 1 + 2\rho^2$), $\mathrm{Cov}(S_{xx}, S_{yy})$ carries only the $\rho$-induced correlation and the entire excess over Gaussian is captured by its deviation from $2\rho^2\sigma_x^2\sigma_y^2/n$.
-
----
-
 ## Kappa Table
 ```{R} 
 #| echo: false
