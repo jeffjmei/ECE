@@ -120,30 +120,30 @@ ece.kappa <- function(x, y = NULL, rho = NULL) {
       t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
   )
 
-  sx <- sqrt(mean(Sxx))
-  sy <- sqrt(mean(Syy))
+  sx2 <- mean(Sxx)
+  sy2 <- mean(Syy)
   sxy <- if (!is.null(rho) && rho == 0) 0 else mean(Sxy)
 
-  wx <- sqrt(ece.complexity(x, x))
-  wy <- sqrt(ece.complexity(y, y))
+  wx2 <- ece.complexity(x, x)
+  wy2 <- ece.complexity(y, y)
   wxy <- ece.complexity(x, y)
 
   # Calculate Kappa
-  k40 <- n * V[1, 1] / sx^4 - 4 * wx^2 / sx^2 - 4
-  k04 <- n * V[2, 2] / sy^4 - 4 * wy^2 / sy^2 - 4
-  k22 <- n * V[3, 3] / (sx^2 * sy^2) -
-    3 / 2 * sxy^2 / (sx^2 * sy^2) -
-    2 * sxy * wxy / (sx^2 * sy^2) -
-    wx^2 / sx^2 -
-    wy^2 / sy^2 - 5 / 2
-  k31 <- n * V[1, 3] / (sx^3 * sy) -
-    4 * sxy / (sx * sy) -
-    2 * sxy * wx^2 / (sx^3 * sy) -
-    2 * wxy / (sx * sy)
-  k13 <- n * V[2, 3] / (sy^3 * sx) -
-    4 * sxy / (sx * sy) -
-    2 * sxy * wy^2 / (sy^3 * sx) -
-    2 * wxy / (sx * sy)
+  k40 <- n * V[1, 1] / sx2^2 - 4 * wx2 / sx2 - 4
+  k04 <- n * V[2, 2] / sy2^2 - 4 * wy2 / sy2 - 4
+  k22 <- n * V[3, 3] / (sx2 * sy2) -
+    3 / 2 * sxy^2 / (sx2 * sy2) -
+    2 * sxy * wxy / (sx2 * sy2) -
+    wx2 / sx2 -
+    wy2 / sy2 - 5 / 2
+  k31 <- n * V[1, 3] / (sx2^(3 / 2) * sqrt(sy2)) -
+    4 * sxy / (sqrt(sx2) * sqrt(sy2)) -
+    2 * sxy * wx2 / (sx2^(3 / 2) * sqrt(sy2)) -
+    2 * wxy / (sqrt(sx2) * sqrt(sy2))
+  k13 <- n * V[2, 3] / (sy2^(3 / 2) * sqrt(sx2)) -
+    4 * sxy / (sqrt(sx2) * sqrt(sy2)) -
+    2 * sxy * wy2 / (sy2^(3 / 2) * sqrt(sx2)) -
+    2 * wxy / (sqrt(sx2) * sqrt(sy2))
 
   list(
     k40 = k40,
