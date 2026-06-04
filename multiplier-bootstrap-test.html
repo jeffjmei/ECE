@@ -384,7 +384,7 @@ window.Quarto = {
 <h2 data-number="6.2" class="anchored" data-anchor-id="multiplier-bootstrap"><span class="header-section-number">6.2</span> Multiplier Bootstrap</h2>
 <p>The Multiplier Bootstrap requires each summand to be mean-zero. The terms <span class="math inline">\(s_i^{(k)}\)</span> do not satisfy this directly.</p>
 <p><strong>Making Terms Mean Zero.</strong></p>
-<p>Under circular indexing, shifting all indices by 1 leaves <span class="math inline">\(T_1\)</span> unchanged: <span class="math display">\[T_1(X,Y) = \sum_{i=1}^n s_i^{(1)} = \sum_{i=1}^n s_{i+1}^{(1)}.\]</span> Therefore <span class="math inline">\(2T_1(X,Y) = \sum_{i=1}^n \left(s_i^{(1)} + s_{i+1}^{(1)}\right)\)</span>, and the ECE numerator becomes <span class="math display">\[2T_1(X,Y) - T_2(X,Y) = \sum_{i=1}^n \underbrace{\left(s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}\right)}_{S_i}.\]</span></p>
+<p>Under circular indexing, shifting all indices by 1 leaves <span class="math inline">\(T_1\)</span> unchanged: <span class="math display">\[T_1(X,Y) = \sum_{i=1}^n s_i^{(1)} = \sum_{i=1}^n s_{i+1}^{(1)}.\]</span> Therefore <span class="math inline">\(2T_1(X,Y) = \sum_{i=1}^n \left(s_i^{(1)} + s_{i+1}^{(1)}\right)\)</span>, and the ECE estimator becomes <span class="math display">\[\hat\sigma_{xy} = \frac{2T_1(X,Y) - T_2(X,Y)}{2n} = \frac{1}{n}\sum_{i=1}^n \underbrace{\frac{s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}}{2}}_{S_i} = \bar{S}.\]</span></p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
@@ -397,7 +397,7 @@ Proof: <span class="math inline">\(S_i\)</span> is mean-zero under <span class="
 </div>
 <div id="callout-1" class="callout-1-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
-<p>Define <span class="math inline">\(h_i^{(k)} = (\theta_{x,i} - \theta_{x,i+k})(\theta_{y,i} - \theta_{y,i+k})\)</span> and <span class="math inline">\(e_i^{(k)} = (\varepsilon_{x,i} - \varepsilon_{x,i+k})(\varepsilon_{y,i} - \varepsilon_{y,i+k})\)</span>. Since cross terms have mean zero, <span class="math inline">\(\mathbb{E}[s_i^{(k)}] = h_i^{(k)} + 2\sigma_{xy}\)</span>. Therefore <span class="math display">\[\mathbb{E}[S_i] = h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)} + 2\sigma_{xy}.\]</span> Under <span class="math inline">\(H_0\)</span> (<span class="math inline">\(\sigma_{xy} = 0\)</span>), it remains to show <span class="math inline">\(h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)} = 0\)</span>. We consider two cases.</p>
+<p>Define <span class="math inline">\(h_i^{(k)} = (\theta_{x,i} - \theta_{x,i+k})(\theta_{y,i} - \theta_{y,i+k})\)</span> and <span class="math inline">\(e_i^{(k)} = (\varepsilon_{x,i} - \varepsilon_{x,i+k})(\varepsilon_{y,i} - \varepsilon_{y,i+k})\)</span>. Since cross terms have mean zero, <span class="math inline">\(\mathbb{E}[s_i^{(k)}] = h_i^{(k)} + 2\sigma_{xy}\)</span>. Therefore <span class="math display">\[\mathbb{E}[S_i] = \tfrac{1}{2}\bigl(h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)}\bigr) + \sigma_{xy}.\]</span> Under <span class="math inline">\(H_0\)</span> (<span class="math inline">\(\sigma_{xy} = 0\)</span>), it remains to show <span class="math inline">\(h_i^{(1)} + h_{i+1}^{(1)} - h_i^{(2)} = 0\)</span>. We consider two cases.</p>
 <p>If there is a change point at <span class="math inline">\(i\)</span>: minimum segment length 2 forces <span class="math inline">\(\theta_{i+1} = \theta_{i+2}\)</span>, so <span class="math inline">\(h_{i+1}^{(1)} = 0\)</span> and <span class="math inline">\(h_i^{(2)} = h_i^{(1)}\)</span>. Hence <span class="math inline">\(h_i^{(1)} + 0 - h_i^{(1)} = 0\)</span>.</p>
 <p>If there is a change point at <span class="math inline">\(i+1\)</span>: then <span class="math inline">\(\theta_i = \theta_{i+1}\)</span>, so <span class="math inline">\(h_i^{(1)} = 0\)</span> and <span class="math inline">\(h_i^{(2)} = h_{i+1}^{(1)}\)</span>. Hence <span class="math inline">\(0 + h_{i+1}^{(1)} - h_{i+1}^{(1)} = 0\)</span>.</p>
 <p>If there is no change point at either index, all terms are zero. Hence <span class="math inline">\(\mathbb{E}[S_i] = 0\)</span> under <span class="math inline">\(H_0\)</span>.</p>
@@ -420,9 +420,9 @@ Code: <span class="math inline">\(S_i\)</span> is mean-zero under <span class="m
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>config <span class="ot">&lt;-</span> <span class="fu">scenario</span>(<span class="dv">2</span>, <span class="at">n=</span><span class="dv">1000</span>, <span class="at">L=</span><span class="dv">2</span>)</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>means <span class="ot">&lt;-</span> <span class="fu">replicate</span>(<span class="dv">1000</span>, {</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  X <span class="ot">&lt;-</span> <span class="fu">generate_data</span>(config)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(<span class="fu">lag_terms</span>(X))</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(<span class="fu">ece_terms</span>(X))</span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(means, <span class="at">breaks=</span><span class="dv">40</span>, <span class="at">xlab=</span><span class="fu">expression</span>(<span class="fu">bar</span>(d)))</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(means, <span class="at">breaks=</span><span class="dv">40</span>, <span class="at">xlab=</span><span class="fu">expression</span>(<span class="fu">bar</span>(S)))</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v=</span><span class="dv">0</span>, <span class="at">col=</span><span class="st">"red"</span>, <span class="at">lty=</span><span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
@@ -433,7 +433,7 @@ Code: <span class="math inline">\(S_i\)</span> is mean-zero under <span class="m
 </div>
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">t.test</span>(means)<span class="sc">$</span>conf.int</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] -0.006708336  0.007618692
+<pre><code>[1] -0.005995027  0.001406694
 attr(,"conf.level")
 [1] 0.95</code></pre>
 </div>
@@ -459,14 +459,14 @@ Code: All Subsequences are Independent
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>config <span class="ot">&lt;-</span> <span class="fu">scenario</span>(<span class="dv">2</span>, <span class="at">n=</span><span class="dv">1000</span>, <span class="at">L=</span><span class="dv">2</span>)</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>pval <span class="ot">&lt;-</span> <span class="fu">replicate</span>(<span class="dv">1000</span>, {</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  X <span class="ot">&lt;-</span> <span class="fu">generate_data</span>(config)</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> <span class="fu">lag_terms</span>(X)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> <span class="fu">ece_terms</span>(X)</span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  splits <span class="ot">&lt;-</span> <span class="fu">split_indep</span>(d)</span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">map_dbl</span>(splits, \(s) <span class="fu">Box.test</span>(s, <span class="at">lag=</span><span class="dv">10</span>, <span class="at">type=</span><span class="st">"Ljung-Box"</span>)<span class="sc">$</span>p.value)</span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>}) <span class="sc">|&gt;</span> <span class="fu">t</span>()</span>
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="fu">colMeans</span>(pval <span class="sc">&lt;</span> <span class="fl">0.05</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] 0.051 0.044 0.045</code></pre>
+<pre><code>[1] 0.043 0.044 0.054</code></pre>
 </div>
 </div>
 <div class="cell">
@@ -517,6 +517,15 @@ Code: Combined P-value is Uniform Under <span class="math inline">\(H_0\)</span>
 <pre><code>[1] 0.051</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="multiplier-bootstrap-test_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
 </div>
 </div>
 </div>

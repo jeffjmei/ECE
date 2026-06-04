@@ -20,41 +20,6 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-/* CSS for syntax highlighting */
-html { -webkit-text-size-adjust: 100%; }
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
-}
 </style>
 
 
@@ -344,11 +309,9 @@ window.Quarto = {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#z-test-gaussian-vs.-kappa" id="toc-z-test-gaussian-vs.-kappa" class="nav-link active" data-scroll-target="#z-test-gaussian-vs.-kappa"><span class="header-section-number">11.1</span> Z-Test: Gaussian vs.&nbsp;Kappa</a></li>
-  <li><a href="#z-test-vs.-bootstrap-methods" id="toc-z-test-vs.-bootstrap-methods" class="nav-link" data-scroll-target="#z-test-vs.-bootstrap-methods"><span class="header-section-number">11.2</span> Z-Test vs.&nbsp;Bootstrap Methods</a></li>
-  <li><a href="#for-p-2" id="toc-for-p-2" class="nav-link" data-scroll-target="#for-p-2"><span class="header-section-number">11.3</span> For <span class="math inline">\(p &gt; 2\)</span></a></li>
-  <li><a href="#variance-difference-general-vs.-gaussian" id="toc-variance-difference-general-vs.-gaussian" class="nav-link" data-scroll-target="#variance-difference-general-vs.-gaussian"><span class="header-section-number">11.4</span> Variance Difference: General vs.&nbsp;Gaussian</a></li>
-  <li><a href="#cumulants-by-distribution" id="toc-cumulants-by-distribution" class="nav-link" data-scroll-target="#cumulants-by-distribution"><span class="header-section-number">11.5</span> Cumulants by Distribution</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link active" data-scroll-target="#summary"><span class="header-section-number">11.1</span> Summary</a></li>
+  <li><a href="#p-2" id="toc-p-2" class="nav-link" data-scroll-target="#p-2"><span class="header-section-number">11.2</span> <span class="math inline">\(p = 2\)</span></a></li>
+  <li><a href="#p-2-1" id="toc-p-2-1" class="nav-link" data-scroll-target="#p-2-1"><span class="header-section-number">11.3</span> <span class="math inline">\(p &gt; 2\)</span></a></li>
   </ul>
 </nav>
     </div>
@@ -374,9 +337,35 @@ window.Quarto = {
 </header>
 
 
-<section id="z-test-gaussian-vs.-kappa" class="level2" data-number="11.1">
-<h2 data-number="11.1" class="anchored" data-anchor-id="z-test-gaussian-vs.-kappa"><span class="header-section-number">11.1</span> Z-Test: Gaussian vs.&nbsp;Kappa</h2>
-<p>We compare <code>z.test.gaussian</code> and <code>z.test.kappa</code> at <span class="math inline">\(n = 200\)</span>, <span class="math inline">\(p = 2\)</span>, across scenarios and error distributions.</p>
+<section id="summary" class="level2" data-number="11.1">
+<h2 data-number="11.1" class="anchored" data-anchor-id="summary"><span class="header-section-number">11.1</span> Summary</h2>
+<ul>
+<li><strong>Overall ranking (<span class="math inline">\(p = 2\)</span>):</strong> Z-Test (Gaussian) &gt; Z-Test (Oracle <span class="math inline">\(\kappa_{22}\)</span>) <span class="math inline">\(\approx\)</span> Z-Test (Gaussian) &gt; Z-Test (Null) <span class="math inline">\(\approx\)</span> Bootstrap (Parametric) &gt; Bootstrap (Multiplier)</li>
+<li><strong>Gaussian assumption vs oracle <span class="math inline">\(\kappa_{22}\)</span>:</strong> little difference in power; the Gaussian SE is nearly as good as knowing the true <span class="math inline">\(\kappa_{22}\)</span></li>
+<li><strong>Wald vs score:</strong> Z-Test (Gaussian) outperforms Z-Test (Null, Gaussian) because estimating <span class="math inline">\(\hat{\rho}\)</span> in the SE (Wald-type) is more efficient than plugging in <span class="math inline">\(\rho = 0\)</span> (score-type)</li>
+<li><strong>Shared variance estimator:</strong> Z-Test (Null) and Bootstrap (Parametric) track each other closely, as both rely on <span class="math inline">\(\widehat{\text{Cov}}(S)\)</span></li>
+<li><strong><span class="math inline">\(p &gt; 2\)</span>:</strong> only bootstrap methods available; Bootstrap (Parametric) dominates Bootstrap (Multiplier)</li>
+</ul>
+</section>
+<section id="p-2" class="level2" data-number="11.2">
+<h2 data-number="11.2" class="anchored" data-anchor-id="p-2"><span class="header-section-number">11.2</span> <span class="math inline">\(p = 2\)</span></h2>
+<div class="callout callout-style-default callout-note callout-titled" title="The Gaussian z-test is nearly as powerful as knowing the true κ₂₂">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+The Gaussian z-test is nearly as powerful as knowing the true κ₂₂
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p><span class="math inline">\(n = 200\)</span>, <span class="math inline">\(p = 2\)</span>.</p>
+<ul>
+<li><strong>Normal errors:</strong> Z-Test (Gaussian) and Z-Test (Oracle κ₂₂) are indistinguishable</li>
+<li><strong>Exponential errors:</strong> Z-Test (Oracle κ₂₂) has a slight power advantage over Z-Test (Gaussian)</li>
+</ul>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" aria-current="page">normal</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false">exponential</a></li></ul>
 <div class="tab-content">
@@ -388,10 +377,26 @@ window.Quarto = {
 </div>
 </div>
 </div>
-</section>
-<section id="z-test-vs.-bootstrap-methods" class="level2" data-number="11.2">
-<h2 data-number="11.2" class="anchored" data-anchor-id="z-test-vs.-bootstrap-methods"><span class="header-section-number">11.2</span> Z-Test vs.&nbsp;Bootstrap Methods</h2>
-<p>We compare all four methods at <span class="math inline">\(n = 200\)</span>, <span class="math inline">\(p = 2\)</span>, across scenarios and error distributions.</p>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled" title="Z-Test (Gaussian) is more powerful than bootstrap methods, regardless of error distribution">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-2-contents" aria-controls="callout-2" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Z-Test (Gaussian) is more powerful than bootstrap methods, regardless of error distribution
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-2" class="callout-2-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p><span class="math inline">\(n = 200\)</span>, <span class="math inline">\(p = 2\)</span>.</p>
+<ul>
+<li><strong>Power ranking:</strong> Z-Test (Gaussian) &gt; Bootstrap (Parametric) &gt; Bootstrap (Multiplier)</li>
+<li><strong>Error distribution:</strong> power curves are similar across normal and exponential errors</li>
+</ul>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true">normal</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false">exponential</a></li></ul>
 <div class="tab-content">
@@ -403,10 +408,26 @@ window.Quarto = {
 </div>
 </div>
 </div>
-</section>
-<section id="for-p-2" class="level2" data-number="11.3">
-<h2 data-number="11.3" class="anchored" data-anchor-id="for-p-2"><span class="header-section-number">11.3</span> For <span class="math inline">\(p &gt; 2\)</span></h2>
-<p>We compare <code>bs.multiplier</code> and <code>bs.parametric</code> at <span class="math inline">\(n = 200\)</span>, <span class="math inline">\(p \in \{3, 5, 10\}\)</span>, across scenarios and error distributions.</p>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled" title="Z-Test (Null) is less powerful than Z-Test (Null, Gaussian) because κ₂₂ must be estimated">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-3-contents" aria-controls="callout-3" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Z-Test (Null) is less powerful than Z-Test (Null, Gaussian) because κ₂₂ must be estimated
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-3" class="callout-3-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p><span class="math inline">\(n = 200\)</span>, <span class="math inline">\(p = 2\)</span>.</p>
+<ul>
+<li><strong>Z-Test (Null, Gaussian)</strong> assumes Gaussian errors and avoids estimating <span class="math inline">\(\kappa_{22}\)</span></li>
+<li><strong>Z-Test (Null)</strong> estimates <span class="math inline">\(\kappa_{22}\)</span> from data, incurring a power cost</li>
+</ul>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true">normal</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false">exponential</a></li></ul>
 <div class="tab-content">
@@ -418,202 +439,187 @@ window.Quarto = {
 </div>
 </div>
 </div>
-</section>
-<section id="variance-difference-general-vs.-gaussian" class="level2" data-number="11.4">
-<h2 data-number="11.4" class="anchored" data-anchor-id="variance-difference-general-vs.-gaussian"><span class="header-section-number">11.4</span> Variance Difference: General vs.&nbsp;Gaussian</h2>
-<p>Recall the asymptotic variance under the general and Gaussian assumptions: <span class="math display">\[
-V = \frac{1}{n}\left[(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y}\right) + \frac{\rho^2}{4}(\kappa_{40}+2\kappa_{22}+\kappa_{04}) - \rho(\kappa_{31}+\kappa_{13}) + \frac{5}{2}(1-\rho^2)^2 + \kappa_{22}\right],
-\]</span> <span class="math display">\[
-V_G = \frac{1}{n}(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y} + \frac{7}{2}(1-\rho^2)\right).
-\]</span> The jump-noise terms cancel, giving <span class="math display">\[
-V - V_G = \frac{1}{n}\left[\frac{\rho^2}{4}(\kappa_{40}+2\kappa_{22}+\kappa_{04}) - \rho(\kappa_{31}+\kappa_{13}) + \kappa_{22} - (1-\rho^2)^2\right].
-\]</span> This is zero under the Gaussian assumption and measures the excess variance due to non-Gaussianity.</p>
-</section>
-<section id="cumulants-by-distribution" class="level2" data-number="11.5">
-<h2 data-number="11.5" class="anchored" data-anchor-id="cumulants-by-distribution"><span class="header-section-number">11.5</span> Cumulants by Distribution</h2>
-<p>The magnitude of <span class="math inline">\(V - V_G\)</span> depends on how far the joint cumulants depart from their Gaussian values. The tables below report <span class="math inline">\((\kappa_{40}, \kappa_{31}, \kappa_{22}, \kappa_{13}, \kappa_{04})\)</span> and <span class="math inline">\(n(V - V_G)\)</span> for each supported error distribution, estimated via <span class="math inline">\(10^7\)</span> samples.</p>
-<p><strong><span class="math inline">\(\rho = 0.3\)</span></strong></p>
-<div class="cell">
-<div class="cell-output-display">
-<table class="caption-top table table-sm table-striped small">
-<colgroup>
-<col style="width: 13%">
-<col style="width: 14%">
-<col style="width: 14%">
-<col style="width: 14%">
-<col style="width: 14%">
-<col style="width: 14%">
-<col style="width: 13%">
-</colgroup>
-<thead>
-<tr class="header">
-<th style="text-align: left;">Distribution</th>
-<th style="text-align: right;"><span class="math inline">\(\kappa_{40}\)</span></th>
-<th style="text-align: right;"><span class="math inline">\(\kappa_{31}\)</span></th>
-<th style="text-align: right;"><span class="math inline">\(\kappa_{22}\)</span></th>
-<th style="text-align: right;"><span class="math inline">\(\kappa_{13}\)</span></th>
-<th style="text-align: right;"><span class="math inline">\(\kappa_{04}\)</span></th>
-<th style="text-align: right;"><span class="math inline">\(n(V - V_G)\)</span></th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">normal</td>
-<td style="text-align: right;">2.999</td>
-<td style="text-align: right;">0.900</td>
-<td style="text-align: right;">1.180</td>
-<td style="text-align: right;">0.900</td>
-<td style="text-align: right;">3.000</td>
-<td style="text-align: right;">0.000</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">exponential</td>
-<td style="text-align: right;">8.974</td>
-<td style="text-align: right;">2.691</td>
-<td style="text-align: right;">1.719</td>
-<td style="text-align: right;">1.069</td>
-<td style="text-align: right;">8.033</td>
-<td style="text-align: right;">0.223</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">t</td>
-<td style="text-align: right;">8.219</td>
-<td style="text-align: right;">2.466</td>
-<td style="text-align: right;">1.670</td>
-<td style="text-align: right;">0.935</td>
-<td style="text-align: right;">8.399</td>
-<td style="text-align: right;">0.271</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">lognormal</td>
-<td style="text-align: right;">109.802</td>
-<td style="text-align: right;">32.778</td>
-<td style="text-align: right;">10.674</td>
-<td style="text-align: right;">3.597</td>
-<td style="text-align: right;">93.595</td>
-<td style="text-align: right;">3.991</td>
-</tr>
-</tbody>
-</table>
 </div>
 </div>
-<p><strong><span class="math inline">\(\rho = 0\)</span></strong></p>
-<div class="cell">
-<div class="cell-output-display">
-<table class="caption-top table table-sm table-striped small">
-<colgroup>
-<col style="width: 13%">
-<col style="width: 14%">
-<col style="width: 14%">
-<col style="width: 14%">
-<col style="width: 14%">
-<col style="width: 14%">
-<col style="width: 13%">
-</colgroup>
-<thead>
-<tr class="header">
-<th style="text-align: left;">Distribution</th>
-<th style="text-align: right;"><span class="math inline">\(\kappa_{40}\)</span></th>
-<th style="text-align: right;"><span class="math inline">\(\kappa_{31}\)</span></th>
-<th style="text-align: right;"><span class="math inline">\(\kappa_{22}\)</span></th>
-<th style="text-align: right;"><span class="math inline">\(\kappa_{13}\)</span></th>
-<th style="text-align: right;"><span class="math inline">\(\kappa_{04}\)</span></th>
-<th style="text-align: right;"><span class="math inline">\(n(V - V_G)\)</span></th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">normal</td>
-<td style="text-align: right;">2.998</td>
-<td style="text-align: right;">-0.001</td>
-<td style="text-align: right;">1.000</td>
-<td style="text-align: right;">-0.001</td>
-<td style="text-align: right;">3.004</td>
-<td style="text-align: right;">0.000</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">exponential</td>
-<td style="text-align: right;">8.958</td>
-<td style="text-align: right;">0.003</td>
-<td style="text-align: right;">1.007</td>
-<td style="text-align: right;">0.013</td>
-<td style="text-align: right;">9.049</td>
-<td style="text-align: right;">0.007</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">t</td>
-<td style="text-align: right;">12.010</td>
-<td style="text-align: right;">0.073</td>
-<td style="text-align: right;">1.002</td>
-<td style="text-align: right;">0.005</td>
-<td style="text-align: right;">8.450</td>
-<td style="text-align: right;">0.002</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">lognormal</td>
-<td style="text-align: right;">96.363</td>
-<td style="text-align: right;">-0.017</td>
-<td style="text-align: right;">0.956</td>
-<td style="text-align: right;">-0.234</td>
-<td style="text-align: right;">106.310</td>
-<td style="text-align: right;">-0.044</td>
-</tr>
-</tbody>
-</table>
 </div>
-</div>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout callout-style-default callout-note callout-titled" title="Z-Test (Gaussian) is more powerful than Z-Test (Null, Gaussian): estimating ρ improves the SE">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-4-contents" aria-controls="callout-4" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Computational verification
+Z-Test (Gaussian) is more powerful than Z-Test (Null, Gaussian): estimating ρ improves the SE
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div id="callout-4" class="callout-4-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
+<p><span class="math inline">\(n = 200\)</span>, <span class="math inline">\(p = 2\)</span>.</p>
+<ul>
+<li><strong>Z-Test (Gaussian)</strong> uses the unrestricted SE — the denominator includes <span class="math inline">\(\hat{\rho}\)</span></li>
+<li><strong>Z-Test (Null, Gaussian)</strong> plugs in <span class="math inline">\(\rho = 0\)</span> under <span class="math inline">\(H_0\)</span>, giving a less efficient SE</li>
+<li>This mirrors classical theory: the Wald statistic (unrestricted SE) is generally more powerful than the score statistic (null SE) at alternatives away from zero</li>
+</ul>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true">normal</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false">exponential</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<p><img src="power_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid" width="672"></p>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<p><img src="power_files/figure-html/unnamed-chunk-5-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled" title="Z-Test (Null) and Bootstrap (Parametric) have nearly identical power">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-5-contents" aria-controls="callout-5" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Z-Test (Null) and Bootstrap (Parametric) have nearly identical power
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-5" class="callout-5-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p><span class="math inline">\(n = 200\)</span>, <span class="math inline">\(p = 2\)</span>.</p>
+<ul>
+<li>The two methods have similar power across scenarios and error distributions</li>
+<li>This is unsurprising: the Z-Test (Null) estimates <span class="math inline">\(\kappa_{22}\)</span> via <span class="math inline">\(\widehat{\text{Cov}}(S)\)</span>, which is the same quantity the parametric bootstrap variance estimate is based on</li>
+</ul>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true">normal</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false">exponential</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<p><img src="power_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid" width="672"></p>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<p><img src="power_files/figure-html/unnamed-chunk-6-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="p-2-1" class="level2" data-number="11.3">
+<h2 data-number="11.3" class="anchored" data-anchor-id="p-2-1"><span class="header-section-number">11.3</span> <span class="math inline">\(p &gt; 2\)</span></h2>
+<div class="callout callout-style-default callout-note callout-titled" title="Bootstrap (Parametric) outperforms Bootstrap (Multiplier) at p = 3; higher dimensions unavailable">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-6-contents" aria-controls="callout-6" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Bootstrap (Parametric) outperforms Bootstrap (Multiplier) at p = 3; higher dimensions unavailable
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-6" class="callout-6-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p><span class="math inline">\(n = 200\)</span>, <span class="math inline">\(p \in \{3, 5, 10\}\)</span>.</p>
+<ul>
+<li><strong>p = 3:</strong> Bootstrap (Parametric) is more powerful than Bootstrap (Multiplier)</li>
+<li><strong>p = 5, 10:</strong> no results — the estimated covariance matrix <span class="math inline">\(\hat{W}\)</span> is sometimes not positive semi-definite, causing simulation errors</li>
+</ul>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-6-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-1" role="tab" aria-controls="tabset-6-1" aria-selected="true">normal</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-2" role="tab" aria-controls="tabset-6-2" aria-selected="false">exponential</a></li></ul>
+<div class="tab-content">
+<div id="tabset-6-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-6-1-tab">
+<p><img src="power_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid" width="672"></p>
+</div>
+<div id="tabset-6-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-2-tab">
+<p><img src="power_files/figure-html/unnamed-chunk-7-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled" title="Parametric bootstrap power is recovered with PSD eigenvalue correction">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-7-contents" aria-controls="callout-7" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Parametric bootstrap power is recovered with PSD eigenvalue correction
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-7" class="callout-7-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p><span class="math inline">\(\widehat{\text{Cov}}(S)\)</span> may not always produce a PSD covariance matrix; consequently, we cannot sample from a non-PSD covariance matrix. The eigenvalue correction clips any negative eigenvalues of <span class="math inline">\(\hat{W}\)</span> to zero before sampling.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-7-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-7-1" role="tab" aria-controls="tabset-7-1" aria-selected="true">Low (~6–7% failure)</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-7-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-7-2" role="tab" aria-controls="tabset-7-2" aria-selected="false">Moderate (~30% failure)</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-7-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-7-3" role="tab" aria-controls="tabset-7-3" aria-selected="false">Extreme (100% failure)</a></li></ul>
+<div class="tab-content">
+<div id="tabset-7-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-7-1-tab">
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="st">".."</span>)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>params <span class="ot">&lt;-</span> <span class="fu">scenario</span>(<span class="dv">2</span>, <span class="at">n =</span> <span class="dv">1000</span>, <span class="at">L =</span> <span class="dv">4</span>, <span class="at">r =</span> <span class="fl">0.3</span>, <span class="at">err_type =</span> <span class="st">"exponential"</span>)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>n   <span class="ot">&lt;-</span> params<span class="sc">$</span>n</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>sx  <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(params<span class="sc">$</span>S[<span class="dv">1</span>, <span class="dv">1</span>])</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>sy  <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(params<span class="sc">$</span>S[<span class="dv">2</span>, <span class="dv">2</span>])</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>sxy <span class="ot">&lt;-</span> params<span class="sc">$</span>S[<span class="dv">1</span>, <span class="dv">2</span>]</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>rho <span class="ot">&lt;-</span> sxy <span class="sc">/</span> (sx <span class="sc">*</span> sy)</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>hx  <span class="ot">&lt;-</span> params<span class="sc">$</span>h[, <span class="dv">1</span>]</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>hy  <span class="ot">&lt;-</span> params<span class="sc">$</span>h[, <span class="dv">2</span>]</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>k   <span class="ot">&lt;-</span> params<span class="sc">$</span>kappa</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>omega <span class="ot">&lt;-</span> (<span class="dv">1</span> <span class="sc">-</span> rho<span class="sc">^</span><span class="dv">2</span>) <span class="sc">*</span> (</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">lag_diff</span>(hx) <span class="sc">/</span> (n <span class="sc">*</span> sx<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">lag_diff</span>(hy) <span class="sc">/</span> (n <span class="sc">*</span> sy<span class="sc">^</span><span class="dv">2</span>) <span class="sc">-</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="dv">2</span> <span class="sc">*</span> rho <span class="sc">*</span> <span class="fu">lag_diff</span>(hx, hy) <span class="sc">/</span> (n <span class="sc">*</span> sx <span class="sc">*</span> sy)</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>V_general <span class="ot">&lt;-</span> (<span class="dv">1</span><span class="sc">/</span>n) <span class="sc">*</span> (</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  omega <span class="sc">+</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  rho<span class="sc">^</span><span class="dv">2</span><span class="sc">/</span><span class="dv">4</span> <span class="sc">*</span> (k<span class="sc">$</span>k40 <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>k<span class="sc">$</span>k22 <span class="sc">+</span> k<span class="sc">$</span>k04) <span class="sc">-</span> rho<span class="sc">*</span>(k<span class="sc">$</span>k31 <span class="sc">+</span> k<span class="sc">$</span>k13) <span class="sc">+</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  <span class="dv">5</span><span class="sc">/</span><span class="dv">2</span> <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">-</span> rho<span class="sc">^</span><span class="dv">2</span>)<span class="sc">^</span><span class="dv">2</span> <span class="sc">+</span> k<span class="sc">$</span>k22</span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>V_gaussian <span class="ot">&lt;-</span> (<span class="dv">1</span><span class="sc">/</span>n) <span class="sc">*</span> (omega <span class="sc">+</span> <span class="dv">7</span><span class="sc">/</span><span class="dv">2</span> <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">-</span> rho<span class="sc">^</span><span class="dv">2</span>)<span class="sc">^</span><span class="dv">2</span>)</span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(</span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  <span class="at">V_diff_direct  =</span> V_general <span class="sc">-</span> V_gaussian,</span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  <span class="at">V_diff_formula =</span> (<span class="dv">1</span><span class="sc">/</span>n) <span class="sc">*</span> (</span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    rho<span class="sc">^</span><span class="dv">2</span><span class="sc">/</span><span class="dv">4</span> <span class="sc">*</span> (k<span class="sc">$</span>k40 <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>k<span class="sc">$</span>k22 <span class="sc">+</span> k<span class="sc">$</span>k04) <span class="sc">-</span> rho<span class="sc">*</span>(k<span class="sc">$</span>k31 <span class="sc">+</span> k<span class="sc">$</span>k13) <span class="sc">+</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    k<span class="sc">$</span>k22 <span class="sc">-</span> (<span class="dv">1</span> <span class="sc">-</span> rho<span class="sc">^</span><span class="dv">2</span>)<span class="sc">^</span><span class="dv">2</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>  V_diff_direct V_diff_formula
-1  0.0002212678   0.0002212678</code></pre>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="power_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
 </div>
 </div>
 </div>
+<p>Under normal errors with <span class="math inline">\(n = 500\)</span>, roughly 6–7% of replicates produce a non-PSD <span class="math inline">\(\hat{W}\)</span>. The corrected curve is nearly indistinguishable from the uncorrected — the correction is harmless at low failure rates.</p>
+</div>
+<div id="tabset-7-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-7-2-tab">
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="power_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Under exponential errors with <span class="math inline">\(n = 500\)</span>, roughly 30% of replicates produce a non-PSD <span class="math inline">\(\hat{W}\)</span>. Even at this failure rate, the corrected curve continues to track the uncorrected closely — the correction is robust.</p>
+</div>
+<div id="tabset-7-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-7-3-tab">
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="power_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Under exponential errors with <span class="math inline">\(n = 200\)</span>, every replicate fails to produce a PSD <span class="math inline">\(\hat{W}\)</span> — no uncorrected curve exists. The corrected curve is the only available estimate. The Type I error is deflated rather than inflated — conservative behavior, which is preferable to anti-conservative.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-warning callout-titled" title="Parametric Bootstrap power is nearly identical to Z-Test (Null)">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-8-contents" aria-controls="callout-8" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Parametric Bootstrap power is nearly identical to Z-Test (Null)
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-8" class="callout-8-contents callout-collapse collapse">
+<section id="parametric-bootstrap-vs-z-test-null" class="level2 callout-body-container callout-body" data-number="11.4">
+<h2 data-number="11.4" class="anchored" data-anchor-id="parametric-bootstrap-vs-z-test-null"><span class="header-section-number">11.4</span> Parametric Bootstrap vs Z-Test (Null)</h2>
+<p>When correlation is non-trivial, <code>bs.parametric</code> and <code>z.test.null</code> track each other closely. Both methods rely on <span class="math inline">\(\widehat{\text{Cov}}(S)\)</span>: the parametric bootstrap uses it to characterize the sampling distribution, while Z-Test (Null) uses it to estimate <span class="math inline">\(\kappa_{22}\)</span>.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="power_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
 </div>
 </div>
 

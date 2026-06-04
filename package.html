@@ -428,7 +428,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="core-utilities" class="level4" data-number="14.3.2.2">
 <h4 data-number="14.3.2.2" class="anchored" data-anchor-id="core-utilities"><span class="header-section-number">14.3.2.2</span> 2. Core utilities</h4>
 <ul class="task-list">
-<li><label><input type="checkbox"><code>lag_terms</code> — new function; test that it sums to <code>lag_diff</code>; use <code>X - rotate(X, k = 1)</code></label></li>
+<li><label><input type="checkbox"><code>ece_terms</code> — new function; test that it sums to <code>lag_diff</code>; use <code>X - rotate(X, k = 1)</code></label></li>
 <li><label><input type="checkbox"><code>mod_idx</code> — poor name; only used once; consider moving or inlining</label></li>
 <li><label><input type="checkbox"><code>circ.eigendecomp</code> — new feature</label></li>
 </ul>
@@ -494,15 +494,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ece.cov</span>(X) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>            [,1]        [,2]
-[1,]  0.90512008 -0.03307591
-[2,] -0.03307591  1.04293657</code></pre>
+<pre><code>           [,1]       [,2]
+[1,]  1.1112019 -0.0923707
+[2,] -0.0923707  1.0476108</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ece.complexity</span>(X)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>           [,1]        [,2]
-[1,] 0.14653693  0.05983723
-[2,] 0.05983723 -0.08701686</code></pre>
+<pre><code>            [,1]        [,2]
+[1,] -0.22855034  0.02235096
+[2,]  0.02235096 -0.06462693</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">#ece.cor(X) # </span><span class="al">TODO</span><span class="co">: this doesn't exist</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
@@ -513,29 +513,29 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ece.test</span>(X, <span class="at">type=</span><span class="st">"z.test"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>$estimate
-[1] -0.03404315
+[1] -0.08561262
 
 $se
-[1] 0.05978673
+[1] 0.05645347
 
 $conf.int
-[1] -0.15122299  0.08313668
+[1] -0.19625938  0.02503414
 attr(,"conf.level")
 [1] 0.95
 
 $p.value
-[1] 0.569078</code></pre>
+[1] 0.1293888</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ece.test</span>(X, <span class="at">type=</span><span class="st">"bs.multiplier"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>$p.value
-[1] 0.67353</code></pre>
+[1] 0.251156</code></pre>
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ece.cor.se</span>(X)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ece.cor.se</span>(X, <span class="at">kappa =</span> <span class="st">"gaussian"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] 0.05978673</code></pre>
+<pre><code>[1] 0.05645347</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co">#ece.ci(X) # </span><span class="al">TODO</span><span class="co">: this doesn't exist</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>

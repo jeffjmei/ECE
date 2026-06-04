@@ -309,8 +309,9 @@ window.Quarto = {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#z-test-gaussian-vs.-kappa" id="toc-z-test-gaussian-vs.-kappa" class="nav-link active" data-scroll-target="#z-test-gaussian-vs.-kappa"><span class="header-section-number">10.1</span> Z-Test: Gaussian vs.&nbsp;Kappa</a></li>
-  <li><a href="#z-test-vs.-bootstrap-methods" id="toc-z-test-vs.-bootstrap-methods" class="nav-link" data-scroll-target="#z-test-vs.-bootstrap-methods"><span class="header-section-number">10.2</span> Z-Test vs.&nbsp;Bootstrap Methods</a></li>
+  <li><a href="#p-2-z-test-methods" id="toc-p-2-z-test-methods" class="nav-link active" data-scroll-target="#p-2-z-test-methods"><span class="header-section-number">10.1</span> <span class="math inline">\(p = 2\)</span>: Z-Test Methods</a></li>
+  <li><a href="#p-2-bootstrap-methods" id="toc-p-2-bootstrap-methods" class="nav-link" data-scroll-target="#p-2-bootstrap-methods"><span class="header-section-number">10.2</span> <span class="math inline">\(p = 2\)</span>: Bootstrap Methods</a></li>
+  <li><a href="#p-2-bootstrap-methods-1" id="toc-p-2-bootstrap-methods-1" class="nav-link" data-scroll-target="#p-2-bootstrap-methods-1"><span class="header-section-number">10.3</span> <span class="math inline">\(p &gt; 2\)</span>: Bootstrap Methods</a></li>
   </ul>
 </nav>
     </div>
@@ -336,32 +337,38 @@ window.Quarto = {
 </header>
 
 
-<section id="z-test-gaussian-vs.-kappa" class="level2" data-number="10.1">
-<h2 data-number="10.1" class="anchored" data-anchor-id="z-test-gaussian-vs.-kappa"><span class="header-section-number">10.1</span> Z-Test: Gaussian vs.&nbsp;Kappa</h2>
-<p>We compare <code>z.test.gaussian</code> and <code>z.test.kappa</code> at <span class="math inline">\(r = 0\)</span>, <span class="math inline">\(p = 2\)</span>, across sample sizes, scenarios, and error distributions.</p>
-<div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" aria-current="page">normal</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false">exponential</a></li></ul>
-<div class="tab-content">
-<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
-<p><img src="type-i-error_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid" width="672"></p>
-</div>
-<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
-<p><img src="type-i-error_files/figure-html/unnamed-chunk-2-2.png" class="img-fluid" width="672"></p>
+<section id="p-2-z-test-methods" class="level2" data-number="10.1">
+<h2 data-number="10.1" class="anchored" data-anchor-id="p-2-z-test-methods"><span class="header-section-number">10.1</span> <span class="math inline">\(p = 2\)</span>: Z-Test Methods</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="type-i-error_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
 </div>
 </div>
 </div>
 </section>
-<section id="z-test-vs.-bootstrap-methods" class="level2" data-number="10.2">
-<h2 data-number="10.2" class="anchored" data-anchor-id="z-test-vs.-bootstrap-methods"><span class="header-section-number">10.2</span> Z-Test vs.&nbsp;Bootstrap Methods</h2>
-<p>We compare all four methods at <span class="math inline">\(r = 0\)</span>, <span class="math inline">\(p = 2\)</span>, across sample sizes, scenarios, and error distributions.</p>
-<div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true">normal</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false">exponential</a></li></ul>
-<div class="tab-content">
-<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
-<p><img src="type-i-error_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid" width="672"></p>
+<section id="p-2-bootstrap-methods" class="level2" data-number="10.2">
+<h2 data-number="10.2" class="anchored" data-anchor-id="p-2-bootstrap-methods"><span class="header-section-number">10.2</span> <span class="math inline">\(p = 2\)</span>: Bootstrap Methods</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="type-i-error_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
 </div>
-<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
-<p><img src="type-i-error_files/figure-html/unnamed-chunk-3-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="p-2-bootstrap-methods-1" class="level2" data-number="10.3">
+<h2 data-number="10.3" class="anchored" data-anchor-id="p-2-bootstrap-methods-1"><span class="header-section-number">10.3</span> <span class="math inline">\(p &gt; 2\)</span>: Bootstrap Methods</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="type-i-error_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
 </div>
 </div>
 </div>

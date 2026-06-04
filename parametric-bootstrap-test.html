@@ -375,7 +375,7 @@ window.Quarto = {
 <p><img src="assets/bs-parametric-diagram.png" class="img-fluid"></p>
 <section id="parametric-bootstrap-test" class="level2" data-number="7.1">
 <h2 data-number="7.1" class="anchored" data-anchor-id="parametric-bootstrap-test"><span class="header-section-number">7.1</span> Parametric Bootstrap Test</h2>
-<p>Let <span class="math inline">\(S_i \in \mathbb{R}^p\)</span> denote the vector of lag terms across all pairs at index <span class="math inline">\(i\)</span>. To test <span class="math inline">\(H_0\)</span>, we need the variance of <span class="math inline">\(\bar{S} = \frac{1}{n}\sum_{i=1}^n S_i\)</span>.</p>
+<p>Let <span class="math inline">\(S_i \in \mathbb{R}^{\binom{p}{2}}\)</span> denote the vector of ECE terms across all pairs at index <span class="math inline">\(i\)</span>, so that <span class="math inline">\(\bar{S}_j = \hat\sigma_{x_j y_j}\)</span> for each pair <span class="math inline">\(j\)</span>. To test <span class="math inline">\(H_0\)</span>, we need the variance of <span class="math inline">\(\bar{S} = \frac{1}{n}\sum_{i=1}^n S_i\)</span>.</p>
 <p>Since <span class="math inline">\(S_i\)</span> depends only on observations at indices <span class="math inline">\(i, i+1, i+2\)</span>, terms separated by 3 or more indices are independent. The variance therefore has bandwidth 2: <span class="math display">\[\begin{align*}
 \operatorname{Var}\!\left(\bar{S}\right) &amp;= \frac{1}{n^2}\left(\sum_{i=1}^n \operatorname{Var}(S_i) + \sum_{i=1}^n\bigl[\operatorname{Cov}(S_i, S_{i+1}) + \operatorname{Cov}(S_{i+1}, S_i)\bigr]\right. \\
 &amp;\quad\left. + \sum_{i=1}^n\bigl[\operatorname{Cov}(S_i, S_{i+2}) + \operatorname{Cov}(S_{i+2}, S_i)\bigr]\right).
@@ -442,7 +442,7 @@ Code: Consistency of <span class="math inline">\(V\)</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>sims <span class="ot">&lt;-</span> <span class="fu">map</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">10000</span>, <span class="sc">~</span> {</span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  X <span class="ot">&lt;-</span> <span class="fu">generate_data</span>(config)</span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  n <span class="ot">&lt;-</span> <span class="fu">nrow</span>(X)</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  S <span class="ot">&lt;-</span> <span class="fu">lag_terms</span>(X)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  S <span class="ot">&lt;-</span> <span class="fu">ece_terms</span>(X)</span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(</span>
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">S_bar =</span> <span class="fu">colMeans</span>(S),</span>
 <span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">W     =</span> <span class="fu">as.numeric</span>(</span>
