@@ -348,6 +348,99 @@ ggplot(sim_df_k40_mom, aes(x = k40, fill = group, color = group)) +
 
 :::
 
+::: {.callout-tip collapse="true"}
+## Numerical Results: Comparing $\hat\kappa_{40}$ Estimators
+
+The regression and MoM estimators are algebraically equivalent up to the lag-3 bias correction in the numerator. We compare their variance across scenarios.
+
+```{r}
+#| echo: false
+simulate_k40 <- function(params) {
+  map(1:1000, ~{
+    x <- generate_data(params)[, 1]
+    list(
+      regress = k40_regress(x),
+      mom     = k40_mom(x)
+    )
+  })
+}
+```
+
+```{r}
+#| cache: true
+#| echo: false
+param_grid_k40 <- tribble(
+  ~label,                       ~scen, ~err_type,      ~amp, ~L,
+  "Scenario 1, Normal",          1,     "normal",       1,    NA,
+  "Scenario 1, Exponential",     1,     "exponential",  1,    NA,
+  "Scenario 2, Normal",          2,     "normal",       1,    4,
+  "Scenario 2, Exponential",     2,     "exponential",  1,    4,
+  "Scenario 2 (amp = 2), Exp.", 2,     "exponential",  2,    4
+)
+
+k40_grid <- pmap(param_grid_k40, function(label, scen, err_type, amp, L) {
+  params <- if (is.na(L)) {
+    scenario(scen, err_type = err_type, amp = amp)
+  } else {
+    scenario(scen, err_type = err_type, amp = amp, L = L)
+  }
+  sim <- simulate_k40(params)
+  list(
+    label       = label,
+    true        = params$kappa$k40,
+    var_regress = var(map_dbl(sim, "regress")),
+    var_mom     = var(map_dbl(sim, "mom")),
+    sim         = sim
+  )
+})
+
+k40_var_tbl <- map_dfr(k40_grid, \(g) tibble(
+  Scenario             = g$label,
+  `κ₄₀`              = round(g$true, 2),
+  `Var(Regression)`   = round(g$var_regress, 4),
+  `Var(MoM)`          = round(g$var_mom, 4)
+))
+```
+
+```{r}
+#| echo: false
+knitr::kable(k40_var_tbl)
+```
+
+::: {.panel-tabset}
+
+## Scenario 1, Normal
+
+```{r}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression = map_dbl(k40_grid[[1]]$sim, "regress"),
+    MoM        = map_dbl(k40_grid[[1]]$sim, "mom")
+  ),
+  xlab   = expression(hat(kappa)[40]),
+  colors = c(Regression = "#E41A1C", MoM = "#4DAF4A")
+) + ggplot2::labs(title = "Scenario 1, normal errors, n = 200")
+```
+
+## Scenario 2, Exponential (amp = 2)
+
+```{r}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression = map_dbl(k40_grid[[5]]$sim, "regress"),
+    MoM        = map_dbl(k40_grid[[5]]$sim, "mom")
+  ),
+  xlab   = expression(hat(kappa)[40]),
+  colors = c(Regression = "#E41A1C", MoM = "#4DAF4A")
+) + ggplot2::labs(title = "Scenario 2, exponential errors, n = 200, L = 4, amp = 2")
+```
+
+:::
+
+:::
+
 ### Estimating $\kappa_{31}$
 
 Define the cubic-linear ECE terms
