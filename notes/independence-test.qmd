@@ -21,7 +21,71 @@ A robust test plugs in $\hat\kappa_{22}$.
 
 {{< include kappa22-moments.qmd >}}
 
---- 
+---
+
+## Method of Moments via $S_i$ Terms
+
+Recall from the multiplier bootstrap that
+$$S_i = \frac{s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}}{2}, \qquad s_i^{(k)} = (X_i - X_{i+k})(Y_i - Y_{i+k}),$$
+satisfies $E[S_i] = \sigma_{xy}$ regardless of change-point amplitudes. The same construction applied to each series separately gives
+$$S_{xx,i} = \frac{(X_i-X_{i+1})^2 + (X_{i+1}-X_{i+2})^2 - (X_i-X_{i+2})^2}{2}, \qquad S_{yy,i} = \frac{(Y_i-Y_{i+1})^2 + (Y_{i+1}-Y_{i+2})^2 - (Y_i-Y_{i+2})^2}{2},$$
+with $E[S_{xx,i}] = \sigma_x^2$ and $E[S_{yy,i}] = \sigma_y^2$ at every index, change points included.
+
+These terms play the role of $\varepsilon_{x,i}^2$ and $\varepsilon_{y,i}^2$ with change-point-robust constant means. The classical method-of-moments estimator for $\kappa_{22} = E[\varepsilon_x^2\varepsilon_y^2]/(\sigma_x^2\sigma_y^2)$ is
+$$\hat\kappa_{22} = \frac{\frac{1}{n}\sum_i \varepsilon_{x,i}^2\,\varepsilon_{y,i}^2}{\hat\sigma_x^2\,\hat\sigma_y^2},$$
+where the numerator estimates $E[\varepsilon_x^2\varepsilon_y^2]$ and the denominator estimates $\sigma_x^2\sigma_y^2$. Replacing $\varepsilon_{x,i}^2$ with $S_{xx,i}$ and $\varepsilon_{y,i}^2$ with $S_{yy,i}$ gives the ECE analog:
+$$\hat\kappa_{22}^{\mathrm{MoM}} = \frac{\frac{1}{n}\sum_i S_{xx,i}\,S_{yy,i}}{\bar S_{xx}\,\bar S_{yy}}.$$
+
+The $S_i$ terms are autocorrelated at lags 1 and 2 (consecutive terms share observations), so $\frac{1}{n}\sum S_{xx,i}S_{yy,i}$ has inflated variance relative to an i.i.d. average. The estimator remains consistent.
+
+::: {.callout-tip collapse="true"}
+## Simulation: Verifying $\hat\kappa_{22}^{\mathrm{MoM}}$
+
+We simulate 5,000 datasets across four scenarios varying the error distribution and change-point structure. The sample mean of $\hat\kappa_{22}^{\mathrm{MoM}}$ (dashed) should fall on the true value (red) in each panel.
+
+```{r}
+#| echo: false
+#| cache: true
+#| message: false
+k22_mom <- function(x, y) {
+  Sxx <- ece_terms(cbind(x, x))
+  Syy <- ece_terms(cbind(y, y))
+  mean(Sxx * Syy) / (mean(Sxx) * mean(Syy))
+}
+
+scens <- list(
+  list(params = scenario(1, err_type = "normal"),                            label = "Sc. 1, normal"),
+  list(params = scenario(1, err_type = "exponential"),                       label = "Sc. 1, exponential"),
+  list(params = scenario(2, L = 4, err_type = "exponential"),                label = "Sc. 2, exponential"),
+  list(params = scenario(2, L = 4, err_type = "exponential", sigma = c(2, 0.5)), label = "Sc. 2, exp., het. var.")
+)
+
+mom_verify <- map(scens, \(s) {
+  sim <- map_dbl(1:5000, ~ {
+    X <- generate_data(s$params)
+    k22_mom(X[, 1], X[, 2])
+  })
+  tibble(val = sim, truth = s$params$kappa$k22, label = s$label)
+}) |> list_rbind()
+```
+
+```{r}
+#| echo: false
+mom_verify |>
+  ggplot(aes(x = val)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 40,
+                 fill = "steelblue", color = "white", alpha = 0.8) +
+  geom_vline(aes(xintercept = truth), color = "firebrick") +
+  geom_vline(aes(xintercept = mean(val)), linetype = "dashed") +
+  facet_wrap(~label, scales = "free") +
+  labs(x = expression(hat(kappa)[22]^MoM), y = "density",
+       subtitle = "Red = true, dashed = sample mean") +
+  theme_minimal()
+```
+
+:::
+
+---
 
 ## Numerical Results: Estimating $\kappa_{22}$
 
@@ -52,29 +116,33 @@ ece.k22.matrix <- function(x, y = NULL, rho = NULL) {
   Syy <- ece_terms(cbind(y, y))
   Sxy <- ece_terms(cbind(x, y))
 
-  # Get Covariance (Must Center)
-  S <- cbind(Sxx, Syy, Sxy) |> scale(scale = FALSE) # center
+  sx2 <- mean(Sxx)
+  sy2 <- mean(Syy)
+  sxy <- if (!is.null(rho) && rho == 0) 0 else mean(Sxy)
+
+  S <- cbind(Sxx - sx2, Syy - sy2, Sxy - sxy)
   V <- (1 / n^2) * (
     t(S) %*% S +
       t(rotate(S)) %*% S + t(S) %*% rotate(S) +
       t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
   )
 
-  sx2 <- mean(Sxx)
-  sy2 <- mean(Syy)
-  sxy <- if (!is.null(rho) && rho == 0) 0 else mean(Sxy)
-
   wx2 <- ece.complexity(x, x)
   wy2 <- ece.complexity(y, y)
   wxy <- ece.complexity(x, y)
 
-  # Calculate Kappa
   k22 <- n * V[3, 3] / (sx2 * sy2) -
     3 / 2 * sxy^2 / (sx2 * sy2) -
     2 * sxy * wxy / (sx2 * sy2) -
     wx2 / sx2 -
     wy2 / sy2 - 5 / 2
   return(k22)
+}
+
+ece.k22.mom <- function(x, y) {
+  Sxx <- ece_terms(cbind(x, x))
+  Syy <- ece_terms(cbind(y, y))
+  mean(Sxx * Syy) / (mean(Sxx) * mean(Syy))
 }
 ```
 
@@ -89,7 +157,8 @@ simulate_k22 <- function(params){
     x <- X[,1]; y <- X[,2]
     list(
       regress = ece.k22.regress(x, y),
-      matrix = ece.k22.matrix(x, y)
+      matrix  = ece.k22.matrix(x, y),
+      mom     = ece.k22.mom(x, y)
     )
   })
 }
@@ -120,6 +189,7 @@ k22_grid <- pmap(param_grid, function(label, scen, r, err_type, amp, L) {
     label       = label,
     var_regress = var(map_dbl(sim, "regress")),
     var_matrix  = var(map_dbl(sim, "matrix")),
+    var_mom     = var(map_dbl(sim, "mom")),
     sim         = sim
   )
 })
@@ -127,7 +197,8 @@ k22_grid <- pmap(param_grid, function(label, scen, r, err_type, amp, L) {
 k22_var_tbl <- map_dfr(k22_grid, \(g) tibble(
   Scenario               = g$label,
   `Var(k22-Regression)`  = round(g$var_regress, 2),
-  `Var(k22-Covariance)`  = round(g$var_matrix,  2)
+  `Var(k22-Covariance)`  = round(g$var_matrix,  2),
+  `Var(k22-MoM)`         = round(g$var_mom,      2)
 ))
 
 ```
@@ -146,10 +217,11 @@ knitr::kable(k22_var_tbl)
 make_overlap_hist(
   sims = list(
     Regression = map_dbl(k22_grid[[1]]$sim, "regress"),
-    Covariance = map_dbl(k22_grid[[1]]$sim, "matrix")
+    Covariance = map_dbl(k22_grid[[1]]$sim, "matrix"),
+    MoM        = map_dbl(k22_grid[[1]]$sim, "mom")
   ),
   xlab   = expression(hat(kappa)[22]),
-  colors = c(Regression = "#E41A1C", Covariance = "#377EB8")
+  colors = c(Regression = "#E41A1C", Covariance = "#377EB8", MoM = "#4DAF4A")
 ) + ggplot2::labs(title = "Scenario 1, normal errors, n = 200, ρ = 0")
 ```
 
@@ -160,17 +232,94 @@ make_overlap_hist(
 make_overlap_hist(
   sims = list(
     Regression = map_dbl(k22_grid[[4]]$sim, "regress"),
-    Covariance = map_dbl(k22_grid[[4]]$sim, "matrix")
+    Covariance = map_dbl(k22_grid[[4]]$sim, "matrix"),
+    MoM        = map_dbl(k22_grid[[4]]$sim, "mom")
   ),
   xlab   = expression(hat(kappa)[22]),
-  colors = c(Regression = "#E41A1C", Covariance = "#377EB8")
+  colors = c(Regression = "#E41A1C", Covariance = "#377EB8", MoM = "#4DAF4A")
 ) + ggplot2::labs(title = "Scenario 2, normal errors, n = 200, ρ = 0, L = 4")
 ```
 
 :::
 
 
---- 
+---
+
+## Estimating $\kappa_{22}$ via $V$
+
+Since $S_{xx}$, $S_{yy}$, $S_{xy}$ estimate $\sigma_x^2 = E[\varepsilon_x^2]$, $\sigma_y^2 = E[\varepsilon_y^2]$, $\sigma_{xy} = E[\varepsilon_x\varepsilon_y]$, the CLT for sample averages gives
+
+$$
+n\,\mathrm{Cov}(S_{xx}, S_{yy}) \;\to\; \mathrm{Cov}(\varepsilon_x^2,\, \varepsilon_y^2) = \sigma_x^2\sigma_y^2(\kappa_{22} - 1),
+$$
+$$
+n\,\mathrm{Var}(S_{xy}) \;\to\; \mathrm{Var}(\varepsilon_x\varepsilon_y) = \sigma_x^2\sigma_y^2\kappa_{22} - \sigma_{xy}^2.
+$$
+
+Both $V_{12}$ and $V_{33}$ therefore contain $\kappa_{22}$. Their population counterparts differ by a known quantity:
+
+$$
+\mathrm{Var}(\varepsilon_x\varepsilon_y) - \mathrm{Cov}(\varepsilon_x^2,\varepsilon_y^2) = \sigma_x^2\sigma_y^2(1 - \rho^2),
+$$
+
+so the two estimators target the same $\kappa_{22}$ with a fixed, estimable offset — the natural setting for a GLS combination with weights determined by their asymptotic variances.
+
+Under $H_0: \rho = 0$, $\sigma_{xy} = 0$ and the $\omega_{xy}$ corrections vanish from $V_{12}$, while $V_{33}$ retains $\omega_x^2/\sigma_x^2$ and $\omega_y^2/\sigma_y^2$ corrections. The $V_{12}$-based estimator is therefore cleaner under the independence null.
+
+### Derivation from $\Sigma_Z$
+
+Since $S_{xx} = (2T_1(X,X) - T_2(X,X))/(2n)$ and $S_{yy} = (2T_1(Y,Y) - T_2(Y,Y))/(2n)$,
+
+$$
+\mathrm{Cov}(S_{xx}, S_{yy}) = \frac{1}{4n^2}\,\mathrm{Cov}\!\bigl(2T_1(X,X) - T_2(X,X),\; 2T_1(Y,Y) - T_2(Y,Y)\bigr).
+$$
+
+Expanding by bilinearity gives a linear combination of the four cross-diagonal $\Sigma_Z$ entries:
+
+$$
+4\,[\Sigma_Z]_{T_1(X,X),T_1(Y,Y)} - 2\,[\Sigma_Z]_{T_1(X,X),T_2(Y,Y)} - 2\,[\Sigma_Z]_{T_2(X,X),T_1(Y,Y)} + [\Sigma_Z]_{T_2(X,X),T_2(Y,Y)}.
+$$
+
+All four entries share the coefficient $4n\sigma_x^2\sigma_y^2$ on $(\kappa_{22}-1)$; the $\omega_{xy}$ terms cancel to $16n\sigma_{xy}\omega_{xy}$ and the $\sigma_{xy}^2$ terms collect to $8n\sigma_{xy}^2$. Dividing through by $4n^2$ gives the closed form
+
+$$
+\mathrm{Cov}(S_{xx}, S_{yy}) = \frac{1}{n}\!\left[\sigma_x^2\sigma_y^2(\kappa_{22}-1) + 2\sigma_{xy}^2 + 4\sigma_{xy}\omega_{xy}\right].
+$$
+
+Solving for $\kappa_{22}$,
+
+$$
+\hat\kappa_{22} = \frac{V_{12} - 8n\sigma_{xy}^2 - 16n\sigma_{xy}\omega_{xy}}{4n\sigma_x^2\sigma_y^2} + 1,
+$$
+
+which under $H_0: \rho = 0$ reduces to $\hat\kappa_{22} = V_{12}/(4n\sigma_x^2\sigma_y^2) + 1$, free of all $\omega$ corrections.
+
+### Relationship between $\mathrm{Var}(S_{xy})$ and $\mathrm{Cov}(S_{xx}, S_{yy})$
+
+The two entries of $V$ used to estimate $\kappa_{22}$ expand as
+
+$$
+n\,\mathrm{Var}(S_{xy}) = \sigma_x^2\sigma_y^2\kappa_{22} + \tfrac{5}{2}\sigma_x^2\sigma_y^2 + \tfrac{3}{2}\sigma_{xy}^2 + \sigma_y^2\omega_x^2 + \sigma_x^2\omega_y^2 + 2\sigma_{xy}\omega_{xy},
+$$
+$$
+n\,\mathrm{Cov}(S_{xx}, S_{yy}) = \sigma_x^2\sigma_y^2(\kappa_{22}-1) + 2\sigma_{xy}^2 + 4\sigma_{xy}\omega_{xy}.
+$$
+
+Their difference is free of $\kappa_{22}$ at any $\rho$:
+
+$$
+n\bigl[\mathrm{Var}(S_{xy}) - \mathrm{Cov}(S_{xx}, S_{yy})\bigr] = \frac{7-\rho^2}{2}\,\sigma_x^2\sigma_y^2 + \sigma_y^2\omega_x^2 + \sigma_x^2\omega_y^2 - 2\sigma_{xy}\omega_{xy}.
+$$
+
+Dividing by $\sigma_x^2\sigma_y^2$, this gives a natural decomposition of $n\,\mathrm{Var}(S_{xy})/(\sigma_x^2\sigma_y^2)$:
+
+$$
+\underbrace{\frac{n\,\mathrm{Cov}(S_{xx},S_{yy})}{\sigma_x^2\sigma_y^2}}_{\kappa_{22} - 1 + 2\rho^2 + 4\rho\,\omega_{xy}/(\sigma_x\sigma_y)} + \underbrace{\frac{n\bigl[\mathrm{Var}(S_{xy}) - \mathrm{Cov}(S_{xx},S_{yy})\bigr]}{\sigma_x^2\sigma_y^2}}_{\frac{7-\rho^2}{2} + \omega_x^2/\sigma_x^2 + \omega_y^2/\sigma_y^2 - 2\rho\,\omega_{xy}/(\sigma_x\sigma_y)}.
+$$
+
+$\kappa_{22}$ is isolated in the first term at all $\rho$. The second term is the Gaussian-plus-change-point contribution, with its constant shifting from $7/2$ at $\rho = 0$ to $(7-\rho^2)/2$ in general. Under Gaussian errors ($\kappa_{22} = 1 + 2\rho^2$), $\mathrm{Cov}(S_{xx}, S_{yy})$ carries only the $\rho$-induced correlation and the entire excess over Gaussian is captured by its deviation from $2\rho^2\sigma_x^2\sigma_y^2/n$.
+
+---
 
 ## Kappa Table
 ```{R} 
