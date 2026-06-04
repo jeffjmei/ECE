@@ -25,15 +25,17 @@ A robust test plugs in $\hat\kappa_{22}$.
 
 ## Method of Moments via $S_i$ Terms
 
+The method-of-moments estimator for $\kappa_{22} = E[\varepsilon_x^2\varepsilon_y^2]/(\sigma_x^2\sigma_y^2)$ plugs in squared residuals directly:
+$$\hat\kappa_{22} = \frac{\frac{1}{n}\sum_i \varepsilon_{x,i}^2\,\varepsilon_{y,i}^2}{\hat\sigma_x^2\,\hat\sigma_y^2}.$$
+When there are no change points, $\varepsilon_{x,i}$ and $\varepsilon_{y,i}$ are observable as demeaned residuals, and this estimator is consistent.
+
+Under change points, the mean $\theta_{x,i}$ varies over time, so $X_i - \bar X$ is contaminated by jumps and $\varepsilon_{x,i}$ is not directly observable. We need surrogates for $\varepsilon_{x,i}^2$ and $\varepsilon_{y,i}^2$ that have constant expectation $\sigma_x^2$ and $\sigma_y^2$ at every index regardless of change-point amplitudes.
+
 Recall from the multiplier bootstrap that
 $$S_i = \frac{s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}}{2}, \qquad s_i^{(k)} = (X_i - X_{i+k})(Y_i - Y_{i+k}),$$
-satisfies $E[S_i] = \sigma_{xy}$ regardless of change-point amplitudes. The same construction applied to each series separately gives
+satisfies $E[S_i] = \sigma_{xy}$ regardless of change-point amplitudes. Applying the same construction to each series separately gives
 $$S_{xx,i} = \frac{(X_i-X_{i+1})^2 + (X_{i+1}-X_{i+2})^2 - (X_i-X_{i+2})^2}{2}, \qquad S_{yy,i} = \frac{(Y_i-Y_{i+1})^2 + (Y_{i+1}-Y_{i+2})^2 - (Y_i-Y_{i+2})^2}{2},$$
-with $E[S_{xx,i}] = \sigma_x^2$ and $E[S_{yy,i}] = \sigma_y^2$ at every index, change points included.
-
-These terms play the role of $\varepsilon_{x,i}^2$ and $\varepsilon_{y,i}^2$ with change-point-robust constant means. The classical method-of-moments estimator for $\kappa_{22} = E[\varepsilon_x^2\varepsilon_y^2]/(\sigma_x^2\sigma_y^2)$ is
-$$\hat\kappa_{22} = \frac{\frac{1}{n}\sum_i \varepsilon_{x,i}^2\,\varepsilon_{y,i}^2}{\hat\sigma_x^2\,\hat\sigma_y^2},$$
-where the numerator estimates $E[\varepsilon_x^2\varepsilon_y^2]$ and the denominator estimates $\sigma_x^2\sigma_y^2$. Replacing $\varepsilon_{x,i}^2$ with $S_{xx,i}$ and $\varepsilon_{y,i}^2$ with $S_{yy,i}$ gives the ECE analog:
+with $E[S_{xx,i}] = \sigma_x^2$ and $E[S_{yy,i}] = \sigma_y^2$ at every index, change points included. Substituting these as surrogates for $\varepsilon_{x,i}^2$ and $\varepsilon_{y,i}^2$ gives the ECE MoM estimator:
 $$\hat\kappa_{22}^{\mathrm{MoM}} = \frac{\frac{1}{n}\sum_i S_{xx,i}\,S_{yy,i}}{\bar S_{xx}\,\bar S_{yy}}.$$
 
 The $S_i$ terms are autocorrelated at lags 1 and 2 (consecutive terms share observations), so $\frac{1}{n}\sum S_{xx,i}S_{yy,i}$ has inflated variance relative to an i.i.d. average. The estimator remains consistent.
@@ -555,7 +557,7 @@ ggplot(sim_df_k31_mom, aes(x = k31, fill = group, color = group)) +
 
 ## Numerical Results: Estimating $\kappa_{22}$
 
-No single estimator dominates: the regression estimator has lower variance in most scenarios, but the matrix estimator wins when change-point amplitude is large.
+The MoM estimator has lower variance than both the regression and covariance estimators across scenarios. Between regression and covariance, neither dominates: regression wins in low-amplitude settings, covariance wins when change-point amplitude is large.
 
 ```{R}
 #| echo: false
