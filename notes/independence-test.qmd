@@ -41,7 +41,7 @@ The $S_i$ terms are autocorrelated at lags 1 and 2 (consecutive terms share obse
 ::: {.callout-tip collapse="true"}
 ## Simulation: Verifying $\hat\kappa_{22}^{\mathrm{MoM}}$
 
-We simulate 5,000 datasets across four scenarios varying the error distribution and change-point structure. The sample mean of $\hat\kappa_{22}^{\mathrm{MoM}}$ (dashed) should fall on the true value (red) in each panel.
+Since $S_{xx,i}$ and $S_{yy,i}$ are constructed from $(X,X)$ and $(Y,Y)$ separately, the estimator captures dependence between $\varepsilon_x^2$ and $\varepsilon_y^2$ without requiring $\varepsilon_x \perp \varepsilon_y$. We verify this across three settings using scenario 2 with $L = 4$ change points and Gaussian marginals.
 
 ```{r}
 #| echo: false
@@ -53,35 +53,83 @@ k22_mom <- function(x, y) {
   mean(Sxx * Syy) / (mean(Sxx) * mean(Syy))
 }
 
-scens <- list(
-  list(params = scenario(1, err_type = "normal"),                            label = "Sc. 1, normal"),
-  list(params = scenario(1, err_type = "exponential"),                       label = "Sc. 1, exponential"),
-  list(params = scenario(2, L = 4, err_type = "exponential"),                label = "Sc. 2, exponential"),
-  list(params = scenario(2, L = 4, err_type = "exponential", sigma = c(2, 0.5)), label = "Sc. 2, exp., het. var.")
-)
+params <- scenario(2, L = 4, err_type = "normal")
 
-mom_verify <- map(scens, \(s) {
-  sim <- map_dbl(1:5000, ~ {
-    X <- generate_data(s$params)
+k22_indep_mom <- map_dbl(1:1000, ~ {
+  X <- generate_data(params)
+  k22_mom(X[, 1], X[, 2])
+})
+
+k22_dep_mom <- map_dbl(1:1000, ~ {
+  ex <- rnorm(params$n)
+  ey <- (ex^2 - 1) / sqrt(2)
+  X  <- cbind(params$h[, 1] + ex, params$h[, 2] + ey)
+  k22_mom(X[, 1], X[, 2])
+})
+
+lambda_vals <- c(0, 0.5, 1/sqrt(2), 1)
+k22_true    <- 1 + 4 * lambda_vals^2
+
+sim_results_mom <- map(lambda_vals, \(lam) {
+  map_dbl(1:1000, ~ {
+    ex <- rnorm(params$n)
+    ey <- lam * (ex^2 - 1) / sqrt(2) + sqrt(1 - lam^2) * rnorm(params$n)
+    X  <- cbind(params$h[, 1] + ex, params$h[, 2] + ey)
     k22_mom(X[, 1], X[, 2])
   })
-  tibble(val = sim, truth = s$params$kappa$k22, label = s$label)
-}) |> list_rbind()
+})
 ```
+
+::: {.panel-tabset}
+
+## Independent ($\kappa_{22} = 1$)
+
+Scenario 2, $L = 4$, Gaussian independent errors. Under independence $\kappa_{22} = 1$ regardless of marginals.
 
 ```{r}
 #| echo: false
-mom_verify |>
-  ggplot(aes(x = val)) +
-  geom_histogram(aes(y = after_stat(density)), bins = 40,
-                 fill = "steelblue", color = "white", alpha = 0.8) +
-  geom_vline(aes(xintercept = truth), color = "firebrick") +
-  geom_vline(aes(xintercept = mean(val)), linetype = "dashed") +
-  facet_wrap(~label, scales = "free") +
-  labs(x = expression(hat(kappa)[22]^MoM), y = "density",
-       subtitle = "Red = true, dashed = sample mean") +
+make_sim_hist(k22_indep_mom, true = params$kappa$k22, expression(hat(kappa)[22]^MoM))
+```
+
+## Dependent ($\kappa_{22} = 5$)
+
+Using $\varepsilon_y = (\varepsilon_x^2 - 1)/\sqrt{2}$ with $\varepsilon_x \sim N(0,1)$, giving $\sigma_{xy} = 0$ and $\kappa_{22} = 5$.
+
+```{r}
+#| echo: false
+make_sim_hist(k22_dep_mom, true = 5, expression(hat(kappa)[22]^MoM))
+```
+
+## $\lambda$-Mixing
+
+Using $\varepsilon_y = \lambda(\varepsilon_x^2-1)/\sqrt{2} + \sqrt{1-\lambda^2}\,\eta$ with $\varepsilon_x, \eta \stackrel{iid}{\sim} N(0,1)$, giving $\sigma_{xy} = 0$ and $\kappa_{22} = 1 + 4\lambda^2$.
+
+```{r}
+#| echo: false
+sim_df_mom <- tibble::tibble(
+  k22   = unlist(sim_results_mom),
+  group = factor(rep(round(k22_true, 1), each = 1000),
+                 labels = paste0("κ₂₂ = ", round(k22_true, 1)))
+)
+ref_df_mom <- tibble::tibble(
+  group = factor(round(k22_true, 1),
+                 labels = paste0("κ₂₂ = ", round(k22_true, 1))),
+  true  = k22_true
+)
+mean_df_mom <- sim_df_mom |>
+  dplyr::summarise(mean_k22 = mean(k22), .by = group)
+
+ggplot(sim_df_mom, aes(x = k22, fill = group, color = group)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 50, position = "identity", alpha = 0.4, linewidth = 0) +
+  geom_vline(data = ref_df_mom, aes(xintercept = true, color = group), linewidth = 0.9) +
+  geom_vline(data = mean_df_mom, aes(xintercept = mean_k22, color = group), linetype = "dashed") +
+  scale_fill_brewer(palette = "Set1", name = NULL) +
+  scale_color_brewer(palette = "Set1", name = NULL) +
+  labs(x = expression(hat(kappa)[22]^MoM), y = "density") +
   theme_minimal()
 ```
+
+:::
 
 :::
 
