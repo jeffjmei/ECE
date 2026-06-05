@@ -617,14 +617,43 @@ make_overlap_hist(
 
 ### Estimating $\kappa_{31}$
 
-Define the cubic-linear ECE terms
-$$T_i = \frac{t_i^{(1)} + t_{i+1}^{(1)} - t_i^{(2)}}{2}, \qquad t_i^{(k)} = (X_i - X_{i+k})^3(Y_i - Y_{i+k}).$$
+As with $\kappa_{22}$, there are two routes to $\kappa_{31} = E[\varepsilon_x^3\varepsilon_y]/(\sigma_x^3\sigma_y)$: a **regression** estimator built from a single fourth-order ECE term, and a **method-of-moments** estimator built from a product of two second-order ECE terms. The regression term cancels the change-point signal exactly and needs only a $3\hat\sigma_x^2\hat\sigma_{xy}$ correction; the MoM has the lower variance (the $\kappa_{22}$ comparison note) but its product retains change-point complexity terms that must also be subtracted.
 
-The same change-point cancellation gives constant mean at every index: $E[T_i] = \kappa_{31}\sigma_x^3\sigma_y + 3\sigma_x^2\sigma_{xy}$. Solving,
-$$\hat\kappa_{31} = \frac{\bar T - 3\hat\sigma_x^2\hat\sigma_{xy}}{\bar S_{xx}^{3/2}\,\bar S_{yy}^{1/2}}.$$
+**Regression estimator.** Define the cubic-linear ECE term
+$$T_i = \frac{t_i^{(1)} + t_{i+1}^{(1)} - t_i^{(2)}}{2}, \qquad t_i^{(k)} = (X_i - X_{i+k})^3(Y_i - Y_{i+k}).$$
+The change-point cancellation gives constant mean at every index, $E[T_i] = \kappa_{31}\sigma_x^3\sigma_y + 3\sigma_x^2\sigma_{xy}$, so
+$$\hat\kappa_{31}^{\mathrm{reg}} = \frac{\bar T - 3\hat\sigma_x^2\hat\sigma_{xy}}{\bar S_{xx}^{3/2}\,\bar S_{yy}^{1/2}}.$$
+
+**Method of moments.** Factor $\varepsilon_x^3\varepsilon_y = \varepsilon_x^2\cdot(\varepsilon_x\varepsilon_y)$ and replace each factor by its second-order ECE surrogate: $S_{xx,i}$ for $\varepsilon_x^2$ (mean $\sigma_x^2$ at every index) and $S_{xy,i}$ for $\varepsilon_x\varepsilon_y$ (mean $\sigma_{xy}$ at every index). Their product is a surrogate for $\varepsilon_x^3\varepsilon_y$. Replacing the single quartic term $T_i$ by this product lowers the variance (the $\kappa_{22}$ comparison note), but unlike $T_i$ — whose signal cancels exactly at every index — the product carries two change-point complexity terms, $\omega_{xx} = \frac{1}{n}\sum_i (h_{x,i}^{(1)})^2$ and $\omega_{xy} = \frac{1}{n}\sum_i h_{x,i}^{(1)}h_{y,i}^{(1)}$ (with $h_{x,i}^{(1)} = \theta_{x,i} - \theta_{x,i+1}$). Subtracting these alongside the $3\hat\sigma_x^2\hat\sigma_{xy}$ bias (proof below),
+$$\hat\kappa_{31}^{\mathrm{MoM}} = \frac{\frac{1}{n}\sum_i S_{xx,i}\,S_{xy,i} - 3\hat\sigma_x^2\hat\sigma_{xy} - 2\hat\sigma_{xy}\hat\omega_{xx} - 2\hat\sigma_x^2\hat\omega_{xy}}{\bar S_{xx}^{3/2}\,\bar S_{yy}^{1/2}},$$
+where $\hat\omega_{xx}$ and $\hat\omega_{xy}$ are the ECE complexity estimates `ece.complexity(x, x)` and `ece.complexity(x, y)`.
+
+::: {.callout-note collapse="true"}
+## Consistency: $\frac{1}{n}\sum_i S_{xx,i}S_{xy,i} \xrightarrow{p} \kappa_{31}\sigma_x^3\sigma_y + 3\sigma_x^2\sigma_{xy} + 2\sigma_{xy}\omega_{xx} + 2\sigma_x^2\omega_{xy}$
+
+**Surrogates and the general term.** Split each increment into signal and noise, $X_i - X_{i+k} = h_{x,i}^{(k)} + e_{x,i}^{(k)}$ and $Y_i - Y_{i+k} = h_{y,i}^{(k)} + e_{y,i}^{(k)}$. With $s_{xx,i}^{(k)} = (X_i-X_{i+k})^2$ and $s_{xy,i}^{(k)} = (X_i-X_{i+k})(Y_i-Y_{i+k})$,
+$$S_{xx,i} = \tfrac{1}{2}\bigl(s_{xx,i}^{(1)} + s_{xx,i+1}^{(1)} - s_{xx,i}^{(2)}\bigr), \qquad S_{xy,i} = \tfrac{1}{2}\bigl(s_{xy,i}^{(1)} + s_{xy,i+1}^{(1)} - s_{xy,i}^{(2)}\bigr).$$
+The product expands into nine cross terms; it suffices to analyze the general term $E[s_{xx,i}^{(k)}\,s_{xy,j}^{(r)}] = E[a^2 b c]$ with $a = X_i - X_{i+k}$, $b = X_j - X_{j+r}$, $c = Y_j - Y_{j+r}$. Substituting the signal–noise split and using $E[e]=0$ separates this into a pure-noise part $E[(e_{x,i}^{(k)})^2 e_{x,j}^{(r)} e_{y,j}^{(r)}]$ plus terms each carrying at least one signal factor $h$.
+
+**Pure-noise baseline.** The pure-noise term depends only on how the index sets $\{i,i+k\}$ and $\{j,j+r\}$ overlap. The three *diagonal* combinations (matching index and lag) share both time points, where
+$$E\bigl[(e_x^{(k)})^3 e_y^{(k)}\bigr] = 2\kappa_{31}\sigma_x^3\sigma_y + 6\sigma_x^2\sigma_{xy};$$
+each of the six *off-diagonal* combinations shares exactly one time point and evaluates to $\kappa_{31}\sigma_x^3\sigma_y + 3\sigma_x^2\sigma_{xy}$. Assembling with the ECE signs $(s_{xx,i}^{(1)} + s_{xx,i+1}^{(1)} - s_{xx,i}^{(2)})(s_{xy,i}^{(1)} + s_{xy,i+1}^{(1)} - s_{xy,i}^{(2)})$ — the three diagonal terms enter with $+$, the six off-diagonal terms with net sign $2(+) + 4(-) = -2$ —
+$$4\,E[S_{xx,i}S_{xy,i}]_{\text{noise}} = 3\bigl(2\kappa_{31}\sigma_x^3\sigma_y + 6\sigma_x^2\sigma_{xy}\bigr) - 2\bigl(\kappa_{31}\sigma_x^3\sigma_y + 3\sigma_x^2\sigma_{xy}\bigr) = 4\kappa_{31}\sigma_x^3\sigma_y + 12\sigma_x^2\sigma_{xy},$$
+so the pure-noise part has constant mean $\kappa_{31}\sigma_x^3\sigma_y + 3\sigma_x^2\sigma_{xy}$ at every index — exactly the regression estimator's target and bias.
+
+**Signal-dependent terms.** The remaining terms each carry a signal factor $h$. The pure-signal quartic cancels exactly (the min-segment-length-2 argument of the $\kappa_{40}$ note), and the terms linear in a single $h$ telescope to zero under circular rotation (as in the $\kappa_{22}$ note). The surviving signal$^2\times$noise$^2$ terms collect into two change-point complexity functionals,
+$$2\sigma_{xy}\,\omega_{xx} + 2\sigma_x^2\,\omega_{xy}, \qquad \omega_{xx} = \tfrac{1}{n}\textstyle\sum_i (h_{x,i}^{(1)})^2, \quad \omega_{xy} = \tfrac{1}{n}\textstyle\sum_i h_{x,i}^{(1)} h_{y,i}^{(1)}.$$
+Note $\omega_{xy}$ carries no factor of $\sigma_{xy}$, so it biases the estimator even under independence; the regression term $T_i$, which cancels the signal pointwise, has no such terms.
+
+**Averaged mean and consistency.** Collecting the pieces,
+$$\frac{1}{n}\sum_i E[S_{xx,i}S_{xy,i}] = \kappa_{31}\sigma_x^3\sigma_y + 3\sigma_x^2\sigma_{xy} + 2\sigma_{xy}\omega_{xx} + 2\sigma_x^2\omega_{xy}.$$
+Each $S_{xx,i}S_{xy,i}$ depends only on $(\varepsilon_{\cdot,i}, \varepsilon_{\cdot,i+1}, \varepsilon_{\cdot,i+2})$, so the sequence is $2$-dependent; with finite eighth moments the average has variance $O(1/n)$ and concentrates at its mean. All four bias terms are estimated consistently — $\hat\sigma_x^2 = \bar S_{xx}$, $\hat\sigma_{xy} = \bar S_{xy}$, and $\hat\omega_{xx}, \hat\omega_{xy}$ by the ECE complexity regression (`ece.complexity`) — so subtracting them and normalizing,
+$$\hat\kappa_{31}^{\mathrm{MoM}} = \frac{\frac{1}{n}\sum_i S_{xx,i}S_{xy,i} - 3\hat\sigma_x^2\hat\sigma_{xy} - 2\hat\sigma_{xy}\hat\omega_{xx} - 2\hat\sigma_x^2\hat\omega_{xy}}{\bar S_{xx}^{3/2}\,\bar S_{yy}^{1/2}} \xrightarrow{p} \kappa_{31}$$
+by the continuous mapping theorem. As with $\kappa_{40}$, the change-point complexity terms are subtracted explicitly; the regression estimator avoids them only because its quartic term cancels the signal pointwise.
+:::
 
 ::: {.callout-tip collapse="true"}
-## Simulation: Verifying $\hat\kappa_{31}$
+## Simulation: Verifying $\hat\kappa_{31}^{\mathrm{reg}}$
 
 ```{r}
 #| echo: false
@@ -638,7 +667,7 @@ cubic_linear_terms <- function(x, y) {
   (d1x^3 * d1y + rotate(d1x, 1)^3 * rotate(d1y, 1) - d2x^3 * d2y) / 2
 }
 
-k31_mom <- function(x, y) {
+k31_regress <- function(x, y) {
   Sxx <- ece_terms(cbind(x, x))
   Syy <- ece_terms(cbind(y, y))
   Sxy <- ece_terms(cbind(x, y))
@@ -647,6 +676,100 @@ k31_mom <- function(x, y) {
 }
 
 params_k31 <- scenario(2, L = 4, err_type = "normal")
+
+k31_indep_reg <- map_dbl(1:1000, ~ {
+  X <- generate_data(params_k31)
+  k31_regress(X[, 1], X[, 2])
+})
+
+k31_dep_reg <- map_dbl(1:1000, ~ {
+  ex <- rnorm(params_k31$n)
+  X  <- cbind(params_k31$h[, 1] + ex, params_k31$h[, 2] + ex)
+  k31_regress(X[, 1], X[, 2])
+})
+
+lambda_vals_k31 <- c(0, 0.5, 1/sqrt(2), 1)
+k31_true        <- 3 * lambda_vals_k31
+
+sim_results_k31_reg <- map(lambda_vals_k31, \(lam) {
+  map_dbl(1:1000, \(.) {
+    ex <- rnorm(params_k31$n)
+    ey <- lam * ex + sqrt(1 - lam^2) * rnorm(params_k31$n)
+    X  <- cbind(params_k31$h[, 1] + ex, params_k31$h[, 2] + ey)
+    k31_regress(X[, 1], X[, 2])
+  })
+})
+```
+
+::: {.panel-tabset}
+
+## Independent ($\kappa_{31} = 0$)
+
+Scenario 2, $L = 4$, Gaussian independent errors. Under independence $\kappa_{31} = 0$.
+
+```{r}
+#| echo: false
+make_sim_hist(k31_indep_reg, true = params_k31$kappa$k31, expression(hat(kappa)[31]^reg))
+```
+
+## Dependent ($\kappa_{31} = 3$)
+
+Using $\varepsilon_y = \varepsilon_x$ with $\varepsilon_x \sim N(0,1)$, giving $\sigma_{xy} = \sigma_x^2 = 1$ and $\kappa_{31} = 3$.
+
+```{r}
+#| echo: false
+make_sim_hist(k31_dep_reg, true = 3, expression(hat(kappa)[31]^reg))
+```
+
+## $\lambda$-Mixing
+
+Using $\varepsilon_y = \lambda\varepsilon_x + \sqrt{1-\lambda^2}\,\eta$ with $\varepsilon_x, \eta \stackrel{iid}{\sim} N(0,1)$, giving $\kappa_{31} = 3\lambda$.
+
+```{r}
+#| echo: false
+sim_df_k31_reg <- tibble::tibble(
+  k31   = unlist(sim_results_k31_reg),
+  group = factor(rep(round(k31_true, 2), each = 1000),
+                 labels = paste0("κ₃₁ = ", round(k31_true, 2)))
+)
+ref_df_k31_reg <- tibble::tibble(
+  group = factor(round(k31_true, 2),
+                 labels = paste0("κ₃₁ = ", round(k31_true, 2))),
+  true  = k31_true
+)
+mean_df_k31_reg <- sim_df_k31_reg |>
+  dplyr::summarise(mean_k31 = mean(k31), .by = group)
+
+ggplot(sim_df_k31_reg, aes(x = k31, fill = group, color = group)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 50, position = "identity", alpha = 0.4, linewidth = 0) +
+  geom_vline(data = ref_df_k31_reg, aes(xintercept = true, color = group), linewidth = 0.9) +
+  geom_vline(data = mean_df_k31_reg, aes(xintercept = mean_k31, color = group), linetype = "dashed") +
+  scale_fill_brewer(palette = "Set1", name = NULL) +
+  scale_color_brewer(palette = "Set1", name = NULL) +
+  labs(x = expression(hat(kappa)[31]^reg), y = "density") +
+  theme_minimal()
+```
+
+:::
+
+:::
+
+::: {.callout-tip collapse="true"}
+## Simulation: Verifying $\hat\kappa_{31}^{\mathrm{MoM}}$
+
+```{r}
+#| echo: false
+#| cache: true
+#| message: false
+k31_mom <- function(x, y) {
+  Sxx <- ece_terms(cbind(x, x))
+  Syy <- ece_terms(cbind(y, y))
+  Sxy <- ece_terms(cbind(x, y))
+  sx2 <- mean(Sxx); sy2 <- mean(Syy); sxy <- mean(Sxy)
+  wxx <- ece.complexity(x, x); wxy <- ece.complexity(x, y)
+  (mean(Sxx * Sxy) - 3 * sx2 * sxy - 2 * sxy * wxx - 2 * sx2 * wxy) /
+    (sx2^(3/2) * sy2^(1/2))
+}
 
 k31_indep_mom <- map_dbl(1:1000, ~ {
   X <- generate_data(params_k31)
@@ -659,10 +782,7 @@ k31_dep_mom <- map_dbl(1:1000, ~ {
   k31_mom(X[, 1], X[, 2])
 })
 
-lambda_vals_k31_mom <- c(0, 0.5, 1/sqrt(2), 1)
-k31_true_mom        <- 3 * lambda_vals_k31_mom
-
-sim_results_k31_mom <- map(lambda_vals_k31_mom, \(lam) {
+sim_results_k31_mom <- map(lambda_vals_k31, \(lam) {
   map_dbl(1:1000, \(.) {
     ex <- rnorm(params_k31$n)
     ey <- lam * ex + sqrt(1 - lam^2) * rnorm(params_k31$n)
@@ -680,7 +800,7 @@ Scenario 2, $L = 4$, Gaussian independent errors. Under independence $\kappa_{31
 
 ```{r}
 #| echo: false
-make_sim_hist(k31_indep_mom, true = params_k31$kappa$k31, expression(hat(kappa)[31]))
+make_sim_hist(k31_indep_mom, true = params_k31$kappa$k31, expression(hat(kappa)[31]^MoM))
 ```
 
 ## Dependent ($\kappa_{31} = 3$)
@@ -689,7 +809,7 @@ Using $\varepsilon_y = \varepsilon_x$ with $\varepsilon_x \sim N(0,1)$, giving $
 
 ```{r}
 #| echo: false
-make_sim_hist(k31_dep_mom, true = 3, expression(hat(kappa)[31]))
+make_sim_hist(k31_dep_mom, true = 3, expression(hat(kappa)[31]^MoM))
 ```
 
 ## $\lambda$-Mixing
@@ -700,13 +820,13 @@ Using $\varepsilon_y = \lambda\varepsilon_x + \sqrt{1-\lambda^2}\,\eta$ with $\v
 #| echo: false
 sim_df_k31_mom <- tibble::tibble(
   k31   = unlist(sim_results_k31_mom),
-  group = factor(rep(round(k31_true_mom, 2), each = 1000),
-                 labels = paste0("κ₃₁ = ", round(k31_true_mom, 2)))
+  group = factor(rep(round(k31_true, 2), each = 1000),
+                 labels = paste0("κ₃₁ = ", round(k31_true, 2)))
 )
 ref_df_k31_mom <- tibble::tibble(
-  group = factor(round(k31_true_mom, 2),
-                 labels = paste0("κ₃₁ = ", round(k31_true_mom, 2))),
-  true  = k31_true_mom
+  group = factor(round(k31_true, 2),
+                 labels = paste0("κ₃₁ = ", round(k31_true, 2))),
+  true  = k31_true
 )
 mean_df_k31_mom <- sim_df_k31_mom |>
   dplyr::summarise(mean_k31 = mean(k31), .by = group)
@@ -717,7 +837,7 @@ ggplot(sim_df_k31_mom, aes(x = k31, fill = group, color = group)) +
   geom_vline(data = mean_df_k31_mom, aes(xintercept = mean_k31, color = group), linetype = "dashed") +
   scale_fill_brewer(palette = "Set1", name = NULL) +
   scale_color_brewer(palette = "Set1", name = NULL) +
-  labs(x = expression(hat(kappa)[31]), y = "density") +
+  labs(x = expression(hat(kappa)[31]^MoM), y = "density") +
   theme_minimal()
 ```
 
