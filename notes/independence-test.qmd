@@ -868,6 +868,15 @@ make_overlap_hist(
 
 :::
 
+::: {.callout-warning}
+## Why does MoM have lower variance than the regression estimator?
+
+The regression estimator computes a single fourth-order joint statistic $T_k^{(2)} = \sum_i (X_i - X_{i+k})^2(Y_i - Y_{i+k})^2$, whereas the MoM builds separate second-order estimates $S_{xx,i} \approx \sigma_x^2$ and $S_{yy,i} \approx \sigma_y^2$ and multiplies them. Since $\kappa_{22}\sigma_x^2\sigma_y^2 = E[\varepsilon_x^2\varepsilon_y^2]$ factors, this separation pays off: for independent estimates $\hat A, \hat B$ of $A, B$,
+$$\operatorname{Var}[\hat A \hat B] \approx A^2\operatorname{Var}[\hat B] + B^2\operatorname{Var}[\hat A] \leq \operatorname{Var}[\widehat{AB}].$$
+
+Near a joint change point the advantage is even larger: $(X_i - X_{i+k})^2(Y_i - Y_{i+k})^2 \sim h_x^2 h_y^2$ is fourth-order in jump amplitudes, while $S_{xx,i} S_{yy,i}$ is only quadratic (the signal's squared term cancels inside each ECE term), so the regression numerator is far noisier in high-amplitude scenarios.
+:::
+
 
 ---
 
