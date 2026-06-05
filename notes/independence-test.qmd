@@ -267,10 +267,10 @@ ggplot(sim_df_mom, aes(x = k22, fill = group, color = group)) +
 
 ### Estimating $\kappa_{40}$
 
-Define $T_k^{(2)}(X,X) = \sum_i (X_i - X_{i+k})^4$. Expanding the expectation and applying the change-point cancellation $2T_1^{(m)}(\theta_x) = T_2^{(m)}(\theta_x)$ at both the second and fourth powers gives
-$$2E[T_1^{(2)}(X,X)] - E[T_2^{(2)}(X,X)] = 2n(\kappa_{40}+3)\sigma_x^4,$$
+Since $\kappa_{22}(X,X) = E[\varepsilon_x^4]/\sigma_x^4 = \kappa_{40}$, the $\kappa_{22}$ MoM estimator applies directly with $Y = X$. Unlike the $\kappa_{22}$ case where $\sigma_{xy}$ is small under the null, here $\sigma_{xy}\vert_{Y=X} = \sigma_x^2 \neq 0$, so the bias correction is non-trivial. Substituting $\sigma_{xy} = \sigma_x^2$ into the $\kappa_{22}$ consistency result gives
+$$\frac{1}{n}\sum_i E\bigl[S_{xx,i}^2\bigr] = \kappa_{40}\sigma_x^4 + 3\sigma_x^4 + 4\sigma_x^2\omega_{xx},$$
 so
-$$\hat\kappa_{40} = \frac{2T_1^{(2)}(X,X) - T_2^{(2)}(X,X)}{2n\hat\sigma_x^4} - 3.$$
+$$\hat\kappa_{40}^{\mathrm{MoM}} = \frac{\frac{1}{n}\sum_i S_{xx,i}^2 - 3\hat\sigma_x^4 - 4\hat\sigma_x^2\hat\omega_{xx}}{\hat\sigma_x^4}.$$
 
 ::: {.callout-tip collapse="true"}
 ## Simulation: Verifying $\hat\kappa_{40}$
@@ -364,7 +364,7 @@ ggplot(sim_df_k40_reg, aes(x = k40, fill = group, color = group)) +
 :::
 
 ::: {.callout-note collapse="true"}
-## Alternative: Term-by-Term MoM via Quartic ECE Terms
+## Regression estimator and connection to quartic ECE terms
 
 Define the quartic ECE terms
 $$S_{xx,i}^{(4)} = \frac{(X_i - X_{i+1})^4 + (X_{i+1} - X_{i+2})^4 - (X_i - X_{i+2})^4}{2}.$$
@@ -402,16 +402,11 @@ With circular indexing $\sum_i S_{xx,i}^{(4)} = (2T_1^{(2)}(X,X) - T_2^{(2)}(X,X
 #| echo: false
 #| cache: true
 #| message: false
-quartic_terms <- function(x) {
-  d1 <- (x - rotate(x, 1))^4
-  d2 <- (x - rotate(x, 2))^4
-  (d1 + rotate(d1, 1) - d2) / 2
-}
-
 k40_mom <- function(x) {
-  Sxx  <- ece_terms(cbind(x, x))
-  Sxx4 <- quartic_terms(x)
-  mean(Sxx4 - 3 * Sxx * rotate(Sxx, 3)) / mean(Sxx)^2
+  Sxx <- ece_terms(cbind(x, x))
+  sx2 <- mean(Sxx)
+  wxx <- ece.complexity(x, x)
+  (mean(Sxx^2) - 3 * sx2^2 - 4 * sx2 * wxx) / sx2^2
 }
 
 k40_gauss_mom <- map_dbl(1:1000, ~ {
@@ -483,7 +478,7 @@ ggplot(sim_df_k40_mom, aes(x = k40, fill = group, color = group)) +
 ::: {.callout-tip collapse="true"}
 ## Numerical Results: Comparing $\hat\kappa_{40}$ Estimators
 
-The regression and MoM estimators are algebraically equivalent up to the lag-3 bias correction in the numerator. We compare their variance across scenarios.
+We compare bias and variance of the regression and MoM estimators across scenarios.
 
 ```{r}
 #| echo: false
@@ -526,17 +521,36 @@ k40_grid <- pmap(param_grid_k40, function(label, scen, err_type, amp, L) {
   )
 })
 
-k40_var_tbl <- map_dfr(k40_grid, \(g) tibble(
-  Scenario             = g$label,
-  `κ₄₀`              = round(g$true, 2),
-  `Var(Regression)`   = round(g$var_regress, 4),
-  `Var(MoM)`          = round(g$var_mom, 4)
-))
-```
+ci_df_k40 <- map_dfr(k40_grid, \(g) {
+  tibble(
+    scenario = g$label,
+    method   = c("Regression", "MoM"),
+    bias     = c(mean(map_dbl(g$sim, "regress")),
+                 mean(map_dbl(g$sim, "mom"))) - g$true,
+    sd       = c(sd(map_dbl(g$sim, "regress")),
+                 sd(map_dbl(g$sim, "mom")))
+  )
+}) |>
+  mutate(
+    lo       = bias - 1.96 * sd,
+    hi       = bias + 1.96 * sd,
+    scenario = factor(scenario, levels = map_chr(k40_grid, "label")),
+    method   = factor(method, levels = c("Regression", "MoM"))
+  )
 
-```{r}
-#| echo: false
-knitr::kable(k40_var_tbl)
+ggplot(ci_df_k40, aes(x = scenario, y = bias, color = method, group = method)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  geom_pointrange(aes(ymin = lo, ymax = hi),
+                  position = position_dodge(width = 0.4)) +
+  scale_color_brewer(palette = "Set1", name = NULL) +
+  labs(x = NULL, y = expression(hat(kappa)[40] - kappa[40]),
+       title = expression("Bias and variance of " * hat(kappa)[40] * " estimators")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank()
+  )
 ```
 
 ::: {.panel-tabset}
