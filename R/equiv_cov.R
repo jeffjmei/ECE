@@ -100,7 +100,51 @@ ece.cor <- function(x, y = NULL, L = 2) {
 #'
 #' @export
 
-ece.kappa <- function(x, y = NULL, rho = NULL) {
+ece.kappa <- function(x, y = NULL, rho = NULL, method = "mom") {
+  if (is.matrix(x)) {
+    if (ncol(x) != 2) stop("matrix input must have exactly 2 columns")
+    y <- x[, 2]
+    x <- x[, 1]
+  }
+  switch(method,
+    mom    = ece.kappa.mom(x, y, rho),
+    matrix = ece.kappa.matrix(x, y, rho),
+    stop("Unknown method: ", method)
+  )
+}
+
+ece.kappa.mom <- function(x, y = NULL, rho = NULL) {
+  if (is.matrix(x)) {
+    if (ncol(x) != 2) stop("matrix input must have exactly 2 columns")
+    y <- x[, 2]
+    x <- x[, 1]
+  }
+  if (is.null(y)) y <- x
+
+  Sxx <- ece_terms(cbind(x, x))
+  Syy <- ece_terms(cbind(y, y))
+  Sxy <- ece_terms(cbind(x, y))
+
+  sx2 <- mean(Sxx)
+  sy2 <- mean(Syy)
+  sxy <- if (!is.null(rho) && rho == 0) 0 else mean(Sxy)
+
+  wxx <- ece.complexity(x, x)
+  wyy <- ece.complexity(y, y)
+  wxy <- ece.complexity(x, y)
+
+  k40 <- (mean(Sxx^2) - 3 * sx2^2 - 4 * sx2 * wxx) / sx2^2
+  k04 <- (mean(Syy^2) - 3 * sy2^2 - 4 * sy2 * wyy) / sy2^2
+  k22 <- (mean(Sxx * Syy) - 3 * sxy^2 - 4 * sxy * wxy) / (sx2 * sy2)
+  k31 <- (mean(Sxx * Sxy) - 3 * sx2 * sxy - 2 * sxy * wxx - 2 * sx2 * wxy) /
+    (sx2^(3 / 2) * sy2^(1 / 2))
+  k13 <- (mean(Syy * Sxy) - 3 * sy2 * sxy - 2 * sxy * wyy - 2 * sy2 * wxy) /
+    (sy2^(3 / 2) * sx2^(1 / 2))
+
+  list(k40 = k40, k31 = k31, k22 = k22, k13 = k13, k04 = k04)
+}
+
+ece.kappa.matrix <- function(x, y = NULL, rho = NULL) {
   if (is.matrix(x)) {
     if (ncol(x) != 2) stop("matrix input must have exactly 2 columns")
     y <- x[, 2]
@@ -145,13 +189,7 @@ ece.kappa <- function(x, y = NULL, rho = NULL) {
     2 * sxy * wy2 / (sy2^(3 / 2) * sqrt(sx2)) -
     2 * wxy / (sqrt(sx2) * sqrt(sy2))
 
-  list(
-    k40 = k40,
-    k31 = k31,
-    k22 = k22,
-    k13 = k13,
-    k04 = k04
-  )
+  list(k40 = k40, k31 = k31, k22 = k22, k13 = k13, k04 = k04)
 }
 
 ece.complexity <- function(x, y = NULL, L = 2) {
