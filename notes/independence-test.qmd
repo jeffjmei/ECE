@@ -272,6 +272,34 @@ $$\frac{1}{n}\sum_i E\bigl[S_{xx,i}^2\bigr] = \kappa_{40}\sigma_x^4 + 3\sigma_x^
 so
 $$\hat\kappa_{40}^{\mathrm{MoM}} = \frac{\frac{1}{n}\sum_i S_{xx,i}^2 - 3\hat\sigma_x^4 - 4\hat\sigma_x^2\hat\omega_{xx}}{\hat\sigma_x^4}.$$
 
+::: {.callout-note collapse="true"}
+## Consistency: $\frac{1}{n}\sum_i S_{xx,i}^2 \xrightarrow{p} \kappa_{40}\sigma_x^4 + 3\sigma_x^4 + 4\sigma_x^2\omega_{xx}$
+
+Because $\kappa_{40} = \kappa_{22}(X,X)$, we do not redo the four-case computation: we specialize the per-index master result of the $\kappa_{22}$ consistency note to $Y = X$. Under that substitution $\sigma_y^2 \to \sigma_x^2$, $\sigma_{xy} \to \sigma_x^2$, $\kappa_{22} \to \kappa_{40}$, and both coskewnesses collapse to the skewness, $E[\varepsilon_x\varepsilon_y^2], E[\varepsilon_x^2\varepsilon_y] \to \mu_3 := E[\varepsilon_x^3]$.
+
+**Pointwise mean.** Setting $Y = X$ in the per-index result
+$$E[S_{xx,i}S_{yy,i}] = 2\sigma_{xy}\bigl(h_{x,i}^{(1)}h_{y,i}^{(1)} + h_{x,i+1}^{(1)}h_{y,i+1}^{(1)}\bigr) + E[\varepsilon_x\varepsilon_y^2]\bigl(h_{x,i+1}^{(1)} - h_{x,i}^{(1)}\bigr) + E[\varepsilon_x^2\varepsilon_y]\bigl(h_{y,i+1}^{(1)} - h_{y,i}^{(1)}\bigr) + \kappa_{22}\sigma_x^2\sigma_y^2 + 3\sigma_{xy}^2$$
+collapses the covariance bracket into a sum of squares:
+$$E\bigl[S_{xx,i}^2\bigr] = 2\sigma_x^2\bigl((h_i^{(1)})^2 + (h_{i+1}^{(1)})^2\bigr) + 2\mu_3\bigl(h_{i+1}^{(1)} - h_i^{(1)}\bigr) + (\kappa_{40} + 3)\sigma_x^4,$$
+writing $h_i^{(k)} = \theta_{x,i} - \theta_{x,i+k}$.
+
+**Averaging over $i$.** Three pieces:
+
+- The skewness term telescopes. With circular indexing $\sum_i h_{i+1}^{(1)} = \sum_i h_i^{(1)}$, so $\sum_i 2\mu_3(h_{i+1}^{(1)} - h_i^{(1)}) = 0$.
+- The squared-jump terms each average to the signal-complexity functional $\omega_{xx} := \frac{1}{n}\sum_i (h_i^{(1)})^2 \ge 0$ (again $\sum_i (h_{i+1}^{(1)})^2 = \sum_i (h_i^{(1)})^2$ by rotation), contributing $4\sigma_x^2\omega_{xx}$.
+- The constant survives as $(\kappa_{40}+3)\sigma_x^4$.
+
+Hence
+$$\frac{1}{n}\sum_i E\bigl[S_{xx,i}^2\bigr] = \kappa_{40}\sigma_x^4 + 3\sigma_x^4 + 4\sigma_x^2\omega_{xx},$$
+which is the formula quoted above, now derived.
+
+**Why the bias does not vanish.** In the $\kappa_{22}$ case the bias $3\sigma_{xy}^2 + 4\sigma_{xy}\omega_{xy}$ carried a factor of $\sigma_{xy}$ and disappeared under $H_0:\sigma_{xy}=0$. With $Y=X$ there is no null to invoke: $\sigma_{xy} = \sigma_x^2 \neq 0$. The $3\sigma_x^4$ piece — arising because $S_{xx,i}$ shares $\varepsilon_{x,i+1}$ across its two factors — is an $O(1)$ bias present at every sample size, while $4\sigma_x^2\omega_{xx}$ is an $O(L/n)$ signal bias (only the $L$ change-point gaps contribute nonzero $h_i^{(1)}$). The estimator removes both explicitly through the $-3\hat\sigma_x^4 - 4\hat\sigma_x^2\hat\omega_{xx}$ correction.
+
+**Convergence in probability.** Each $S_{xx,i}^2$ depends only on $(\varepsilon_{x,i}, \varepsilon_{x,i+1}, \varepsilon_{x,i+2})$, so the sequence is $2$-dependent; assuming finite eighth moments $E[\varepsilon_x^8] < \infty$, the average has variance $O(1/n) \to 0$, and by Chebyshev
+$$\frac{1}{n}\sum_i S_{xx,i}^2 \xrightarrow{p} \kappa_{40}\sigma_x^4 + 3\sigma_x^4 + 4\sigma_x^2\omega_{xx}.$$
+With $\hat\sigma_x^2 \xrightarrow{p} \sigma_x^2$ and $\hat\omega_{xx} \xrightarrow{p} \omega_{xx}$, the continuous mapping theorem gives $\hat\kappa_{40}^{\mathrm{MoM}} \xrightarrow{p} \kappa_{40}$ — unconditionally, with no null hypothesis required.
+:::
+
 ::: {.callout-tip collapse="true"}
 ## Simulation: Verifying $\hat\kappa_{40}$
 
