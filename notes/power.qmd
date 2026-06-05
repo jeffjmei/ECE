@@ -354,6 +354,61 @@ cat(":::\n")
 
 :::
 
+::: {.callout-note collapse="true" title="Bootstrap (Parametric, PSD) outperforms Bootstrap (Multiplier) across all dimensions"}
+
+$n = 200$, $p \in \{3, 5, 10\}$.
+
+- **p = 3:** Bootstrap (Parametric, PSD) is more powerful than Bootstrap (Multiplier) — matching the uncorrected parametric bootstrap
+- **p = 5, 10:** Bootstrap (Parametric, PSD) remains available (unlike the uncorrected version, which fails when $\hat{W}$ is not PSD) and continues to dominate Bootstrap (Multiplier)
+
+```{r}
+#| echo: false
+#| warning: false
+#| results: asis
+dat3 <- results |>
+  filter(p %in% c(3, 5, 10), n == 200, method %in% c("bs.multiplier", "bs.parametric.psd"), metric == "power") |>
+  filter(scenario == 1 | (scenario == 2 & scenario_params == "{\\L\\:[4]}")) |>
+  mutate(
+    err_type = factor(err_type, levels = c("normal", "exponential")),
+    method   = factor(method, levels = names(method_colors)),
+    p        = factor(p, levels = c(3, 5, 10), labels = c("p = 3", "p = 5", "p = 10")),
+    cov_type = factor(cov_type, levels = c("ar1", "compound"))
+  )
+
+y_range3 <- range(dat3$metric_val)
+
+plots3 <- dat3 |>
+  group_by(err_type) |>
+  group_map(\(d, g) {
+    ggplot(d, aes(x = r, y = metric_val, color = method, linetype = cov_type)) +
+      geom_hline(yintercept = 0.10, linetype = "dashed", color = "gray50") +
+      geom_line() +
+      geom_point() +
+      facet_grid(p ~ scenario, labeller = labeller(scenario = c(
+        "1" = "No Change Points",
+        "2" = "Change Points (L = 4)"
+      ))) +
+      scale_color_manual(values = method_colors, labels = method_labels) +
+      scale_linetype_manual(values = c("ar1" = "dashed", "compound" = "solid")) +
+      scale_y_continuous(limits = y_range3) +
+      labs(x = expression(paste("Correlation (", rho, ")")), y = "Power",
+           color = "Method", linetype = "Covariance type") +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+  }) |>
+  setNames(levels(dat3$err_type))
+
+cat("::: {.panel-tabset}\n\n")
+iwalk(plots3, \(plot, err_type) {
+  cat(paste0("## ", err_type, "\n\n"))
+  print(plot)
+  cat("\n\n")
+})
+cat(":::\n")
+```
+
+:::
+
 ::: {.callout-note collapse="true" title="Parametric bootstrap power is recovered with PSD eigenvalue correction"}
 
 $\widehat{\text{Cov}}(S)$ may not always produce a PSD covariance matrix; consequently, we cannot sample from a non-PSD covariance matrix. The eigenvalue correction clips any negative eigenvalues of $\hat{W}$ to zero before sampling.
