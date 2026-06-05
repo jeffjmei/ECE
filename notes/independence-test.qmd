@@ -845,6 +845,116 @@ ggplot(sim_df_k31_mom, aes(x = k31, fill = group, color = group)) +
 
 :::
 
+::: {.callout-tip collapse="true"}
+## Numerical Results: Comparing $\hat\kappa_{31}$ Estimators
+
+We compare bias and variance of the regression and MoM estimators across scenarios, using dependent errors ($\rho = 0.5$) so that $\kappa_{31} \neq 0$. Both are unbiased — including under change points, where the MoM relies on its complexity correction — but the MoM has the lower variance.
+
+```{r}
+#| echo: false
+simulate_k31 <- function(params) {
+  map(1:1000, ~{
+    X <- generate_data(params)
+    list(
+      regress = k31_regress(X[, 1], X[, 2]),
+      mom     = k31_mom(X[, 1], X[, 2])
+    )
+  })
+}
+```
+
+```{r}
+#| cache: true
+#| echo: false
+param_grid_k31 <- tribble(
+  ~label,                       ~scen, ~r,  ~err_type,      ~amp, ~L,
+  "Scenario 1, Normal",          1,     0.5, "normal",       1,    NA,
+  "Scenario 1, Exponential",     1,     0.5, "exponential",  1,    NA,
+  "Scenario 2, Normal",          2,     0.5, "normal",       1,    4,
+  "Scenario 2, Exponential",     2,     0.5, "exponential",  1,    4,
+  "Scenario 2 (amp = 2), Exp.", 2,     0.5, "exponential",  2,    4
+)
+
+k31_grid <- pmap(param_grid_k31, function(label, scen, r, err_type, amp, L) {
+  params <- if (is.na(L)) {
+    scenario(scen, r = r, err_type = err_type, amp = amp)
+  } else {
+    scenario(scen, r = r, err_type = err_type, amp = amp, L = L)
+  }
+  sim <- simulate_k31(params)
+  list(
+    label = label,
+    true  = params$kappa$k31,
+    sim   = sim
+  )
+})
+
+ci_df_k31 <- map_dfr(k31_grid, \(g) {
+  tibble(
+    scenario = g$label,
+    method   = c("Regression", "MoM"),
+    bias     = c(mean(map_dbl(g$sim, "regress")),
+                 mean(map_dbl(g$sim, "mom"))) - g$true,
+    sd       = c(sd(map_dbl(g$sim, "regress")),
+                 sd(map_dbl(g$sim, "mom")))
+  )
+}) |>
+  mutate(
+    lo       = bias - 1.96 * sd,
+    hi       = bias + 1.96 * sd,
+    scenario = factor(scenario, levels = map_chr(k31_grid, "label")),
+    method   = factor(method, levels = c("Regression", "MoM"))
+  )
+
+ggplot(ci_df_k31, aes(x = scenario, y = bias, color = method, group = method)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  geom_pointrange(aes(ymin = lo, ymax = hi),
+                  position = position_dodge(width = 0.4)) +
+  scale_color_brewer(palette = "Set1", name = NULL) +
+  labs(x = NULL, y = expression(hat(kappa)[31] - kappa[31]),
+       title = expression("Bias and variance of " * hat(kappa)[31] * " estimators")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank()
+  )
+```
+
+::: {.panel-tabset}
+
+## Scenario 1, Normal
+
+```{r}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression = map_dbl(k31_grid[[1]]$sim, "regress"),
+    MoM        = map_dbl(k31_grid[[1]]$sim, "mom")
+  ),
+  xlab   = expression(hat(kappa)[31]),
+  colors = c(Regression = "#E41A1C", MoM = "#4DAF4A")
+) + ggplot2::labs(title = "Scenario 1, normal errors, n = 1000, ρ = 0.5")
+```
+
+## Scenario 2, Exponential (amp = 2)
+
+```{r}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression = map_dbl(k31_grid[[5]]$sim, "regress"),
+    MoM        = map_dbl(k31_grid[[5]]$sim, "mom")
+  ),
+  xlab   = expression(hat(kappa)[31]),
+  colors = c(Regression = "#E41A1C", MoM = "#4DAF4A")
+) + ggplot2::labs(title = "Scenario 2, exponential errors, n = 1000, ρ = 0.5, L = 4, amp = 2")
+```
+
+:::
+
+:::
+
 ---
 
 ## Numerical Results: Estimating $\kappa_{22}$
