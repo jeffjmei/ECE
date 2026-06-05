@@ -38,7 +38,137 @@ $$S_{xx,i} = \frac{(X_i-X_{i+1})^2 + (X_{i+1}-X_{i+2})^2 - (X_i-X_{i+2})^2}{2}, 
 with $E[S_{xx,i}] = \sigma_x^2$ and $E[S_{yy,i}] = \sigma_y^2$ at every index, change points included. Substituting these as surrogates for $\varepsilon_{x,i}^2$ and $\varepsilon_{y,i}^2$ gives the ECE MoM estimator:
 $$\hat\kappa_{22}^{\mathrm{MoM}} = \frac{\frac{1}{n}\sum_i S_{xx,i}\,S_{yy,i}}{\bar S_{xx}\,\bar S_{yy}}.$$
 
-The $S_i$ terms are autocorrelated at lags 1 and 2 (consecutive terms share observations), so $\frac{1}{n}\sum S_{xx,i}S_{yy,i}$ has inflated variance relative to an i.i.d. average. The estimator remains consistent.
+The $S_i$ terms are autocorrelated at lags 1 and 2 (consecutive terms share observations), so $\frac{1}{n}\sum S_{xx,i}S_{yy,i}$ has inflated variance relative to an i.i.d. average. The estimator is consistent for $\kappa_{22}$ under the null $\sigma_{xy}=0$ — the regime relevant to the independence test (proof below). For $\sigma_{xy}\neq 0$ the surrogate product carries an $O(\rho^2)$ bias, so $\hat\kappa_{22}^{\mathrm{MoM}}$ targets $\kappa_{22}+3\rho^2+\rho\,\bar B/(\sigma_x^2\sigma_y^2)$ rather than $\kappa_{22}$.
+
+::: {.callout-note collapse="true"}
+## Consistency under $\sigma_{xy}=0$: $\frac{1}{n}\sum_i S_{xx,i}S_{yy,i} \xrightarrow{p} E[\varepsilon_x^2\varepsilon_y^2]$
+
+**Definitions.** Write $X_i - X_{i+k} = h_{x,i}^{(k)} + e_{x,i}^{(k)}$, where $h_{x,i}^{(k)} = \theta_{x,i} - \theta_{x,i+k}$ is the signal difference and $e_{x,i}^{(k)} = \varepsilon_{x,i} - \varepsilon_{x,i+k}$ is the noise difference. Define the squared differences
+$$s_{x,i}^{(k)} = \bigl(X_i - X_{i+k}\bigr)^2 = \bigl(h_{x,i}^{(k)} + e_{x,i}^{(k)}\bigr)^2,$$
+and likewise $s_{y,i}^{(k)} = (Y_i - Y_{i+k})^2 = (h_{y,i}^{(k)} + e_{y,i}^{(k)})^2$. Then
+$$S_{xx,i} = \frac{s_{x,i}^{(1)} + s_{x,i+1}^{(1)} - s_{x,i}^{(2)}}{2}, \qquad S_{yy,i} = \frac{s_{y,i}^{(1)} + s_{y,i+1}^{(1)} - s_{y,i}^{(2)}}{2}.$$
+
+**Expanding the product.** Multiplying out gives
+$$4\,S_{xx,i}\,S_{yy,i} = s_{x,i}^{(1)}s_{y,i}^{(1)} + s_{x,i}^{(1)}s_{y,i+1}^{(1)} - s_{x,i}^{(1)}s_{y,i}^{(2)} + s_{x,i+1}^{(1)}s_{y,i}^{(1)} + s_{x,i+1}^{(1)}s_{y,i+1}^{(1)} - s_{x,i+1}^{(1)}s_{y,i}^{(2)} - s_{x,i}^{(2)}s_{y,i}^{(1)} - s_{x,i}^{(2)}s_{y,i+1}^{(1)} + s_{x,i}^{(2)}s_{y,i}^{(2)}.$$
+
+**General term.** It suffices to analyze $E[s_{x,i}^{(k)}\,s_{y,j}^{(r)}]$ for general starting indices $i,j$ and lags $k,r$. Substituting the signal–noise decomposition and expanding each square gives nine terms:
+$$
+s_{x,i}^{(k)}\,s_{y,j}^{(r)} = \begin{array}{lll}
+(h_{x,i}^{(k)})^2(h_{y,j}^{(r)})^2 & +\; 2(h_{x,i}^{(k)})^2 h_{y,j}^{(r)} e_{y,j}^{(r)} & +\; (h_{x,i}^{(k)})^2(e_{y,j}^{(r)})^2 \\[6pt]
++\; 2h_{x,i}^{(k)} e_{x,i}^{(k)} (h_{y,j}^{(r)})^2 & +\; 4h_{x,i}^{(k)} h_{y,j}^{(r)} e_{x,i}^{(k)} e_{y,j}^{(r)} & +\; 2h_{x,i}^{(k)} e_{x,i}^{(k)}(e_{y,j}^{(r)})^2 \\[6pt]
++\; (e_{x,i}^{(k)})^2(h_{y,j}^{(r)})^2 & +\; 2(e_{x,i}^{(k)})^2 h_{y,j}^{(r)} e_{y,j}^{(r)} & +\; (e_{x,i}^{(k)})^2(e_{y,j}^{(r)})^2.
+\end{array}
+$$
+Taking expectations and using $E[e_{x,i}^{(k)}] = E[e_{y,j}^{(r)}] = 0$ to drop the terms in position (1,2) and (2,1) of the grid, seven terms remain:
+\begin{align}
+E[s_{x,i}^{(k)}\,s_{y,j}^{(r)}]
+&= (h_{x,i}^{(k)})^2(h_{y,j}^{(r)})^2 \\
+&\quad+ (h_{x,i}^{(k)})^2\,E[(e_{y,j}^{(r)})^2] + (h_{y,j}^{(r)})^2\,E[(e_{x,i}^{(k)})^2] \\
+&\quad+ 4h_{x,i}^{(k)}h_{y,j}^{(r)}\,E[e_{x,i}^{(k)}\,e_{y,j}^{(r)}] \\
+&\quad+ 2h_{x,i}^{(k)}\,E[e_{x,i}^{(k)}(e_{y,j}^{(r)})^2] + 2h_{y,j}^{(r)}\,E[(e_{x,i}^{(k)})^2 e_{y,j}^{(r)}] \\
+&\quad+ E[(e_{x,i}^{(k)})^2(e_{y,j}^{(r)})^2].
+\end{align}
+
+**Case 1: $i = j$, $k = r$.** Both increments span the same pair of time indices, so $e_{x,i}^{(k)}$ and $e_{y,i}^{(k)}$ involve $(\varepsilon_{x,i}, \varepsilon_{y,i})$ and $(\varepsilon_{x,i+k}, \varepsilon_{y,i+k})$. By iid:
+\begin{align}
+E[(e_{x,i}^{(k)})^2] &= 2\sigma_x^2, \qquad E[(e_{y,i}^{(k)})^2] = 2\sigma_y^2, \\
+E[e_{x,i}^{(k)}\,e_{y,i}^{(k)}] &= 2\sigma_{xy}, \\
+E[e_{x,i}^{(k)}(e_{y,i}^{(k)})^2] &= 0, \qquad E[(e_{x,i}^{(k)})^2\,e_{y,i}^{(k)}] = 0, \\
+E[(e_{x,i}^{(k)})^2(e_{y,i}^{(k)})^2] &= 2\kappa_{22}\sigma_x^2\sigma_y^2 + 2\sigma_x^2\sigma_y^2 + 4\sigma_{xy}^2.
+\end{align}
+Substituting into the general formula:
+$$E[s_{x,i}^{(k)}\,s_{y,i}^{(k)}] = (h_{x,i}^{(k)})^2(h_{y,i}^{(k)})^2 + 2\sigma_y^2(h_{x,i}^{(k)})^2 + 2\sigma_x^2(h_{y,i}^{(k)})^2 + 8\sigma_{xy}\,h_{x,i}^{(k)}\,h_{y,i}^{(k)} + 2\kappa_{22}\sigma_x^2\sigma_y^2 + 2\sigma_x^2\sigma_y^2 + 4\sigma_{xy}^2.$$
+
+**Case 2: $j = i+1$, $k = r = 1$.** The increments $e_{x,i}^{(1)} = \varepsilon_{x,i} - \varepsilon_{x,i+1}$ and $e_{y,i+1}^{(1)} = \varepsilon_{y,i+1} - \varepsilon_{y,i+2}$ share only time index $i+1$. By iid:
+\begin{align}
+E[(e_{x,i}^{(1)})^2] &= 2\sigma_x^2, \qquad E[(e_{y,i+1}^{(1)})^2] = 2\sigma_y^2, \\
+E[e_{x,i}^{(1)}\,e_{y,i+1}^{(1)}] &= -\sigma_{xy}, \\
+E[e_{x,i}^{(1)}(e_{y,i+1}^{(1)})^2] &= -E[\varepsilon_x\varepsilon_y^2], \qquad E[(e_{x,i}^{(1)})^2\,e_{y,i+1}^{(1)}] = E[\varepsilon_x^2\varepsilon_y], \\
+E[(e_{x,i}^{(1)})^2(e_{y,i+1}^{(1)})^2] &= \kappa_{22}\sigma_x^2\sigma_y^2 + 3\sigma_x^2\sigma_y^2.
+\end{align}
+Substituting into the general formula:
+\begin{align}
+E[s_{x,i}^{(1)}\,s_{y,i+1}^{(1)}] &= (h_{x,i}^{(1)})^2(h_{y,i+1}^{(1)})^2 + 2\sigma_y^2(h_{x,i}^{(1)})^2 + 2\sigma_x^2(h_{y,i+1}^{(1)})^2 - 4\sigma_{xy}\,h_{x,i}^{(1)}\,h_{y,i+1}^{(1)} \\
+&\quad - 2h_{x,i}^{(1)}\,E[\varepsilon_x\varepsilon_y^2] + 2h_{y,i+1}^{(1)}\,E[\varepsilon_x^2\varepsilon_y] + \kappa_{22}\sigma_x^2\sigma_y^2 + 3\sigma_x^2\sigma_y^2.
+\end{align}
+
+**Case 3: $i = j$, $k = 1$, $r = 2$.** The increments $e_{x,i}^{(1)} = \varepsilon_{x,i} - \varepsilon_{x,i+1}$ and $e_{y,i}^{(2)} = \varepsilon_{y,i} - \varepsilon_{y,i+2}$ share only time index $i$. By iid:
+\begin{align}
+E[(e_{x,i}^{(1)})^2] &= 2\sigma_x^2, \qquad E[(e_{y,i}^{(2)})^2] = 2\sigma_y^2, \\
+E[e_{x,i}^{(1)}\,e_{y,i}^{(2)}] &= \sigma_{xy}, \\
+E[e_{x,i}^{(1)}(e_{y,i}^{(2)})^2] &= E[\varepsilon_x\varepsilon_y^2], \qquad E[(e_{x,i}^{(1)})^2\,e_{y,i}^{(2)}] = E[\varepsilon_x^2\varepsilon_y], \\
+E[(e_{x,i}^{(1)})^2(e_{y,i}^{(2)})^2] &= \kappa_{22}\sigma_x^2\sigma_y^2 + 3\sigma_x^2\sigma_y^2.
+\end{align}
+Substituting into the general formula:
+\begin{align}
+E[s_{x,i}^{(1)}\,s_{y,i}^{(2)}] &= (h_{x,i}^{(1)})^2(h_{y,i}^{(2)})^2 + 2\sigma_y^2(h_{x,i}^{(1)})^2 + 2\sigma_x^2(h_{y,i}^{(2)})^2 + 4\sigma_{xy}\,h_{x,i}^{(1)}\,h_{y,i}^{(2)} \\
+&\quad + 2h_{x,i}^{(1)}\,E[\varepsilon_x\varepsilon_y^2] + 2h_{y,i}^{(2)}\,E[\varepsilon_x^2\varepsilon_y] + \kappa_{22}\sigma_x^2\sigma_y^2 + 3\sigma_x^2\sigma_y^2.
+\end{align}
+
+**Case 4: $j = i+1$ (i.e. $j \neq i$), $k = 1$, $r = 2$.** The increments $e_{x,i+1}^{(1)} = \varepsilon_{x,i+1} - \varepsilon_{x,i+2}$ and $e_{y,i}^{(2)} = \varepsilon_{y,i} - \varepsilon_{y,i+2}$ share only time index $i+2$, which appears with a $-$ sign in both. By iid:
+\begin{align}
+E[(e_{x,i+1}^{(1)})^2] &= 2\sigma_x^2, \qquad E[(e_{y,i}^{(2)})^2] = 2\sigma_y^2, \\
+E[e_{x,i+1}^{(1)}\,e_{y,i}^{(2)}] &= \sigma_{xy}, \\
+E[e_{x,i+1}^{(1)}(e_{y,i}^{(2)})^2] &= -E[\varepsilon_x\varepsilon_y^2], \qquad E[(e_{x,i+1}^{(1)})^2\,e_{y,i}^{(2)}] = -E[\varepsilon_x^2\varepsilon_y], \\
+E[(e_{x,i+1}^{(1)})^2(e_{y,i}^{(2)})^2] &= \kappa_{22}\sigma_x^2\sigma_y^2 + 3\sigma_x^2\sigma_y^2.
+\end{align}
+Substituting into the general formula:
+\begin{align}
+E[s_{x,i+1}^{(1)}\,s_{y,i}^{(2)}] &= (h_{x,i+1}^{(1)})^2(h_{y,i}^{(2)})^2 + 2\sigma_y^2(h_{x,i+1}^{(1)})^2 + 2\sigma_x^2(h_{y,i}^{(2)})^2 + 4\sigma_{xy}\,h_{x,i+1}^{(1)}\,h_{y,i}^{(2)} \\
+&\quad - 2h_{x,i+1}^{(1)}\,E[\varepsilon_x\varepsilon_y^2] - 2h_{y,i}^{(2)}\,E[\varepsilon_x^2\varepsilon_y] + \kappa_{22}\sigma_x^2\sigma_y^2 + 3\sigma_x^2\sigma_y^2.
+\end{align}
+
+**Assembling the sum.** Substituting each case result into $4E[S_{xx,i}S_{yy,i}]$ and grouping by term type:
+\begin{align}
+4E[S_{xx,i}S_{yy,i}]
+&= \bigl[(h_{x,i}^{(1)})^2 + (h_{x,i+1}^{(1)})^2 - (h_{x,i}^{(2)})^2\bigr]\bigl[(h_{y,i}^{(1)})^2 + (h_{y,i+1}^{(1)})^2 - (h_{y,i}^{(2)})^2\bigr] \\
+&\quad + 2\sigma_y^2\bigl[(h_{x,i}^{(1)})^2 + (h_{x,i+1}^{(1)})^2 - (h_{x,i}^{(2)})^2\bigr] + 2\sigma_x^2\bigl[(h_{y,i}^{(1)})^2 + (h_{y,i+1}^{(1)})^2 - (h_{y,i}^{(2)})^2\bigr] \\
+&\quad + \sigma_{xy}\bigl[8h_{x,i}^{(1)}h_{y,i}^{(1)} - 4h_{x,i}^{(1)}h_{y,i+1}^{(1)} - 4h_{x,i}^{(1)}h_{y,i}^{(2)} - 4h_{x,i+1}^{(1)}h_{y,i}^{(1)} + 8h_{x,i+1}^{(1)}h_{y,i+1}^{(1)} \\
+&\qquad\qquad - 4h_{x,i+1}^{(1)}h_{y,i}^{(2)} - 4h_{x,i}^{(2)}h_{y,i}^{(1)} - 4h_{x,i}^{(2)}h_{y,i+1}^{(1)} + 8h_{x,i}^{(2)}h_{y,i}^{(2)}\bigr] \\
+&\quad + E[\varepsilon_x\varepsilon_y^2]\bigl[-2h_{x,i}^{(1)} - 2h_{x,i}^{(1)} + 2h_{x,i+1}^{(1)} + 2h_{x,i+1}^{(1)} - 2h_{x,i}^{(2)} + 2h_{x,i}^{(2)}\bigr] \\
+&\quad + E[\varepsilon_x^2\varepsilon_y]\bigl[2h_{y,i+1}^{(1)} - 2h_{y,i}^{(2)} - 2h_{y,i}^{(1)} + 2h_{y,i}^{(2)} - 2h_{y,i}^{(1)} + 2h_{y,i+1}^{(1)}\bigr] \\
+&\quad + 3(2\kappa_{22}\sigma_x^2\sigma_y^2 + 2\sigma_x^2\sigma_y^2 + 4\sigma_{xy}^2) - 2(\kappa_{22}\sigma_x^2\sigma_y^2 + 3\sigma_x^2\sigma_y^2).
+\end{align}
+
+**Simplification.** The first two lines each contain the factor $(h_{x,i}^{(1)})^2 + (h_{x,i+1}^{(1)})^2 - (h_{x,i}^{(2)})^2$. We claim
+$$\boxed{(h_{x,i}^{(1)})^2 + (h_{x,i+1}^{(1)})^2 - (h_{x,i}^{(2)})^2 = 0.}$$
+From the linear identity $h_{x,i}^{(1)} + h_{x,i+1}^{(1)} - h_{x,i}^{(2)} = 0$ we have $h_{x,i}^{(2)} = h_{x,i}^{(1)} + h_{x,i+1}^{(1)}$, so
+$$(h_{x,i}^{(1)})^2 + (h_{x,i+1}^{(1)})^2 - (h_{x,i}^{(2)})^2 = (h_{x,i}^{(1)})^2 + (h_{x,i+1}^{(1)})^2 - (h_{x,i}^{(1)} + h_{x,i+1}^{(1)})^2 = -2h_{x,i}^{(1)}h_{x,i+1}^{(1)}.$$
+This is not yet zero, but under the minimum segment length 2 assumption consecutive lag-1 differences cannot both be nonzero, so $h_{x,i}^{(1)}h_{x,i+1}^{(1)} = 0$ at every index. The same argument applies to $y$, so the first two lines both vanish. Collecting the remaining terms:
+\begin{align}
+4E[S_{xx,i}S_{yy,i}]
+&= 4\sigma_{xy}\bigl[2h_{x,i}^{(1)}h_{y,i}^{(1)} - h_{x,i}^{(1)}h_{y,i+1}^{(1)} - h_{x,i}^{(1)}h_{y,i}^{(2)} - h_{x,i+1}^{(1)}h_{y,i}^{(1)} + 2h_{x,i+1}^{(1)}h_{y,i+1}^{(1)} \\
+&\qquad\quad - h_{x,i+1}^{(1)}h_{y,i}^{(2)} - h_{x,i}^{(2)}h_{y,i}^{(1)} - h_{x,i}^{(2)}h_{y,i+1}^{(1)} + 2h_{x,i}^{(2)}h_{y,i}^{(2)}\bigr] \\
+&\quad + 4E[\varepsilon_x\varepsilon_y^2]\bigl(h_{x,i+1}^{(1)} - h_{x,i}^{(1)}\bigr) + 4E[\varepsilon_x^2\varepsilon_y]\bigl(h_{y,i+1}^{(1)} - h_{y,i}^{(1)}\bigr) \\
+&\quad + 4\kappa_{22}\sigma_x^2\sigma_y^2 + 12\sigma_{xy}^2.
+\end{align}
+Applying the linear identities $h_{x,i}^{(1)} + h_{x,i+1}^{(1)} - h_{x,i}^{(2)} = 0$ and $h_{y,i}^{(1)} + h_{y,i+1}^{(1)} - h_{y,i}^{(2)} = 0$ to substitute out $h_{x,i}^{(2)}$ and $h_{y,i}^{(2)}$ reduces the nine-term bracket to four terms:
+\begin{align}
+4E[S_{xx,i}S_{yy,i}]
+&= 4\sigma_{xy}\bigl[2h_{x,i}^{(1)}h_{y,i}^{(1)} - h_{x,i}^{(1)}h_{y,i+1}^{(1)} - h_{x,i+1}^{(1)}h_{y,i}^{(1)} + 2h_{x,i+1}^{(1)}h_{y,i+1}^{(1)}\bigr] \\
+&\quad + 4E[\varepsilon_x\varepsilon_y^2]\bigl(h_{x,i+1}^{(1)} - h_{x,i}^{(1)}\bigr) + 4E[\varepsilon_x^2\varepsilon_y]\bigl(h_{y,i+1}^{(1)} - h_{y,i}^{(1)}\bigr) \\
+&\quad + 4\kappa_{22}\sigma_x^2\sigma_y^2 + 12\sigma_{xy}^2.
+\end{align}
+
+**Mixed-lag products vanish.** The two cross terms $h_{x,i}^{(1)}h_{y,i+1}^{(1)}$ and $h_{x,i+1}^{(1)}h_{y,i}^{(1)}$ are identically zero at every index. Take the first: $h_{x,i}^{(1)} = \theta_{x,i} - \theta_{x,i+1}$ is nonzero only if a change point falls in the gap $(i, i+1)$, while $h_{y,i+1}^{(1)} = \theta_{y,i+1} - \theta_{y,i+2}$ is nonzero only if one falls in the adjacent gap $(i+1, i+2)$. Under common change-point locations, minimum segment length 2 forbids change points in adjacent gaps, so the two factors are never simultaneously nonzero and their product is $0$. The same argument applies to $h_{x,i+1}^{(1)}h_{y,i}^{(1)}$. The bracket collapses to two terms, and dividing by 4 gives
+\begin{align}
+E[S_{xx,i}S_{yy,i}]
+&= 2\sigma_{xy}\bigl(h_{x,i}^{(1)}h_{y,i}^{(1)} + h_{x,i+1}^{(1)}h_{y,i+1}^{(1)}\bigr) \\
+&\quad + E[\varepsilon_x\varepsilon_y^2]\bigl(h_{x,i+1}^{(1)} - h_{x,i}^{(1)}\bigr) + E[\varepsilon_x^2\varepsilon_y]\bigl(h_{y,i+1}^{(1)} - h_{y,i}^{(1)}\bigr) \\
+&\quad + \kappa_{22}\sigma_x^2\sigma_y^2 + 3\sigma_{xy}^2.
+\end{align}
+
+The signal-dependent terms make this index-varying, so $E[S_{xx,i}S_{yy,i}] \neq \kappa_{22}\sigma_x^2\sigma_y^2$ pointwise; it is the average $\frac{1}{n}\sum_i S_{xx,i}S_{yy,i}$ that matters. Summing over $i$, use that $\sum_i h_{\cdot,i+1}^{(1)} = \sum_i h_{\cdot,i}^{(1)}$, since the two are rotations of each other. The coskewness terms then cancel,
+$$
+\sum_i \bigl(h_{x,i+1}^{(1)} - h_{x,i}^{(1)}\bigr) = 0,
+$$
+and the two covariance terms coincide, giving
+$$
+\frac{1}{n}\sum_i E[S_{xx,i}S_{yy,i}] = \kappa_{22}\sigma_x^2\sigma_y^2 + 3\sigma_{xy}^2 + 4\sigma_{xy}\omega_{xy}.
+$$
+Both bias terms $3\sigma_{xy}^2$ and $4\sigma_{xy}\omega_{xy}$ carry a factor of $\sigma_{xy}$, so under $H_0:\sigma_{xy}=0$ they vanish and $\hat\kappa_{22}^{\mathrm{MoM}}\xrightarrow{p}\kappa_{22}$.
+:::
+
 
 ::: {.callout-tip collapse="true"}
 ## Simulation: Verifying $\hat\kappa_{22}^{\mathrm{MoM}}$
@@ -610,7 +740,13 @@ ece.k22.matrix <- function(x, y = NULL, rho = NULL) {
 ece.k22.mom <- function(x, y) {
   Sxx <- ece_terms(cbind(x, x))
   Syy <- ece_terms(cbind(y, y))
-  mean(Sxx * Syy) / (mean(Sxx) * mean(Syy))
+
+  sx2 <- mean(Sxx)
+  sy2 <- mean(Syy)
+  sxy <- ece.cov(x, y)
+  wxy <- ece.complexity(x, y)
+
+  (mean(Sxx * Syy) - 3 * sxy^2 - 4 * sxy * wxy) / (sx2 * sy2)
 }
 ```
 
@@ -630,7 +766,6 @@ simulate_k22 <- function(params){
     )
   })
 }
-
 ```
 
 ```{R}
@@ -652,28 +787,49 @@ k22_grid <- pmap(param_grid, function(label, scen, r, err_type, amp, L) {
   } else {
     scenario(scen, r = r, err_type = err_type, amp = amp, L = L)
   }
-  sim    <- simulate_k22(params)
+  sim <- simulate_k22(params)
   list(
-    label       = label,
-    var_regress = var(map_dbl(sim, "regress")),
-    var_matrix  = var(map_dbl(sim, "matrix")),
-    var_mom     = var(map_dbl(sim, "mom")),
-    sim         = sim
+    label = label,
+    true  = params$kappa$k22,
+    sim   = sim
   )
 })
-
-k22_var_tbl <- map_dfr(k22_grid, \(g) tibble(
-  Scenario               = g$label,
-  `Var(k22-Regression)`  = round(g$var_regress, 2),
-  `Var(k22-Covariance)`  = round(g$var_matrix,  2),
-  `Var(k22-MoM)`         = round(g$var_mom,      2)
-))
-
 ```
 
 ```{R}
 #| echo: false
-knitr::kable(k22_var_tbl)
+ci_df <- map_dfr(k22_grid, \(g) {
+  tibble(
+    scenario = g$label,
+    method   = c("Regression", "Covariance", "MoM"),
+    bias     = c(mean(map_dbl(g$sim, "regress")),
+                 mean(map_dbl(g$sim, "matrix")),
+                 mean(map_dbl(g$sim, "mom"))) - g$true,
+    sd       = c(sd(map_dbl(g$sim, "regress")),
+                 sd(map_dbl(g$sim, "matrix")),
+                 sd(map_dbl(g$sim, "mom")))
+  )
+}) |>
+  mutate(
+    lo       = bias - 1.96 * sd,
+    hi       = bias + 1.96 * sd,
+    scenario = factor(scenario, levels = map_chr(k22_grid, "label")),
+    method   = factor(method, levels = c("Regression", "Covariance", "MoM"))
+  )
+
+ggplot(ci_df, aes(x = scenario, y = bias, color = method, group = method)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  geom_pointrange(aes(ymin = lo, ymax = hi),
+                  position = position_dodge(width = 0.4)) +
+  scale_color_brewer(palette = "Set1", name = NULL) +
+  labs(x = NULL, y = expression(hat(kappa)[22] - kappa[22]),
+       title = expression("Bias and variance of " * hat(kappa)[22] * " estimators")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank()
+  )
 ```
 
 ::: {.panel-tabset}
@@ -690,7 +846,8 @@ make_overlap_hist(
   ),
   xlab   = expression(hat(kappa)[22]),
   colors = c(Regression = "#E41A1C", Covariance = "#377EB8", MoM = "#4DAF4A")
-) + ggplot2::labs(title = "Scenario 1, normal errors, n = 200, ρ = 0")
+) + ggplot2::labs(title = "Scenario 1, normal errors, n = 1000, ρ = 0") +
+  ggplot2::geom_vline(xintercept = k22_grid[[1]]$true, linetype = "solid")
 ```
 
 ## Covariance Dominates
@@ -699,13 +856,14 @@ make_overlap_hist(
 #| echo: false
 make_overlap_hist(
   sims = list(
-    Regression = map_dbl(k22_grid[[4]]$sim, "regress"),
-    Covariance = map_dbl(k22_grid[[4]]$sim, "matrix"),
-    MoM        = map_dbl(k22_grid[[4]]$sim, "mom")
+    Regression = map_dbl(k22_grid[[6]]$sim, "regress"),
+    Covariance = map_dbl(k22_grid[[6]]$sim, "matrix"),
+    MoM        = map_dbl(k22_grid[[6]]$sim, "mom")
   ),
   xlab   = expression(hat(kappa)[22]),
   colors = c(Regression = "#E41A1C", Covariance = "#377EB8", MoM = "#4DAF4A")
-) + ggplot2::labs(title = "Scenario 2, normal errors, n = 200, ρ = 0, L = 4")
+) + ggplot2::labs(title = "Scenario 2, exponential errors, n = 1000, ρ = 0, L = 4, amp = 2") +
+  ggplot2::geom_vline(xintercept = k22_grid[[6]]$true, linetype = "solid")
 ```
 
 :::
