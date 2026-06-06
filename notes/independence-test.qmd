@@ -957,6 +957,70 @@ make_overlap_hist(
 
 ---
 
+## Summary: MoM Estimators
+
+All five cumulants have MoM estimators built from the ECE terms $S_{xx,i}$, $S_{yy,i}$, $S_{xy,i}$, with $\hat\sigma_x^2$, $\hat\sigma_y^2$, $\hat\sigma_{xy}$ their sample means and $\hat\omega_x^2$, $\hat\omega_y^2$, $\hat\omega_{xy}$ the complexity estimates.
+
+| | Estimator |
+|---|---|
+| $\hat\kappa_{22}$ | $\dfrac{\overline{S_{xx}S_{yy}} - 3\hat\sigma_{xy}^2 - 4\hat\sigma_{xy}\hat\omega_{xy}}{\hat\sigma_x^2\,\hat\sigma_y^2}$ |
+| $\hat\kappa_{40}$ | $\dfrac{\overline{S_{xx}^2} - 3\hat\sigma_x^4 - 4\hat\sigma_x^2\hat\omega_x^2}{\hat\sigma_x^4}$ |
+| $\hat\kappa_{04}$ | $\dfrac{\overline{S_{yy}^2} - 3\hat\sigma_y^4 - 4\hat\sigma_y^2\hat\omega_y^2}{\hat\sigma_y^4}$ |
+| $\hat\kappa_{31}$ | $\dfrac{\overline{S_{xx}S_{xy}} - 3\hat\sigma_x^2\hat\sigma_{xy} - 2\hat\sigma_{xy}\hat\omega_x^2 - 2\hat\sigma_x^2\hat\omega_{xy}}{\hat\sigma_x^3\,\hat\sigma_y}$ |
+| $\hat\kappa_{13}$ | $\dfrac{\overline{S_{yy}S_{xy}} - 3\hat\sigma_y^2\hat\sigma_{xy} - 2\hat\sigma_{xy}\hat\omega_y^2 - 2\hat\sigma_y^2\hat\omega_{xy}}{\hat\sigma_y^3\,\hat\sigma_x}$ |
+
+```{r}
+#| echo: false
+kappa_mom_all <- function(x, y) {
+  Sxx <- ece_terms(cbind(x,x)); Syy <- ece_terms(cbind(y,y)); Sxy <- ece_terms(cbind(x,y))
+  sx2 <- mean(Sxx); sy2 <- mean(Syy); sxy <- mean(Sxy)
+  wxx <- ece.complexity(x,x); wyy <- ece.complexity(y,y); wxy <- ece.complexity(x,y)
+  c(k22 = (mean(Sxx*Syy) - 3*sxy^2          - 4*sxy*wxy)                      / (sx2*sy2),
+    k40 = (mean(Sxx^2)   - 3*sx2^2           - 4*sx2*wxx)                      / sx2^2,
+    k04 = (mean(Syy^2)   - 3*sy2^2           - 4*sy2*wyy)                      / sy2^2,
+    k31 = (mean(Sxx*Sxy) - 3*sx2*sxy - 2*sxy*wxx - 2*sx2*wxy) / (sx2^1.5*sy2^0.5),
+    k13 = (mean(Syy*Sxy) - 3*sy2*sxy - 2*sxy*wyy - 2*sy2*wxy) / (sy2^1.5*sx2^0.5))
+}
+```
+
+```{r}
+#| cache: true
+#| echo: false
+param_list <- list(
+  "Scen 1, ρ=0"   = scenario(1, r=0,   err_type="exponential"),
+  "Scen 1, ρ=0.5" = scenario(1, r=0.5, err_type="exponential"),
+  "Scen 2, ρ=0"   = scenario(2, r=0,   err_type="exponential", L=4),
+  "Scen 2, ρ=0.5" = scenario(2, r=0.5, err_type="exponential", L=4)
+)
+
+mom_sim_df <- imap_dfr(param_list, \(params, label) {
+  truth <- unlist(params$kappa)
+  sims  <- map_dfr(1:1000, ~ { X <- generate_data(params); as.list(kappa_mom_all(X[,1], X[,2])) })
+  imap_dfr(as.list(truth), \(tv, k) tibble(
+    scenario = label, kappa = k, bias = mean(sims[[k]]) - tv, sd = sd(sims[[k]])
+  ))
+}) |> mutate(
+  lo    = bias - 1.96*sd,
+  hi    = bias + 1.96*sd,
+  kappa = factor(kappa, c("k22","k40","k04","k31","k13"),
+                 c("κ₂₂","κ₄₀","κ₀₄","κ₃₁","κ₁₃"))
+)
+```
+
+```{r}
+#| echo: false
+ggplot(mom_sim_df, aes(x = scenario, y = bias, ymin = lo, ymax = hi)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  geom_pointrange() +
+  facet_wrap(~kappa, nrow = 1, scales = "free_y") +
+  labs(x = NULL, y = "bias ± 1.96 SD",
+       title = "MoM estimators: bias across scenarios (exponential errors, B = 1000)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+---
+
 ## Numerical Results: Estimating $\kappa_{22}$
 
 The MoM estimator has lower variance than both the regression and covariance estimators across scenarios. Between regression and covariance, neither dominates: regression wins in low-amplitude settings, covariance wins when change-point amplitude is large.
