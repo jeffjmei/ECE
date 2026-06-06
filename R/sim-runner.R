@@ -6,10 +6,11 @@ test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...)
     bs.parametric        = do.call(ece.test, c(list(X, type = "bs.parametric"),        b_arg, list(...))),
     bs.parametric.psd    = do.call(ece.test, c(list(X, type = "bs.parametric.psd"),    b_arg, list(...))),
     z.test.gaussian      = ece.test(X, type = "z.test", kappa = "gaussian", ...),
-    z.test.oracle.kappa  = ece.test(X, type = "z.test", kappa = params$kappa, ...),
+    z.test.oracle        = ece.test(X, type = "z.test", kappa = params$kappa, ...),
     z.test.null          = ece.test(X, type = "z.test", kappa = ece.kappa(X, rho = 0, method = "mom"),    rho = 0, ...),
     z.test.null.matrix   = ece.test(X, type = "z.test", kappa = ece.kappa(X, rho = 0, method = "matrix"), rho = 0, ...),
-    z.test.null.gaussian = ece.test(X, type = "z.test", kappa = "gaussian", rho = 0, ...),
+    z.test.null.gaussian = ece.test(X, type = "z.test", kappa = "gaussian",   rho = 0, ...),
+    z.test.null.oracle   = ece.test(X, type = "z.test", kappa = params$kappa, rho = 0, ...),
     stop("Unknown method: ", method)
   )
 }
