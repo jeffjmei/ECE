@@ -61,5 +61,10 @@ scenario <- function(scenario_num = 1, n = 1000, p = 2, r = 0, amp = 1,
     scenario_param = ms$scenario_param
   )
   params$kappa <- kappa_from_params(params)
+  S_null <- diag(diag(S))
+  params$kappa_null <- kappa_from_params(modifyList(params, list(
+    r = 0,
+    S = S_null, S_cholesky = chol(S_null)
+  )))
   params
 }
