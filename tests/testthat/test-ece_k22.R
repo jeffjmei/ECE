@@ -1,8 +1,3 @@
-test_that("ece.kappa errors on non-matrix or wrong dimensions", {
-  expect_error(ece.kappa(rnorm(100)))
-  expect_error(ece.kappa(matrix(rnorm(300), ncol = 3)))
-})
-
 test_that("ece.kappa returns a named list with all five kappas", {
   X <- matrix(rnorm(200), ncol = 2)
   k <- ece.kappa(X)

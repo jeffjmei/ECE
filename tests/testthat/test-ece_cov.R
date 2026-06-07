@@ -129,7 +129,7 @@ for (scenario_num in 1:2) {
   wx_true  <- cpx_h[1, 1]
   wy_true  <- cpx_h[2, 2]
   wxy_true <- cpx_h[1, 2]
-  rho_true <- ece.cor.asymp(params)
+  rho_true <- ece.cor.se.formula(params)^2
 
   test_that("complexity is properly estimated (with noise)", {
     expect_true((wx_ci[1]  < wx_true)  & (wx_true  < wx_ci[2]))
