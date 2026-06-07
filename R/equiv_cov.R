@@ -107,8 +107,9 @@ ece.kappa <- function(x, y = NULL, rho = NULL, method = "mom") {
     x <- x[, 1]
   }
   switch(method,
-    mom    = ece.kappa.mom(x, y, rho),
-    matrix = ece.kappa.matrix(x, y, rho),
+    mom      = ece.kappa.mom(x, y, rho),
+    matrix   = ece.kappa.matrix(x, y, rho),
+    regress  = ece.kappa.regress(x, y, rho),
     stop("Unknown method: ", method)
   )
 }
@@ -190,6 +191,24 @@ ece.kappa.matrix <- function(x, y = NULL, rho = NULL) {
     2 * wxy / (sqrt(sx2) * sqrt(sy2))
 
   list(k40 = k40, k31 = k31, k22 = k22, k13 = k13, k04 = k04)
+}
+
+ece.kappa.regress <- function(x, y = NULL, rho = NULL) {
+  if (is.matrix(x)) {
+    if (ncol(x) != 2) stop("matrix input must have exactly 2 columns")
+    y <- x[, 2]
+    x <- x[, 1]
+  }
+
+  n   <- length(x)
+  sx2 <- ece.cov(x, x)
+  sy2 <- ece.cov(y, y)
+  sxy <- if (!is.null(rho) && rho == 0) 0 else ece.cov(x, y)
+
+  k22 <- (2 * lag_diff2(x, y, k = 1) - lag_diff2(x, y, k = 2)) /
+    (2 * n * sx2 * sy2) - 2 * sxy^2 / (sx2 * sy2) - 1
+
+  list(k40 = NULL, k31 = NULL, k22 = k22, k13 = NULL, k04 = NULL)
 }
 
 ece.complexity <- function(x, y = NULL, L = 2) {
