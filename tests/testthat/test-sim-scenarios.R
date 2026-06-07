@@ -46,6 +46,20 @@ test_that("kappa$k22 equals 1 for independent normal errors regardless of sigma"
   expect_equal(params$kappa$k22, 1, tolerance = 0.01)
 })
 
+test_that("params$kappa equals params$kappa_null when r = 0", {
+  for (err in c("normal", "exponential")) {
+    params <- scenario(1, r = 0, err_type = err)
+    expect_equal(params$kappa, params$kappa_null, label = err)
+  }
+})
+
+test_that("params$kappa differs from params$kappa_null when r = 0.5", {
+  for (err in c("normal", "exponential")) {
+    params <- scenario(1, r = 0.5, err_type = err)
+    expect_false(isTRUE(all.equal(params$kappa, params$kappa_null)), label = err)
+  }
+})
+
 test_that("generate_err produces correct covariance structure", {
   S <- diag(2); S[1, 2] <- S[2, 1] <- 0.5
   for (err in c("normal", "t", "lognormal", "exponential")) {
