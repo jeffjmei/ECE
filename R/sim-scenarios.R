@@ -1,12 +1,30 @@
 kappa_from_params <- function(params) {
-  e <- generate_err(modifyList(params, list(n = 1e7)))
-  ex <- e[, 1] / sqrt(params$S[1, 1])
-  ey <- e[, 2] / sqrt(params$S[2, 2])
-  list(
-    k40 = mean(ex^4), k04 = mean(ey^4),
-    k22 = mean(ex^2 * ey^2),
-    k31 = mean(ex^3 * ey), k13 = mean(ex * ey^3)
+  rho <- params$r
+  mu4 <- switch(params$err_type,
+    normal      = 3,
+    exponential = 9,
+    t           = 9,
+    NULL
   )
+  if (!is.null(mu4)) {
+    c2 <- 1 - rho^2
+    list(
+      k40 = mu4,
+      k04 = mu4 * (rho^4 + c2^2) + 6 * rho^2 * c2,
+      k22 = rho^2 * mu4 + c2,
+      k31 = rho * mu4,
+      k13 = rho^3 * mu4 + 3 * rho * c2
+    )
+  } else {
+    e <- generate_err(modifyList(params, list(n = 1e7)))
+    ex <- e[, 1] / sqrt(params$S[1, 1])
+    ey <- e[, 2] / sqrt(params$S[2, 2])
+    list(
+      k40 = mean(ex^4), k04 = mean(ey^4),
+      k22 = mean(ex^2 * ey^2),
+      k31 = mean(ex^3 * ey), k13 = mean(ex * ey^3)
+    )
+  }
 }
 
 mean_flat <- function(n, p, amp, ...) {
