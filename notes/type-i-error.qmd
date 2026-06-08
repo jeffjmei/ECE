@@ -101,6 +101,39 @@ plot_pcurve(pvals_bs_s2, title = "p = 2 — Scenario 2 (L = 4), exponential erro
 
 :::
 
+## $p = 2$: Parametric Bootstrap Methods
+
+```{r}
+#| cache: true
+pvals_bsp_s1 <- list(
+  "Bootstrap | Parametric"      = pcurve(params_p2_s1, "bs.parametric",     n_sim = n_sim),
+  "Bootstrap | Parametric, PSD" = pcurve(params_p2_s1, "bs.parametric.psd", n_sim = n_sim)
+)
+
+pvals_bsp_s2 <- list(
+  "Bootstrap | Parametric"      = pcurve(params_p2, "bs.parametric",     n_sim = n_sim),
+  "Bootstrap | Parametric, PSD" = pcurve(params_p2, "bs.parametric.psd", n_sim = n_sim)
+)
+```
+
+::: {.panel-tabset}
+
+## Scenario 1 (Normal)
+
+```{r}
+#| echo: false
+plot_pcurve(pvals_bsp_s1, title = "p = 2 — Scenario 1, normal errors, σ = (1, 1)", ncol = 2)
+```
+
+## Scenario 2, L=4 (Exponential)
+
+```{r}
+#| echo: false
+plot_pcurve(pvals_bsp_s2, title = "p = 2 — Scenario 2 (L = 4), exponential errors, σ = (1, 1)", ncol = 2)
+```
+
+:::
+
 ## $p > 2$: Bootstrap Methods
 
 ```{r}
