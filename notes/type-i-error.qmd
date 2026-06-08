@@ -28,7 +28,7 @@ method_colors <- c(
 
 ```{r}
 #| cache: true
-params_p2_s1 <- scenario(1, n = 1000, err_type = "normal")
+params_p2_s1 <- scenario(1, n = 1000, err_type = "normal") 
 params_p2    <- scenario(2, L = 4, n = 1000, err_type = "exponential")
 
 pvals_z_s1 <- list(
@@ -71,20 +71,35 @@ plot_pcurve(pvals_z_s2, title = "p = 2 — Scenario 2 (L = 4), exponential error
 ## $p = 2$: Bootstrap Methods
 
 ```{r}
-#| eval: false
 #| cache: true
-#| dependson: "params_p2"
-pvals_bs_p2 <- list(
-  "Bootstrap (Multiplier)"      = pcurve(params_p2, "bs.multiplier",     n_sim = n_sim),
-  "Bootstrap (Parametric, PSD)" = pcurve(params_p2, "bs.parametric.psd", n_sim = n_sim)
+pvals_bs_s1 <- list(
+  "Bootstrap | Multiplier"           = pcurve(params_p2_s1, "bs.multiplier",         n_sim = n_sim),
+  "Bootstrap | Multiplier, No Split" = pcurve(params_p2_s1, "bs.multiplier.nosplit",  n_sim = n_sim)
+)
+
+pvals_bs_s2 <- list(
+  "Bootstrap | Multiplier"           = pcurve(params_p2, "bs.multiplier",         n_sim = n_sim),
+  "Bootstrap | Multiplier, No Split" = pcurve(params_p2, "bs.multiplier.nosplit",  n_sim = n_sim)
 )
 ```
 
+::: {.panel-tabset}
+
+## Scenario 1 (Normal)
+
 ```{r}
-#| eval: false
 #| echo: false
-plot_pcurve(pvals_bs_p2, title = "p = 2 — Scenario 2 (L = 4), exponential errors, σ = (1, 1)")
+plot_pcurve(pvals_bs_s1, title = "p = 2 — Scenario 1, normal errors, σ = (1, 1)", ncol = 2)
 ```
+
+## Scenario 2, L=4 (Exponential)
+
+```{r}
+#| echo: false
+plot_pcurve(pvals_bs_s2, title = "p = 2 — Scenario 2 (L = 4), exponential errors, σ = (1, 1)", ncol = 2)
+```
+
+:::
 
 ## $p > 2$: Bootstrap Methods
 
