@@ -54,14 +54,21 @@ pcurve <- function(params, method, n_sim = 1000, B = NULL) {
 }
 
 plot_pcurve <- function(pvals, facet = ~method, title = NULL) {
-  dat <- map_dfr(names(pvals), \(m) tibble(p_value = pvals[[m]], method = m))
+  dat <- if (is.data.frame(pvals)) pvals else
+    map_dfr(names(pvals), \(m) tibble(p_value = pvals[[m]], method = m))
+  facet_layer <- if (inherits(facet, "Facet")) facet else facet_wrap(facet)
   ggplot(dat, aes(x = p_value)) +
     geom_histogram(aes(y = after_stat(density)),
-      breaks = seq(0, 1, by = 0.05),
+      breaks = seq(0, 1, by = 0.1),
       fill = "steelblue", color = "white", alpha = 0.8
     ) +
     geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
-    facet_wrap(facet) +
+    facet_layer +
+    scale_y_continuous(breaks = seq(0, 10, by = 0.5), minor_breaks = seq(0, 10, by = 0.1)) +
     labs(x = "p-value", y = "Density", title = title) +
-    theme_minimal()
+    theme_minimal() +
+    theme(
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank()
+    )
 }

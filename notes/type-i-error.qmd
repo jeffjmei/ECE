@@ -89,13 +89,8 @@ pvals_bs_pg2 |>
     method = method_labels_bs[method],
     p      = factor(p, labels = c("p = 3", "p = 5", "p = 10"))
   ) |>
-  ggplot(aes(x = p_value)) +
-  geom_histogram(aes(y = after_stat(density)),
-                 breaks = seq(0, 1, by = 0.05),
-                 fill = "steelblue", color = "white", alpha = 0.8) +
-  geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
-  facet_grid(p ~ method) +
-  labs(x = "p-value", y = "Density",
-       title = "p > 2 — Scenario 2 (L = 4), exponential errors") +
-  theme_minimal()
+  plot_pcurve(
+    facet = facet_grid(p ~ method),
+    title = "p > 2 — Scenario 2 (L = 4), exponential errors"
+  )
 ```
