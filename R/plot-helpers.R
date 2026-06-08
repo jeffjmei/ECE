@@ -53,10 +53,13 @@ pcurve <- function(params, method, n_sim = 1000, B = NULL) {
   })
 }
 
-plot_pcurve <- function(pvals, facet = ~method, title = NULL) {
-  dat <- if (is.data.frame(pvals)) pvals else
-    map_dfr(names(pvals), \(m) tibble(p_value = pvals[[m]], method = m))
-  facet_layer <- if (inherits(facet, "Facet")) facet else facet_wrap(facet)
+plot_pcurve <- function(pvals, facet = ~method, title = NULL, ncol = NULL, dir = "h") {
+  dat <- if (is.data.frame(pvals)) pvals else {
+    nms <- names(pvals)
+    map_dfr(nms, \(m) tibble(p_value = pvals[[m]], method = m)) |>
+      mutate(method = factor(method, levels = nms))
+  }
+  facet_layer <- if (inherits(facet, "Facet")) facet else facet_wrap(facet, ncol = ncol, dir = dir)
   ggplot(dat, aes(x = p_value)) +
     geom_histogram(aes(y = after_stat(density)),
       breaks = seq(0, 1, by = 0.1),

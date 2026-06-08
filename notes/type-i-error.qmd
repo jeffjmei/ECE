@@ -28,24 +28,50 @@ method_colors <- c(
 
 ```{r}
 #| cache: true
-params_p2 <- scenario(2, L = 4, n = 1000, err_type = "exponential")
+params_p2_s1 <- scenario(1, n = 1000, err_type = "normal")
+params_p2    <- scenario(2, L = 4, n = 1000, err_type = "exponential")
 
-pvals_z_p2 <- list(
-  "Z-Test (Gaussian)"       = pcurve(params_p2, "z.test.gaussian",      n_sim = n_sim),
-  "Z-Test (Oracle κ₂₂)"    = pcurve(params_p2, "z.test.oracle.kappa",  n_sim = n_sim),
-  "Z-Test (Null)"           = pcurve(params_p2, "z.test.null",          n_sim = n_sim),
-  "Z-Test (Null, Gaussian)" = pcurve(params_p2, "z.test.null.gaussian", n_sim = n_sim)
+pvals_z_s1 <- list(
+  "Z-Test | Null, Oracle"   = pcurve(params_p2_s1, "z.test.null.oracle",   n_sim = n_sim),
+  "Z-Test | Null, Gaussian" = pcurve(params_p2_s1, "z.test.null.gaussian", n_sim = n_sim),
+  "Z-Test | Null"           = pcurve(params_p2_s1, "z.test.null",          n_sim = n_sim),
+  "Z-Test | Oracle"         = pcurve(params_p2_s1, "z.test.oracle",        n_sim = n_sim),
+  "Z-Test | Gaussian"       = pcurve(params_p2_s1, "z.test.gaussian",      n_sim = n_sim),
+  "Z-Test"                  = pcurve(params_p2_s1, "z.test",               n_sim = n_sim)
+)
+
+pvals_z_s2 <- list(
+  "Z-Test | Null, Oracle"   = pcurve(params_p2, "z.test.null.oracle",   n_sim = n_sim),
+  "Z-Test | Null, Gaussian" = pcurve(params_p2, "z.test.null.gaussian", n_sim = n_sim),
+  "Z-Test | Null"           = pcurve(params_p2, "z.test.null",          n_sim = n_sim),
+  "Z-Test | Oracle"         = pcurve(params_p2, "z.test.oracle",        n_sim = n_sim),
+  "Z-Test | Gaussian"       = pcurve(params_p2, "z.test.gaussian",      n_sim = n_sim),
+  "Z-Test"                  = pcurve(params_p2, "z.test",               n_sim = n_sim)
 )
 ```
 
+::: {.panel-tabset}
+
+## Scenario 1 (Gaussian)
+
 ```{r}
 #| echo: false
-plot_pcurve(pvals_z_p2, title = "p = 2 — Scenario 2 (L = 4), exponential errors, σ = (1, 1)")
+plot_pcurve(pvals_z_s1, title = "p = 2 — Scenario 1, Gaussian errors, σ = (1, 1)", dir = "v", ncol = 2)
 ```
+
+## Scenario 2, L=4 (Exponential)
+
+```{r}
+#| echo: false
+plot_pcurve(pvals_z_s2, title = "p = 2 — Scenario 2 (L = 4), exponential errors, σ = (1, 1)", dir = "v", ncol = 2)
+```
+
+:::
 
 ## $p = 2$: Bootstrap Methods
 
 ```{r}
+#| eval: false
 #| cache: true
 #| dependson: "params_p2"
 pvals_bs_p2 <- list(
@@ -55,6 +81,7 @@ pvals_bs_p2 <- list(
 ```
 
 ```{r}
+#| eval: false
 #| echo: false
 plot_pcurve(pvals_bs_p2, title = "p = 2 — Scenario 2 (L = 4), exponential errors, σ = (1, 1)")
 ```
@@ -62,6 +89,7 @@ plot_pcurve(pvals_bs_p2, title = "p = 2 — Scenario 2 (L = 4), exponential erro
 ## $p > 2$: Bootstrap Methods
 
 ```{r}
+#| eval: false
 #| cache: true
 params_p3  <- scenario(2, L = 4, n = 1000, err_type = "exponential", p = 3)
 params_p5  <- scenario(2, L = 4, n = 1000, err_type = "exponential", p = 5)
@@ -78,6 +106,7 @@ pvals_bs_pg2 <- bind_rows(
 ```
 
 ```{r}
+#| eval: false
 #| echo: false
 method_labels_bs <- c(
   "bs.multiplier"     = "Bootstrap (Multiplier)",
