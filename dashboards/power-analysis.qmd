@@ -96,6 +96,49 @@ plot_type1 <- function(data) {
   two_legend_plotly(ggplotly(p, tooltip = "text"))
 }
 
+plot_power_diff <- function(data, ref_method, by_p = FALSE) {
+  ref <- data |>
+    filter(method == ref_method) |>
+    select(r, err_type, cov_type, p, ref_val = metric_val)
+
+  diff_data <- data |>
+    filter(method != ref_method) |>
+    left_join(ref, by = c("r", "err_type", "cov_type", "p")) |>
+    mutate(diff_val = ref_val - metric_val)
+
+  p <- diff_data |>
+    arrange(method_label, err_type, r) |>
+    ggplot(aes(
+      x        = r,
+      y        = diff_val,
+      color    = method_label,
+      group    = interaction(method_label, err_type),
+      linetype = err_type,
+      shape    = err_type,
+      text     = paste0(
+        scenario_label, "<br>",
+        method_label, "<br>",
+        err_type, "<br>",
+        "r = ", r, "<br>",
+        "Δ power: ", round(diff_val, 3)
+      )
+    )) +
+    geom_line() +
+    geom_point(size = 2) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+    scale_linetype_manual(values = c(normal = "solid", exponential = "dashed"), guide = "none") +
+    scale_shape_manual(values = c(normal = 16, exponential = 17), guide = "none") +
+    { if (by_p)
+        facet_grid(rows = vars(cov_type), cols = vars(p), labeller = label_both)
+      else
+        facet_wrap(vars(cov_type), labeller = label_both) } +
+    labs(y = paste0("Δ Power (", ref_method, " − method)"),
+         x = "Correlation (r)", color = "Method") +
+    theme_bw()
+
+  two_legend_plotly(ggplotly(p, tooltip = "text"))
+}
+
 plot_power <- function(data, by_p = FALSE) {
   p <- data |>
     arrange(method_label, err_type, r) |>
@@ -152,6 +195,19 @@ checkboxGroupInput(
 
 ::: {.panel-tabset}
 
+## Type I Error
+
+```{r}
+plotlyOutput("type1_plot", height = "100vh")
+```
+
+```{r}
+#| context: server
+output$type1_plot <- renderPlotly({
+  plot_type1(type1_data |> filter(err_type %in% input$err_types, method %in% input$methods))
+})
+```
+
 ## Power
 
 ```{r}
@@ -189,16 +245,56 @@ lapply(scenarios, function(sc) {
 })
 ```
 
-## Type I Error
+## Comparison
 
 ```{r}
-plotlyOutput("type1_plot", height = "100vh")
+selectInput(
+  "ref_method", "Reference Method:",
+  choices  = all_methods,
+  selected = all_methods[1]
+)
+```
+
+```{r}
+#| results: asis
+#| echo: false
+cat("::: {.panel-tabset}\n\n")
+for (sc in scenarios) {
+  cat("##", sc, "\n\n")
+  cat(as.character(plotlyOutput(paste0("cmp_", make.names(sc)), height = "100vh")))
+  if (any(power_pp$scenario_label == sc)) {
+    cat("\n\n")
+    cat(as.character(plotlyOutput(paste0("cmpp_", make.names(sc)), height = "100vh")))
+  }
+  cat("\n\n")
+}
+cat(":::\n")
 ```
 
 ```{r}
 #| context: server
-output$type1_plot <- renderPlotly({
-  plot_type1(type1_data |> filter(err_type %in% input$err_types, method %in% input$methods))
+lapply(scenarios, function(sc) {
+  local({
+    s <- sc
+    output[[paste0("cmp_", make.names(s))]] <- renderPlotly({
+      n_val <- as.integer(input$n_sel)
+      ref   <- input$ref_method
+      d <- power_p2 |> filter(scenario_label == s, n == n_val,
+                               err_type %in% input$err_types,
+                               method %in% c(input$methods, ref))
+      plot_power_diff(d, ref_method = ref)
+    })
+    if (any(power_pp$scenario_label == s)) {
+      output[[paste0("cmpp_", make.names(s))]] <- renderPlotly({
+        n_val <- as.integer(input$n_sel)
+        ref   <- input$ref_method
+        d <- power_pp |> filter(scenario_label == s, n == n_val,
+                                 err_type %in% input$err_types,
+                                 method %in% c(input$methods, ref))
+        plot_power_diff(d, ref_method = ref, by_p = TRUE)
+      })
+    }
+  })
 })
 ```
 
