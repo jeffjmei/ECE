@@ -9,7 +9,6 @@ server: shiny
 #| include: false
 library(tidyverse)
 library(shiny)
-library(bslib)
 library(plotly)
 library(jsonlite)
 
@@ -29,52 +28,6 @@ make_scenario_label <- function(scenario, scenario_params_json) {
   if (nzchar(lab)) paste0("Scenario ", scenario, " (", lab, ")") else paste0("Scenario ", scenario)
 }
 
-plot_type1 <- function(data) {
-  p <- data |>
-    mutate(
-      shape    = ifelse(err_type == "exponential", 17, 16),
-      err_type = fct_relevel(err_type, "normal")
-    ) |>
-    arrange(method_label, err_type) |>
-    ggplot(aes(
-      x     = n,
-      y     = metric_val,
-      color = method_label,
-      shape = I(shape),
-      text  = paste0(
-        scenario_label, "<br>",
-        method_label, "<br>",
-        err_type, "<br>",
-        "rejection rate: ", metric_val
-      )
-    )) +
-    geom_point(size = 2) +
-    geom_hline(yintercept = 0.10, linetype = "dashed") +
-    labs(y = "Rejection Rate", x = "Sample Size", color = "Method") +
-    theme_bw()
-
-  pl <- ggplotly(p, tooltip = "text")
-
-  # Split 4 method traces into two columns by assigning to legend / legend2
-  method_idx <- which(vapply(pl$x$data, function(t) nzchar(t$name), logical(1)))
-  for (i in seq_along(method_idx)) {
-    pl$x$data[[method_idx[i]]]$legend <- if (i <= 2) "legend" else "legend2"
-  }
-
-  pl$x$layout$legend <- list(
-    title       = list(text = ""),
-    orientation = "h",
-    x = 0,   xanchor = "left",
-    y = -0.2
-  )
-  pl$x$layout$legend2 <- list(
-    orientation = "h",
-    x = 0.5, xanchor = "left",
-    y = -0.2
-  )
-  pl
-}
-
 results <- read_csv(
   here::here("data/results.csv"),
   show_col_types = FALSE
@@ -84,10 +37,10 @@ results <- read_csv(
     scenario_label = map2_chr(scenario, scenario_params, make_scenario_label)
   )
 
-# cov_type is irrelevant (AR1 == compound), drop duplicates
+# cov_type is irrelevant (AR1 == compound), drop duplicates within scenario
 type1_data <- results |>
   filter(metric == "power", r == 0) |>
-  distinct(n, err_type, method_label, .keep_all = TRUE) |>
+  distinct(n, err_type, method_label, scenario_label, .keep_all = TRUE) |>
   mutate(n = factor(n))
 
 power_data <- results |>
@@ -96,14 +49,55 @@ power_data <- results |>
 power_p2 <- power_data |> filter(p == 2, amp == 1)
 power_pp  <- power_data |> filter(p >  2, amp == 1)
 
-n_choices      <- sort(unique(power_data$n))
-all_methods    <- sort(unique(results$method))
-default_methods <- c("z.test.gaussian", "z.test.oracle.kappa", "bs.multiplier", "bs.parametric")
-scenarios <- sort(unique(power_p2$scenario_label))
+n_choices       <- sort(unique(power_data$n))
+all_methods     <- sort(unique(results$method))
+default_methods <- c("z.test.oracle", "z.test.null.oracle")
+scenarios       <- sort(unique(power_p2$scenario_label))
+
+two_legend_plotly <- function(pl) {
+  method_idx <- which(vapply(pl$x$data, function(t) nzchar(t$name), logical(1)))
+  half <- ceiling(length(method_idx) / 2)
+  for (i in seq_along(method_idx)) {
+    pl$x$data[[method_idx[i]]]$legend <- if (i <= half) "legend" else "legend2"
+  }
+  pl$x$layout$legend <- list(
+    title = list(text = ""), orientation = "h",
+    x = 0, xanchor = "left", y = -0.2
+  )
+  pl$x$layout$legend2 <- list(
+    orientation = "h", x = 0.5, xanchor = "left", y = -0.2
+  )
+  pl
+}
+
+plot_type1 <- function(data) {
+  p <- data |>
+    mutate(err_type = fct_relevel(err_type, "normal")) |>
+    arrange(method_label, err_type) |>
+    ggplot(aes(
+      x     = n,
+      y     = metric_val,
+      color = method_label,
+      shape = err_type,
+      text  = paste0(
+        scenario_label, "<br>",
+        method_label, "<br>",
+        err_type, "<br>",
+        "rejection rate: ", metric_val
+      )
+    )) +
+    geom_point(size = 2) +
+    geom_hline(yintercept = 0.10, linetype = "dashed") +
+    scale_shape_manual(values = c(normal = 16, exponential = 17), guide = "none") +
+    facet_wrap(vars(scenario_label)) +
+    labs(y = "Rejection Rate", x = "Sample Size", color = "Method") +
+    theme_bw()
+
+  two_legend_plotly(ggplotly(p, tooltip = "text"))
+}
 
 plot_power <- function(data, by_p = FALSE) {
   p <- data |>
-    mutate(shape = ifelse(err_type == "exponential", 17, 16)) |>
     arrange(method_label, err_type, r) |>
     ggplot(aes(
       x        = r,
@@ -111,7 +105,7 @@ plot_power <- function(data, by_p = FALSE) {
       color    = method_label,
       group    = interaction(method_label, err_type),
       linetype = err_type,
-      shape    = I(shape),
+      shape    = err_type,
       text     = paste0(
         scenario_label, "<br>",
         method_label, "<br>",
@@ -124,6 +118,7 @@ plot_power <- function(data, by_p = FALSE) {
     geom_point(size = 2) +
     geom_hline(yintercept = 0.10, linetype = "dashed", color = "black") +
     scale_linetype_manual(values = c(normal = "solid", exponential = "dashed"), guide = "none") +
+    scale_shape_manual(values = c(normal = 16, exponential = 17), guide = "none") +
     { if (by_p)
         facet_grid(rows = vars(cov_type), cols = vars(p), labeller = label_both)
       else
@@ -131,26 +126,7 @@ plot_power <- function(data, by_p = FALSE) {
     labs(y = "Power", x = "Correlation (r)", color = "Method") +
     theme_bw()
 
-  pl <- ggplotly(p, tooltip = "text")
-
-  method_idx <- which(vapply(pl$x$data, function(t) nzchar(t$name), logical(1)))
-  half <- ceiling(length(method_idx) / 2)
-  for (i in seq_along(method_idx)) {
-    pl$x$data[[method_idx[i]]]$legend <- if (i <= half) "legend" else "legend2"
-  }
-
-  pl$x$layout$legend <- list(
-    title       = list(text = ""),
-    orientation = "h",
-    x = 0,   xanchor = "left",
-    y = -0.2
-  )
-  pl$x$layout$legend2 <- list(
-    orientation = "h",
-    x = 0.5, xanchor = "left",
-    y = -0.2
-  )
-  pl
+  two_legend_plotly(ggplotly(p, tooltip = "text"))
 }
 ```
 
@@ -175,19 +151,6 @@ checkboxGroupInput(
 ```
 
 ::: {.panel-tabset}
-
-## Type I Error
-
-```{r}
-plotlyOutput("t1_plot", height = "100vh")
-```
-
-```{r}
-#| context: server
-output$t1_plot <- renderPlotly({
-  plot_type1(type1_data |> filter(err_type %in% input$err_types, method %in% input$methods))
-})
-```
 
 ## Power
 
@@ -223,6 +186,19 @@ lapply(scenarios, function(sc) {
       })
     }
   })
+})
+```
+
+## Type I Error
+
+```{r}
+plotlyOutput("type1_plot", height = "100vh")
+```
+
+```{r}
+#| context: server
+output$type1_plot <- renderPlotly({
+  plot_type1(type1_data |> filter(err_type %in% input$err_types, method %in% input$methods))
 })
 ```
 
