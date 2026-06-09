@@ -28,6 +28,7 @@ book:
         - positive-semidefinite.qmd
         - model-misspecification.qmd
         - package.qmd
+        - partial-correlation.qmd
   appendices:
     - computational-solution.qmd
     - mean-removal.qmd

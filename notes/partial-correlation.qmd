@@ -1,0 +1,84 @@
+---
+title: "Partial Correlation"
+---
+
+```{r}
+#| echo: false
+#| message: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(tidyverse)
+```
+
+## Motivation
+
+The PC algorithm is a classical method for causal discovery. It recovers the skeleton of a causal graph by repeatedly testing conditional independence: an edge between $X_i$ and $X_j$ is removed whenever they are independent given some subset $S$ of the remaining variables. For Gaussian data, conditional independence is equivalent to zero partial correlation, and the standard approach tests $H_0: \rho_{ij \cdot S} = 0$ using a Fisher z-test on Pearson estimates.
+
+This procedure fails when the time series have mean shifts. Simultaneous jumps in two series inflate the Pearson correlation between them, producing spurious edges in the estimated graph. The ECE addresses this: it estimates covariance from lagged differences, which cancel mean shifts algebraically and recover the true within-regime correlation.
+
+## Proposed Algorithm
+
+We replace the Pearson-based partial correlation test in the PC algorithm with an ECE-based analogue. The procedure has three steps.
+
+**Step 1: Estimate the covariance matrix.** Apply `ece.cov` to the $n \times p$ data matrix to obtain $\hat\Sigma$, a consistent estimator of the true covariance matrix under unknown mean shifts.
+
+**Step 2: Compute the partial correlation.** For a given pair $(i, j)$ and conditioning set $S$, extract the submatrix of $\hat\Sigma$ indexed by $\{i, j\} \cup S$ and apply the Schur complement:
+$$
+\hat\rho_{ij \cdot S} = \frac{[\hat\Sigma_{ij \cdot S}]_{12}}{\sqrt{[\hat\Sigma_{ij \cdot S}]_{11} [\hat\Sigma_{ij \cdot S}]_{22}}}, \qquad \hat\Sigma_{ij \cdot S} = \hat\Sigma_{11} - \hat\Sigma_{12}\hat\Sigma_{22}^{-1}\hat\Sigma_{21}.
+$$
+
+**Step 3: Bootstrap the standard error.** The partial correlation is a nonlinear function of multiple entries of $\hat\Sigma$, so its standard error cannot be read off directly. We use the parametric bootstrap: under $H_0$, $\bar S \sim N(0, V)$, where $V$ is the bandwidth-2 variance estimator from the parametric bootstrap test. Each draw $S^{(b)} \sim N(0, V)$ is a bootstrap replicate of $\bar S$. Computing the partial correlation from each replicate gives the null distribution of $\hat\rho_{ij \cdot S}$, and $\widehat{SE} = \mathrm{SD}_b(\hat\rho^{(b)}_{ij \cdot S})$.
+
+The test statistic $z = \hat\rho_{ij \cdot S} / \widehat{SE}$ is referred to a standard normal, yielding a p-value for $H_0: \rho_{ij \cdot S} = 0$.
+
+## Implementation
+
+```{r}
+partial_cor_cov <- function(Sigma, i, j, cond = integer(0)) {
+  idx <- c(i, j, cond)
+  sub <- Sigma[idx, idx, drop = FALSE]
+  if (length(cond) == 0)
+    return(sub[1, 2] / sqrt(sub[1, 1] * sub[2, 2]))
+  A <- sub[1:2, 1:2]
+  B <- sub[1:2, -(1:2), drop = FALSE]
+  C <- sub[-(1:2), -(1:2), drop = FALSE]
+  schur <- A - B %*% solve(C) %*% t(B)
+  schur[1, 2] / sqrt(schur[1, 1] * schur[2, 2])
+}
+
+ece.partial.test <- function(X, i, j, cond = integer(0), B = 500) {
+  n <- nrow(X)
+  p <- ncol(X)
+
+  # Step 1: covariance estimate
+  Sigma_hat <- ece.cov(X)
+
+  # Step 2: partial correlation
+  rho_hat <- partial_cor_cov(Sigma_hat, i, j, cond)
+
+  # Step 3: bootstrap SE
+  S_terms <- ece_terms(X)
+  W <- (1 / n^2) * (
+    t(S_terms) %*% S_terms +
+    t(rotate(S_terms)) %*% S_terms + t(S_terms) %*% rotate(S_terms) +
+    t(rotate(S_terms, 2)) %*% S_terms + t(S_terms) %*% rotate(S_terms, 2)
+  )
+
+  pairs <- combn(p, 2)
+
+  bs_rhos <- map_dbl(1:B, ~ {
+    S_b     <- MASS::mvrnorm(1, mu = rep(0, nrow(W)), Sigma = W)
+    Sigma_b <- Sigma_hat
+    for (k in seq_len(ncol(pairs))) {
+      ii <- pairs[1, k]; jj <- pairs[2, k]
+      Sigma_b[ii, jj] <- Sigma_b[jj, ii] <- S_b[k]
+    }
+    partial_cor_cov(Sigma_b, i, j, cond)
+  })
+
+  se_hat  <- sd(bs_rhos)
+  z       <- rho_hat / se_hat
+  p_value <- 2 * pnorm(-abs(z))
+
+  list(estimate = rho_hat, se = se_hat, statistic = z, p.value = p_value)
+}
+```
