@@ -43,6 +43,14 @@ type1_data <- results |>
   distinct(n, err_type, method_label, scenario_label, .keep_all = TRUE) |>
   mutate(n = factor(n))
 
+local({
+  z  <- qnorm(0.975)
+  p0 <- 0.10
+  ns <- unique(type1_data$n_sim)
+  type1_null_lo <<- (p0 + z^2/(2*ns) - z*sqrt(p0*(1-p0)/ns + z^2/(4*ns^2))) / (1 + z^2/ns)
+  type1_null_hi <<- (p0 + z^2/(2*ns) + z*sqrt(p0*(1-p0)/ns + z^2/(4*ns^2))) / (1 + z^2/ns)
+})
+
 power_data <- results |>
   filter(metric == "power")
 
@@ -87,7 +95,9 @@ plot_type1 <- function(data) {
       )
     )) +
     geom_point(size = 2) +
-    geom_hline(yintercept = 0.10, linetype = "dashed") +
+    geom_hline(yintercept = 0.10,          linetype = "dashed", color = "black") +
+    geom_hline(yintercept = type1_null_lo, linetype = "dashed", color = "gray60") +
+    geom_hline(yintercept = type1_null_hi, linetype = "dashed", color = "gray60") +
     scale_shape_manual(values = c(normal = 16, exponential = 17), guide = "none") +
     facet_wrap(vars(scenario_label)) +
     labs(y = "Rejection Rate", x = "Sample Size", color = "Method") +
