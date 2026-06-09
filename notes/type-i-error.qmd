@@ -134,40 +134,140 @@ plot_pcurve(pvals_bsp_s2, title = "p = 2 — Scenario 2 (L = 4), exponential err
 
 :::
 
-## $p > 2$: Bootstrap Methods
+## $p > 2$: Multiplier Bootstrap
 
 ```{r}
-#| eval: false
+params_p3_s1  <- scenario(1, n = 1000, err_type = "normal",            p = 3)
+params_p5_s1  <- scenario(1, n = 1000, err_type = "normal",            p = 5)
+params_p10_s1 <- scenario(1, n = 1000, err_type = "normal",            p = 10)
+params_p3_s2  <- scenario(2, L = 4, n = 1000, err_type = "exponential", p = 3)
+params_p5_s2  <- scenario(2, L = 4, n = 1000, err_type = "exponential", p = 5)
+params_p10_s2 <- scenario(2, L = 4, n = 1000, err_type = "exponential", p = 10)
+```
+
+```{r mult-p3}
 #| cache: true
-params_p3  <- scenario(2, L = 4, n = 1000, err_type = "exponential", p = 3)
-params_p5  <- scenario(2, L = 4, n = 1000, err_type = "exponential", p = 5)
-params_p10 <- scenario(2, L = 4, n = 1000, err_type = "exponential", p = 10)
+pvals_mult_p3_s1 <- pcurve(params_p3_s1, "bs.multiplier", n_sim = n_sim)
+pvals_mult_p3_s2 <- pcurve(params_p3_s2, "bs.multiplier", n_sim = n_sim)
+```
 
-pvals_bs_pg2 <- bind_rows(
-  map_dfr(c("bs.multiplier", "bs.parametric.psd"), \(m)
-    tibble(p_value = pcurve(params_p3,  m, n_sim = n_sim), p = 3,  method = m)),
-  map_dfr(c("bs.multiplier", "bs.parametric.psd"), \(m)
-    tibble(p_value = pcurve(params_p5,  m, n_sim = n_sim), p = 5,  method = m)),
-  map_dfr(c("bs.multiplier", "bs.parametric.psd"), \(m)
-    tibble(p_value = pcurve(params_p10, m, n_sim = n_sim), p = 10, method = m))
+```{r mult-p5}
+#| cache: true
+pvals_mult_p5_s1 <- pcurve(params_p5_s1, "bs.multiplier", n_sim = n_sim)
+pvals_mult_p5_s2 <- pcurve(params_p5_s2, "bs.multiplier", n_sim = n_sim)
+```
+
+```{r mult-p10}
+#| cache: true
+pvals_mult_p10_s1 <- pcurve(params_p10_s1, "bs.multiplier", n_sim = n_sim)
+pvals_mult_p10_s2 <- pcurve(params_p10_s2, "bs.multiplier", n_sim = n_sim)
+```
+
+```{r}
+pvals_mult_pg2_s1 <- bind_rows(
+  tibble(p_value = pvals_mult_p3_s1,  p = factor(3,  levels = c(3, 5, 10))),
+  tibble(p_value = pvals_mult_p5_s1,  p = factor(5,  levels = c(3, 5, 10))),
+  tibble(p_value = pvals_mult_p10_s1, p = factor(10, levels = c(3, 5, 10)))
+)
+
+pvals_mult_pg2_s2 <- bind_rows(
+  tibble(p_value = pvals_mult_p3_s2,  p = factor(3,  levels = c(3, 5, 10))),
+  tibble(p_value = pvals_mult_p5_s2,  p = factor(5,  levels = c(3, 5, 10))),
+  tibble(p_value = pvals_mult_p10_s2, p = factor(10, levels = c(3, 5, 10)))
+)
+```
+
+::: {.panel-tabset}
+
+## Scenario 1 (Normal)
+
+```{r}
+#| echo: false
+plot_pcurve(pvals_mult_pg2_s1, facet = ~p, ncol = 3,
+  title = "p > 2 — Scenario 1, normal errors, σ = (1, 1)")
+```
+
+## Scenario 2, L=4 (Exponential)
+
+```{r}
+#| echo: false
+plot_pcurve(pvals_mult_pg2_s2, facet = ~p, ncol = 3,
+  title = "p > 2 — Scenario 2 (L = 4), exponential errors, σ = (1, 1)")
+```
+
+:::
+
+## $p > 2$: Parametric Bootstrap
+
+```{r param-p3}
+#| cache: true
+pvals_param_p3_s1 <- bind_rows(
+  tibble(p_value = pcurve(params_p3_s1, "bs.parametric",     n_sim = n_sim), method = "Bootstrap | Parametric"),
+  tibble(p_value = pcurve(params_p3_s1, "bs.parametric.psd", n_sim = n_sim), method = "Bootstrap | Parametric, PSD")
+)
+pvals_param_p3_s2 <- bind_rows(
+  tibble(p_value = pcurve(params_p3_s2, "bs.parametric",     n_sim = n_sim), method = "Bootstrap | Parametric"),
+  tibble(p_value = pcurve(params_p3_s2, "bs.parametric.psd", n_sim = n_sim), method = "Bootstrap | Parametric, PSD")
+)
+```
+
+```{r param-p5}
+#| cache: true
+pvals_param_p5_s1 <- bind_rows(
+  tibble(p_value = pcurve(params_p5_s1, "bs.parametric",     n_sim = n_sim), method = "Bootstrap | Parametric"),
+  tibble(p_value = pcurve(params_p5_s1, "bs.parametric.psd", n_sim = n_sim), method = "Bootstrap | Parametric, PSD")
+)
+pvals_param_p5_s2 <- bind_rows(
+  tibble(p_value = pcurve(params_p5_s2, "bs.parametric",     n_sim = n_sim), method = "Bootstrap | Parametric"),
+  tibble(p_value = pcurve(params_p5_s2, "bs.parametric.psd", n_sim = n_sim), method = "Bootstrap | Parametric, PSD")
+)
+```
+
+```{r param-p10}
+#| cache: true
+pvals_param_p10_s1 <- bind_rows(
+  tibble(p_value = pcurve(params_p10_s1, "bs.parametric",     n_sim = n_sim), method = "Bootstrap | Parametric"),
+  tibble(p_value = pcurve(params_p10_s1, "bs.parametric.psd", n_sim = n_sim), method = "Bootstrap | Parametric, PSD")
+)
+pvals_param_p10_s2 <- bind_rows(
+  tibble(p_value = pcurve(params_p10_s2, "bs.parametric",     n_sim = n_sim), method = "Bootstrap | Parametric"),
+  tibble(p_value = pcurve(params_p10_s2, "bs.parametric.psd", n_sim = n_sim), method = "Bootstrap | Parametric, PSD")
 )
 ```
 
 ```{r}
-#| eval: false
-#| echo: false
-method_labels_bs <- c(
-  "bs.multiplier"     = "Bootstrap (Multiplier)",
-  "bs.parametric.psd" = "Bootstrap (Parametric, PSD)"
-)
+p_levels <- c(3, 5, 10)
+m_levels <- c("Bootstrap | Parametric", "Bootstrap | Parametric, PSD")
 
-pvals_bs_pg2 |>
-  mutate(
-    method = method_labels_bs[method],
-    p      = factor(p, labels = c("p = 3", "p = 5", "p = 10"))
-  ) |>
-  plot_pcurve(
-    facet = facet_grid(p ~ method),
-    title = "p > 2 — Scenario 2 (L = 4), exponential errors"
-  )
+pvals_param_pg2_s1 <- bind_rows(
+  mutate(pvals_param_p3_s1,  p = 3),
+  mutate(pvals_param_p5_s1,  p = 5),
+  mutate(pvals_param_p10_s1, p = 10)
+) |> mutate(p = factor(p, levels = p_levels), method = factor(method, levels = m_levels))
+
+pvals_param_pg2_s2 <- bind_rows(
+  mutate(pvals_param_p3_s2,  p = 3),
+  mutate(pvals_param_p5_s2,  p = 5),
+  mutate(pvals_param_p10_s2, p = 10)
+) |> mutate(p = factor(p, levels = p_levels), method = factor(method, levels = m_levels))
 ```
+
+::: {.panel-tabset}
+
+## Scenario 1 (Normal)
+
+```{r}
+#| echo: false
+plot_pcurve(pvals_param_pg2_s1, facet = facet_grid(p ~ method),
+  title = "p > 2 — Scenario 1, normal errors, σ = (1, 1)")
+```
+
+## Scenario 2, L=4 (Exponential)
+
+```{r}
+#| echo: false
+plot_pcurve(pvals_param_pg2_s2, facet = facet_grid(p ~ method),
+  title = "p > 2 — Scenario 2 (L = 4), exponential errors, σ = (1, 1)")
+```
+
+:::
