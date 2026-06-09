@@ -23,6 +23,7 @@ book:
         - simulation.qmd
         - type-i-error.qmd
         - power.qmd
+        - real-data.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd

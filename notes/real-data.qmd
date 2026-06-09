@@ -1,0 +1,7 @@
+# Real Data
+
+Potential datasets:
+
+- US Labor Productivity (BLS)
+- US Employment (FRED)
+- CO2 Inhalation
