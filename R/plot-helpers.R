@@ -46,7 +46,8 @@ make_sim_hist <- function(sim, true, xlab) {
     ggplot2::theme_minimal()
 }
 
-pcurve <- function(params, method, n_sim = 1000, B = NULL) {
+pcurve <- function(params, method, n_sim = 1000, B = NULL, seed = 1) {
+  set.seed(seed)
   map_dbl(seq_len(n_sim), \(i) {
     X <- generate_data(params)
     test.diag(X, method = method, B = B, params = params)$p.value
@@ -54,7 +55,9 @@ pcurve <- function(params, method, n_sim = 1000, B = NULL) {
 }
 
 plot_pcurve <- function(pvals, facet = ~method, title = NULL, ncol = NULL, dir = "h") {
-  dat <- if (is.data.frame(pvals)) pvals else {
+  dat <- if (is.data.frame(pvals)) {
+    pvals
+  } else {
     nms <- names(pvals)
     map_dfr(nms, \(m) tibble(p_value = pvals[[m]], method = m)) |>
       mutate(method = factor(method, levels = nms))
