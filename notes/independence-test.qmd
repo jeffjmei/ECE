@@ -4,18 +4,49 @@ title: "Independence Test"
 
 ## Classical Theory
 
-For jointly Gaussian $(X, Y)$, zero correlation and independence are equivalent, so testing $H_0: \rho = 0$ is also a test of $H_0: X \perp Y$. The statistic $T = \sqrt{n-2}\,\hat\rho / \sqrt{1 - \hat\rho^2}$ follows an exact $t_{n-2}$ null distribution.
+The Pearson correlation test and its robust extensions follow a three-tier hierarchy based on what is assumed about the joint distribution.
 
-Without the Gaussian assumption, $\rho = 0$ no longer implies independence — for example, $X \sim N(0,1)$ and $Y = X^2$ satisfy $\operatorname{Cov}(X, Y) = 0$ but $X \not\perp Y$. Two approaches handle the non-Gaussian case:
+| Assumption | $\kappa_{22}$ at $H_0\colon\rho=0$ | Null tested |
+|---|---|---|
+| Gaussian | $1$ (exact $t_{n-2}$) | $X \perp Y$ |
+| Independent, non-Gaussian | $1$ (asymptotic) | $X \perp Y$ |
+| Neither | must estimate | $\rho = 0$ |
 
-- **Permutation test.** Permuting $Y$ breaks any dependence on $X$ while preserving marginals, giving an exact test of $H_0: X \perp Y$ under any distribution.
-- **Asymptotic test of independence.** Under $H_0: X \perp Y$, the errors are independent, so $\kappa_{22} = 1$ and $\sqrt{n}\,\hat\rho \xrightarrow{d} N(0, 1)$.
-
-For the weaker null $H_0: \rho = 0$ without assuming independence, $\kappa_{22}$ need not equal 1, and the asymptotic variance is
+Under Gaussianity, $\rho = 0$ and $X \perp Y$ are equivalent, so $T = \sqrt{n-2}\,\hat\rho/\sqrt{1-\hat\rho^2}$ is an exact independence test. Without Gaussianity but under independence, $\kappa_{22} = 1$ still holds at $H_0: X \perp Y$, so $\sqrt{n}\,\hat\rho \xrightarrow{d} N(0, 1)$. For the strictly weaker $H_0: \rho = 0$ without assuming independence, $\kappa_{22}$ must be estimated, giving asymptotic variance
 $$
-v^2 = \frac{1}{n} \left(\omega_x^2 + \omega_y^2 + \kappa_{22} + \frac{5}{2}\right).
+v^2 = \frac{1}{n}\!\left(\omega_x^2 + \omega_y^2 + \kappa_{22} + \tfrac{5}{2}\right).
 $$
-A robust test plugs in $\hat\kappa_{22}$.
+
+The ECE test follows the same hierarchy: Gaussian or independent errors give $\kappa_{22} = 1$; otherwise $\hat\kappa_{22}$ is estimated via the MoM construction below.
+
+## Estimators for $\kappa_{22}$
+
+Three estimators are developed below.
+
+::: {.callout-note}
+## Regression
+With $T_k^{(2)}(X,Y) = \sum_i (X_i - X_{i+k})^2(Y_i - Y_{i+k})^2$,
+\begin{align}
+\hat\kappa_{22}^{\mathrm{reg}} &= \frac{2T_1^{(2)}(X,Y) - T_2^{(2)}(X,Y)}{2n\hat\sigma_x^2\hat\sigma_y^2} - \frac{2\hat\sigma_{xy}^2}{\hat\sigma_x^2\hat\sigma_y^2} - 1 && \text{(general)} \\[4pt]
+&= \frac{2T_1^{(2)}(X,Y) - T_2^{(2)}(X,Y)}{2n\hat\sigma_x^2\hat\sigma_y^2} - 1 && (H_0)
+\end{align}
+:::
+
+::: {.callout-note}
+## Matrix ($\widehat{\operatorname{Var}}(\hat\sigma_{xy})$)
+\begin{align}
+\hat\kappa_{22}^{V} &= \frac{n\,\widehat{\operatorname{Var}}(\hat\sigma_{xy})}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{3\hat\sigma_{xy}^2 + 4\hat\sigma_{xy}\hat\omega_{xy}}{2\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2} && \text{(general)} \\[4pt]
+&= \frac{n\,\widehat{\operatorname{Var}}(\hat\sigma_{xy})}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2} && (H_0)
+\end{align}
+:::
+
+::: {.callout-note}
+## Method of Moments
+\begin{align}
+\hat\kappa_{22}^{\mathrm{MoM}} &= \frac{\frac{1}{n}\sum_i S_{xx,i}\,S_{yy,i}}{\bar S_{xx}\,\bar S_{yy}} - \frac{3\hat\sigma_{xy}^2 + 4\hat\sigma_{xy}\hat\omega_{xy}}{\hat\sigma_x^2\hat\sigma_y^2} && \text{(general)} \\[4pt]
+&= \frac{\frac{1}{n}\sum_i S_{xx,i}\,S_{yy,i}}{\bar S_{xx}\,\bar S_{yy}} && (H_0)
+\end{align}
+:::
 
 {{< include kappa22-v.qmd >}}
 
