@@ -61,14 +61,14 @@ params <- scenario(2, L = 4, err_type = "normal")
 
 k22_indep <- map_dbl(1:1000, ~ {
   X <- generate_data(params)
-  ece.kappa(X)$k22
+  ece.kappa(X, method="matrix")$k22
 })
 
 k22_dep <- map_dbl(1:1000, ~ {
   ex <- rnorm(params$n)
   ey <- (ex^2 - 1) / sqrt(2)
   X  <- cbind(params$h[,1] + ex, params$h[,2] + ey)
-  ece.kappa(X)$k22
+  ece.kappa(X, method="matrix")$k22
 })
 
 lambda_vals <- c(0, 0.5, 1/sqrt(2), 1)
@@ -79,7 +79,7 @@ sim_results <- map(lambda_vals, \(lam) {
     ex <- rnorm(params$n)
     ey <- lam * (ex^2 - 1) / sqrt(2) + sqrt(1 - lam^2) * rnorm(params$n)
     X  <- cbind(params$h[,1] + ex, params$h[,2] + ey)
-    ece.kappa(X)$k22
+    ece.kappa(X, method="matrix")$k22
   })
 })
 ```
@@ -160,10 +160,10 @@ $$
 Solving for $\kappa_{22}$,
 
 $$
-\boxed{\hat\kappa_{22} = \frac{V_{12} - 8n\hat\sigma_{xy}^2 - 16n\hat\sigma_{xy}\hat\omega_{xy}}{4n\hat\sigma_x^2\hat\sigma_y^2} + 1,}
+\boxed{\hat\kappa_{22} = \frac{nV_{12} - 2\hat\sigma_{xy}^2 - 4\hat\sigma_{xy}\hat\omega_{xy}}{\hat\sigma_x^2\hat\sigma_y^2} + 1,}
 $$
 
-which under $H_0: \rho = 0$ reduces to $\hat\kappa_{22} = V_{12}/(4n\hat\sigma_x^2\hat\sigma_y^2) + 1$, free of all $\omega$ corrections.
+which under $H_0: \rho = 0$ reduces to $\hat\kappa_{22} = nV_{12}/(\hat\sigma_x^2\hat\sigma_y^2) + 1$, free of all $\omega$ corrections.
 
 ### Estimating $\kappa_{40}$ via $V_{xx}$
 

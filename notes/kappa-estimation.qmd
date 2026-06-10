@@ -1,0 +1,29 @@
+# Kappa Estimation
+
+## Estimating $\kappa_{22}$
+
+Two estimators are available, both based on the lag-2 covariance matrix
+$$
+V = \frac{1}{n^2}\,\tilde{\mathbf{S}}^\top(I + C_1 + C_1^\top + C_2 + C_2^\top)\tilde{\mathbf{S}},
+\qquad \tilde{\mathbf{S}} = (\tilde{\mathbf{S}}^{xx},\, \tilde{\mathbf{S}}^{yy},\, \tilde{\mathbf{S}}^{xy}),
+$$
+where $\tilde S_i^{ab} = S_i^{ab} - \bar S^{ab}$ are the centered ECE terms.
+
+**Via $V_{xy} = \widehat{\operatorname{Var}}(\hat\sigma_{xy})$** (the $(3,3)$ entry of $V$):
+$$
+\boxed{\hat\kappa_{22}^{V} = \frac{nV_{xy}}{\hat\sigma_x^2\hat\sigma_y^2}
+  - \frac{3\hat\sigma_{xy}^2 + 4\hat\sigma_{xy}\hat\omega_{xy}}{2\hat\sigma_x^2\hat\sigma_y^2}
+  - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.}
+$$
+
+**Via $V_{12} = \widehat{\operatorname{Cov}}(\hat\sigma_x^2, \hat\sigma_y^2)$** (the $(1,2)$ entry of $V$):
+$$
+\boxed{\hat\kappa_{22}^{12} = \frac{nV_{12} - 2\hat\sigma_{xy}^2 - 4\hat\sigma_{xy}\hat\omega_{xy}}{\hat\sigma_x^2\hat\sigma_y^2} + 1.}
+$$
+
+Under $H_0$ ($\hat\sigma_{xy} = 0$) the correction terms vanish, giving
+$$
+\hat\kappa_{22}^{V}\big|_{H_0} = \frac{nV_{xy}}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2},
+\qquad
+\hat\kappa_{22}^{12}\big|_{H_0} = \frac{nV_{12}}{\hat\sigma_x^2\hat\sigma_y^2} + 1.
+$$

@@ -12,6 +12,7 @@ book:
         - model-assumptions.qmd
         - lagged-differences.qmd
         - bilinear-form.qmd
+        - kappa-estimation.qmd
     - part: "Inference"
       chapters:
         - z-test.qmd
