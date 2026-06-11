@@ -1,5 +1,13 @@
 # Kappa Estimation
 
+```{R} 
+#| echo: false
+#| message: false
+devtools::load_all("..")
+library(purrr)
+library(ggplot2)
+```
+
 ## Motivation
 The asymptotic variance of $\hat\rho$ is
 $$
@@ -98,3 +106,151 @@ $$
 }
 $$
 
+## Numerical Results
+
+::: {.panel-tabset}
+
+## No Change Points (Normal)
+
+```{R k22-estimation-s1}
+#| cache: true
+#| echo: false
+params <- scenario(1, r=0.5, err_type="normal")
+sims <- map(1:10000, ~{
+  X <- generate_data(params)
+  list(
+    k22_mom = ece.kappa(X, method = "mom")$k22,
+    k22_mat = ece.kappa(X, method = "matrix")$k22,
+    k22_reg = ece.kappa(X, method = "regress")$k22
+  )
+})
+k22_mom <- map_dbl(sims, "k22_mom")
+k22_mat <- map_dbl(sims, "k22_mat")
+k22_reg <- map_dbl(sims, "k22_reg")
+```
+
+
+```{R}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression   = k22_reg,
+    "Var(Sxy)"   = k22_mat,
+    MoM          = k22_mom
+  ),
+  xlab   = expression(hat(kappa)[22]),
+  colors = c(Regression = "#E41A1C", "Var(Sxy)" = "#377EB8", MoM = "#4DAF4A")
+) + ggplot2::labs(title = "Scenario 1, normal errors, n = 1000, ρ = 0.5") +
+  ggplot2::geom_vline(xintercept = params$kappa$k22, linetype = "solid")
+```
+
+## Frequent Change Points (Exponential)
+
+```{R k22-estimation-s2}
+#| cache: true
+#| echo: false
+params <- scenario(2, L=4, r=0.5, err_type="exponential")
+sims <- map(1:10000, ~{
+  X <- generate_data(params)
+  list(
+    k22_mom = ece.kappa(X, method = "mom")$k22,
+    k22_mat = ece.kappa(X, method = "matrix")$k22,
+    k22_reg = ece.kappa(X, method = "regress")$k22
+  )
+})
+k22_mom <- map_dbl(sims, "k22_mom")
+k22_mat <- map_dbl(sims, "k22_mat")
+k22_reg <- map_dbl(sims, "k22_reg")
+```
+
+
+```{R}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression   = k22_reg,
+    "Var(Sxy)"   = k22_mat,
+    MoM          = k22_mom
+  ),
+  xlab   = expression(hat(kappa)[22]),
+  colors = c(Regression = "#E41A1C", "Var(Sxy)" = "#377EB8", MoM = "#4DAF4A")
+) + ggplot2::labs(title = "Scenario 2 (L=4), exponential errors, n = 1000, ρ = 0.5") +
+  ggplot2::geom_vline(xintercept = params$kappa$k22, linetype = "solid")
+```
+
+::: 
+
+```{R k22-bias-var}
+#| cache: true
+#| echo: false
+param_grid <- tribble(
+  ~label,                        ~scen, ~r,   ~err_type,      ~amp, ~L,
+  "Scenario 1, Normal",           1,     0,    "normal",       1,    NA,
+  "Scenario 1, Exponential",      1,     0,    "exponential",  1,    NA,
+  "Scenario 1 (r = 0.5), Exp.",  1,     0.5,  "exponential",  1,    NA,
+  "Scenario 2, Normal",           2,     0,    "normal",       1,    4,
+  "Scenario 2, Exponential",      2,     0,    "exponential",  1,    4,
+  "Scenario 2 (amp = 2), Exp.",  2,     0,    "exponential",  2,    4
+)
+
+simulate_k22 <- function(params, N = 1000) {
+  map(1:N, ~ {
+    X <- generate_data(params)
+    list(
+      regress = ece.kappa(X, method = "regress")$k22,
+      matrix  = ece.kappa(X, method = "matrix")$k22,
+      mom     = ece.kappa(X, method = "mom")$k22
+    )
+  })
+}
+
+k22_grid <- pmap(param_grid, function(label, scen, r, err_type, amp, L) {
+  params <- if (is.na(L)) {
+    scenario(scen, r = r, err_type = err_type, amp = amp)
+  } else {
+    scenario(scen, r = r, err_type = err_type, amp = amp, L = L)
+  }
+  sim <- simulate_k22(params)
+  list(
+    label = label,
+    true  = params$kappa$k22,
+    sim   = sim
+  )
+})
+```
+
+```{R}
+#| echo: false
+ci_df <- map_dfr(k22_grid, \(g) {
+  tibble(
+    scenario = g$label,
+    method   = c("Regression", "Var(Sxy)", "MoM"),
+    bias     = c(mean(map_dbl(g$sim, "regress")),
+                 mean(map_dbl(g$sim, "matrix")),
+                 mean(map_dbl(g$sim, "mom"))) - g$true,
+    sd       = c(sd(map_dbl(g$sim, "regress")),
+                 sd(map_dbl(g$sim, "matrix")),
+                 sd(map_dbl(g$sim, "mom")))
+  )
+}) |>
+  mutate(
+    lo       = bias - 1.96 * sd,
+    hi       = bias + 1.96 * sd,
+    scenario = factor(scenario, levels = map_chr(k22_grid, "label")),
+    method   = factor(method, levels = c("Regression", "Var(Sxy)", "MoM"))
+  )
+
+ggplot(ci_df, aes(x = scenario, y = bias, color = method, group = method)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  geom_pointrange(aes(ymin = lo, ymax = hi),
+                  position = position_dodge(width = 0.4)) +
+  scale_color_brewer(palette = "Set1", name = NULL) +
+  labs(x = NULL, y = expression(hat(kappa)[22] - kappa[22]),
+       title = expression("Bias and variance of " * hat(kappa)[22] * " estimators")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank()
+  )
+```
