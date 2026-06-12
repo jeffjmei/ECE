@@ -68,6 +68,73 @@ plot_pcurve(pvals_z_s2, title = "p = 2 — Scenario 2 (L = 4), exponential error
 
 :::
 
+## $p = 2$: Null Z-Test $\kappa_{22}$ Estimators
+
+```{r pvals-null}
+#| cache: true
+#| warning: false
+n_vals        <- c(200, 500, 1000)
+methods_null  <- c("z.test.null", "z.test.null.regress", "z.test.null.matrix")
+method_labels <- c("Z-Test | Null (MoM)", "Z-Test | Null (Regress)", "Z-Test | Null (Matrix)")
+
+pvals_null <- map_dfr(n_vals, \(n) {
+  s1 <- scenario(1, n = n, err_type = "normal")
+  s2 <- scenario(2, L = 4, n = n, err_type = "exponential")
+  map_dfr(seq_along(methods_null), \(j) {
+    bind_rows(
+      tibble(p_value = pcurve(s1, methods_null[j], n_sim = n_sim),
+             method = method_labels[j], n = n, scenario = "Scenario 1"),
+      tibble(p_value = pcurve(s2, methods_null[j], n_sim = n_sim),
+             method = method_labels[j], n = n, scenario = "Scenario 2")
+    )
+  })
+}) |>
+  mutate(
+    n      = factor(n, levels = n_vals),
+    method = factor(method, levels = method_labels)
+  )
+```
+
+```{r}
+na_tbl <- pvals_null |>
+  summarise(
+    n_na = sum(is.na(p_value)),
+    pct  = mean(is.na(p_value)),
+    .by  = c(scenario, method, n)
+  ) |>
+  filter(n_na > 0) |>
+  arrange(scenario, n, method)
+
+if (nrow(na_tbl) > 0) {
+  knitr::kable(na_tbl, digits = 3,
+    col.names = c("Scenario", "Method", "n", "# NA", "Frac. NA"))
+} else {
+  cat("No NA p-values across all methods and sample sizes.")
+}
+```
+
+::: {.panel-tabset}
+
+## Scenario 1 (Gaussian)
+
+```{r}
+pvals_null |>
+  filter(scenario == "Scenario 1") |>
+  plot_pcurve(facet = facet_grid(n ~ method),
+              title = "p = 2 — Scenario 1, Gaussian errors")
+```
+
+## Scenario 2, L=4 (Exponential)
+
+```{r}
+pvals_null |>
+  filter(scenario == "Scenario 2") |>
+  plot_pcurve(facet = facet_grid(n ~ method),
+              title = "p = 2 — Scenario 2 (L = 4), exponential errors")
+```
+
+:::
+
 ## $p = 2$: Bootstrap Methods
 
 ```{r}
