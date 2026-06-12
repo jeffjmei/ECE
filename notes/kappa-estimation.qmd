@@ -6,6 +6,17 @@
 devtools::load_all("..")
 library(purrr)
 library(ggplot2)
+
+trim <- function(x, lo = 0.01, hi = 0.99) x[x >= quantile(x, lo) & x <= quantile(x, hi)]
+
+se_mse <- function(est, target) {
+  c(
+    bias = mean(est) - target,
+    sd = sd(est),
+    rmse = sqrt(mean((est - target)^2))
+  )
+}
+
 ```
 
 ## Motivation
@@ -29,7 +40,7 @@ S_{xy,i} = \frac{s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}}{2},
 $$
 so that $E[S_{xy,i}] = \sigma_{xy}$ at every index regardless of change points. Replacing $Y$ with $X$ gives $S_{xx,i}$ (with $E[S_{xx,i}] = \sigma_x^2$), and similarly $S_{yy,i}$ (with $E[S_{yy,i}] = \sigma_y^2$). Their averages satisfy $\bar S_{xx} = \hat\sigma_x^2$, $\bar S_{yy} = \hat\sigma_y^2$, $\bar S_{xy} = \hat\sigma_{xy}$.
 
-### $\operatorname{Var}(S_{xy})$-Based Estimator
+### $\operatorname{Var}(\hat{\sigma}_{xy})$-Based Estimator
 
 We find that
 $$
@@ -41,7 +52,7 @@ $$
 \boxed{\hat\kappa_{22}^{(xy)} = \frac{n\widehat{\operatorname{Var}}(\bar{S}_{xy})}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{3}{2}\frac{\hat\sigma_{xy}^2}{\hat\sigma_x^2\hat\sigma_y^2} - 2\frac{\hat\sigma_{xy}\hat\omega_{xy}}{\hat\sigma_x^2\hat\sigma_y^2} - \frac{\hat\omega_x^2}{\hat\sigma_x^2} - \frac{\hat\omega_y^2}{\hat\sigma_y^2} - \frac{5}{2}.}
 $$
 
-### $\operatorname{Cov}(S_{xx}, S_{yy})$-Based Estimator
+### $\operatorname{Cov}(\hat{\sigma}_x^2, \hat{\sigma}_y^2)$-Based Estimator
 
 We find that
 $$
@@ -107,6 +118,8 @@ $$
 $$
 
 ## Numerical Results
+
+### $\kappa_{22}$ Estimation
 
 ::: {.panel-tabset}
 
@@ -254,3 +267,483 @@ ggplot(ci_df, aes(x = scenario, y = bias, color = method, group = method)) +
     panel.grid.minor.y = element_blank()
   )
 ```
+
+### Null SE Estimation
+While it seems pretty clear cut that the MoM estimator is the most accurate, it's not entirely clear which method is the most powerful. 
+
+
+::: {.panel-tabset}
+
+## No Change Points (Normal Error, $\rho=0$)
+
+```{R null-se-estimation-s1}
+#| cache: true
+#| echo: false
+params <- scenario(1, err_type="normal")
+sims <- map(1:10000, ~{
+  X <- generate_data(params)
+  list(
+    se_mom = test.diag(X, method="z.test.null")$se,
+    se_mat = test.diag(X, method="z.test.null.matrix")$se,
+    se_reg = test.diag(X, method="z.test.null.regress")$se,
+    se_oracle = test.diag(X, method="z.test.null.oracle")$se
+  )
+})
+se_mom <- map_dbl(sims, "se_mom")
+se_mat <- map_dbl(sims, "se_mat")
+se_reg <- map_dbl(sims, "se_reg")
+se_oracle <- map_dbl(sims, "se_oracle")
+```
+
+```{R}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression = trim(se_reg),
+    "Var(Sxy)" = trim(se_mat),
+    MoM        = trim(se_mom),
+    Oracle     = trim(se_oracle)
+  ),
+  xlab   = expression(hat(v)),
+  colors = c(Regression = "#E41A1C", "Var(Sxy)" = "#377EB8", MoM = "#4DAF4A", Oracle = "#984EA3")
+) + ggplot2::labs(title = "Scenario 1, normal errors, n = 1000, ρ = 0") +
+  ggplot2::geom_vline(xintercept = ece.cor.se.formula(params), linetype = "solid")
+```
+
+```{R}
+#| echo: false
+target <- ece.cor.se.formula(params)
+
+rbind(
+  Oracle     = se_mse(se_oracle, target),
+  "Var(Sxy)" = se_mse(se_mat,    target),
+  Regression = se_mse(se_reg,    target),
+  MoM        = se_mse(se_mom,    target)
+  ) |>
+  as.data.frame() |>
+  round(5) |> 
+  arrange(rmse)
+```
+
+## Frequent Change Points (L=4) - Exponential Error ($\rho=0$)
+
+```{R null-se-estimation-s3}
+#| cache: true
+#| echo: false
+params <- scenario(2, L=4, r=0, err_type="exponential")
+sims <- map(1:10000, ~{
+  X <- generate_data(params)
+  list(
+    se_mom = test.diag(X, method="z.test.null")$se,
+    se_mat = test.diag(X, method="z.test.null.matrix")$se,
+    se_reg = test.diag(X, method="z.test.null.regress")$se,
+    se_oracle = test.diag(X, method="z.test.null.oracle")$se
+  )
+})
+se_mom <- map_dbl(sims, "se_mom")
+se_mat <- map_dbl(sims, "se_mat")
+se_reg <- map_dbl(sims, "se_reg")
+se_oracle <- map_dbl(sims, "se_oracle")
+```
+
+```{R}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression = trim(se_reg),
+    "Var(Sxy)" = trim(se_mat),
+    MoM        = trim(se_mom),
+    Oracle     = trim(se_oracle)
+  ),
+  xlab   = expression(hat(v)),
+  colors = c(Regression = "#E41A1C", "Var(Sxy)" = "#377EB8", MoM = "#4DAF4A", Oracle = "#984EA3")
+) + ggplot2::labs(title = "Scenario 2 (L=4), exponential errors, n = 1000, ρ = 0.5") +
+  ggplot2::geom_vline(xintercept = ece.cor.se.formula(params), linetype = "solid")
+```
+
+```{R}
+#| echo: false
+target <- ece.cor.se.formula(params)
+
+rbind(
+  Oracle     = se_mse(se_oracle, target),
+  "Var(Sxy)" = se_mse(se_mat,    target),
+  Regression = se_mse(se_reg,    target),
+  MoM        = se_mse(se_mom,    target)
+  ) |>
+  as.data.frame() |>
+  round(5) |> 
+  arrange(rmse)
+```
+
+## No Change Points (Normal Error, $\rho=0.5$)
+
+```{R null-se-estimation-s4}
+#| cache: true
+#| echo: false
+params <- scenario(1, r=0.5, err_type="normal")
+sims <- map(1:10000, ~{
+  X <- generate_data(params)
+  list(
+    se_mom = test.diag(X, method="z.test.null")$se,
+    se_mat = test.diag(X, method="z.test.null.matrix")$se,
+    se_reg = test.diag(X, method="z.test.null.regress")$se,
+    se_oracle = test.diag(X, method="z.test.null.oracle")$se
+  )
+})
+se_mom <- map_dbl(sims, "se_mom")
+se_mat <- map_dbl(sims, "se_mat")
+se_reg <- map_dbl(sims, "se_reg")
+se_oracle <- map_dbl(sims, "se_oracle")
+```
+
+```{R}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression = trim(se_reg),
+    "Var(Sxy)" = trim(se_mat),
+    MoM        = trim(se_mom),
+    Oracle     = trim(se_oracle)
+  ),
+  xlab   = expression(hat(v)),
+  colors = c(Regression = "#E41A1C", "Var(Sxy)" = "#377EB8", MoM = "#4DAF4A", Oracle = "#984EA3")
+) + ggplot2::labs(title = "Scenario 1, normal errors, n = 1000, ρ = 0.5") +
+  ggplot2::geom_vline(xintercept = ece.cor.se.formula(params), linetype = "solid")
+```
+
+```{R}
+#| echo: false
+target <- ece.cor.se.formula(params)
+
+rbind(
+  Oracle     = se_mse(se_oracle, target),
+  "Var(Sxy)" = se_mse(se_mat,    target),
+  Regression = se_mse(se_reg,    target),
+  MoM        = se_mse(se_mom,    target)
+  ) |>
+  as.data.frame() |>
+  round(5) |> 
+  arrange(rmse)
+```
+
+## Frequent Change Points (L=4) - Exponential Error ($\rho=0.5$)
+
+```{R null-se-estimation-s2}
+#| cache: true
+#| echo: false
+params <- scenario(2, L=4, r=0.5, err_type="exponential")
+sims <- map(1:10000, ~{
+  X <- generate_data(params)
+  list(
+    se_mom = test.diag(X, method="z.test.null")$se,
+    se_mat = test.diag(X, method="z.test.null.matrix")$se,
+    se_reg = test.diag(X, method="z.test.null.regress")$se,
+    se_oracle = test.diag(X, method="z.test.null.oracle")$se
+  )
+})
+se_mom <- map_dbl(sims, "se_mom")
+se_mat <- map_dbl(sims, "se_mat")
+se_reg <- map_dbl(sims, "se_reg")
+se_oracle <- map_dbl(sims, "se_oracle")
+```
+
+```{R}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression = trim(se_reg),
+    "Var(Sxy)" = trim(se_mat),
+    MoM        = trim(se_mom),
+    Oracle     = trim(se_oracle)
+  ),
+  xlab   = expression(hat(v)),
+  colors = c(Regression = "#E41A1C", "Var(Sxy)" = "#377EB8", MoM = "#4DAF4A", Oracle = "#984EA3")
+) + ggplot2::labs(title = "Scenario 2 (L=4), exponential errors, n = 1000, ρ = 0.5") +
+  ggplot2::geom_vline(xintercept = ece.cor.se.formula(params), linetype = "solid")
+```
+
+```{R}
+#| echo: false
+target <- ece.cor.se.formula(params)
+
+rbind(
+  Oracle     = se_mse(se_oracle, target),
+  "Var(Sxy)" = se_mse(se_mat,    target),
+  Regression = se_mse(se_reg,    target),
+  MoM        = se_mse(se_mom,    target)
+  ) |>
+  as.data.frame() |>
+  round(5) |> 
+  arrange(rmse)
+```
+
+## No Change Points (Normal Error, $\rho=0.5$, small $n$)
+
+```{R null-se-estimation-s5}
+#| cache: true
+#| echo: false
+params <- scenario(1, n=200, r=0.5, err_type="normal")
+sims <- map(1:10000, ~{
+  X <- generate_data(params)
+  list(
+    se_mom = test.diag(X, method="z.test.null")$se,
+    se_mat = test.diag(X, method="z.test.null.matrix")$se,
+    se_reg = test.diag(X, method="z.test.null.regress")$se,
+    se_oracle = test.diag(X, method="z.test.null.oracle")$se
+  )
+})
+se_mom <- map_dbl(sims, "se_mom")
+se_mat <- map_dbl(sims, "se_mat")
+se_reg <- map_dbl(sims, "se_reg")
+se_oracle <- map_dbl(sims, "se_oracle")
+```
+
+```{R}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression = trim(se_reg),
+    "Var(Sxy)" = trim(se_mat),
+    MoM        = trim(se_mom),
+    Oracle     = trim(se_oracle)
+  ),
+  xlab   = expression(hat(v)),
+  colors = c(Regression = "#E41A1C", "Var(Sxy)" = "#377EB8", MoM = "#4DAF4A", Oracle = "#984EA3")
+) + ggplot2::labs(title = "Scenario 1, normal errors, n = 200, ρ = 0.5") +
+  ggplot2::geom_vline(xintercept = ece.cor.se.formula(params), linetype = "solid")
+```
+
+```{R}
+#| echo: false
+target <- ece.cor.se.formula(params)
+
+rbind(
+  Oracle     = se_mse(se_oracle, target),
+  "Var(Sxy)" = se_mse(se_mat,    target),
+  Regression = se_mse(se_reg,    target),
+  MoM        = se_mse(se_mom,    target)
+  ) |>
+  as.data.frame() |>
+  round(5) |> 
+  arrange(rmse)
+```
+
+## No Change Points (Normal Error, $\rho=0.1$)
+
+```{R null-se-estimation-s6}
+#| cache: true
+#| echo: false
+params <- scenario(1, n=500, r=0.1, err_type="normal")
+sims <- map(1:10000, ~{
+  X <- generate_data(params)
+  list(
+    se_mom = test.diag(X, method="z.test.null")$se,
+    se_mat = test.diag(X, method="z.test.null.matrix")$se,
+    se_reg = test.diag(X, method="z.test.null.regress")$se,
+    se_oracle = test.diag(X, method="z.test.null.oracle")$se
+  )
+})
+se_mom <- map_dbl(sims, "se_mom")
+se_mat <- map_dbl(sims, "se_mat")
+se_reg <- map_dbl(sims, "se_reg")
+se_oracle <- map_dbl(sims, "se_oracle")
+```
+
+```{R}
+#| echo: false
+make_overlap_hist(
+  sims = list(
+    Regression = trim(se_reg),
+    "Var(Sxy)" = trim(se_mat),
+    MoM        = trim(se_mom),
+    Oracle     = trim(se_oracle)
+  ),
+  xlab   = expression(hat(v)),
+  colors = c(Regression = "#E41A1C", "Var(Sxy)" = "#377EB8", MoM = "#4DAF4A", Oracle = "#984EA3")
+) + ggplot2::labs(title = "Scenario 1, normal errors, n = 500, ρ = 0.1") +
+  ggplot2::geom_vline(xintercept = ece.cor.se.formula(params), linetype = "solid")
+```
+
+```{R}
+#| echo: false
+target <- ece.cor.se.formula(params)
+
+rbind(
+  Oracle     = se_mse(se_oracle, target),
+  "Var(Sxy)" = se_mse(se_mat,    target),
+  Regression = se_mse(se_reg,    target),
+  MoM        = se_mse(se_mom,    target)
+  ) |>
+  as.data.frame() |>
+  round(5) |> 
+  arrange(rmse)
+```
+
+::: 
+
+```{R}
+#| echo: false
+sim_decomp <- function(params, method, n_sim=10000){
+  set.seed(1)
+  sims <- map(1:n_sim, ~{
+
+    # Generate Data
+    X <- generate_data(params)
+    x <- X[, 1]; y <- X[, 2]
+
+    # Estimate Complexity Parameters
+    wx2 <- ece.complexity(x)
+    wy2 <- ece.complexity(y)
+
+    # Estimate k22
+    if(method == "oracle"){
+      kappa <- params$kappa
+    }else{
+      kappa <- ece.kappa(X, method=method)
+    }
+
+    # Run Test
+    z.test <- z_test(X, kappa=kappa, rho=0)
+
+    # Return 
+    list(
+      rxy = z.test$estimate, 
+      pval = z.test$p.value,
+      se = z.test$se,
+      w = wx2 + wy2,
+      k22 = kappa$k22
+    )
+  })
+  list(
+    rxy = map_dbl(sims, "rxy"),
+    pval = map_dbl(sims, "pval"),
+    se = map_dbl(sims, "se"),
+    w = map_dbl(sims, "w"),
+    k22 = map_dbl(sims, "k22")
+  )
+}
+
+panel_hist <- function(vals_list, true_val = NULL, xlab = "", colors, means = NULL, ...) {
+  df <- imap_dfr(vals_list, ~ tibble(x = .x, method = .y))
+  p <- ggplot(df, aes(x = x, fill = method)) +
+    geom_histogram(aes(y = after_stat(density)),
+                   position = "identity", color = "white", alpha = 0.5, ...) +
+    scale_fill_manual(values = colors, name = NULL, drop = FALSE) +
+    labs(x = xlab, y = NULL) +
+    theme_minimal()
+  if (!is.null(true_val))
+    p <- p + geom_vline(xintercept = true_val, linetype = "solid")
+  if (!is.null(means))
+    for (nm in names(means))
+      p <- p + geom_vline(xintercept = means[[nm]], color = colors[nm],
+                          linetype = "dashed", linewidth = 0.7)
+  p
+}
+
+plot_decomp <- function(sims, params, colors) {
+  target_se  <- ece.cor.se.formula(params)
+  target_k22 <- params$kappa$k22
+  target_w   <- ece.complexity(params$h[,1]) + ece.complexity(params$h[,2])
+
+  extract  <- function(var) map(sims, var)
+  sims_est <- sims[names(sims) != "Oracle"]
+  se_means <- map(sims, ~ mean(.x$se))
+
+  patchwork::wrap_plots(
+    panel_hist(extract("pval"),      xlab = "p-value",                                                                                             colors = colors, breaks = seq(0, 1, by = 0.1)),
+    panel_hist(extract("se"),        target_se,  expression(hat(v) == sqrt((hat(omega)[x]^2 + hat(omega)[y]^2 + hat(kappa)[22] + frac(5,2)) / n)), colors = colors, means = se_means, bins = 40),
+    panel_hist(map(sims_est, "w"),   target_w,   expression(hat(omega)[x]^2 + hat(omega)[y]^2),                                                    colors = colors, bins = 40),
+    panel_hist(map(sims_est, "k22"), target_k22, expression(hat(kappa)[22]),                                                                        colors = colors, bins = 40),
+    nrow = 2
+  ) +
+    patchwork::plot_layout(guides = "collect") &
+    theme(legend.position = "bottom")
+}
+```
+
+:::{.panel-tabset}
+
+## Scenario 1 (n=200, r=0, normal error)
+```{R sim-decomp}
+#| echo: false
+#| cache: true
+
+# Run Simulations
+params <- scenario(1, n=200, r=0, err_type="normal")
+sim_mom <- sim_decomp(params, method="mom")
+sim_mat <- sim_decomp(params, method="matrix")
+sim_reg <- sim_decomp(params, method="regress")
+sim_oracle <- sim_decomp(params, method="oracle") 
+```
+
+```{R}
+#| echo: false
+
+sims <- list(
+  MoM        = sim_mom,
+  "Var(Sxy)" = sim_mat,
+  Regression = sim_reg,
+  Oracle     = sim_oracle
+)
+colors <- c(MoM = "#4DAF4A", "Var(Sxy)" = "#377EB8", Regression = "#E41A1C", Oracle = "#984EA3")
+
+plot_decomp(sims, params, colors)
+```
+
+## Scenario 1 (n=200, r=0.2, normal error)
+```{R sim-decomp-2}
+#| echo: false
+#| cache: true
+
+# Run Simulations
+params <- scenario(1, n=200, r=0.2, err_type="normal")
+sim_mom <- sim_decomp(params, method="mom")
+sim_mat <- sim_decomp(params, method="matrix")
+sim_reg <- sim_decomp(params, method="regress")
+sim_oracle <- sim_decomp(params, method="oracle") 
+```
+
+```{R}
+#| echo: false
+
+sims <- list(
+  MoM        = sim_mom,
+  "Var(Sxy)" = sim_mat,
+  Regression = sim_reg,
+  Oracle     = sim_oracle
+)
+colors <- c(MoM = "#4DAF4A", "Var(Sxy)" = "#377EB8", Regression = "#E41A1C", Oracle = "#984EA3")
+
+plot_decomp(sims, params, colors)
+```
+
+## Scenario 1 (n=1000, r=0.5, normal error)
+```{R sim-decomp-3}
+#| echo: false
+#| cache: true
+
+# Run Simulations
+params <- scenario(1, n=1000, r=0.5, err_type="normal")
+sim_mom <- sim_decomp(params, method="mom")
+sim_mat <- sim_decomp(params, method="matrix")
+sim_reg <- sim_decomp(params, method="regress")
+sim_oracle <- sim_decomp(params, method="oracle") 
+```
+
+```{R}
+#| echo: false
+
+sims <- list(
+  MoM        = sim_mom,
+  "Var(Sxy)" = sim_mat,
+  Regression = sim_reg,
+  Oracle     = sim_oracle
+)
+colors <- c(MoM = "#4DAF4A", "Var(Sxy)" = "#377EB8", Regression = "#E41A1C", Oracle = "#984EA3")
+
+plot_decomp(sims, params, colors)
+```
+
+::: 
+
