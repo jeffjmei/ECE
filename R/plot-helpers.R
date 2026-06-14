@@ -46,7 +46,7 @@ make_sim_hist <- function(sim, true, xlab) {
     ggplot2::theme_minimal()
 }
 
-plot_pvals <- function(dat, facet = NULL, title = NULL, ncol = NULL, dir = "h", bins = 10) {
+plot_pvals <- function(dat, color_by = NULL, facet = NULL, title = NULL, ncol = NULL, dir = "h", bins = 10) {
   if (!bins %in% c(10, 20)) stop("`bins` must be 10 or 20")
   bucket_cols <- grep("^p[0-9]{2}$", names(dat), value = TRUE)
   if (length(bucket_cols) == 0) {
@@ -57,27 +57,26 @@ plot_pvals <- function(dat, facet = NULL, title = NULL, ncol = NULL, dir = "h", 
   long <- dat |>
     tidyr::pivot_longer(dplyr::all_of(bucket_cols), names_to = "bucket", values_to = "prop") |>
     dplyr::mutate(
-      idx = as.integer(sub("^p", "", bucket)) %/% 5L,   # 0..19
+      idx = as.integer(sub("^p", "", bucket)) %/% 5L,
       x   = (idx %/% (20L %/% bins)) * bin_width
     ) |>
     dplyr::group_by(dplyr::across(dplyr::all_of(c(setdiff(names(dat), bucket_cols), "x")))) |>
     dplyr::summarise(density = sum(prop) / bin_width, .groups = "drop")
 
-  facet_vars <- if (!is.null(facet)) all.vars(facet) else character(0)
-  group_vars <- if (length(facet_vars) > 0) facet_vars else character(0)
-  if (length(group_vars) > 0) {
-    dups <- dat |>
-      dplyr::group_by(dplyr::across(dplyr::all_of(group_vars))) |>
-      dplyr::summarise(.n_rows = dplyr::n(), .groups = "drop") |>
-      dplyr::filter(.n_rows > 1)
-    if (nrow(dups) > 0) {
-      stop("Multiple rows share the same facet level(s). Filter to one row per level before plotting.\n",
-           "Duplicated combinations:\n",
-           paste(capture.output(print(dups)), collapse = "\n"))
+  if (!inherits(facet, "Facet")) {
+    id_vars <- c(color_by, if (!is.null(facet)) all.vars(facet) else character(0))
+    if (length(id_vars) > 0) {
+      dups <- dat |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(id_vars))) |>
+        dplyr::summarise(.n_rows = dplyr::n(), .groups = "drop") |>
+        dplyr::filter(.n_rows > 1)
+      if (nrow(dups) > 0) {
+        stop("Multiple rows share the same color/facet combination(s).\n",
+             paste(capture.output(print(dups)), collapse = "\n"))
+      }
+    } else if (nrow(dat) > 1) {
+      stop("Multiple rows provided but neither color_by nor facet specified.")
     }
-  } else if (nrow(dat) > 1) {
-    stop("Multiple rows provided but no facet variable specified. ",
-         "Either filter to one row or supply a facet argument.")
   }
 
   facet_layer <- if (is.null(facet)) {
@@ -88,17 +87,29 @@ plot_pvals <- function(dat, facet = NULL, title = NULL, ncol = NULL, dir = "h", 
     ggplot2::facet_wrap(facet, ncol = ncol, dir = dir)
   }
 
-  ggplot2::ggplot(long, ggplot2::aes(x = x, y = density)) +
-    ggplot2::geom_col(width = bin_width, fill = "steelblue", color = "white", alpha = 0.8) +
+  if (!is.null(color_by)) {
+    bar_aes  <- ggplot2::aes(x = x, y = density, fill = .data[[color_by]])
+    bar_geom <- ggplot2::geom_col(width = bin_width, color = "white", alpha = 0.6, position = "identity")
+    color_scale <- ggplot2::scale_fill_brewer(palette = "Set1")
+  } else {
+    bar_aes  <- ggplot2::aes(x = x, y = density)
+    bar_geom <- ggplot2::geom_col(width = bin_width, fill = "steelblue", color = "white", alpha = 0.8)
+    color_scale <- NULL
+  }
+
+  ggplot2::ggplot(long, bar_aes) +
+    bar_geom +
+    color_scale +
     ggplot2::geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
     facet_layer +
     ggplot2::scale_x_continuous(breaks = seq(0, 1, by = bin_width * 2)) +
     ggplot2::scale_y_continuous(breaks = seq(0, 10, by = 0.5), minor_breaks = seq(0, 10, by = 0.1)) +
-    ggplot2::labs(x = "p-value", y = "Density", title = title) +
+    ggplot2::labs(x = "p-value", y = "Density", title = title, fill = color_by) +
     ggplot2::theme_minimal() +
     ggplot2::theme(
       panel.grid.major.x = ggplot2::element_blank(),
-      panel.grid.minor.x = ggplot2::element_blank()
+      panel.grid.minor.x = ggplot2::element_blank(),
+      legend.position    = "bottom"
     )
 }
 

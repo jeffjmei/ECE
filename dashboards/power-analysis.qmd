@@ -11,6 +11,7 @@ library(tidyverse)
 library(shiny)
 library(plotly)
 library(jsonlite)
+devtools::load_all("~/Documents/Research/Code/ECE")
 
 make_params_label <- function(params_json) {
   params <- fromJSON(gsub('\\', '"', params_json, fixed = TRUE))
@@ -42,6 +43,26 @@ type1_data <- results |>
   filter(metric == "power", r == 0) |>
   distinct(n, err_type, method_label, scenario_label, .keep_all = TRUE) |>
   mutate(n = factor(n))
+
+t1_data <- read_csv(
+  here::here("data/results-t1.csv"),
+  show_col_types = FALSE
+) |>
+  mutate(
+    method_label   = map2_chr(method,   method_params,   make_method_label),
+    scenario_label = map2_chr(scenario, scenario_params, make_scenario_label)
+  )
+
+# cov_type is irrelevant at r = 0; keep one row per (scenario, n, p, err_type, method)
+t1_p2 <- t1_data |>
+  filter(p == 2) |>
+  distinct(scenario_label, n, err_type, method_label, .keep_all = TRUE)
+
+t1_pp <- t1_data |>
+  filter(p > 2) |>
+  distinct(scenario_label, n, p, err_type, method_label, .keep_all = TRUE)
+
+t1_scenarios <- sort(unique(t1_data$scenario_label))
 
 local({
   z  <- qnorm(0.975)
@@ -207,6 +228,10 @@ checkboxGroupInput(
 
 ## Type I Error
 
+::: {.panel-tabset}
+
+## Rejection Rate
+
 ```{r}
 plotlyOutput("type1_plot", height = "100vh")
 ```
@@ -217,6 +242,56 @@ output$type1_plot <- renderPlotly({
   plot_type1(type1_data |> filter(err_type %in% input$err_types, method %in% input$methods))
 })
 ```
+
+## P-curve
+
+```{r}
+#| results: asis
+#| echo: false
+cat("::: {.panel-tabset}\n\n")
+for (sc in t1_scenarios) {
+  cat("##", sc, "\n\n")
+  if (any(t1_p2$scenario_label == sc)) {
+    cat(as.character(plotlyOutput(paste0("pcurve_", make.names(sc)), height = "100vh")))
+    cat("\n\n")
+  }
+  if (any(t1_pp$scenario_label == sc)) {
+    cat(as.character(plotlyOutput(paste0("pcurvep_", make.names(sc)), height = "100vh")))
+    cat("\n\n")
+  }
+}
+cat(":::\n")
+```
+
+```{r}
+#| context: server
+lapply(t1_scenarios, function(sc) {
+  local({
+    s <- sc
+    if (any(t1_p2$scenario_label == s)) {
+      output[[paste0("pcurve_", make.names(s))]] <- renderPlotly({
+        n_val <- as.integer(input$n_sel)
+        d <- t1_p2 |> filter(scenario_label == s, n == n_val,
+                              err_type %in% input$err_types,
+                              method %in% input$methods)
+        ggplotly(plot_pvals(d, color_by = "method_label", facet = ~err_type))
+      })
+    }
+    if (any(t1_pp$scenario_label == s)) {
+      output[[paste0("pcurvep_", make.names(s))]] <- renderPlotly({
+        n_val <- as.integer(input$n_sel)
+        d <- t1_pp |> filter(scenario_label == s, n == n_val,
+                              err_type %in% input$err_types,
+                              method %in% input$methods)
+        ggplotly(plot_pvals(d, color_by = "method_label", facet = facet_grid(vars(err_type), vars(p))))
+      })
+    }
+  })
+})
+```
+
+:::
+
 
 ## Power
 
