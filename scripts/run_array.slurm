@@ -4,7 +4,6 @@
 #SBATCH --partition=standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
 #SBATCH --time=3:00:00
 #SBATCH --mem=3G
 #SBATCH --output=logs/%A_%a.out
@@ -18,4 +17,5 @@ module load R
 Rscript scripts/simulate.R \
 	--task_id "$SLURM_ARRAY_TASK_ID" \
 	--config scripts/param_grid.csv \
-	--outdir data/
+	--outdir data/ \
+	--cpus "$SLURM_CPUS_PER_TASK"

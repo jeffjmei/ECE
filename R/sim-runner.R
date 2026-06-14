@@ -1,3 +1,4 @@
+#' @export
 test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...) {
   b_arg <- if (!is.null(B)) list(B = B) else list()
   switch(method,
@@ -17,6 +18,7 @@ test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...)
   )
 }
 
+#' @export
 run_sim <- function(config_row, N = 1000) {
   standard_cols <- c("scenario", "n", "p", "cov_type", "r", "amp", "err_type", "method", "B", "seed", "n_sims")
   extra_params <- as.list(config_row[setdiff(names(config_row), standard_cols)])
@@ -36,16 +38,20 @@ run_sim <- function(config_row, N = 1000) {
   ))
 
   set.seed(config_row$seed)
+  seeds <- sample.int(.Machine$integer.max, N)
+  method <- config_row$method
+  B      <- config_row$B
   start_time <- proc.time()
-  p_vals <- replicate(N, {
+  p_vals <- purrr::map_dbl(seeds, purrr::in_parallel(\(s) {
+    set.seed(s)
     tryCatch({
       X <- generate_data(params)
-      test.diag(X, method = config_row$method, B = config_row$B, params = params)$p.value
+      test.diag(X, method = method, B = B, params = params)$p.value
     }, error = function(e) {
       message("Replicate error: ", conditionMessage(e))
       NA_real_
     })
-  })
+  }, params = params, method = method, B = B))
   end_time <- proc.time()
   runtime <- (end_time - start_time)[["elapsed"]] / 60
 
@@ -69,6 +75,7 @@ run_sim <- function(config_row, N = 1000) {
     )
 }
 
+#' @export
 run_sim_t1 <- function(config_row, N = 1000) {
   standard_cols <- c("scenario", "n", "p", "cov_type", "r", "amp", "err_type", "method", "B", "seed", "n_sims")
   extra_params <- as.list(config_row[setdiff(names(config_row), standard_cols)])
@@ -88,16 +95,20 @@ run_sim_t1 <- function(config_row, N = 1000) {
   ))
 
   set.seed(config_row$seed)
+  seeds <- sample.int(.Machine$integer.max, N)
+  method <- config_row$method
+  B      <- config_row$B
   start_time <- proc.time()
-  p_vals <- replicate(N, {
+  p_vals <- purrr::map_dbl(seeds, purrr::in_parallel(\(s) {
+    set.seed(s)
     tryCatch({
       X <- generate_data(params)
-      test.diag(X, method = config_row$method, B = config_row$B, params = params)$p.value
+      test.diag(X, method = method, B = B, params = params)$p.value
     }, error = function(e) {
       message("Replicate error: ", conditionMessage(e))
       NA_real_
     })
-  })
+  }, params = params, method = method, B = B))
   end_time <- proc.time()
   runtime <- (end_time - start_time)[["elapsed"]] / 60
 
@@ -125,6 +136,7 @@ run_sim_t1 <- function(config_row, N = 1000) {
   )
 }
 
+#' @export
 save_sim <- function(result, file) {
   write.table(result, file,
     sep       = ",",

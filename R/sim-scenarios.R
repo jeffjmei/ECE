@@ -39,6 +39,7 @@ mean_sin_wave <- function(n, p, amp, period = 365, ...) {
   list(h = matrix(rep(amp * sin_wave(n, period), p), n, p), scenario_param = list(period = period))
 }
 
+#' @export
 scenario <- function(scenario_num = 1, n = 1000, p = 2, r = 0, amp = 1,
                      cov_type = "compound", err_type = "normal", seed = 1,
                      sigma = rep(1, p), ...) {

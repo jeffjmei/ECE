@@ -26,6 +26,7 @@ generate_err <- function(params) {
   Z %*% params$S_cholesky
 }
 
+#' @export
 generate_data <- function(params) {
   e <- generate_err(params)
   X <- params$h + e
