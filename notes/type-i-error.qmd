@@ -24,6 +24,21 @@ method_colors <- c(
 )
 ```
 
+```{R} 
+sim_dependent_quadratic <- function(params, method, n_sims=10000){
+  set.seed(1)
+  map_dbl(1:n_sims, ~{
+    hx <- params$h[,1]
+    hy <- params$h[,2]
+    ex <- rnorm(params$n)
+    ey <- (ex^2 - 1) / sqrt(2)
+    X <- cbind(hx + ex, hy + ey)
+
+    test.diag(X, method=method)$p.value
+  })
+}
+```
+
 ## $p = 2$: Z-Test Methods
 
 ```{r}
@@ -135,19 +150,80 @@ pvals_null |>
 
 :::
 
+## $p = 2$: Dependence Testing
+
+Correlation dependence testing are closely related but subtly different. In the classical Pearson test, interpretation is dependent on on the assumptions made. 
+
+Consider this canonical example:
+$$
+\varepsilon_y = \frac{\varepsilon_x^2 - 1}{\sqrt{2}}, \quad 
+\varepsilon_x \sim N(0, 1).
+$$
+Clearly, $\varepsilon_x$ and $\varepsilon_y$ are dependent, but by construction $\operatorname{Cor}(\varepsilon_x, \varepsilon_y) = 0$. Specifically, $\kappa_{22} = 5$. 
+
+Therefore, a dependence test will identify dependence between $\varepsilon_x$ and $\varepsilon_y$, but a correlation test will not. 
+
+::: {.panel-tabset}
+
+## Scenario 1 (Dependent)
+
+```{R dep-test-quadratic-s1}
+#| cache: true
+#| echo: false
+params <- scenario(1) 
+p_cor <- sim_dependent_quadratic(params, method="z.test.null")
+p_dep <- sim_dependent_quadratic(params, method="z.test.null.gaussian")
+```
+
+```{R} 
+#| echo: false
+plot_pcurve(list(
+  "Correlation test" = p_cor,
+  "Dependence test"  = p_dep
+))
+```
+
+## Scenario 2 (Dependent)
+
+```{R dep-test-quadratic-s2}
+#| cache: true
+#| echo: false
+params <- scenario(2, L=4) 
+p_cor <- sim_dependent_quadratic(params, method="z.test.null")
+p_dep <- sim_dependent_quadratic(params, method="z.test.null.gaussian")
+```
+
+```{R} 
+#| echo: false
+plot_pcurve(list(
+  "Correlation test" = p_cor,
+  "Dependence test"  = p_dep
+))
+```
+
+:::
+
 ## $p = 2$: Bootstrap Methods
 
-```{r}
+```{r bs-multiplier-s1-p2}
 #| cache: true
+#| echo: false
+n_sim <- 10
 pvals_bs_s1 <- list(
   "Bootstrap | Multiplier"           = pcurve(params_p2_s1, "bs.multiplier",         n_sim = n_sim),
   "Bootstrap | Multiplier, No Split" = pcurve(params_p2_s1, "bs.multiplier.nosplit",  n_sim = n_sim)
 )
+```
 
+```{r bs-multiplier-s2-p2}
+#| cache: true
+#| echo: false
+n_sim <- 10
 pvals_bs_s2 <- list(
   "Bootstrap | Multiplier"           = pcurve(params_p2, "bs.multiplier",         n_sim = n_sim),
   "Bootstrap | Multiplier, No Split" = pcurve(params_p2, "bs.multiplier.nosplit",  n_sim = n_sim)
 )
+n_sim <- 10000
 ```
 
 ::: {.panel-tabset}
@@ -170,13 +246,18 @@ plot_pcurve(pvals_bs_s2, title = "p = 2 — Scenario 2 (L = 4), exponential erro
 
 ## $p = 2$: Parametric Bootstrap Methods
 
-```{r}
+```{r bs-parametric-s1-p2}
 #| cache: true
+#| echo: false
 pvals_bsp_s1 <- list(
   "Bootstrap | Parametric"      = pcurve(params_p2_s1, "bs.parametric",     n_sim = n_sim),
   "Bootstrap | Parametric, PSD" = pcurve(params_p2_s1, "bs.parametric.psd", n_sim = n_sim)
 )
+```
 
+```{r bs-parametric-s2-p2}
+#| cache: true
+#| echo: false
 pvals_bsp_s2 <- list(
   "Bootstrap | Parametric"      = pcurve(params_p2, "bs.parametric",     n_sim = n_sim),
   "Bootstrap | Parametric, PSD" = pcurve(params_p2, "bs.parametric.psd", n_sim = n_sim)
