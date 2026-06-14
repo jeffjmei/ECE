@@ -10,6 +10,7 @@ execute:
 #| warning: false
 library(tidyverse)
 devtools::load_all()
+results_t1 <- read_csv("../data/results-t1.csv")
 
 n_sim <- 10000
 
@@ -419,3 +420,51 @@ plot_pcurve(pvals_param_pg2_s2, facet = facet_grid(p ~ method),
 ```
 
 :::
+
+## Bootstrap Tests are Conservative
+
+::: {.panel-tabset}
+
+## Scenario 1
+
+```{r bs-conservative-s1}
+results_t1 |>
+  filter(
+    method   == "bs.multiplier",
+    n        %in% c(1000, 2000, 3000),
+    p        %in% c(15, 20, 25),
+    scenario == 1,
+    cov_type == "compound",
+    err_type == "normal"
+  ) |>
+  mutate(
+    n = factor(n, levels = c(1000, 2000, 3000)),
+    p = factor(p, levels = c(15, 20, 25))
+  ) |>
+  plot_pvals(facet = facet_grid(n ~ p, labeller = label_both),
+             title = "Bootstrap Multiplier — Scenario 1, Normal errors")
+```
+
+## Scenario 2
+
+```{r bs-conservative-s2}
+results_t1 |>
+  filter(
+    method   == "bs.multiplier",
+    n        %in% c(1000, 2000, 3000),
+    p        %in% c(15, 20, 25),
+    scenario == 2,
+    cov_type == "compound",
+    err_type == "normal"
+  ) |>
+  mutate(
+    n = factor(n, levels = c(1000, 2000, 3000)),
+    p = factor(p, levels = c(15, 20, 25))
+  ) |>
+  plot_pvals(facet = facet_grid(n ~ p, labeller = label_both),
+             title = "Bootstrap Multiplier — Scenario 2, Normal errors")
+```
+
+:::
+
+
