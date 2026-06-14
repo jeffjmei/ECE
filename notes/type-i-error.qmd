@@ -467,4 +467,48 @@ results_t1 |>
 
 :::
 
+## Parametric Bootstrap Tests are Conservative
 
+::: {.panel-tabset}
+
+## Scenario 1
+
+```{r bs-psd-conservative-s1}
+results_t1 |>
+  filter(
+    method   == "bs.parametric.psd",
+    n        %in% c(1000, 2000, 3000),
+    p        %in% c(15, 20, 25),
+    scenario == 1,
+    cov_type == "compound",
+    err_type == "normal"
+  ) |>
+  mutate(
+    n = factor(n, levels = c(1000, 2000, 3000)),
+    p = factor(p, levels = c(15, 20, 25))
+  ) |>
+  plot_pvals(facet = facet_grid(n ~ p, labeller = label_both),
+             title = "Parametric Bootstrap (PSD) — Scenario 1, Normal errors")
+```
+
+## Scenario 2
+
+```{r bs-psd-conservative-s2}
+results_t1 |>
+  filter(
+    method   == "bs.parametric.psd",
+    n        %in% c(1000, 2000, 3000),
+    p        %in% c(15, 20, 25),
+    scenario == 2,
+    cov_type == "compound",
+    err_type == "normal"
+  ) |>
+  mutate(
+    n = factor(n, levels = c(1000, 2000, 3000)),
+    p = factor(p, levels = c(15, 20, 25))
+  ) |>
+  plot_pvals(facet = facet_grid(n ~ p, labeller = label_both),
+             title = "Parametric Bootstrap (PSD) — Scenario 2, Normal errors")
+```
+
+:::
