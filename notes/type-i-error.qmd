@@ -206,41 +206,42 @@ plot_pcurve(list(
 
 ## $p = 2$: Bootstrap Methods
 
-```{r bs-multiplier-s1-p2}
-#| cache: true
-#| echo: false
-n_sim <- 10
-pvals_bs_s1 <- list(
-  "Bootstrap | Multiplier"           = pcurve(params_p2_s1, "bs.multiplier",         n_sim = n_sim),
-  "Bootstrap | Multiplier, No Split" = pcurve(params_p2_s1, "bs.multiplier.nosplit",  n_sim = n_sim)
-)
-```
-
-```{r bs-multiplier-s2-p2}
-#| cache: true
-#| echo: false
-n_sim <- 10
-pvals_bs_s2 <- list(
-  "Bootstrap | Multiplier"           = pcurve(params_p2, "bs.multiplier",         n_sim = n_sim),
-  "Bootstrap | Multiplier, No Split" = pcurve(params_p2, "bs.multiplier.nosplit",  n_sim = n_sim)
-)
-n_sim <- 10000
-```
-
 ::: {.panel-tabset}
 
 ## Scenario 1 (Normal)
 
 ```{r}
 #| echo: false
-plot_pcurve(pvals_bs_s1, title = "p = 2 — Scenario 1, normal errors, σ = (1, 1)", ncol = 2)
+results_t1 |>
+  filter(
+    method   == "bs.multiplier",
+    n        %in% c(200, 500, 1000),
+    p        == 2,
+    scenario == 1,
+    cov_type == "compound",
+    err_type == "normal"
+  ) |>
+  mutate(n = factor(n, levels = c(200, 500, 1000))) |>
+  plot_pvals(facet = ~n, ncol = 3,
+             title = "p = 2 — Scenario 1, normal errors, σ = (1, 1)")
 ```
 
 ## Scenario 2, L=4 (Exponential)
 
 ```{r}
 #| echo: false
-plot_pcurve(pvals_bs_s2, title = "p = 2 — Scenario 2 (L = 4), exponential errors, σ = (1, 1)", ncol = 2)
+results_t1 |>
+  filter(
+    method   == "bs.multiplier",
+    n        %in% c(200, 500, 1000),
+    p        == 2,
+    scenario == 2,
+    cov_type == "compound",
+    err_type == "exponential"
+  ) |>
+  mutate(n = factor(n, levels = c(200, 500, 1000))) |>
+  plot_pvals(facet = ~n, ncol = 3,
+             title = "p = 2 — Scenario 2 (L = 4), exponential errors, σ = (1, 1)")
 ```
 
 :::
@@ -423,6 +424,8 @@ plot_pcurve(pvals_param_pg2_s2, facet = facet_grid(p ~ method),
 
 ## Bootstrap Tests are Conservative
 
+### Bootstrap Multiplier is Conservative
+
 ::: {.panel-tabset}
 
 ## Scenario 1
@@ -467,7 +470,7 @@ results_t1 |>
 
 :::
 
-## Parametric Bootstrap Tests are Conservative
+### Parametric Bootstrap is Conservative
 
 ::: {.panel-tabset}
 
@@ -512,3 +515,94 @@ results_t1 |>
 ```
 
 :::
+
+### Mechanism: Not in Asymptotic CLT Regime
+The u-shaped p-curves indicate that there are insufficient small and large p-values. This means the distribution of bootstrap statistics has less variance than the true distribution. 
+
+::: {.panel-tabset}
+## n = 500, p = 10
+
+
+```{R}
+#| echo: false
+params <- scenario(1, n = 500, p = 10)
+n <- params$n
+B <- 1000
+
+# Bootstrap (Parametric)
+X <- generate_data(params)
+S <- ece_terms(X)
+W <- (1 / n^2) * (
+  t(S) %*% S +
+    t(rotate(S)) %*% S + t(S) %*% rotate(S) +
+    t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
+) 
+S_bs <- MASS::mvrnorm(n = B, mu = rep(0, ncol(W)), Sigma = W)
+
+# Bootstrap (Oracle)
+S_oracle <- map(1:B, ~{
+  X <- generate_data(params)  
+  S <- ece_terms(X)
+  t(colMeans(S)) |> as_tibble()
+}) |> list_rbind()
+```
+
+```{R}
+# Plot Histogram Pair-Plot
+col_names <- colnames(S_oracle)
+bind_rows(
+  as_tibble(S_bs) |> setNames(col_names) |> mutate(source = "bootstrap"),
+  S_oracle |> mutate(source = "true")
+) |>
+  pivot_longer(-source, names_to = "term", values_to = "value") |>
+  ggplot(aes(x = value, fill = source)) +
+  geom_histogram(aes(y = after_stat(density)),
+                  position = "identity", alpha = 0.5, bins = 20) +
+  facet_wrap(~term, scales = "free_x") +
+  scale_fill_manual(values = c(bootstrap = "red", true = "steelblue")) +
+  theme_minimal()
+```
+
+## n = 2000, p = 10
+
+```{R}
+#| echo: false
+params <- scenario(1, n = 2000, p = 10)
+n <- params$n
+B <- 1000
+
+# Bootstrap (Parametric)
+X <- generate_data(params)
+S <- ece_terms(X)
+W <- (1 / n^2) * (
+  t(S) %*% S +
+    t(rotate(S)) %*% S + t(S) %*% rotate(S) +
+    t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
+) 
+S_bs <- MASS::mvrnorm(n = B, mu = rep(0, ncol(W)), Sigma = W)
+
+# Bootstrap (Oracle)
+S_oracle <- map(1:B, ~{
+  X <- generate_data(params)  
+  S <- ece_terms(X)
+  t(colMeans(S)) |> as_tibble()
+}) |> list_rbind()
+```
+
+```{R}
+# Plot Histogram Pair-Plot
+col_names <- colnames(S_oracle)
+bind_rows(
+  as_tibble(S_bs) |> setNames(col_names) |> mutate(source = "bootstrap"),
+  S_oracle |> mutate(source = "true")
+) |>
+  pivot_longer(-source, names_to = "term", values_to = "value") |>
+  ggplot(aes(x = value, fill = source)) +
+  geom_histogram(aes(y = after_stat(density)),
+                  position = "identity", alpha = 0.5, bins = 20) +
+  facet_wrap(~term, scales = "free_x") +
+  scale_fill_manual(values = c(bootstrap = "red", true = "steelblue")) +
+  theme_minimal()
+```
+::: 
+
