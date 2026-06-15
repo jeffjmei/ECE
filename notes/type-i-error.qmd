@@ -431,14 +431,14 @@ plot_pcurve(pvals_param_pg2_s2, facet = facet_grid(p ~ method),
 results_t1 |>
   filter(
     method   == "bs.multiplier",
-    n        %in% c(1000, 2000, 3000),
+    n        %in% c(1000, 2000, 3000, 5000),
     p        %in% c(15, 20, 25),
     scenario == 1,
     cov_type == "compound",
     err_type == "normal"
   ) |>
   mutate(
-    n = factor(n, levels = c(1000, 2000, 3000)),
+    n = factor(n, levels = c(1000, 2000, 3000, 5000)),
     p = factor(p, levels = c(15, 20, 25))
   ) |>
   plot_pvals(facet = facet_grid(n ~ p, labeller = label_both),
@@ -451,14 +451,14 @@ results_t1 |>
 results_t1 |>
   filter(
     method   == "bs.multiplier",
-    n        %in% c(1000, 2000, 3000),
+    n        %in% c(1000, 2000, 3000, 5000),
     p        %in% c(15, 20, 25),
     scenario == 2,
     cov_type == "compound",
     err_type == "normal"
   ) |>
   mutate(
-    n = factor(n, levels = c(1000, 2000, 3000)),
+    n = factor(n, levels = c(1000, 2000, 3000, 5000)),
     p = factor(p, levels = c(15, 20, 25))
   ) |>
   plot_pvals(facet = facet_grid(n ~ p, labeller = label_both),
@@ -477,14 +477,14 @@ results_t1 |>
 results_t1 |>
   filter(
     method   == "bs.parametric.psd",
-    n        %in% c(1000, 2000, 3000),
+    n        %in% c(1000, 2000, 3000, 5000),
     p        %in% c(15, 20, 25),
     scenario == 1,
     cov_type == "compound",
     err_type == "normal"
   ) |>
   mutate(
-    n = factor(n, levels = c(1000, 2000, 3000)),
+    n = factor(n, levels = c(1000, 2000, 3000, 5000)),
     p = factor(p, levels = c(15, 20, 25))
   ) |>
   plot_pvals(facet = facet_grid(n ~ p, labeller = label_both),
@@ -497,14 +497,14 @@ results_t1 |>
 results_t1 |>
   filter(
     method   == "bs.parametric.psd",
-    n        %in% c(1000, 2000, 3000),
+    n        %in% c(1000, 2000, 3000, 5000),
     p        %in% c(15, 20, 25),
     scenario == 2,
     cov_type == "compound",
     err_type == "normal"
   ) |>
   mutate(
-    n = factor(n, levels = c(1000, 2000, 3000)),
+    n = factor(n, levels = c(1000, 2000, 3000, 5000)),
     p = factor(p, levels = c(15, 20, 25))
   ) |>
   plot_pvals(facet = facet_grid(n ~ p, labeller = label_both),
