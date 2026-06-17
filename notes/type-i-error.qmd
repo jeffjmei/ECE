@@ -42,7 +42,7 @@ sim_dependent_quadratic <- function(params, method, n_sims=10000){
 
 ## $p = 2$: Z-Test Methods
 
-```{r}
+```{r z-test-pcurve}
 #| cache: true
 params_p2_s1 <- scenario(1, n = 1000, err_type = "normal") 
 params_p2    <- scenario(2, L = 4, n = 1000, err_type = "exponential")
@@ -176,11 +176,11 @@ p_cor <- sim_dependent_quadratic(params, method="z.test.null")
 p_dep <- sim_dependent_quadratic(params, method="z.test.null.gaussian")
 ```
 
-```{R} 
+```{R}
 #| echo: false
 plot_pcurve(list(
-  "Correlation test" = p_cor,
-  "Dependence test"  = p_dep
+  "Correlation test (κ₂₂ estimated)\nv² = (ωx² + ωy² + κ₂₂ + 5/2)/n" = p_cor,
+  "Dependence test (κ₂₂ = 1 assumed)\nv² = (ωx² + ωy² + 7/2)/n"              = p_dep
 ))
 ```
 
@@ -189,17 +189,57 @@ plot_pcurve(list(
 ```{R dep-test-quadratic-s2}
 #| cache: true
 #| echo: false
-params <- scenario(2, L=4) 
+params <- scenario(2, L=4)
 p_cor <- sim_dependent_quadratic(params, method="z.test.null")
 p_dep <- sim_dependent_quadratic(params, method="z.test.null.gaussian")
 ```
 
-```{R} 
+```{R}
 #| echo: false
 plot_pcurve(list(
-  "Correlation test" = p_cor,
-  "Dependence test"  = p_dep
+  "Correlation test (κ₂₂ estimated)\nv² = (ωx² + ωy² + κ₂₂ + 5/2)/n" = p_cor,
+  "Dependence test (κ₂₂ = 1 assumed)\nv² = (ωx² + ωy² + 7/2)/n"              = p_dep
 ))
+```
+
+:::
+
+```{r bs-dep-quadratic-s1}
+#| cache: true
+#| echo: false
+params <- scenario(1)
+p_bs_psd_s1  <- sim_dependent_quadratic(params, method = "bs.parametric.psd", n_sims = 10000)
+p_bs_mult_s1 <- sim_dependent_quadratic(params, method = "bs.multiplier",      n_sims = 10000)
+```
+
+```{r bs-dep-quadratic-s2}
+#| cache: true
+#| echo: false
+params <- scenario(2, L = 4)
+p_bs_psd_s2  <- sim_dependent_quadratic(params, method = "bs.parametric.psd", n_sims = 10000)
+p_bs_mult_s2 <- sim_dependent_quadratic(params, method = "bs.multiplier",      n_sims = 10000)
+```
+
+::: {.panel-tabset}
+
+## Scenario 1 (Bootstrap)
+
+```{r}
+#| echo: false
+plot_pcurve(list(
+  "Parametric Bootstrap (PSD)" = p_bs_psd_s1,
+  "Multiplier Bootstrap"       = p_bs_mult_s1
+), ncol = 2)
+```
+
+## Scenario 2 (Bootstrap)
+
+```{r}
+#| echo: false
+plot_pcurve(list(
+  "Parametric Bootstrap (PSD)" = p_bs_psd_s2,
+  "Multiplier Bootstrap"       = p_bs_mult_s2
+), ncol = 2)
 ```
 
 :::
