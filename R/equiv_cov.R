@@ -99,6 +99,35 @@ ece.cor <- function(x, y = NULL, L = 2) {
 #' ece.complexity(X)
 #'
 #' @export
+ece.complexity <- function(x, y = NULL, L = 2) {
+  if (is.matrix(x)) {
+    p <- ncol(x)
+    complexity_mat <- matrix(0, p, p)
+    for (i in seq_len(p)) {
+      for (j in i:p) {
+        complexity_mat[i, j] <- complexity_mat[j, i] <- ece_pair(x[, i], x[, j], L)$complexity
+      }
+    }
+    return(complexity_mat)
+  }
+  if (is.null(y)) y <- x
+  ece_pair(x, y, L)$complexity
+}
+
+ece.pval <- function(x, y = NULL, type = "z.test", ...) {
+  if (is.matrix(x)) {
+    p <- ncol(x)
+    pval_mat <- matrix(0, p, p)
+    for (i in seq_len(p)) {
+      for (j in i:p) {
+        pval_mat[i, j] <- pval_mat[j, i] <- ece.test(cbind(x[, i], x[, j]), type = type, ...)$p.value
+      }
+    }
+    return(pval_mat)
+  }
+  if (is.null(y)) y <- x
+  ece.test(cbind(x, y), type = type, ...)$p.value
+}
 
 ece.kappa <- function(x, y = NULL, rho = NULL, method = "mom") {
   if (is.matrix(x)) {
@@ -200,7 +229,7 @@ ece.kappa.regress <- function(x, y = NULL, rho = NULL) {
     x <- x[, 1]
   }
 
-  n   <- length(x)
+  n <- length(x)
   sx2 <- ece.cov(x, x)
   sy2 <- ece.cov(y, y)
   sxy <- if (!is.null(rho) && rho == 0) 0 else ece.cov(x, y)
@@ -209,19 +238,4 @@ ece.kappa.regress <- function(x, y = NULL, rho = NULL) {
     (2 * n * sx2 * sy2) - 2 * sxy^2 / (sx2 * sy2) - 1
 
   list(k40 = NULL, k31 = NULL, k22 = k22, k13 = NULL, k04 = NULL)
-}
-
-ece.complexity <- function(x, y = NULL, L = 2) {
-  if (is.matrix(x)) {
-    p <- ncol(x)
-    complexity_mat <- matrix(0, p, p)
-    for (i in seq_len(p)) {
-      for (j in i:p) {
-        complexity_mat[i, j] <- complexity_mat[j, i] <- ece_pair(x[, i], x[, j], L)$complexity
-      }
-    }
-    return(complexity_mat)
-  }
-  if (is.null(y)) y <- x
-  ece_pair(x, y, L)$complexity
 }
