@@ -40,6 +40,41 @@ sim_dependent_quadratic <- function(params, method, n_sims=10000){
 }
 ```
 
+```{R}
+#| echo: false
+
+get_oracle_cov <- function(params, n_sims=1000, ...){
+  sim_W <- map(1:n_sims, ~{
+    X <- generate_data(params)
+    S <- ece_terms(X)
+    (1 / params$n^2) * (
+      t(S) %*% S +
+        t(rotate(S)) %*% S + t(S) %*% rotate(S) +
+        t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
+    )
+  }, ...)
+
+  # Average Results
+  reduce(sim_W, `+`) / n_sims
+}
+
+bs_parametric_oracle_test <- function(X, W, B = 1000) {
+  # Calculate Variance of ECE Terms
+  n <- nrow(X)
+  S <- ece_terms(X)
+
+  # Boostrap Test
+  S_bs <- MASS::mvrnorm(n = B, mu = rep(0, ncol(W)), Sigma = W)
+  Q_bs <- abs(S_bs) |> apply(1, max)
+  Q_obs <- max(abs(colMeans(S)))
+
+  # Return Object
+  list(
+    p.value = mean(Q_bs > Q_obs)
+  )
+}
+```
+
 ## $p = 2$: Z-Test Methods
 
 ```{r z-test-pcurve}
@@ -704,90 +739,252 @@ results_t1 |>
 ### Mechanism: Not in Asymptotic CLT Regime
 The u-shaped p-curves indicate that there are insufficient small and large p-values. This means the distribution of bootstrap statistics has less variance than the true distribution. 
 
+To see why, we compare the distribution of the test statistic $Q = \max_j |\bar S_j|$ under two distributions. The **true distribution** is obtained by repeatedly drawing a fresh dataset and computing $Q$ from the observed $\bar S$. The **bootstrap distribution** is obtained by drawing a single dataset, estimating the covariance $W$ of $\bar S$ from that dataset, and then drawing one bootstrap replicate $Q^* = \max_j |Z_j|$ with $Z \sim N(0, W)$. When $n$ is small relative to $p$, $W$ underestimates the true variance of $\bar S$, so the bootstrap distribution is too narrow and the test is conservative.
+
 ::: {.panel-tabset}
-## n = 500, p = 10
 
+## n = 200, p = 15
+
+```{R simulate-test-statistic-distribution-small-n-large-p}
+#| echo: false
+#| cache: true
+
+# Show Difference in the Distributions of the Test Statistic
+params <- scenario(1, n=200, p=15)
+n <- params$n
+
+# True Distribution
+sims_stat_true <- map_dbl(1:10000, ~{
+  X <- generate_data(params)
+  S <- ece_terms(X)
+  Q_obs <- max(abs(colMeans(S)))
+  Q_obs
+})
+
+sims_stat_bs <- map(1:10000, ~{
+  X <- generate_data(params)
+  S <- ece_terms(X)
+  W <- (1 / n^2) * (
+    t(S) %*% S +
+    t(rotate(S)) %*% S + t(S) %*% rotate(S) +
+    t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
+  ) |> make_psd()
+  MASS::mvrnorm(n = 1, mu = rep(0, ncol(W)), Sigma = W) |>
+    abs() |> max() # apply(1, max)
+}) |> unlist()
+```
+
+```{R simulate-test-statistic-distribution-small-n-large-p-oracle}
+#| echo: false
+#| cache: true
+
+W_oracle <- get_oracle_cov(params, n_sims=10000)
+sims_stat_bs_oracle <- map(1:10000, ~{
+  X <- generate_data(params)
+  S <- ece_terms(X)
+  MASS::mvrnorm(n = 1, mu = rep(0, ncol(W_oracle)), Sigma = W_oracle) |>
+    abs() |> max() # apply(1, max)
+}) |> unlist()
+```
 
 ```{R}
 #| echo: false
-params <- scenario(1, n = 500, p = 10)
-n <- params$n
-B <- 1000
+bind_rows(
+  tibble(value = sims_stat_true, source = "True"),
+  tibble(value = sims_stat_bs,   source = "Bootstrap")
+) |>
+  mutate(source = factor(source, levels = c("True", "Bootstrap"))) |>
+  ggplot(aes(x = value, fill = source)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 position = "identity", alpha = 0.5, bins = 40, color = "white") +
+  scale_fill_manual(values = c(True = "steelblue", Bootstrap = "red")) +
+  labs(x = "Q = max|S̅|", y = "Density",
+       title = "Test statistic distribution: true vs. bootstrap (n = 200, p = 15)",
+       fill = NULL) +
+  theme_minimal() +
+  theme(legend.position = "top")
+```
 
-# Bootstrap (Parametric)
-X <- generate_data(params)
-S <- ece_terms(X)
-W <- (1 / n^2) * (
-  t(S) %*% S +
+```{R}
+#| echo: false
+bind_rows(
+  tibble(value = sims_stat_true, source = "True"),
+  tibble(value = sims_stat_bs_oracle,   source = "Bootstrap (Oracle)")
+) |>
+  mutate(source = factor(source, levels = c("True", "Bootstrap (Oracle)"))) |>
+  ggplot(aes(x = value, fill = source)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 position = "identity", alpha = 0.5, bins = 40, color = "white") +
+  scale_fill_manual(values = c(True = "steelblue", "Bootstrap (Oracle)" = "forestgreen")) +
+  labs(x = "Q = max|S̅|", y = "Density",
+       title = "Test statistic distribution: true vs. bootstrap (n = 200, p = 15)",
+       fill = NULL) +
+  theme_minimal() +
+  theme(legend.position = "top")
+```
+
+
+## n = 2000, p = 15
+
+```{R simulate-test-statistic-distribution-large-n-large-p}
+#| echo: false
+#| cache: true
+
+# Show Difference in the Distributions of the Test Statistic
+params <- scenario(1, n=2000, p=15)
+n <- params$n
+
+# True Distribution
+sims_stat_true <- map_dbl(1:10000, ~{
+  X <- generate_data(params)
+  S <- ece_terms(X)
+  Q_obs <- max(abs(colMeans(S)))
+  Q_obs
+})
+
+sims_stat_bs <- map(1:10000, ~{
+  X <- generate_data(params)
+  S <- ece_terms(X)
+  W <- (1 / n^2) * (
+    t(S) %*% S +
     t(rotate(S)) %*% S + t(S) %*% rotate(S) +
     t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
-) 
-S_bs <- MASS::mvrnorm(n = B, mu = rep(0, ncol(W)), Sigma = W)
+  ) |> make_psd()
+  MASS::mvrnorm(n = 1, mu = rep(0, ncol(W)), Sigma = W) |>
+    abs() |> max() # apply(1, max)
+}) |> unlist()
+```
 
-# Bootstrap (Oracle)
-S_oracle <- map(1:B, ~{
-  X <- generate_data(params)  
+```{R simulate-test-statistic-distribution-large-n-large-p-oracle}
+#| echo: false
+#| cache: true
+
+W_oracle <- get_oracle_cov(params, n_sims=10000)
+sims_stat_bs_oracle <- map(1:10000, ~{
+  X <- generate_data(params)
   S <- ece_terms(X)
-  t(colMeans(S)) |> as_tibble()
+  MASS::mvrnorm(n = 1, mu = rep(0, ncol(W_oracle)), Sigma = W_oracle) |>
+    abs() |> max() # apply(1, max)
+}) |> unlist()
+```
+
+```{R}
+#| echo: false
+bind_rows(
+  tibble(value = sims_stat_true, source = "True"),
+  tibble(value = sims_stat_bs,   source = "Bootstrap")
+) |>
+  mutate(source = factor(source, levels = c("True", "Bootstrap"))) |>
+  ggplot(aes(x = value, fill = source)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 position = "identity", alpha = 0.5, bins = 40, color = "white") +
+  scale_fill_manual(values = c(True = "steelblue", Bootstrap = "red")) +
+  labs(x = "Q = max|S̅|", y = "Density",
+       title = "Test statistic distribution: true vs. bootstrap (n = 2000, p = 15)",
+       fill = NULL) +
+  theme_minimal() +
+  theme(legend.position = "top")
+```
+
+```{R}
+#| echo: false
+bind_rows(
+  tibble(value = sims_stat_true, source = "True"),
+  tibble(value = sims_stat_bs_oracle,   source = "Bootstrap (Oracle)")
+) |>
+  mutate(source = factor(source, levels = c("True", "Bootstrap (Oracle)"))) |>
+  ggplot(aes(x = value, fill = source)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 position = "identity", alpha = 0.5, bins = 40, color = "white") +
+  scale_fill_manual(values = c(True = "steelblue", "Bootstrap (Oracle)" = "forestgreen")) +
+  labs(x = "Q = max|S̅|", y = "Density",
+       title = "Test statistic distribution: true vs. bootstrap (n = 2000, p = 15)",
+       fill = NULL) +
+  theme_minimal() +
+  theme(legend.position = "top")
+```
+
+:::
+
+
+
+```{R bs-param-benchmark s1-n200-p15}
+#| cache: true
+#| echo: false
+
+# Set Parameters
+params <- scenario(1, n=200, p=15)
+W <- get_oracle_cov(params, n_sims=10000)
+
+# Run Simulations
+pval_oracle <- map_dbl(1:10000, ~{
+  X <- generate_data(params)
+  bs_parametric_oracle_test(X, W)$p.value
+})
+pval_param <- map_dbl(1:10000, ~{
+  X <- generate_data(params)
+  bs_parametric_test(X, force_psd=TRUE)$p.value
+})
+
+```
+
+```{R}
+#| echo: false
+
+# Show P-Curve
+plot_pcurve(list(
+  "Parametric Bootstrap (PSD)" = pval_param,
+  "Parametric Bootstrap (Oracle)" = pval_oracle
+))
+```
+
+
+```{R simulate-sample-distribution-large-n-large-p-true}
+#| echo: false
+#| cache: true
+sims_sample_true <- map(1:10000, ~{
+  X <- generate_data(params)
+  S <- ece_terms(X)
+  colMeans(S) |> t() |> as_tibble()
+}) |> list_rbind()
+```
+
+```{R simulate-sample-distribution-large-n-large-p-bs}
+#| echo: false
+#| cache: true
+sims_sample_bs <- map(1:10000, ~{
+  X <- generate_data(params)
+  S <- ece_terms(X)
+  W <- (1 / params$n^2) * (
+    t(S) %*% S +
+    t(rotate(S)) %*% S + t(S) %*% rotate(S) +
+    t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
+  ) |> make_psd()
+  MASS::mvrnorm(n = 1, mu = rep(0, ncol(W)), Sigma = W) |> t() |> as_tibble()
+}) |> list_rbind()
+```
+
+```{R simulate-sample-distribution-large-n-large-p-oracle}
+#| echo: false
+#| cache: true
+sims_sample_bs_oracle <- map(1:10000, ~{
+  X <- generate_data(params)
+  S <- ece_terms(X)
+  MASS::mvrnorm(n = 1, mu = rep(0, ncol(W_oracle)), Sigma = W_oracle) |>
+    t() |> as_tibble()
 }) |> list_rbind()
 ```
 
 ```{R}
-# Plot Histogram Pair-Plot
-col_names <- colnames(S_oracle)
-bind_rows(
-  as_tibble(S_bs) |> setNames(col_names) |> mutate(source = "bootstrap"),
-  S_oracle |> mutate(source = "true")
-) |>
-  pivot_longer(-source, names_to = "term", values_to = "value") |>
-  ggplot(aes(x = value, fill = source)) +
-  geom_histogram(aes(y = after_stat(density)),
-                  position = "identity", alpha = 0.5, bins = 20) +
-  facet_wrap(~term, scales = "free_x") +
-  scale_fill_manual(values = c(bootstrap = "red", true = "steelblue")) +
-  theme_minimal()
-```
-
-## n = 2000, p = 10
-
-```{R}
 #| echo: false
-params <- scenario(1, n = 2000, p = 10)
-n <- params$n
-B <- 1000
 
-# Bootstrap (Parametric)
-X <- generate_data(params)
-S <- ece_terms(X)
-W <- (1 / n^2) * (
-  t(S) %*% S +
-    t(rotate(S)) %*% S + t(S) %*% rotate(S) +
-    t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
-) 
-S_bs <- MASS::mvrnorm(n = B, mu = rep(0, ncol(W)), Sigma = W)
-
-# Bootstrap (Oracle)
-S_oracle <- map(1:B, ~{
-  X <- generate_data(params)  
-  S <- ece_terms(X)
-  t(colMeans(S)) |> as_tibble()
-}) |> list_rbind()
+# Plot Histogram
+xx <- seq(
+  min(sims_sample_bs$V1, sims_sample_bs_oracle$V1, sims_sample_true$V1),
+  max(sims_sample_bs$V1, sims_sample_bs_oracle$V1, sims_sample_true$V1),
+  length.out=40
+)
+hist(sims_sample_true$V1, breaks=xx, col=rgb(0, 0, 1, 0.5))
+hist(sims_sample_bs$V1, breaks=xx, col=rgb(1, 0, 0, 0.5), add=TRUE)
+hist(sims_sample_bs_oracle$V1, breaks=xx, col=rgb(0, 1, 0, 0.5), add=TRUE)
 ```
-
-```{R}
-# Plot Histogram Pair-Plot
-col_names <- colnames(S_oracle)
-bind_rows(
-  as_tibble(S_bs) |> setNames(col_names) |> mutate(source = "bootstrap"),
-  S_oracle |> mutate(source = "true")
-) |>
-  pivot_longer(-source, names_to = "term", values_to = "value") |>
-  ggplot(aes(x = value, fill = source)) +
-  geom_histogram(aes(y = after_stat(density)),
-                  position = "identity", alpha = 0.5, bins = 20) +
-  facet_wrap(~term, scales = "free_x") +
-  scale_fill_manual(values = c(bootstrap = "red", true = "steelblue")) +
-  theme_minimal()
-```
-::: 
-
