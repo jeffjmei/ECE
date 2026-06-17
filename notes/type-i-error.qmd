@@ -510,6 +510,151 @@ results_t1 |>
 
 :::
 
+```{R bs-mult-split-pvals-n200-p15}
+#| echo: false
+#| cache: true
+params <- scenario(1, n=200, p=15)
+sims_pvals <- map(1:10000, ~{
+  X <- generate_data(params)
+  pvals <- bs_multiplier_test(X)
+  list(
+    p  = pvals$p.value,
+    p1 = pvals$p.split[1],
+    p2 = pvals$p.split[2],
+    p3 = pvals$p.split[3]
+  )
+})
+p  <- map_dbl(sims_pvals, "p")
+p1 <- map_dbl(sims_pvals, "p1")
+p2 <- map_dbl(sims_pvals, "p2")
+p3 <- map_dbl(sims_pvals, "p3")
+```
+
+::: {.panel-tabset}
+
+## Combined
+
+```{r}
+#| echo: false
+tibble(p_value = p) |>
+  ggplot(aes(x = p_value)) +
+  geom_histogram(aes(y = after_stat(density)), breaks = seq(0, 1, by = 0.05), fill = "steelblue", color = "white") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  labs(x = "p-value", y = "Density", title = "Combined p-value (n = 200, p = 15)") +
+  theme_minimal()
+```
+
+## Split 1
+
+```{r}
+#| echo: false
+tibble(p_value = p1) |>
+  ggplot(aes(x = p_value)) +
+  geom_histogram(aes(y = after_stat(density)), breaks = seq(0, 1, by = 0.05), fill = "steelblue", color = "white") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  labs(x = "p-value", y = "Density", title = "Split p-value 1 (n = 200, p = 15)") +
+  theme_minimal()
+```
+
+## Split 2
+
+```{r}
+#| echo: false
+tibble(p_value = p2) |>
+  ggplot(aes(x = p_value)) +
+  geom_histogram(aes(y = after_stat(density)), breaks = seq(0, 1, by = 0.05), fill = "steelblue", color = "white") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  labs(x = "p-value", y = "Density", title = "Split p-value 2 (n = 200, p = 15)") +
+  theme_minimal()
+```
+
+## Split 3
+
+```{r}
+#| echo: false
+tibble(p_value = p3) |>
+  ggplot(aes(x = p_value)) +
+  geom_histogram(aes(y = after_stat(density)), breaks = seq(0, 1, by = 0.05), fill = "steelblue", color = "white") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  labs(x = "p-value", y = "Density", title = "Split p-value 3 (n = 200, p = 15)") +
+  theme_minimal()
+```
+
+:::
+
+```{R bs-mult-split-pvals-n2000-p15}
+#| echo: false
+#| cache: true
+params <- scenario(1, n=2000, p=15)
+sims_pvals <- map(1:10000, ~{
+  X <- generate_data(params)
+  pvals <- bs_multiplier_test(X)
+  list(
+    p  = pvals$p.value,
+    p1 = pvals$p.split[1],
+    p2 = pvals$p.split[2],
+    p3 = pvals$p.split[3]
+  )
+})
+p  <- map_dbl(sims_pvals, "p")
+p1 <- map_dbl(sims_pvals, "p1")
+p2 <- map_dbl(sims_pvals, "p2")
+p3 <- map_dbl(sims_pvals, "p3")
+```
+
+::: {.panel-tabset}
+
+## Combined
+
+```{r}
+#| echo: false
+tibble(p_value = p) |>
+  ggplot(aes(x = p_value)) +
+  geom_histogram(aes(y = after_stat(density)), breaks = seq(0, 1, by = 0.05), fill = "steelblue", color = "white") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  labs(x = "p-value", y = "Density", title = "Combined p-value (n = 200, p = 15)") +
+  theme_minimal()
+```
+
+## Split 1
+
+```{r}
+#| echo: false
+tibble(p_value = p1) |>
+  ggplot(aes(x = p_value)) +
+  geom_histogram(aes(y = after_stat(density)), breaks = seq(0, 1, by = 0.05), fill = "steelblue", color = "white") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  labs(x = "p-value", y = "Density", title = "Split p-value 1 (n = 200, p = 15)") +
+  theme_minimal()
+```
+
+## Split 2
+
+```{r}
+#| echo: false
+tibble(p_value = p2) |>
+  ggplot(aes(x = p_value)) +
+  geom_histogram(aes(y = after_stat(density)), breaks = seq(0, 1, by = 0.05), fill = "steelblue", color = "white") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  labs(x = "p-value", y = "Density", title = "Split p-value 2 (n = 200, p = 15)") +
+  theme_minimal()
+```
+
+## Split 3
+
+```{r}
+#| echo: false
+tibble(p_value = p3) |>
+  ggplot(aes(x = p_value)) +
+  geom_histogram(aes(y = after_stat(density)), breaks = seq(0, 1, by = 0.05), fill = "steelblue", color = "white") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  labs(x = "p-value", y = "Density", title = "Split p-value 3 (n = 200, p = 15)") +
+  theme_minimal()
+```
+
+:::
+
+
 ### Parametric Bootstrap is Conservative
 
 ::: {.panel-tabset}
