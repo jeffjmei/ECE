@@ -38,6 +38,20 @@ sim_dependent_quadratic <- function(params, method, n_sims=10000){
     test.diag(X, method=method)$p.value
   })
 }
+
+sim_dependent_circular <- function(params, method, n_sims=10000){
+  set.seed(1)
+  map_dbl(1:n_sims, ~{
+    hx <- params$h[,1]
+    hy <- params$h[,2]
+    U <- runif(params$n, 0, 2 * pi)
+    ex <- cos(U) * sqrt(2)
+    ey <- sin(U) * sqrt(2)
+    X <- cbind(hx + ex, hy + ey)
+
+    test.diag(X, method=method)$p.value
+  })
+}
 ```
 
 ```{R}
@@ -186,7 +200,7 @@ pvals_null |>
 
 :::
 
-## $p = 2$: Dependence Testing
+## $p = 2$: Dependence Testing (Quadratic)
 
 Correlation dependence testing are closely related but subtly different. In the classical Pearson test, interpretation is dependent on on the assumptions made. 
 
@@ -210,6 +224,13 @@ params <- scenario(1)
 p_cor <- sim_dependent_quadratic(params, method="z.test.null")
 p_dep <- sim_dependent_quadratic(params, method="z.test.null.gaussian")
 ```
+```{r bs-dep-quadratic-s1}
+#| cache: true
+#| echo: false
+params <- scenario(1)
+p_bs_psd_s1  <- sim_dependent_quadratic(params, method = "bs.parametric.psd", n_sims = 10000)
+p_bs_mult_s1 <- sim_dependent_quadratic(params, method = "bs.multiplier",      n_sims = 10000)
+```
 
 ```{R}
 #| echo: false
@@ -217,6 +238,14 @@ plot_pcurve(list(
   "Correlation test (κ₂₂ estimated)\nv² = (ωx² + ωy² + κ₂₂ + 5/2)/n" = p_cor,
   "Dependence test (κ₂₂ = 1 assumed)\nv² = (ωx² + ωy² + 7/2)/n"              = p_dep
 ))
+```
+
+```{r}
+#| echo: false
+plot_pcurve(list(
+  "Parametric Bootstrap (PSD)" = p_bs_psd_s1,
+  "Multiplier Bootstrap"       = p_bs_mult_s1
+), ncol = 2)
 ```
 
 ## Scenario 2 (Dependent)
@@ -229,24 +258,6 @@ p_cor <- sim_dependent_quadratic(params, method="z.test.null")
 p_dep <- sim_dependent_quadratic(params, method="z.test.null.gaussian")
 ```
 
-```{R}
-#| echo: false
-plot_pcurve(list(
-  "Correlation test (κ₂₂ estimated)\nv² = (ωx² + ωy² + κ₂₂ + 5/2)/n" = p_cor,
-  "Dependence test (κ₂₂ = 1 assumed)\nv² = (ωx² + ωy² + 7/2)/n"              = p_dep
-))
-```
-
-:::
-
-```{r bs-dep-quadratic-s1}
-#| cache: true
-#| echo: false
-params <- scenario(1)
-p_bs_psd_s1  <- sim_dependent_quadratic(params, method = "bs.parametric.psd", n_sims = 10000)
-p_bs_mult_s1 <- sim_dependent_quadratic(params, method = "bs.multiplier",      n_sims = 10000)
-```
-
 ```{r bs-dep-quadratic-s2}
 #| cache: true
 #| echo: false
@@ -255,19 +266,13 @@ p_bs_psd_s2  <- sim_dependent_quadratic(params, method = "bs.parametric.psd", n_
 p_bs_mult_s2 <- sim_dependent_quadratic(params, method = "bs.multiplier",      n_sims = 10000)
 ```
 
-::: {.panel-tabset}
-
-## Scenario 1 (Bootstrap)
-
-```{r}
+```{R}
 #| echo: false
 plot_pcurve(list(
-  "Parametric Bootstrap (PSD)" = p_bs_psd_s1,
-  "Multiplier Bootstrap"       = p_bs_mult_s1
-), ncol = 2)
+  "Correlation test (κ₂₂ estimated)\nv² = (ωx² + ωy² + κ₂₂ + 5/2)/n" = p_cor,
+  "Dependence test (κ₂₂ = 1 assumed)\nv² = (ωx² + ωy² + 7/2)/n"              = p_dep
+))
 ```
-
-## Scenario 2 (Bootstrap)
 
 ```{r}
 #| echo: false
@@ -278,6 +283,100 @@ plot_pcurve(list(
 ```
 
 :::
+
+
+## $p = 2:$ Dependence Testing ($\kappa_{22} = 0.5$)
+
+The case $\kappa_{22} < 1$ is a bit unnatural. For bivariate Gaussian errors, 
+$$\kappa_{22} = 1 + 2\rho^2 \geq 1 \text{ for all } \rho \in [-1, 1],$$ 
+so the Gaussian family can never produce it.
+
+Since 
+$$\kappa_{22} = 1 + \frac{\operatorname{Cov}(\varepsilon_x^2, \varepsilon_y^2)}{\sigma_x^2 \sigma_y^2},$$ 
+having $\kappa_{22} < 1$ requires $\operatorname{Cov}(\varepsilon_x^2, \varepsilon_y^2) < 0$: large squared values of one component must tend to coincide with small squared values of the other.
+
+The circular distribution provides a concrete construction:
+$$
+U \sim \mathrm{Uniform}(0, 2\pi), \quad
+\varepsilon_x = \sqrt{2}\cos(U), \quad
+\varepsilon_y = \sqrt{2}\sin(U).
+$$
+Because $\varepsilon_x^2 + \varepsilon_y^2 = 2$ almost surely, whenever $\varepsilon_x^2$ is large $\varepsilon_y^2$ must be small, giving exactly the required negative covariance: $\operatorname{Cov}(\varepsilon_x^2, \varepsilon_y^2) = \mathbb{E}[\sin^2(2U)] - 1 = \tfrac{1}{2} - 1 = -\tfrac{1}{2}$. With $\sigma_x^2 = \sigma_y^2 = 1$, this yields $\kappa_{22} = 0.5$.
+
+At the same time, $\operatorname{Cov}(\varepsilon_x, \varepsilon_y) = \mathbb{E}[\sin(2U)] = 0$, so the errors are uncorrelated and a Pearson correlation test has no power — yet the pair is strongly dependent.
+
+::: {.panel-tabset}
+
+## Scenario 1 
+
+```{R sim-dep-circular-s1}
+#| echo: false
+#| cache: true
+params <- scenario(1) 
+p_cor <- sim_dependent_circular(params, method="z.test.null")
+p_dep <- sim_dependent_circular(params, method="z.test.null.gaussian")
+```
+
+```{R}
+#| echo: false
+plot_pcurve(list(
+  "Correlation test (κ₂₂ estimated)\nv² = (ωx² + ωy² + κ₂₂ + 5/2)/n" = p_cor,
+  "Dependence test (κ₂₂ = 1 assumed)\nv² = (ωx² + ωy² + 7/2)/n"              = p_dep
+))
+```
+
+```{r bs-dep-circular-s1}
+#| cache: true
+#| echo: false
+params <- scenario(1)
+p_bs_psd_s1  <- sim_dependent_circular(params, method = "bs.parametric.psd", n_sims = 10000)
+p_bs_mult_s1 <- sim_dependent_circular(params, method = "bs.multiplier",      n_sims = 10000)
+```
+
+```{r}
+#| echo: false
+plot_pcurve(list(
+  "Parametric Bootstrap (PSD)" = p_bs_psd_s1,
+  "Multiplier Bootstrap"       = p_bs_mult_s1
+), ncol = 2)
+```
+
+## Scenario 2
+
+```{R sim-dep-circular-s2}
+#| echo: false
+#| cache: true
+params <- scenario(2, L=4) 
+p_cor <- sim_dependent_circular(params, method="z.test.null")
+p_dep <- sim_dependent_circular(params, method="z.test.null.gaussian")
+```
+
+```{R}
+#| echo: false
+plot_pcurve(list(
+  "Correlation test (κ₂₂ estimated)\nv² = (ωx² + ωy² + κ₂₂ + 5/2)/n" = p_cor,
+  "Dependence test (κ₂₂ = 1 assumed)\nv² = (ωx² + ωy² + 7/2)/n"              = p_dep
+))
+```
+
+```{r bs-dep-circular-s2}
+#| cache: true
+#| echo: false
+params <- scenario(2, L = 4)
+p_bs_psd_s2  <- sim_dependent_circular(params, method = "bs.parametric.psd", n_sims = 10000)
+p_bs_mult_s2 <- sim_dependent_circular(params, method = "bs.multiplier",      n_sims = 10000)
+```
+
+```{r}
+#| echo: false
+plot_pcurve(list(
+  "Parametric Bootstrap (PSD)" = p_bs_psd_s2,
+  "Multiplier Bootstrap"       = p_bs_mult_s2
+), ncol = 2)
+```
+
+:::
+
 
 ## $p = 2$: Bootstrap Methods
 
