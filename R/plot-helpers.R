@@ -145,3 +145,13 @@ plot_pcurve <- function(pvals, facet = ~method, title = NULL, ncol = NULL, dir =
       panel.grid.minor.x = element_blank()
     )
 }
+
+plot_ece_terms <- function(X){
+  S <- ece_terms(X)
+
+  # Plot Diagnostic
+  plot(NA, xlim=c(1, params$n), ylim=c(min(S), max(S)), type="l")
+  abline(h=0)
+
+  for(i in 1:ncol(X)) lines(S[,i], col=i)
+}
