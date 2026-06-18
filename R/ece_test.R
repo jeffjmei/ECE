@@ -183,7 +183,8 @@ bs_multiplier_test <- function(X, B = 1000) {
 
   # Combine p-Values
   list(
-    p.value = cauchy_combine(bs_pval)
+    p.value = cauchy_combine(bs_pval), 
+    p.split = bs_pval
   )
 }
 
