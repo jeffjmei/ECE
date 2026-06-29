@@ -18,22 +18,6 @@ library(kcpRS)
 data(CO2Inhalation)
 ```
 
-```{R}
-#| echo: false
-
-segment <- function(X, cp){
-  cp <- c(0, cp, nrow(X))
-  map_dfc(as.data.frame(X), function(x) {
-    map(seq_along(cp[-1]), ~ {
-      rep(
-        mean(x[(cp[.x] + 1):cp[.x + 1]], na.rm = TRUE),
-        cp[.x + 1] - cp[.x]
-      )
-    }) |>
-      unlist()
-  })
-}
-```
 
 `De Roover et al. (2014)` collect physiological data from an individual over time. The individual wears a gas mask that allows the user to breathe regular air or a $CO_2$ mixture. He is asked to breathe normally throughout the course of the experiment while the experimenters discretely change the air mixture. This induces three experimental states: 
 
@@ -61,18 +45,18 @@ In total, they collect 290 data points. However, the subject's movement may incu
 X <- as.matrix(dplyr::select(CO2Inhalation, c(Ti, Te, Tt, HR, RR)))
 h <- CO2Inhalation$Experimental_Phase
 cp <- find_cp(h)
-X_segment <- segment(X, cp)
+X_segment <- segmented_mean(X, cp)
 
 df <- CO2Inhalation |>
   dplyr::select(c(Ti, Te, Tt, HR, RR)) |>
   mutate(index = 1:n()) |>
   rename(X1 = Ti, X2 = Te, X3 = Tt, X4 = HR, X5 = RR) |>
   mutate(
-    X1_mean = segment(as.matrix(X1), cp)[[1]],
-    X2_mean = segment(as.matrix(X2), cp)[[1]],
-    X3_mean = segment(as.matrix(X3), cp)[[1]],
-    X4_mean = segment(as.matrix(X4), cp)[[1]],
-    X5_mean = segment(as.matrix(X5), cp)[[1]]
+    X1_mean = segmented_mean(X1, cp),
+    X2_mean = segmented_mean(X2, cp),
+    X3_mean = segmented_mean(X3, cp),
+    X4_mean = segmented_mean(X4, cp),
+    X5_mean = segmented_mean(X5, cp)
   )
 
 palette <- RColorBrewer::brewer.pal(5, "Set1")
@@ -190,3 +174,27 @@ knitr::kable(pearson_pmat,     caption = "Pearson P-Values")
 Both methods correctly identify the block-diagonal structure: `Ti`, `Te`, and `Tt` are mutually correlated, and `HR` and `RR` are negatively correlated. However, both methods detect a significant correlation between `Tt` and `HR` in _opposite_ directions. To understand which is correct, we refer to oracle segmentation. The data as a whole does not show strong variation across experimental phases in the off-diagonal block, suggesting neither method has a clear advantage here.
 
 This application is a reminder that even when the times experimental conditions change are known, it may be insufficient to fully remove the corresponding mean shifts. The changes in this dataset appear gradual rather than abrupt, which challenges the assumptions of both the segmentation and change-point models.
+
+--- 
+
+## Bootstrap Methods
+
+```{R}
+ece.test(X, type="bs.parametric")$p.value
+ece.test(X, type="bs.multiplier")$p.value
+```
+
+```{R}
+ece.test(X[, 1:3], type="bs.parametric")$p.value
+ece.test(X[, 1:3], type="bs.multiplier")$p.value
+```
+
+```{R}
+ece.test(X[, 4:5], type="bs.parametric")$p.value
+ece.test(X[, 4:5], type="bs.multiplier")$p.value
+```
+
+```{R}
+ece.test(cbind(X[,1:3], X[,4:5]), type="bs.parametric")$p.value
+ece.test(cbind(X[,1:3], X[,4:5]), type="bs.multiplier")$p.value
+```

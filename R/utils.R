@@ -1,19 +1,22 @@
 # TODO: add roxygen docstring
 segmented_mean <- function(data, change_points) {
-  # Ensure inputs are valid
-  if (!is.numeric(data)) stop("Data must be a numeric vector")
+  if (!is.numeric(data) && !is.matrix(data) && !is.data.frame(data))
+    stop("Data must be numeric")
   if (!is.numeric(change_points)) stop("Change points must be numeric indices")
 
-  # Add start and end points
+  if (is.matrix(data) || is.data.frame(data)) {
+    return(
+      map(as.data.frame(data), ~ segmented_mean(.x, change_points)) |>
+        do.call(what = cbind)
+    )
+  }
+
   cpts <- c(0, change_points, length(data))
   seg_mean <- numeric(length(data))
-
-  # Loop through each segment and assign mean
   for (i in seq_len(length(cpts) - 1)) {
     idx <- (cpts[i] + 1):cpts[i + 1]
     seg_mean[idx] <- mean(data[idx], na.rm = TRUE)
   }
-
   return(seg_mean)
 }
 
@@ -189,7 +192,7 @@ ece_pval <- function(X) {
   colnames(pval_mat) <- rownames(pval_mat) <- colnames(X)
   for (i in 1:(p - 1)) {
     for (j in (i + 1):p) {
-      pval <- ece.test(X[, i], X[, j])$p.value
+      pval <- ece.test(cbind(X[, i], X[, j]))$p.value
       pval_mat[i, j] <- pval
       pval_mat[j, i] <- pval
     }
