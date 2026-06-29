@@ -24,7 +24,9 @@ book:
         - simulation.qmd
         - type-i-error.qmd
         - power.qmd
-        - real-data.qmd
+    - part: "Real Data"
+      chapters:
+        - co2-inhalation.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd

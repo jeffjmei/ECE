@@ -1,0 +1,192 @@
+---
+title: "CO2 Inhalation"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+```
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+library(kcpRS)
+data(CO2Inhalation)
+```
+
+```{R}
+#| echo: false
+
+segment <- function(X, cp){
+  cp <- c(0, cp, nrow(X))
+  map_dfc(as.data.frame(X), function(x) {
+    map(seq_along(cp[-1]), ~ {
+      rep(
+        mean(x[(cp[.x] + 1):cp[.x + 1]], na.rm = TRUE),
+        cp[.x + 1] - cp[.x]
+      )
+    }) |>
+      unlist()
+  })
+}
+```
+
+`De Roover et al. (2014)` collect physiological data from an individual over time. The individual wears a gas mask that allows the user to breathe regular air or a $CO_2$ mixture. He is asked to breathe normally throughout the course of the experiment while the experimenters discretely change the air mixture. This induces three experimental states: 
+
+- a resting baseline (115 time points), 
+- a $CO_2$ inhalation period (40 time points), and finally, 
+- a recovery period (84 time points). 
+
+With each breath, they record respiratory data such as the length of inhalation (`Ti`), length of exhalation (`Te`), and the total length of the respiratory cycle (`Tt = Ti + Te`). They also record cardiac data such as heart rate (`HR`) and the cardiac interbeat interval (`RR`) — the time between peaks on an electrocardiogram. Together, this forms a time series where each index represents a breath.
+
+This dataset is useful because there are **experimentally induced change points.** The data itself contains information on when different phases of the experiment occur. Having known change points makes it possible to compare the segmentation method, which explicitly adjusts for the mean shifts, against ECE, which only implicitly adjusts for them. Ideally, both methods produce similar results. Moreover, we know the direction of some correlations a priori. For example, `HR` and `RR` are inversely related: a higher heart rate corresponds to a shorter distance between R-peaks on an electrocardiogram. And since `Tt = Ti + Te`, we expect `Ti` and `Te` to both correlate with `Tt`.
+
+In total, they collect 290 data points. However, the subject's movement may incur measurement error, so they remove an additional 51 observations, leaving a total of 239 data points. Finally, they normalize each time series to have mean zero and unit variance. We access this data directly from the `kcpRS` R package (`Cabrieto et al., 2022`).
+
+**Variables**:
+
+- `Ti`: Inhalation Time (s)
+- `Te`: Exhalation Time (s)
+- `Tt`: Total Respiratory Time (s)
+- `HR`: Heart Rate (beats/minute)
+- `RR`: Cardiac Interbeat Interval (ms)
+
+```{R co2-data-cleaning}
+#| echo: false
+
+X <- as.matrix(dplyr::select(CO2Inhalation, c(Ti, Te, Tt, HR, RR)))
+h <- CO2Inhalation$Experimental_Phase
+cp <- find_cp(h)
+X_segment <- segment(X, cp)
+
+df <- CO2Inhalation |>
+  dplyr::select(c(Ti, Te, Tt, HR, RR)) |>
+  mutate(index = 1:n()) |>
+  rename(X1 = Ti, X2 = Te, X3 = Tt, X4 = HR, X5 = RR) |>
+  mutate(
+    X1_mean = segment(as.matrix(X1), cp)[[1]],
+    X2_mean = segment(as.matrix(X2), cp)[[1]],
+    X3_mean = segment(as.matrix(X3), cp)[[1]],
+    X4_mean = segment(as.matrix(X4), cp)[[1]],
+    X5_mean = segment(as.matrix(X5), cp)[[1]]
+  )
+
+palette <- RColorBrewer::brewer.pal(5, "Set1")
+names(palette) <- c("X1", "X2", "X3", "X4", "X5")
+
+df_long <- df |>
+  pivot_longer(cols = -index, names_to = "name", values_to = "value") |>
+  mutate(
+    type   = if_else(str_ends(name, "_mean"), "mean", "raw"),
+    series = str_remove(name, "_mean$")
+  )
+```
+
+
+Figure 1 shows the respiratory time series. The respiratory times decrease with the introduction of $CO_2$ and partially recover afterward. Figure 2 shows the cardiac series; heart rate and interbeat interval move in opposite directions, consistent with their known inverse relationship.
+
+```{R co2-plot-repiratory}
+#| echo: false
+#| label: fig-co2-resp
+#| fig-cap: "Respiratory time series. Thick lines show segment means."
+
+df_long |>
+  filter(series %in% c("X1", "X2", "X3")) |>
+  ggplot(aes(x = index, y = value, color = series)) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_line(aes(linewidth = type, alpha = type)) +
+  scale_linewidth_manual(values = c(raw = 0.5, mean = 1), guide = "none") +
+  scale_alpha_manual(values = c(raw = 0.4, mean = 1), guide = "none") +
+  scale_color_manual(
+    values = palette,
+    labels = c(X1 = "Ti (s)", X2 = "Te (s)", X3 = "Tt (s)"),
+    name = ""
+  ) +
+  labs(
+    title = "CO2 Inhalation — Respiratory Times",
+    x = "Breath",
+    y = "Standardized Scores",
+    caption = "Source: De Roover et al., 2014"
+  ) +
+  theme_minimal()
+```
+
+```{R co2-plot-cardiac}
+#| echo: false
+#| label: fig-co2-cardiac
+#| fig-cap: "Cardiac time series. Thick lines show segment means."
+
+df_long |>
+  filter(series %in% c("X4", "X5")) |>
+  ggplot(aes(x = index, y = value, color = series)) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_line(aes(linewidth = type, alpha = type)) +
+  scale_linewidth_manual(values = c(raw = 0.5, mean = 1), guide = "none") +
+  scale_alpha_manual(values = c(raw = 0.4, mean = 1), guide = "none") +
+  scale_color_manual(
+    values = palette,
+    labels = c(X4 = "HR (beats/minute)", X5 = "RR (ms)"),
+    name = ""
+  ) +
+  labs(
+    title = "CO2 Inhalation — Cardiac",
+    x = "Breath",
+    y = "Standardized Scores",
+    caption = "Source: De Roover et al., 2014"
+  ) +
+  theme_minimal()
+```
+
+```{R co2-calculate-cor}
+#| echo: false
+
+ece_cor         <- ece.cor(X) |> round(2)
+rownames(ece_cor) <- colnames(ece_cor) <- colnames(X)
+
+segment_ece_cor <- cov2cor(ece.cov(X - segment_mean(X))) |> round(2)
+rownames(segment_ece_cor) <- colnames(segment_ece_cor) <- colnames(X)
+
+segment_cor     <- cor(X - X_segment) |> round(2)
+pearson_cor     <- cor(X) |> round(2)
+
+ece_pmat         <- ece_pval(X) |> round(2)
+segment_ece_pmat <- ece_pval(X - X_segment) |> round(2)
+segment_pmat     <- cor_pval(X - X_segment) |> round(2)
+pearson_pmat     <- cor_pval(X) |> round(2)
+```
+
+::: {.panel-tabset}
+
+## Correlation
+
+```{R co2-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(ece_cor,         caption = "ECE Correlation")
+knitr::kable(segment_ece_cor, caption = "Segment-ECE Correlation")
+knitr::kable(segment_cor,     caption = "Segment (oracle) Correlation")
+knitr::kable(pearson_cor,     caption = "Pearson Correlation")
+```
+
+## P-Values
+
+```{R co2-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(ece_pmat,         caption = "ECE P-Values")
+knitr::kable(segment_ece_pmat, caption = "Segment-ECE P-Values")
+knitr::kable(segment_pmat,     caption = "Segment (oracle) P-Values")
+knitr::kable(pearson_pmat,     caption = "Pearson P-Values")
+```
+
+:::
+
+Both methods correctly identify the block-diagonal structure: `Ti`, `Te`, and `Tt` are mutually correlated, and `HR` and `RR` are negatively correlated. However, both methods detect a significant correlation between `Tt` and `HR` in _opposite_ directions. To understand which is correct, we refer to oracle segmentation. The data as a whole does not show strong variation across experimental phases in the off-diagonal block, suggesting neither method has a clear advantage here.
+
+This application is a reminder that even when the times experimental conditions change are known, it may be insufficient to fully remove the corresponding mean shifts. The changes in this dataset appear gradual rather than abrupt, which challenges the assumptions of both the segmentation and change-point models.
