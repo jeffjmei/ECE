@@ -1,0 +1,109 @@
+---
+title: "Labor Productivity"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+library(zoo)
+```
+
+The Bureau of Labor Statistics (BLS) publishes quarterly labor productivity growth rates (% change from previous quarter) for major US economic sectors. We analyze five sectors:
+
+- `DUR`: Durable manufacturing
+- `NDUR`: Nondurable manufacturing
+- `NFC`: Nonfinancial corporate
+- `NFBUS`: Nonfarm business
+- `BUS`: Business
+
+Productivity growth is subject to structural breaks driven by recessions, policy changes, and technological shifts — making this a natural setting for ECE. We compare ECE against oracle segmentation, where change points are estimated from the data using `segment_mean()`.
+
+```{R}
+#| echo: false
+#| message: false
+
+X_data <- read_csv(
+  "~/Documents/Research/Code/ECE/data/real-data/bls-labor-productivity.csv",
+  show_col_types = FALSE
+)
+
+# Reconstruct quarterly dates starting 1987 Q2
+n <- nrow(X_data)
+dates <- as.yearqtr("1987 Q2") + (0:(n - 1)) / 4
+
+X_segment <- segment_mean(as.matrix(X_data), penalty = "Manual", pen.value = 0) |>
+  as.data.frame() |>
+  rename_with(~ paste0(.x, "_segment"))
+
+X <- bind_cols(date = dates, X_data, X_segment)
+```
+
+```{R}
+#| echo: false
+#| label: fig-bls-productivity
+#| fig-cap: "Quarterly labor productivity growth by sector. Thick lines show segmented means."
+
+X |>
+  pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
+  mutate(
+    type   = if_else(str_ends(series, "_segment"), "Segmented", "Raw"),
+    sector = str_remove(series, "_segment$")
+  ) |>
+  ggplot(aes(x = date, y = value, color = sector, group = series)) +
+  geom_line(aes(linewidth = type)) +
+  scale_linewidth_manual(values = c(Raw = 0.5, Segmented = 1.0), guide = "none") +
+  labs(
+    title = "Labor Productivity by Sector",
+    x = "Date",
+    y = "% Change from Previous Quarter",
+    color = "Sector",
+    caption = "Source: Bureau of Labor Statistics"
+  ) +
+  theme_minimal()
+```
+
+```{R}
+#| echo: false
+
+X_mat      <- as.matrix(X_data)
+X_seg_mat  <- as.matrix(X_segment)
+
+ece_cor         <- ece.cor(X_mat) |> round(3)
+rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_data)
+
+segment_cor     <- cor(X_mat - X_seg_mat) |> round(3)
+pearson_cor     <- cor(X_mat) |> round(3)
+
+ece_pmat        <- ece_pval(X_mat) |> round(3)
+segment_pmat    <- cor_pval(X_mat - X_seg_mat) |> round(3)
+pearson_pmat    <- cor_pval(X_mat) |> round(3)
+```
+
+::: {.panel-tabset}
+
+## Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(ece_cor,     caption = "ECE Correlation")
+knitr::kable(segment_cor, caption = "Segment Correlation")
+knitr::kable(pearson_cor, caption = "Pearson Correlation")
+```
+
+## P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(ece_pmat,     caption = "ECE P-Values")
+knitr::kable(segment_pmat, caption = "Segment P-Values")
+knitr::kable(pearson_pmat, caption = "Pearson P-Values")
+```
+
+:::

@@ -28,6 +28,7 @@ book:
       chapters:
         - co2-inhalation.qmd
         - copy-number-variation.qmd
+        - labor-productivity.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd
