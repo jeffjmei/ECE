@@ -27,6 +27,7 @@ book:
     - part: "Real Data"
       chapters:
         - co2-inhalation.qmd
+        - copy-number-variation.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd

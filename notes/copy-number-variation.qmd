@@ -1,0 +1,76 @@
+---
+title: "Copy Number Variation"
+---
+
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+library(kableExtra)
+```
+
+The `ecp` package comes with a microarray dataset `ACGH` (`n=2215; p=43`). This is a Copy Number Variation (CNV) dataset. The x-axis corresponds to position on the genome, whereas the y-axis corresponds to the ratio of copy numbers between healthy and sick populations. Based on the theoretical understanding, we do not expect any correlation between individuals. There is no reason the variation in the copy number of one individual to correspond to another individuals. 
+
+This is a good dataset to apply the diagonal tests on. From theoretical understanding, we expect the covariance matrix to be diagonal. 
+
+```{R plot-acgh-microarray-data} 
+#| echo: false
+
+# Load Data
+data("ACGH", package="ecp") # microarray data
+
+# Plot Data (10 x 1)
+par(mfrow = c(10, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0))
+
+for (i in 1:10) {
+  plot(ACGH$data[, i], type = "l", xaxt = "n", yaxt = "n",
+        ylab = colnames(ACGH$data)[i], cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+}
+axis(1)
+mtext("Probe index", side = 1, outer = TRUE, line = 2.5)
+```
+
+```{R table-acgh-pvalues}
+#| echo: false
+results <- data.frame(
+  Method  = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap (PSD)",
+    "Parametric Bootstrap"),
+  `p-value` = c(
+    test.diag(ACGH$data, method="bs.multiplier")$p.value,
+    test.diag(ACGH$data, method="bs.parametric.psd")$p.value,
+    NA
+  ),
+  check.names = FALSE
+)
+
+kable(results, align = c("l", "c"), na = "—") |>
+  kable_styling(full_width = FALSE)
+```
+
+Note that `p = 45` is quite large ($q = 990$). We don't know if we are in asymptotic regime. Instead, we can reduce the dimension to something more tame like $p = 10$. 
+
+```{R table-acgh-pvalues2}
+#| echo: false
+col_select <- 1:10
+results <- data.frame(
+  Method  = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap (PSD)",
+    "Parametric Bootstrap"),
+  `p-value` = c(
+    test.diag(ACGH$data[, col_select], method="bs.multiplier")$p.value,
+    test.diag(ACGH$data[, col_select], method="bs.parametric.psd")$p.value,
+    NA
+  ),
+  check.names = FALSE
+)
+
+kable(results, align = c("l", "c"), na = "—") |>
+  kable_styling(full_width = FALSE)
+```
