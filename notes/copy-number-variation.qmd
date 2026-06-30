@@ -10,6 +10,8 @@ title: "Copy Number Variation"
 devtools::load_all()
 library(tidyverse)
 library(kableExtra)
+library(psych)
+library(ecp)
 ```
 
 The `ecp` package comes with a microarray dataset `ACGH` (`n=2215; p=43`). This is a Copy Number Variation (CNV) dataset. The x-axis corresponds to position on the genome, whereas the y-axis corresponds to the ratio of copy numbers between healthy and sick populations. Based on the theoretical understanding, we do not expect any correlation between individuals. There is no reason the variation in the copy number of one individual to correspond to another individuals. 
@@ -21,13 +23,39 @@ This is a good dataset to apply the diagonal tests on. From theoretical understa
 
 # Load Data
 data("ACGH", package="ecp") # microarray data
+X <- ACGH$data
+n <- nrow(ACGH$data)
+p <- ncol(ACGH$data)
 
 # Plot Data (10 x 1)
 par(mfrow = c(10, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0))
 
 for (i in 1:10) {
-  plot(ACGH$data[, i], type = "l", xaxt = "n", yaxt = "n",
-        ylab = colnames(ACGH$data)[i], cex.lab = 0.8)
+  plot(X[, i], type = "l", xaxt = "n", yaxt = "n",
+        ylab = colnames(X)[i], cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+}
+axis(1)
+mtext("Probe index", side = 1, outer = TRUE, line = 2.5)
+```
+
+Notice that at the very end, there is this severe drop. This is because the probes correspond to sex chromosomes, making the copy number less reliable. We follow `Bleakley and Vert (2011)` and remove these for stability so our final data dimension is `n=2143, p=43`.
+
+```{R plot-acgh-microarray-data2} 
+#| echo: false
+
+# Load Data
+data("ACGH", package="ecp") # microarray data
+X <- ACGH$data[1:2143, ]    # NOTE: we remove the probes corresponding to sex chromosome
+n <- nrow(ACGH$data)        #   following Bleakley and Vert (2011)
+p <- ncol(ACGH$data)
+
+# Plot Data (10 x 1)
+par(mfrow = c(10, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0))
+
+for (i in 1:10) {
+  plot(X[, i], type = "l", xaxt = "n", yaxt = "n",
+        ylab = colnames(X)[i], cex.lab = 0.8)
   axis(2, labels = FALSE, tck = -0.02)
 }
 axis(1)
@@ -36,15 +64,19 @@ mtext("Probe index", side = 1, outer = TRUE, line = 2.5)
 
 ```{R table-acgh-pvalues}
 #| echo: false
+set.seed(123)
 results <- data.frame(
   Method  = c(
     "Bootstrap Multiplier",
     "Parametric Bootstrap (PSD)",
-    "Parametric Bootstrap"),
+    "Parametric Bootstrap", 
+    "Bartlett Test"
+  ),
   `p-value` = c(
-    test.diag(ACGH$data, method="bs.multiplier")$p.value,
-    test.diag(ACGH$data, method="bs.parametric.psd")$p.value,
-    NA
+    round(test.diag(X, method="bs.multiplier")$p.value, 3),
+    round(test.diag(X, method="bs.parametric.psd")$p.value, 3),
+    NA,
+    round(cortest.bartlett(cor(X), nrow(X))$p.value)
   ),
   check.names = FALSE
 )
@@ -53,20 +85,24 @@ kable(results, align = c("l", "c"), na = "—") |>
   kable_styling(full_width = FALSE)
 ```
 
-Note that `p = 45` is quite large ($q = 990$). We don't know if we are in asymptotic regime. Instead, we can reduce the dimension to something more tame like $p = 10$. 
+Note that `p = 43` is massive ($q = 990$). Based on our simulations, we know we are not in the asymptotic regime and the bootstrap methods are conservative -- we will never reject the null hypothesis (assuming there is no correlation). Instead, we can reduce the dimension to something more well-behaved like $p = 10$. 
 
 ```{R table-acgh-pvalues2}
 #| echo: false
 col_select <- 1:10
+set.seed(123)
 results <- data.frame(
   Method  = c(
     "Bootstrap Multiplier",
     "Parametric Bootstrap (PSD)",
-    "Parametric Bootstrap"),
+    "Parametric Bootstrap", 
+    "Bartlett"
+  ),
   `p-value` = c(
-    test.diag(ACGH$data[, col_select], method="bs.multiplier")$p.value,
-    test.diag(ACGH$data[, col_select], method="bs.parametric.psd")$p.value,
-    NA
+    round(test.diag(X[, col_select], method="bs.multiplier")$p.value, 3),
+    round(test.diag(X[, col_select], method="bs.parametric.psd")$p.value, 3),
+    NA,
+    round(cortest.bartlett(cor(X[, col_select]), nrow(X[, col_select]))$p.value)
   ),
   check.names = FALSE
 )
