@@ -21,10 +21,18 @@ ece_cor_se_ref <- function(x, y = NULL, L = 2, params = NULL) {
   rxy <- sxy / (sx * sy)
 
   if (is.null(params)) {
-    k40 <- 3; k04 <- 3; k31 <- 3 * rxy; k13 <- 3 * rxy; k22 <- 1 + 2 * rxy^2
+    k40 <- 3
+    k04 <- 3
+    k31 <- 3 * rxy
+    k13 <- 3 * rxy
+    k22 <- 1 + 2 * rxy^2
   } else {
     k <- params$kappa
-    k40 <- k$k40; k04 <- k$k04; k31 <- k$k31; k13 <- k$k13; k22 <- k$k22
+    k40 <- k$k40
+    k04 <- k$k04
+    k31 <- k$k31
+    k13 <- k$k13
+    k22 <- k$k22
   }
 
   S11 <- var_Tk_est(n, sx, wx, k40, k = 1)
@@ -71,7 +79,6 @@ ece_cor_se_ref <- function(x, y = NULL, L = 2, params = NULL) {
   )
   sqrt(as.numeric(t(dg_mu) %*% S_u %*% dg_mu))
 }
-# nolint end
 
 #' Standard Error of the ECE Correlation Estimator
 #'
@@ -105,9 +112,9 @@ ece.cor.se <- function(x, y = NULL, L = 2, kappa, rho = NULL) {
     y <- x[, 2]
     x <- x[, 1]
   }
-  n   <- length(x)
-  sx  <- sqrt(ece.cov(x, L = L))
-  sy  <- sqrt(ece.cov(y, L = L))
+  n <- length(x)
+  sx <- sqrt(ece.cov(x, L = L))
+  sy <- sqrt(ece.cov(y, L = L))
   wx2 <- ece.complexity(x, L = L)
   wy2 <- ece.complexity(y, L = L)
   wxy <- ece.complexity(x, y, L = L)
@@ -115,7 +122,11 @@ ece.cor.se <- function(x, y = NULL, L = 2, kappa, rho = NULL) {
   rxy <- sxy / (sx * sy)
 
   if (is.character(kappa) && kappa == "gaussian") {
-    k22 <- 1 + 2 * rxy^2; k40 <- 3; k04 <- 3; k31 <- 3 * rxy; k13 <- 3 * rxy
+    k22 <- 1 + 2 * rxy^2
+    k40 <- 3
+    k04 <- 3
+    k31 <- 3 * rxy
+    k13 <- 3 * rxy
   } else {
     k22 <- if (!is.null(kappa$k22)) kappa$k22 else 1 + 2 * rxy^2
     k40 <- if (!is.null(kappa$k40)) kappa$k40 else 3
@@ -127,9 +138,9 @@ ece.cor.se <- function(x, y = NULL, L = 2, kappa, rho = NULL) {
   sqrt(
     (1 / n) * (
       (1 - rxy^2) * (wx2 / sx^2 + wy2 / sy^2 - 2 * rxy * wxy / (sx * sy)) +
-      rxy^2 / 4 * (k40 + 2 * k22 + k04) -
-      rxy * (k31 + k13) + k22 +
-      5 / 2 * (1 - rxy^2)^2
+        rxy^2 / 4 * (k40 + 2 * k22 + k04) -
+        rxy * (k31 + k13) + k22 +
+        5 / 2 * (1 - rxy^2)^2
     )
   )
 }
@@ -152,8 +163,8 @@ cauchy_combine <- function(pvals) {
 z_test <- function(X, conf.level = 0.95, kappa = "gaussian", rho = NULL) {
   if (ncol(X) != 2) stop("type = 'z.test' requires a 2-column matrix")
   rxy <- ece.cor(X)[1, 2]
-  se  <- ece.cor.se(X[, 1], X[, 2], kappa = kappa, rho = rho)
-  ci  <- rxy + c(-1, 1) * qnorm((1 + conf.level) / 2) * se
+  se <- ece.cor.se(X[, 1], X[, 2], kappa = kappa, rho = rho)
+  ci <- rxy + c(-1, 1) * qnorm((1 + conf.level) / 2) * se
   list(
     estimate = rxy,
     se       = se,
@@ -183,7 +194,7 @@ bs_multiplier_test <- function(X, B = 1000) {
 
   # Combine p-Values
   list(
-    p.value = cauchy_combine(bs_pval), 
+    p.value = cauchy_combine(bs_pval),
     p.split = bs_pval
   )
 }
@@ -199,6 +210,33 @@ bs_parametric_test <- function(X, B = 1000, force_psd = FALSE) {
       t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
   )
   if (force_psd) W <- make_psd(W)
+
+  # Boostrap Test
+  S_bs <- MASS::mvrnorm(n = B, mu = rep(0, ncol(W)), Sigma = W)
+  Q_bs <- abs(S_bs) |> apply(1, max)
+  Q_obs <- max(abs(colMeans(S)))
+
+  # Return Object
+  list(
+    p.value = mean(Q_bs > Q_obs)
+  )
+}
+
+bs_parametric_naive_test <- function(X, B = 1000) {
+  vectorize_cov <- function(x) {
+    p <- ncol(x)
+    idx <- combn(p, 2)
+    do.call(
+      cbind,
+      map2(idx[1, ], idx[2, ], \(i, j)
+      (x[, i] - mean(x[, i])) * (x[, j] - mean(x[, j])))
+    )
+  }
+
+  # Calculate Naive Variance of ECE Terms
+  n <- nrow(X)
+  S <- vectorize_cov(X)
+  W <- cov(S) / n
 
   # Boostrap Test
   S_bs <- MASS::mvrnorm(n = B, mu = rep(0, ncol(W)), Sigma = W)
@@ -242,7 +280,7 @@ bs_parametric_test <- function(X, B = 1000, force_psd = FALSE) {
 #'
 #' @export
 ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95,
-                    kappa = "gaussian", rho = NULL) {
+                     kappa = "gaussian", rho = NULL) {
   X <- as.matrix(X)
   if (type == "z.test") {
     z_test(X, conf.level = conf.level, kappa = kappa, rho = rho)
@@ -254,5 +292,7 @@ ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95,
     bs_parametric_test(X, B)
   } else if (type == "bs.parametric.psd") {
     bs_parametric_test(X, B, force_psd = TRUE)
+  } else if (type == "bs.parametric.naive") {
+    bs_parametric_naive_test(X, B)
   }
 }
