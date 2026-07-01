@@ -88,6 +88,35 @@ for (i in 1:10) {
 axis(1, at = lag)
 mtext("Lag", side = 1, outer = TRUE, line = 2.5)
 ```
+
+## Trend
+
+```{R plot-acgh-running-ece}
+#| echo: false
+
+S <- ece_terms(X)
+k <- 25
+S_smooth <- stats::filter(S, rep(1/k, k), sides = 2)
+pair_idx <- combn(p, 2)
+
+# Plot ECE terms (10 x 1)
+par(mfrow = c(10, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:10) {
+  ylim <- quantile(S[, i], probs = c(0.01, 0.99), na.rm = TRUE)
+  pair_label <- paste(pair_idx[1, i], pair_idx[2, i], sep = "-")
+  plot(S[, i], type = "l", col = "lightgray", xaxt = "n", yaxt = "n",
+        ylab = pair_label, cex.lab = 0.8, ylim = ylim)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = mean(S[, i]), col = "blue")
+  lines(S_smooth[, i])
+}
+axis(1)
+mtext("Probe index", side = 1, outer = TRUE, line = 2.5)
+```
+
+:::
+
 ```{R table-acgh-pvalues}
 #| echo: false
 set.seed(123)
@@ -113,7 +142,15 @@ kable(results, align = c("l", "c"), na = "—") |>
   kable_styling(full_width = FALSE)
 ```
 
+**Observations**:
+
+- As expected, both parametric bootstrap and bootstrap multiplier fail to reject the null hypothesis
+- Parametric bootstrap produces a non-PSD covariance matrix, so the PSD correction is necessary
+- Classical methods that do not account for mean shifts strongly reject the null hypothesis 
+
 --- 
+
+## Scratch
 
 Note that `p = 43` is massive ($q = 990$). Based on our simulations, we know we are not in the asymptotic regime and the bootstrap methods are conservative -- we will never reject the null hypothesis (assuming there is no correlation). Instead, we can reduce the dimension to something more well-behaved like $p = 10$. 
 
