@@ -41,7 +41,11 @@ mtext("Probe index", side = 1, outer = TRUE, line = 2.5)
 
 Notice that at the very end, there is this severe drop. This is because the probes correspond to sex chromosomes, making the copy number less reliable. We follow `Bleakley and Vert (2011)` and remove these for stability so our final data dimension is `n=2143, p=43`.
 
-```{R plot-acgh-microarray-data2} 
+::: {.panel-tabset}
+
+## Plot
+
+```{R plot-acgh-microarray-data2}
 #| echo: false
 
 # Load Data
@@ -62,6 +66,28 @@ axis(1)
 mtext("Probe index", side = 1, outer = TRUE, line = 2.5)
 ```
 
+## ACF
+
+```{R plot-acgh-acf}
+#| echo: false
+
+# Plot ACF (10 x 1)
+par(mfrow = c(10, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0))
+
+for (i in 1:10) {
+  res <- SIP::SIP.acf(X[, i], plot = FALSE)
+  lag <- res$lag
+  acf <- res$acf
+  bar_col <- ifelse(abs(acf) > res$h0.ci, "red", "black")
+  plot(lag, acf, type = "h", xaxt = "n", yaxt = "n", ylab = "",
+        ylim = c(-0.2, 0.5), col = bar_col)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = 0)
+  abline(h = c(-1, 1) * res$h0.ci, col = "blue", lty = 2)
+}
+axis(1, at = lag)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
 ```{R table-acgh-pvalues}
 #| echo: false
 set.seed(123)
