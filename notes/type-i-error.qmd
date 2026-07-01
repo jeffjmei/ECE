@@ -1247,6 +1247,8 @@ pval_naive_param_n2000 <- map_dbl(1:10000, ~{
 ## n = 200, p = 15
 ```{R}
 #| echo: false
+#| fig-width: 10
+#| fig-height: 5
 
 # Show P-Curve
 plot_pcurve(list(
@@ -1264,6 +1266,8 @@ plot_pcurve(list(
 
 ```{R}
 #| echo: false
+#| fig-width: 10
+#| fig-height: 5
 
 # Show P-Curve
 plot_pcurve(list(
