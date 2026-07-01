@@ -94,10 +94,10 @@ mtext("Lag", side = 1, outer = TRUE, line = 2.5)
 ```{R plot-acgh-running-ece}
 #| echo: false
 
-S <- ece_terms(X)
+S <- ece_terms(X[, 1:5])
 k <- 25
 S_smooth <- stats::filter(S, rep(1/k, k), sides = 2)
-pair_idx <- combn(p, 2)
+pair_idx <- combn(5, 2)
 
 # Plot ECE terms (10 x 1)
 par(mfrow = c(10, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
@@ -110,6 +110,8 @@ for (i in 1:10) {
   axis(2, labels = FALSE, tck = -0.02)
   abline(h = mean(S[, i]), col = "blue")
   lines(S_smooth[, i])
+  legend("topright", legend = sprintf("%.3f", mean(S[, i])),
+         text.col = "blue", bty = "n", cex = 0.8)
 }
 axis(1)
 mtext("Probe index", side = 1, outer = TRUE, line = 2.5)
@@ -148,28 +150,109 @@ kable(results, align = c("l", "c"), na = "—") |>
 - Parametric bootstrap produces a non-PSD covariance matrix, so the PSD correction is necessary
 - Classical methods that do not account for mean shifts strongly reject the null hypothesis 
 
---- 
+---
 
-## Scratch
+We can also single out the pairs with the largest-magnitude covariance and inspect them directly.
 
-Note that `p = 43` is massive ($q = 990$). Based on our simulations, we know we are not in the asymptotic regime and the bootstrap methods are conservative -- we will never reject the null hypothesis (assuming there is no correlation). Instead, we can reduce the dimension to something more well-behaved like $p = 10$. 
-
-```{R table-acgh-pvalues2}
+```{R identify-max-pair}
 #| echo: false
-col_select <- 1:10
+S_cov <- ece.cov(X)
+diag(S_cov) <- 0
+pair_ij <- which(upper.tri(S_cov), arr.ind = TRUE)
+top_pairs <- data.frame(i = pair_ij[, 1], j = pair_ij[, 2], val = S_cov[pair_ij])
+top_pairs <- top_pairs[order(-abs(top_pairs$val)), ][1:3, ]
+top_cols <- unique(c(top_pairs$i, top_pairs$j))
+```
+
+The three largest-magnitude pairs are series `r paste(top_pairs$i, top_pairs$j, sep = "-", collapse = ", ")`, with $\hat\Sigma$ = `r paste(round(top_pairs$val, 3), collapse = ", ")`, respectively.
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R plot-max-pair}
+#| echo: false
+
+par(mfrow = c(length(top_cols), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (col in top_cols) {
+  plot(X[, col], type = "l", xaxt = "n", yaxt = "n", ylab = col, cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+}
+axis(1)
+mtext("Probe index", side = 1, outer = TRUE, line = 2.5)
+```
+
+## ACF
+
+```{R acf-max-pair}
+#| echo: false
+
+par(mfrow = c(length(top_cols), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (col in top_cols) {
+  res <- SIP::SIP.acf(X[, col], plot = FALSE)
+  lag <- res$lag
+  acf <- res$acf
+  bar_col <- ifelse(abs(acf) > res$h0.ci, "red", "black")
+  plot(lag, acf, type = "h", xaxt = "n", yaxt = "n", ylab = col,
+        ylim = c(-0.2, 0.5), col = bar_col, cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = 0)
+  abline(h = c(-1, 1) * res$h0.ci, col = "blue", lty = 2)
+}
+axis(1, at = lag)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+## Trend
+
+```{R trend-max-pair}
+#| echo: false
+
+k <- 25
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (r in 1:3) {
+  i <- top_pairs$i[r]
+  j <- top_pairs$j[r]
+  S_term <- ece_terms(X[, c(i, j)])[, 1]
+  S_term_smooth <- stats::filter(S_term, rep(1/k, k), sides = 2)
+  ylim <- quantile(S_term, probs = c(0.01, 0.99), na.rm = TRUE)
+  plot(S_term, type = "l", col = "lightgray", xaxt = "n", yaxt = "n",
+        ylab = paste(i, j, sep = "-"), cex.lab = 0.8, ylim = ylim)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = mean(S_term), col = "blue")
+  lines(S_term_smooth)
+  legend("topright", legend = sprintf("%.3f", mean(S_term)),
+         text.col = "blue", bty = "n", cex = 0.8)
+}
+axis(1)
+mtext("Probe index", side = 1, outer = TRUE, line = 2.5)
+```
+
+:::
+
+## Remove Outlier
+
+```{R table-acgh-pvalues-remove-outlier}
+#| echo: false
+X <- ACGH$data[1:2143,][-1992,]
 set.seed(123)
 results <- data.frame(
   Method  = c(
     "Bootstrap Multiplier",
     "Parametric Bootstrap (PSD)",
     "Parametric Bootstrap", 
-    "Bartlett"
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
   ),
   `p-value` = c(
-    round(test.diag(X[, col_select], method="bs.multiplier")$p.value, 3),
-    round(test.diag(X[, col_select], method="bs.parametric.psd")$p.value, 3),
+    round(test.diag(X, method="bs.multiplier")$p.value, 3),
+    round(test.diag(X, method="bs.parametric.psd")$p.value, 3),
     NA,
-    round(cortest.bartlett(cor(X[, col_select]), nrow(X[, col_select]))$p.value)
+    round(bs_parametric_naive_test(X)$p.value, 3), 
+    round(cortest.bartlett(cor(X), nrow(X))$p.value)
   ),
   check.names = FALSE
 )
@@ -177,3 +260,82 @@ results <- data.frame(
 kable(results, align = c("l", "c"), na = "—") |>
   kable_styling(full_width = FALSE)
 ```
+
+```{R identify-max-pair-remove-outlier}
+#| echo: false
+S_cov <- ece.cov(X)
+diag(S_cov) <- 0
+pair_ij <- which(upper.tri(S_cov), arr.ind = TRUE)
+top_pairs <- data.frame(i = pair_ij[, 1], j = pair_ij[, 2], val = S_cov[pair_ij])
+top_pairs <- top_pairs[order(-abs(top_pairs$val)), ][1:3, ]
+top_cols <- unique(c(top_pairs$i, top_pairs$j))
+```
+
+The three largest-magnitude pairs are series `r paste(top_pairs$i, top_pairs$j, sep = "-", collapse = ", ")`, with $\hat\Sigma$ = `r paste(round(top_pairs$val, 3), collapse = ", ")`, respectively.
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R plot-max-pair-remove-outlier}
+#| echo: false
+
+par(mfrow = c(length(top_cols), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (col in top_cols) {
+  plot(X[, col], type = "l", xaxt = "n", yaxt = "n", ylab = col, cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+}
+axis(1)
+mtext("Probe index", side = 1, outer = TRUE, line = 2.5)
+```
+
+## ACF
+
+```{R acf-max-pair-remove-outlier}
+#| echo: false
+
+par(mfrow = c(length(top_cols), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (col in top_cols) {
+  res <- SIP::SIP.acf(X[, col], plot = FALSE)
+  lag <- res$lag
+  acf <- res$acf
+  bar_col <- ifelse(abs(acf) > res$h0.ci, "red", "black")
+  plot(lag, acf, type = "h", xaxt = "n", yaxt = "n", ylab = col,
+        ylim = c(-0.2, 0.5), col = bar_col, cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = 0)
+  abline(h = c(-1, 1) * res$h0.ci, col = "blue", lty = 2)
+}
+axis(1, at = lag)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+## Trend
+
+```{R trend-max-pair-remove-outlier}
+#| echo: false
+
+k <- 25
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (r in 1:3) {
+  i <- top_pairs$i[r]
+  j <- top_pairs$j[r]
+  S_term <- ece_terms(X[, c(i, j)])[, 1]
+  S_term_smooth <- stats::filter(S_term, rep(1/k, k), sides = 2)
+  ylim <- quantile(S_term, probs = c(0.01, 0.99), na.rm = TRUE)
+  plot(S_term, type = "l", col = "lightgray", xaxt = "n", yaxt = "n",
+        ylab = paste(i, j, sep = "-"), cex.lab = 0.8, ylim = ylim)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = mean(S_term), col = "blue")
+  lines(S_term_smooth)
+  legend("topright", legend = sprintf("%.3f", mean(S_term)),
+         text.col = "blue", bty = "n", cex = 0.8)
+}
+axis(1)
+mtext("Probe index", side = 1, outer = TRUE, line = 2.5)
+```
+
+:::
