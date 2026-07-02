@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>12&nbsp; Positive Semidefinite – ECE Notes</title>
+<title>17&nbsp; Positive Semidefinite – ECE Notes</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -66,7 +66,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
 <link href="./model-misspecification.html" rel="next">
-<link href="./power.html" rel="prev">
+<link href="./mental-load.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -146,7 +146,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./positive-semidefinite.html">In Progress</a></li><li class="breadcrumb-item"><a href="./positive-semidefinite.html"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./positive-semidefinite.html">In Progress</a></li><li class="breadcrumb-item"><a href="./positive-semidefinite.html"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -204,6 +204,12 @@ window.Quarto = {
  <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Bilinear Form</span></span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./kappa-estimation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Kappa Estimation</span></span></a>
+  </div>
+</li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
@@ -218,25 +224,25 @@ window.Quarto = {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./z-test.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Z-Test</span></span></a>
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Z-Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./multiplier-bootstrap-test.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Multiplier Bootstrap Test</span></span></a>
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Multiplier Bootstrap Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./parametric-bootstrap-test.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Parametric Bootstrap Test</span></span></a>
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Parametric Bootstrap Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./independence-test.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Independence Test</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Independence Test</span></span></a>
   </div>
 </li>
       </ul>
@@ -253,19 +259,19 @@ window.Quarto = {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./simulation.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Simulation Design</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Simulation Design</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./type-i-error.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Type I Error</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Type I Error</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./power.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Power</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Power</span></span></a>
   </div>
 </li>
       </ul>
@@ -273,7 +279,7 @@ window.Quarto = {
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
- <span class="menu-text">In Progress</span></a>
+ <span class="menu-text">Real Data</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -281,20 +287,26 @@ window.Quarto = {
       <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./positive-semidefinite.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></span></a>
+  <a href="./co2-inhalation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">CO2 Inhalation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./model-misspecification.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Model Misspecification</span></span></a>
+  <a href="./copy-number-variation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Copy Number Variation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./package.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Package</span></span></a>
+  <a href="./labor-productivity.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Labor Productivity</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./mental-load.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Mental Load</span></span></a>
   </div>
 </li>
       </ul>
@@ -302,12 +314,47 @@ window.Quarto = {
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
- <span class="menu-text">Appendices</span></a>
+ <span class="menu-text">In Progress</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
       <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./positive-semidefinite.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./model-misspecification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Model Misspecification</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./package.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">Package</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./partial-correlation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Partial Correlation</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./computational-solution.html" class="sidebar-item-text sidebar-link">
@@ -344,18 +391,18 @@ window.Quarto = {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#existence-of-an-unbiased-psd-estimator" id="toc-existence-of-an-unbiased-psd-estimator" class="nav-link active" data-scroll-target="#existence-of-an-unbiased-psd-estimator"><span class="header-section-number">12.1</span> Existence of an Unbiased PSD Estimator</a></li>
-  <li><a href="#psd-projection-via-eigenvalue-clipping" id="toc-psd-projection-via-eigenvalue-clipping" class="nav-link" data-scroll-target="#psd-projection-via-eigenvalue-clipping"><span class="header-section-number">12.2</span> PSD Projection via Eigenvalue Clipping</a></li>
-  <li><a href="#bias-analysis-of-the-psd-projection" id="toc-bias-analysis-of-the-psd-projection" class="nav-link" data-scroll-target="#bias-analysis-of-the-psd-projection"><span class="header-section-number">12.3</span> Bias Analysis of the PSD Projection</a></li>
+  <li><a href="#existence-of-an-unbiased-psd-estimator" id="toc-existence-of-an-unbiased-psd-estimator" class="nav-link active" data-scroll-target="#existence-of-an-unbiased-psd-estimator"><span class="header-section-number">17.1</span> Existence of an Unbiased PSD Estimator</a></li>
+  <li><a href="#psd-projection-via-eigenvalue-clipping" id="toc-psd-projection-via-eigenvalue-clipping" class="nav-link" data-scroll-target="#psd-projection-via-eigenvalue-clipping"><span class="header-section-number">17.2</span> PSD Projection via Eigenvalue Clipping</a></li>
+  <li><a href="#bias-analysis-of-the-psd-projection" id="toc-bias-analysis-of-the-psd-projection" class="nav-link" data-scroll-target="#bias-analysis-of-the-psd-projection"><span class="header-section-number">17.3</span> Bias Analysis of the PSD Projection</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./positive-semidefinite.html">In Progress</a></li><li class="breadcrumb-item"><a href="./positive-semidefinite.html"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./positive-semidefinite.html">In Progress</a></li><li class="breadcrumb-item"><a href="./positive-semidefinite.html"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></h1>
+<h1 class="title"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></h1>
 </div>
 
 
@@ -373,22 +420,22 @@ window.Quarto = {
 
 
 <p>The ECE is not guaranteed to be positive semidefinite. In particular, when applied to estimate a variance (<span class="math inline">\(X = Y\)</span>), the estimator <span class="math inline">\(\hat{\sigma}_{xx} = X^T A X\)</span> can return negative values, since the matrix <span class="math inline">\(A\)</span> itself is not positive semidefinite.</p>
-<section id="existence-of-an-unbiased-psd-estimator" class="level2" data-number="12.1">
-<h2 data-number="12.1" class="anchored" data-anchor-id="existence-of-an-unbiased-psd-estimator"><span class="header-section-number">12.1</span> Existence of an Unbiased PSD Estimator</h2>
+<section id="existence-of-an-unbiased-psd-estimator" class="level2" data-number="17.1">
+<h2 data-number="17.1" class="anchored" data-anchor-id="existence-of-an-unbiased-psd-estimator"><span class="header-section-number">17.1</span> Existence of an Unbiased PSD Estimator</h2>
 <p>If <span class="math inline">\(A \succeq 0\)</span> and <span class="math inline">\(\theta_x^T A \theta_y = 0\)</span> for all <span class="math inline">\(\theta_x, \theta_y \in \Theta_L\)</span>, then in particular <span class="math inline">\(\theta^T A \theta = 0\)</span> for all <span class="math inline">\(\theta \in \Theta_L\)</span>. Since <span class="math inline">\(A \succeq 0\)</span>, all eigenvalues are non-negative. Using the eigendecomposition <span class="math inline">\(A = Q\Lambda Q^*\)</span> with <span class="math inline">\(\lambda_j \geq 0\)</span>,</p>
 <p><span class="math display">\[\theta^T A \theta = \sum_j \lambda_j |\tilde\theta_j|^2 = 0.\]</span></p>
 <p>Since every term is non-negative, each must vanish individually: <span class="math inline">\(\lambda_j |\tilde\theta_j|^2 = 0\)</span> for all <span class="math inline">\(j\)</span>, so <span class="math inline">\(\lambda_j \tilde\theta_j = 0\)</span> for all <span class="math inline">\(j\)</span>. Therefore <span class="math inline">\(A\theta = Q\Lambda\tilde\theta = 0\)</span>. This shows that any unbiased PSD estimator must satisfy <span class="math inline">\(A\theta = 0\)</span> for all <span class="math inline">\(\theta \in \Theta_L\)</span>. If <span class="math inline">\(\operatorname{span}(\Theta_L) = \mathbb{R}^n\)</span>, this forces <span class="math inline">\(A = 0\)</span>, contradicting <span class="math inline">\(\operatorname{tr}(A) = 1\)</span>. Whether <span class="math inline">\(\Theta_L\)</span> spans <span class="math inline">\(\mathbb{R}^n\)</span> depends on <span class="math inline">\(n\)</span> and <span class="math inline">\(L\)</span> and is not established here.</p>
 </section>
-<section id="psd-projection-via-eigenvalue-clipping" class="level2" data-number="12.2">
-<h2 data-number="12.2" class="anchored" data-anchor-id="psd-projection-via-eigenvalue-clipping"><span class="header-section-number">12.2</span> PSD Projection via Eigenvalue Clipping</h2>
+<section id="psd-projection-via-eigenvalue-clipping" class="level2" data-number="17.2">
+<h2 data-number="17.2" class="anchored" data-anchor-id="psd-projection-via-eigenvalue-clipping"><span class="header-section-number">17.2</span> PSD Projection via Eigenvalue Clipping</h2>
 <p>The closest positive semidefinite matrix to <span class="math inline">\(A\)</span> in Frobenius norm is obtained by replacing negative eigenvalues with zero. Given the eigendecomposition <span class="math inline">\(A = Q\Lambda Q^*\)</span>, define</p>
 <p><span class="math display">\[\Lambda_+ = \operatorname{diag}(\max(\lambda_0, 0), \ldots, \max(\lambda_{n-1}, 0))\]</span></p>
 <p>and form</p>
 <p><span class="math display">\[A_+ = Q\Lambda_+ Q^*.\]</span></p>
 <p>The resulting estimator <span class="math inline">\(\hat{\sigma}_{xy}^+ = X^T A_+ Y\)</span> is guaranteed to be non-negative when <span class="math inline">\(X = Y\)</span>, since <span class="math inline">\(A_+ \succeq 0\)</span>. The cost is that <span class="math inline">\(A_+\)</span> no longer satisfies the unbiasedness constraints.</p>
 </section>
-<section id="bias-analysis-of-the-psd-projection" class="level2" data-number="12.3">
-<h2 data-number="12.3" class="anchored" data-anchor-id="bias-analysis-of-the-psd-projection"><span class="header-section-number">12.3</span> Bias Analysis of the PSD Projection</h2>
+<section id="bias-analysis-of-the-psd-projection" class="level2" data-number="17.3">
+<h2 data-number="17.3" class="anchored" data-anchor-id="bias-analysis-of-the-psd-projection"><span class="header-section-number">17.3</span> Bias Analysis of the PSD Projection</h2>
 <p>The bias of <span class="math inline">\(\hat{\sigma}_{xy}^+ = X^T A_+ Y\)</span> is</p>
 <p><span class="math display">\[
 \mathbb{E}[\hat{\sigma}_{xy}^+] = \theta_x^T A_+ \theta_y + \sigma_{xy} \operatorname{tr}(A_+).
@@ -908,13 +955,13 @@ window.Quarto = {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./power.html" class="pagination-link" aria-label="Power">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Power</span></span>
+      <a href="./mental-load.html" class="pagination-link" aria-label="Mental Load">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Mental Load</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
       <a href="./model-misspecification.html" class="pagination-link" aria-label="Model Misspecification">
-        <span class="nav-page-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Model Misspecification</span></span> <i class="bi bi-arrow-right-short"></i>
+        <span class="nav-page-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Model Misspecification</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>5&nbsp; Z-Test – ECE Notes</title>
+<title>6&nbsp; Z-Test – ECE Notes</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -66,7 +66,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
 <link href="./multiplier-bootstrap-test.html" rel="next">
-<link href="./bilinear-form.html" rel="prev">
+<link href="./kappa-estimation.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -146,7 +146,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./z-test.html">Inference</a></li><li class="breadcrumb-item"><a href="./z-test.html"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Z-Test</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./z-test.html">Inference</a></li><li class="breadcrumb-item"><a href="./z-test.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Z-Test</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -204,6 +204,12 @@ window.Quarto = {
  <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Bilinear Form</span></span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./kappa-estimation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Kappa Estimation</span></span></a>
+  </div>
+</li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
@@ -218,25 +224,25 @@ window.Quarto = {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./z-test.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Z-Test</span></span></a>
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Z-Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./multiplier-bootstrap-test.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Multiplier Bootstrap Test</span></span></a>
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Multiplier Bootstrap Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./parametric-bootstrap-test.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Parametric Bootstrap Test</span></span></a>
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Parametric Bootstrap Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./independence-test.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Independence Test</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Independence Test</span></span></a>
   </div>
 </li>
       </ul>
@@ -253,19 +259,19 @@ window.Quarto = {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./simulation.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Simulation Design</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Simulation Design</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./type-i-error.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Type I Error</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Type I Error</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./power.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Power</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Power</span></span></a>
   </div>
 </li>
       </ul>
@@ -273,7 +279,7 @@ window.Quarto = {
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
- <span class="menu-text">In Progress</span></a>
+ <span class="menu-text">Real Data</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -281,20 +287,26 @@ window.Quarto = {
       <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./positive-semidefinite.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></span></a>
+  <a href="./co2-inhalation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">CO2 Inhalation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./model-misspecification.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Model Misspecification</span></span></a>
+  <a href="./copy-number-variation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Copy Number Variation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./package.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Package</span></span></a>
+  <a href="./labor-productivity.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Labor Productivity</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./mental-load.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Mental Load</span></span></a>
   </div>
 </li>
       </ul>
@@ -302,12 +314,47 @@ window.Quarto = {
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
- <span class="menu-text">Appendices</span></a>
+ <span class="menu-text">In Progress</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
       <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./positive-semidefinite.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Positive Semidefinite</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./model-misspecification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Model Misspecification</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./package.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">Package</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./partial-correlation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Partial Correlation</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./computational-solution.html" class="sidebar-item-text sidebar-link">
@@ -344,18 +391,18 @@ window.Quarto = {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#diagnostics" id="toc-diagnostics" class="nav-link active" data-scroll-target="#diagnostics"><span class="header-section-number">5.1</span> Diagnostics</a></li>
-  <li><a href="#variance-difference-general-vs.-gaussian" id="toc-variance-difference-general-vs.-gaussian" class="nav-link" data-scroll-target="#variance-difference-general-vs.-gaussian"><span class="header-section-number">5.2</span> Variance Difference: General vs.&nbsp;Gaussian</a></li>
-  <li><a href="#cumulants-by-distribution" id="toc-cumulants-by-distribution" class="nav-link" data-scroll-target="#cumulants-by-distribution"><span class="header-section-number">5.3</span> Cumulants by Distribution</a></li>
+  <li><a href="#diagnostics" id="toc-diagnostics" class="nav-link active" data-scroll-target="#diagnostics"><span class="header-section-number">6.1</span> Diagnostics</a></li>
+  <li><a href="#variance-difference-general-vs.-gaussian" id="toc-variance-difference-general-vs.-gaussian" class="nav-link" data-scroll-target="#variance-difference-general-vs.-gaussian"><span class="header-section-number">6.2</span> Variance Difference: General vs.&nbsp;Gaussian</a></li>
+  <li><a href="#cumulants-by-distribution" id="toc-cumulants-by-distribution" class="nav-link" data-scroll-target="#cumulants-by-distribution"><span class="header-section-number">6.3</span> Cumulants by Distribution</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./z-test.html">Inference</a></li><li class="breadcrumb-item"><a href="./z-test.html"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Z-Test</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./z-test.html">Inference</a></li><li class="breadcrumb-item"><a href="./z-test.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Z-Test</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Z-Test</span></h1>
+<h1 class="title"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Z-Test</span></h1>
 </div>
 
 
@@ -717,8 +764,8 @@ Gradient: <span class="math inline">\(\nabla g(\mu_Z)\)</span>
 </div>
 </div>
 </div>
-<section id="diagnostics" class="level2" data-number="5.1">
-<h2 data-number="5.1" class="anchored" data-anchor-id="diagnostics"><span class="header-section-number">5.1</span> Diagnostics</h2>
+<section id="diagnostics" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="diagnostics"><span class="header-section-number">6.1</span> Diagnostics</h2>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-9-contents" aria-controls="callout-9" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
@@ -772,7 +819,7 @@ v^2 = \frac{1}{n}\left[
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  )</span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Test passed 🎊</code></pre>
+<pre><code>Test passed 😀</code></pre>
 </div>
 </div>
 </div>
@@ -802,7 +849,7 @@ Test: <span class="math inline">\(\Sigma_Z\)</span> corresponds to closed-form e
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  )</span>
 <span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Test passed 🎊</code></pre>
+<pre><code>Test passed 😀</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>params <span class="ot">&lt;-</span> <span class="fu">scenario</span>(<span class="dv">1</span>, <span class="at">r =</span> <span class="dv">0</span>)</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">test_that</span>(<span class="st">"formula matches matrix for scenario 1, rho=0"</span>, {</span>
@@ -812,7 +859,7 @@ Test: <span class="math inline">\(\Sigma_Z\)</span> corresponds to closed-form e
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  )</span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Test passed 🎊</code></pre>
+<pre><code>Test passed 😀</code></pre>
 </div>
 </div>
 </div>
@@ -841,8 +888,8 @@ Test: <span class="math inline">\(\Sigma_Z\)</span> corresponds to closed-form e
 </div>
 </div>
 </section>
-<section id="variance-difference-general-vs.-gaussian" class="level2" data-number="5.2">
-<h2 data-number="5.2" class="anchored" data-anchor-id="variance-difference-general-vs.-gaussian"><span class="header-section-number">5.2</span> Variance Difference: General vs.&nbsp;Gaussian</h2>
+<section id="variance-difference-general-vs.-gaussian" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="variance-difference-general-vs.-gaussian"><span class="header-section-number">6.2</span> Variance Difference: General vs.&nbsp;Gaussian</h2>
 <p>Recall the asymptotic variance under the general and Gaussian assumptions: <span class="math display">\[
 V = \frac{1}{n}\left[(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_y^2}{\sigma_y^2} - \frac{2\rho\,\omega_{xy}}{\sigma_x\sigma_y}\right) + \frac{\rho^2}{4}(\kappa_{40}+2\kappa_{22}+\kappa_{04}) - \rho(\kappa_{31}+\kappa_{13}) + \frac{5}{2}(1-\rho^2)^2 + \kappa_{22}\right],
 \]</span> <span class="math display">\[
@@ -851,8 +898,8 @@ V_G = \frac{1}{n}(1-\rho^2)\!\left(\frac{\omega_x^2}{\sigma_x^2} + \frac{\omega_
 V - V_G = \frac{1}{n}\left[\frac{\rho^2}{4}(\kappa_{40}+2\kappa_{22}+\kappa_{04}) - \rho(\kappa_{31}+\kappa_{13}) + \kappa_{22} - (1-\rho^2)^2\right].
 \]</span> This is zero under the Gaussian assumption and measures the excess variance due to non-Gaussianity.</p>
 </section>
-<section id="cumulants-by-distribution" class="level2" data-number="5.3">
-<h2 data-number="5.3" class="anchored" data-anchor-id="cumulants-by-distribution"><span class="header-section-number">5.3</span> Cumulants by Distribution</h2>
+<section id="cumulants-by-distribution" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="cumulants-by-distribution"><span class="header-section-number">6.3</span> Cumulants by Distribution</h2>
 <p>The magnitude of <span class="math inline">\(V - V_G\)</span> depends on how far the joint cumulants depart from their Gaussian values. The tables below report <span class="math inline">\((\kappa_{40}, \kappa_{31}, \kappa_{22}, \kappa_{13}, \kappa_{04})\)</span> and <span class="math inline">\(n(V - V_G)\)</span> for each supported error distribution, estimated via <span class="math inline">\(10^7\)</span> samples.</p>
 <p><strong><span class="math inline">\(\rho = 0.3\)</span></strong></p>
 <div class="cell">
@@ -1032,7 +1079,7 @@ Computational verification
 <span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>  V_diff_direct V_diff_formula
-1  0.0002268402   0.0002268402</code></pre>
+1   0.000223587    0.000223587</code></pre>
 </div>
 </div>
 </div>
@@ -1478,13 +1525,13 @@ Test: Standard Error Converges (Exponential Errors, <span class="math inline">\(
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./bilinear-form.html" class="pagination-link" aria-label="Bilinear Form">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Bilinear Form</span></span>
+      <a href="./kappa-estimation.html" class="pagination-link" aria-label="Kappa Estimation">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Kappa Estimation</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
       <a href="./multiplier-bootstrap-test.html" class="pagination-link" aria-label="Multiplier Bootstrap Test">
-        <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Multiplier Bootstrap Test</span></span> <i class="bi bi-arrow-right-short"></i>
+        <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Multiplier Bootstrap Test</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
