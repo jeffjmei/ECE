@@ -146,12 +146,46 @@ plot_pcurve <- function(pvals, facet = ~method, title = NULL, ncol = NULL, dir =
     )
 }
 
-plot_ece_terms <- function(X){
-  S <- ece_terms(X)
+# Diagnostic: is the ECE covariance constant over time?
+#
+# For each column pair of `X`, plots the raw ECE terms (light gray, so outliers
+# stand out) with a rolling-window mean on top and a dashed reference line at the
+# global mean (the ECE covariance the test sums). Under a constant correlation
+# the running mean fluctuates around the flat line; a change point shows up as a
+# step or ramp away from it. `window` controls smoothing (defaults to n/5).
+plot_ece_terms <- function(X, window = NULL) {
+  X <- as.matrix(X)
+  n <- nrow(X)
+  p <- ncol(X)
+  if (is.null(window)) window <- max(10, floor(n / 5))
 
-  # Plot Diagnostic
-  plot(NA, xlim=c(1, params$n), ylim=c(min(S), max(S)), type="l")
-  abline(h=0)
+  roll <- function(v) as.numeric(stats::filter(v, rep(1 / window, window), sides = 2))
+  idx <- combn(p, 2)
 
-  for(i in 1:ncol(X)) lines(S[,i], col=i)
+  dat <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
+    i <- idx[1, k]
+    j <- idx[2, k]
+    s <- lag_term(X[, i], X[, j])
+    tibble::tibble(
+      t      = seq_len(n),
+      pair   = paste(i, j, sep = "-"),
+      raw    = s,
+      run    = roll(s),
+      global = mean(s)
+    )
+  })
+
+  ggplot2::ggplot(dat, ggplot2::aes(x = t)) +
+    ggplot2::geom_line(ggplot2::aes(y = raw), color = "gray80") +
+    ggplot2::geom_hline(
+      ggplot2::aes(yintercept = global),
+      linetype = "dashed", color = "firebrick"
+    ) +
+    ggplot2::geom_line(ggplot2::aes(y = run), color = "steelblue") +
+    ggplot2::facet_wrap(~pair, scales = "free_y") +
+    ggplot2::labs(
+      x = "time", y = "ECE term (covariance scale)",
+      subtitle = sprintf("gray = raw term, blue = %d-window mean, dashed = global mean", window)
+    ) +
+    ggplot2::theme_minimal()
 }
