@@ -1,0 +1,245 @@
+---
+title: "Mental Load"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+library(kableExtra)
+library(psych)
+library(kcpRS)
+```
+
+The `kcpRS` package comes with a physiological dataset `MentalLoad` (`n=1393`), recorded during an experiment inducing varying levels of cognitive load. We analyze three signals:
+
+- `HR`: Heart rate
+- `RR`: Respiration rate
+- `petCO2`: End-tidal CO2
+
+The `period` variable marks the experimental phase. We use `get_cp()` on `period` to recover the underlying change points, giving `332, 673, 1053`.
+
+```{R load-mental-load-data}
+#| echo: false
+
+data("MentalLoad", package = "kcpRS")
+cp <- changepoint::cpts(get_cp(MentalLoad$period))
+X  <- as.matrix(MentalLoad[, 2:4])
+n  <- nrow(X)
+```
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R plot-mental-load}
+#| echo: false
+
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:3) {
+  plot(X[, i], type = "l", xaxt = "n", yaxt = "n",
+        ylab = colnames(X)[i], cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(v = cp, lty = "dashed", col = "red")
+}
+axis(1)
+mtext("Observation", side = 1, outer = TRUE, line = 2.5)
+```
+
+## ACF
+
+```{R acf-mental-load}
+#| echo: false
+
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:3) {
+  res <- SIP::SIP.acf(X[, i], plot = FALSE)
+  lag <- res$lag
+  acf <- res$acf
+  bar_col <- ifelse(abs(acf) > res$h0.ci, "red", "black")
+  plot(lag, acf, type = "h", xaxt = "n", yaxt = "n", ylab = colnames(X)[i],
+        ylim = c(-0.2, 0.5), col = bar_col, cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = 0)
+  abline(h = c(-1, 1) * res$h0.ci, col = "blue", lty = 2)
+}
+axis(1, at = lag)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+## Trend
+
+```{R trend-mental-load}
+#| echo: false
+
+S <- ece_terms(X)
+k <- 25
+S_smooth <- stats::filter(S, rep(1/k, k), sides = 2)
+pair_idx <- combn(3, 2)
+
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:3) {
+  ylim <- quantile(S[, i], probs = c(0.01, 0.99), na.rm = TRUE)
+  pair_label <- paste(colnames(X)[pair_idx[1, i]], colnames(X)[pair_idx[2, i]], sep = "-")
+  plot(S[, i], type = "l", col = "lightgray", xaxt = "n", yaxt = "n",
+        ylab = pair_label, cex.lab = 0.8, ylim = ylim)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = mean(S[, i]), col = "blue")
+  lines(S_smooth[, i])
+  legend("topright", legend = sprintf("%.3f", mean(S[, i])),
+         text.col = "blue", bty = "n", cex = 0.8)
+}
+axis(1)
+mtext("Observation", side = 1, outer = TRUE, line = 2.5)
+```
+
+:::
+
+```{R table-mental-load-pvalues}
+#| echo: false
+set.seed(123)
+results <- data.frame(
+  Method  = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap (PSD)",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(test.diag(X, method="bs.multiplier")$p.value, 3),
+    round(test.diag(X, method="bs.parametric.psd")$p.value, 3),
+    NA,
+    round(bs_parametric_naive_test(X)$p.value, 3),
+    round(cortest.bartlett(cor(X), nrow(X))$p.value, 3)
+  ),
+  check.names = FALSE
+)
+
+kable(results, align = c("l", "c"), na = "—") |>
+  kable_styling(full_width = FALSE)
+```
+
+**Why the Trend plot has so many zero values.** `RR` and `petCO2` update far more slowly than the recording rate: they are held constant across several consecutive rows (e.g. `23.30, 23.30, 23.30, 21.13, ...`), while `HR` changes almost every sample.
+
+```{R zero-diff-fraction}
+#| echo: false
+sapply(1:3, \(i) mean(diff(X[, i]) == 0)) |>
+  setNames(colnames(X)) |>
+  round(3)
+```
+
+Since `lag_term(x, y)` is built from products like `(x - rotate(x, 1)) * (y - rotate(y, 1))`, any time either signal is flat between consecutive (or lag-2) points, that factor is exactly zero — so any pair involving `RR` or `petCO2` produces a zero ECE term whenever the flatter series hasn't ticked over yet. This is an artifact of the sensors' effective sampling/update rate, not evidence of no signal, and it is exactly the mechanism downsampling helps with: thinning to the update rate of the slower sensors removes the artificial zero-runs along with the autocorrelation.
+
+## Downsampling
+
+The ACF tab shows all three signals carry significant autocorrelation through lag 2-3, which violates the no-autocorrelation assumption underlying ECE. We downsample by keeping every 3rd observation (`k = 3`), which pushes the surviving lag structure past where the ACF is significant.
+
+```{R downsample-mental-load}
+#| echo: false
+
+k_ds  <- 3
+idx   <- seq(1, n, by = k_ds)
+X_ds  <- X[idx, ]
+cp_ds <- cp / k_ds
+```
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R plot-mental-load-downsampled}
+#| echo: false
+
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:3) {
+  plot(X_ds[, i], type = "l", xaxt = "n", yaxt = "n",
+        ylab = colnames(X_ds)[i], cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(v = cp_ds, lty = "dashed", col = "red")
+}
+axis(1)
+mtext("Observation", side = 1, outer = TRUE, line = 2.5)
+```
+
+## ACF
+
+```{R acf-mental-load-downsampled}
+#| echo: false
+
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:3) {
+  res <- SIP::SIP.acf(X_ds[, i], plot = FALSE)
+  lag <- res$lag
+  acf <- res$acf
+  bar_col <- ifelse(abs(acf) > res$h0.ci, "red", "black")
+  plot(lag, acf, type = "h", xaxt = "n", yaxt = "n", ylab = colnames(X_ds)[i],
+        ylim = c(-0.2, 0.5), col = bar_col, cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = 0)
+  abline(h = c(-1, 1) * res$h0.ci, col = "blue", lty = 2)
+}
+axis(1, at = lag)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+## Trend
+
+```{R trend-mental-load-downsampled}
+#| echo: false
+
+S_ds <- ece_terms(X_ds)
+k <- 25
+S_ds_smooth <- stats::filter(S_ds, rep(1/k, k), sides = 2)
+pair_idx <- combn(3, 2)
+
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:3) {
+  ylim <- quantile(S_ds[, i], probs = c(0.01, 0.99), na.rm = TRUE)
+  pair_label <- paste(colnames(X_ds)[pair_idx[1, i]], colnames(X_ds)[pair_idx[2, i]], sep = "-")
+  plot(S_ds[, i], type = "l", col = "lightgray", xaxt = "n", yaxt = "n",
+        ylab = pair_label, cex.lab = 0.8, ylim = ylim)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = mean(S_ds[, i]), col = "blue")
+  lines(S_ds_smooth[, i])
+  legend("topright", legend = sprintf("%.3f", mean(S_ds[, i])),
+         text.col = "blue", bty = "n", cex = 0.8)
+}
+axis(1)
+mtext("Observation", side = 1, outer = TRUE, line = 2.5)
+```
+
+:::
+
+```{R table-mental-load-pvalues-downsampled}
+#| echo: false
+set.seed(123)
+results_ds <- data.frame(
+  Method  = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap (PSD)",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(test.diag(X_ds, method="bs.multiplier")$p.value, 3),
+    round(test.diag(X_ds, method="bs.parametric.psd")$p.value, 3),
+    NA,
+    round(bs_parametric_naive_test(X_ds)$p.value, 3),
+    round(cortest.bartlett(cor(X_ds), nrow(X_ds))$p.value, 3)
+  ),
+  check.names = FALSE
+)
+
+kable(results_ds, align = c("l", "c"), na = "—") |>
+  kable_styling(full_width = FALSE)
+```
