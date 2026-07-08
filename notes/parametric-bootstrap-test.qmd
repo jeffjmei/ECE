@@ -6,6 +6,7 @@ title: "Parametric Bootstrap Test"
 #| echo: false
 #| message: false
 devtools::load_all()
+library(tidyverse)
 ```
 
 ![](assets/bs-parametric-diagram.png)
@@ -121,3 +122,59 @@ $$\operatorname{Cov}\!\left(S_{i,(a,b)}, S_{i+2,(c,d)}\right) = -\frac{1}{4}\sig
 and $0$ when disjoint.
 :::
 
+### Computational Verification
+
+We check Theorem 1's disjoint-pair claim directly: for each of the $q \times q$ entries of $W$, simulate its sampling distribution across many replicates, and compare mutually exclusive (disjoint) pairs against pairs that share a coordinate. Disjoint pairs are highlighted in red and should concentrate near zero; the annotation in each panel gives the sample mean.
+
+We use scenario 2 (square-wave mean shift) with $p = 5$ coordinates ($q = \binom{5}{2} = 10$ pairs), sample size $n = 1000$, and period $L = 4$, drawing 500 independent replicates of $X$.
+
+```{r}
+#| echo: false
+#| cache: true
+p <- 5
+params <- scenario(2, n = 1000, p = p, L = 4)
+O <- pair_overlap(p)
+labels <- colnames(O)
+q <- length(labels)
+
+sims <- map(1:500, ~{
+  X <- generate_data(params)
+  n <- nrow(X)
+  S <- ece_terms(X)
+  (1 / n^2) * (
+    t(S) %*% S +
+      t(rotate(S)) %*% S + t(S) %*% rotate(S) +
+      t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
+  )
+}, .progress = TRUE)
+```
+
+```{r}
+#| echo: false
+idx <- expand.grid(i = 1:q, j = 1:q) |> filter(i <= j)
+
+w_long <- imap_dfr(sims, ~{
+  mutate(idx, rep = .y, value = .x[cbind(i, j)])
+}) |> mutate(
+  row_label = factor(labels[i], levels = labels),
+  col_label = factor(labels[j], levels = labels),
+  disjoint  = O[cbind(i, j)] == 0
+)
+
+panel_stats <- w_long |>
+  summarise(mean = mean(value), .by = c(row_label, col_label, disjoint)) |>
+  mutate(label = paste0("mean=", formatC(mean, format = "g", digits = 2)))
+
+w_long |>
+  ggplot(aes(x = value, fill = disjoint)) +
+  geom_histogram(bins = 40, alpha = 0.8) +
+  scale_fill_manual(values = c(`TRUE` = "firebrick", `FALSE` = "steelblue"), guide = "none") +
+  geom_text(data = panel_stats, aes(x = Inf, y = Inf, label = label),
+            hjust = 1.1, vjust = 1.5, size = 2.5, color = "black") +
+  facet_grid(row_label ~ col_label, scales = "free") +
+  labs(x = NULL, y = NULL,
+       title = "Residuals: estimated - theoretical",
+       subtitle = "Red = mutually exclusive pairs (theoretical 0), annotation = sample mean") +
+  theme_minimal(base_size = 9) +
+  theme(axis.text = element_blank(), axis.ticks = element_blank())
+```
