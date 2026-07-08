@@ -125,7 +125,9 @@ lag_term <- function(x, y = x) {
 ece_terms <- function(x) {
   p <- ncol(x)
   idx <- combn(p, 2)
-  do.call(cbind, map2(idx[1, ], idx[2, ], \(i, j) lag_term(x[, i], x[, j])))
+  S <- do.call(cbind, map2(idx[1, ], idx[2, ], \(i, j) lag_term(x[, i], x[, j])))
+  colnames(S) <- paste0(idx[1, ], "-", idx[2, ])
+  S
 }
 
 #' Split into Independent Subsequences
@@ -152,4 +154,20 @@ make_psd <- function(S) {
   eig <- eigen(S)
   vals <- pmax(eig$values, 0)
   eig$vectors %*% diag(vals, nrow = length(vals)) %*% t(eig$vectors)
+}
+
+pair_overlap <- function(p) {
+  # create list of pairs
+  pairs <- combn(p, 2) |> asplit(2)
+
+  # transform into indicator matrix
+  B <- pairs |>
+    map(function(pair) (seq_len(p) %in% pair) |> as.integer()) |>
+    reduce(cbind)
+
+  # encode number of mutual pairs
+  O <- t(B) %*% B
+  labels <- map_chr(pairs, \(pr) paste(pr, collapse = "-"))
+  dimnames(O) <- list(labels, labels)
+  return(O)
 }
