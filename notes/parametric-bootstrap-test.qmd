@@ -22,6 +22,9 @@ Since $S_i$ depends only on observations at indices $i, i+1, i+2$, terms separat
 Plugging in $\operatorname{Var}(S_i) = \mathbb{E}[S_i S_i^\top]$ and $\operatorname{Cov}(S_i, S_{i+k}) = \mathbb{E}[S_i S_{i+k}^\top]$ and estimating by sample quantities gives
 $$V := \widehat{\operatorname{Var}}\!\left(\bar{S}\right) = \frac{1}{n^2}\left(\sum_{i=1}^n S_i S_i^\top + \sum_{i=1}^{n}\!\left(S_i S_{i+1}^\top + S_{i+1} S_i^\top\right) + \sum_{i=1}^{n}\!\left(S_i S_{i+2}^\top + S_{i+2} S_i^\top\right)\right).$$
 
+Writing $S \in \mathbb{R}^{n \times q}$ for the matrix with rows $S_i^\top$, and letting $C_k$ denote the cyclic shift matrix so that $C_k S$ has rows $S_{i+k}^\top$, this can be written compactly as
+$$V = \frac{1}{n^2} S^\top \left(I + C_1 + C_1^\top + C_2 + C_2^\top\right) S.$$
+
 **Parametric Bootstrap Test.** Under $H_0$, $\bar{S} \approx N(0, V)$ by the CLT. This gives a direct procedure:
 
 1. Compute the observed statistic $T_\text{obs} = \max_{1 \leq j \leq p} |\bar{S}_j|$.
@@ -86,67 +89,35 @@ legend("topright",
 ```
 :::
 
-## Simulation Results
+## Theoretical Results
 
-All simulations are run with exponential error terms in the setting with frequent mean shifts ($L = 4$). We see that in all cases, we are able to control type I error.
+We want to characterize $W := \operatorname{Cov}(\bar S)$. Its general entry is $W_{(a,b),(c,d)} = \operatorname{Cov}\!\left(\bar S_{(a,b)}, \bar S_{(c,d)}\right)$, and by bilinearity,
+$$W_{(a,b),(c,d)} = \frac{1}{n^2}\sum_{i=1}^n\sum_{j=1}^n \operatorname{Cov}\!\left(S_{i,(a,b)}, S_{j,(c,d)}\right).$$
+Since $S_{i,(a,b)}$ depends only on $X_i, X_{i+1}, X_{i+2}$, this covariance is $0$ whenever $|i-j| \geq 3$ — the same bandwidth-2 structure used to build $V$ above — so only lags $m \in \{0,\pm1,\pm2\}$ survive.
 
-```{R}
-#| echo: false
-#| cache: true
-params <- scenario(2, n=1000, p=2, L=4, r=0, err_type="exponential")
-```
+Theorem 1 below gives each of these lag covariances in closed form under the null model $X_i = \theta_i + \varepsilon_i$, $\theta_i$ a deterministic piecewise-constant mean. Its main payoff: the covariance is exactly $0$ at every lag whenever $\{a,b\}$ and $\{c,d\}$ are disjoint, and generally nonzero otherwise (equal pairs, or one shared coordinate). This is the one fact we can actually exploit — it lets us mask out the disjoint-pair entries of $W$ as exactly zero, rather than estimate a quantity known in advance to vanish, cutting the free entries of $W$ from all $q \times q$ pairs down to those sharing at least one coordinate.
 
-```{R}
-#| echo: false
-#| cache: true
-set.seed(1)
-pval_gaussian <- map_dbl(1:10000, ~{
-  X <- generate_data(params)
-  test.diag(X, method = "z.test.gaussian")$p.value
-})
-```
+::: {.callout-note collapse="true"}
+## Theorem 1: Lag-0, lag-1, and lag-2 autocovariance
 
-```{R}
-#| echo: false
-#| cache: true
-set.seed(1)
-pval_kappa <- map_dbl(1:10000, ~{
-  X <- generate_data(params)
-  test.diag(X, method = "z.test.kappa")$p.value
-})
-```
+Assume the null model above, and take $a < b$, $c < d$.
 
-```{R}
-#| echo: false
-#| cache: true
-set.seed(1)
-pval_multiplier <- map_dbl(1:10000, ~{
-  X <- generate_data(params)
-  test.diag(X, method = "bs.multiplier")$p.value
-})
-```
+**Lag 0.** When $(c,d) = (a,b)$,
+$$\operatorname{Cov}\!\left(S_{i,(a,b)}, S_{i,(a,b)}\right) = \frac{5}{2}\sigma_a^2\sigma_b^2 + \frac{1}{2}\sigma_a^2(\theta_{i,b} - \theta_{i+2,b})^2 + \frac{1}{2}\sigma_b^2(\theta_{i,a} - \theta_{i+2,a})^2;$$
+when $\{a,b\} \cap \{c,d\} = \{j\}$ with partners $r, s$ (i.e. $\{a,b\} = \{j,r\}$, $\{c,d\} = \{j,s\}$),
+$$\operatorname{Cov}\!\left(S_{i,(a,b)}, S_{i,(c,d)}\right) = \frac{1}{2}\sigma_j^2(\theta_{i,r} - \theta_{i+2,r})(\theta_{i,s} - \theta_{i+2,s});$$
+and the covariance is $0$ when $\{a,b\}$ and $\{c,d\}$ are disjoint.
 
-```{R}
-#| echo: false
-#| cache: true
-set.seed(1)
-pval_parametric <- map_dbl(1:10000, ~{
-  X <- generate_data(params)
-  test.diag(X, method = "bs.parametric")$p.value
-})
-```
+**Lag 1.** When $(c,d) = (a,b)$,
+$$\operatorname{Cov}\!\left(S_{i,(a,b)}, S_{i+1,(a,b)}\right) = \frac{1}{2}\sigma_a^2\sigma_b^2 + \frac{1}{2}\sigma_a^2(\theta_{i,b} - \theta_{i+1,b})(\theta_{i+2,b} - \theta_{i+3,b}) + \frac{1}{2}\sigma_b^2(\theta_{i,a} - \theta_{i+1,a})(\theta_{i+2,a} - \theta_{i+3,a});$$
+when $\{a,b\} \cap \{c,d\} = \{j\}$ with partners $r, s$,
+$$\operatorname{Cov}\!\left(S_{i,(a,b)}, S_{i+1,(c,d)}\right) = \frac{1}{2}\sigma_j^2(\theta_{i,r} - \theta_{i+1,r})(\theta_{i+2,s} - \theta_{i+3,s});$$
+and $0$ when disjoint.
 
-```{R}
-#| echo: false
-#| fig-width: 12
-#| fig-height: 10
-par(mfrow = c(2, 2))
-hist(pval_gaussian,   breaks=10, freq=FALSE, main="Z-Test (Gaussian)",   xlab="p-value"); abline(h=1, col="red", lty="dashed")
-hist(pval_kappa,      breaks=10, freq=FALSE, main="Z-Test (Kappa)",      xlab="p-value"); abline(h=1, col="red", lty="dashed")
-hist(pval_multiplier, breaks=10, freq=FALSE, main="Bootstrap Multiplier", xlab="p-value"); abline(h=1, col="red", lty="dashed")
-hist(pval_parametric, breaks=10, freq=FALSE, main="Parametric Bootstrap", xlab="p-value"); abline(h=1, col="red", lty="dashed")
-par(mfrow = c(1, 1))
-```
+**Lag 2** (no quadratic part). When $(c,d) = (a,b)$,
+$$\operatorname{Cov}\!\left(S_{i,(a,b)}, S_{i+2,(a,b)}\right) = -\frac{1}{4}\sigma_a^2(\theta_{i,b} - \theta_{i+1,b})(\theta_{i+3,b} - \theta_{i+4,b}) - \frac{1}{4}\sigma_b^2(\theta_{i,a} - \theta_{i+1,a})(\theta_{i+3,a} - \theta_{i+4,a});$$
+when $\{a,b\} \cap \{c,d\} = \{j\}$ with partners $r, s$,
+$$\operatorname{Cov}\!\left(S_{i,(a,b)}, S_{i+2,(c,d)}\right) = -\frac{1}{4}\sigma_j^2(\theta_{i,r} - \theta_{i+1,r})(\theta_{i+3,s} - \theta_{i+4,s});$$
+and $0$ when disjoint.
+:::
 
-## Questions
-- What happens if we have a NA value in the matrix?
