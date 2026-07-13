@@ -11,25 +11,43 @@ devtools::load_all()
 results <- read_csv("../data/results.csv")
 
 method_colors <- c(
-  "z.test.gaussian"      = "#E41A1C",
-  "z.test.oracle"        = "#377EB8",
-  "bs.multiplier"        = "#4DAF4A",
-  "bs.parametric"        = "#FF7F00",
-  "bs.parametric.psd"    = "#0072B2",
-  "z.test.null"          = "#984EA3",
-  "z.test.null.gaussian" = "#A65628",
-  "z.test.null.oracle"   = "#F781BF"
+  "z.test.gaussian"             = "#E41A1C",
+  "z.test.oracle"               = "#377EB8",
+  "bs.multiplier"               = "#4DAF4A",
+  "bs.parametric"               = "#FF7F00",
+  "bs.parametric.psd"           = "#0072B2",
+  "z.test.null"                 = "#984EA3",
+  "z.test.null.gaussian"        = "#A65628",
+  "z.test.null.oracle"          = "#F781BF",
+  "z.test"                      = "#999999",
+  "z.test.null.matrix"          = "#66C2A5",
+  "z.test.null.regress"         = "#8DA0CB",
+  "bs.parametric.lag1"          = "#E6AB02",
+  "bs.parametric.lag1.psd"      = "#A6761D",
+  "bs.parametric.lag1.mask"     = "#66A61E",
+  "bs.parametric.lag1.mask.psd" = "#1B9E77",
+  "bs.parametric.mask"          = "#D95F02",
+  "bs.parametric.mask.psd"      = "#7570B3"
 )
 
 method_labels <- c(
-  "z.test.gaussian"      = "Z-Test (Gaussian)",
-  "z.test.oracle"        = "Z-Test (Oracle)",
-  "bs.multiplier"        = "Bootstrap (Multiplier)",
-  "bs.parametric"        = "Bootstrap (Parametric)",
-  "bs.parametric.psd"    = "Bootstrap (Parametric, PSD)",
-  "z.test.null"          = "Z-Test (Null)",
-  "z.test.null.gaussian" = "Z-Test (Null, Gaussian)",
-  "z.test.null.oracle"   = "Z-Test (Null, Oracle)"
+  "z.test.gaussian"             = "Z-Test (Gaussian)",
+  "z.test.oracle"               = "Z-Test (Oracle)",
+  "bs.multiplier"               = "Bootstrap (Multiplier)",
+  "bs.parametric"               = "Bootstrap (Parametric)",
+  "bs.parametric.psd"           = "Bootstrap (Parametric, PSD)",
+  "z.test.null"                 = "Z-Test (Null)",
+  "z.test.null.gaussian"        = "Z-Test (Null, Gaussian)",
+  "z.test.null.oracle"          = "Z-Test (Null, Oracle)",
+  "z.test"                      = "Z-Test",
+  "z.test.null.matrix"          = "Z-Test (Null, Matrix)",
+  "z.test.null.regress"         = "Z-Test (Null, Regress)",
+  "bs.parametric.lag1"          = "Bootstrap (Parametric, Lag1)",
+  "bs.parametric.lag1.psd"      = "Bootstrap (Parametric, Lag1, PSD)",
+  "bs.parametric.lag1.mask"     = "Bootstrap (Parametric, Lag1, Mask)",
+  "bs.parametric.lag1.mask.psd" = "Bootstrap (Parametric, Lag1, Mask, PSD)",
+  "bs.parametric.mask"          = "Bootstrap (Parametric, Mask)",
+  "bs.parametric.mask.psd"      = "Bootstrap (Parametric, Mask, PSD)"
 )
 ```
 
@@ -547,6 +565,60 @@ Under exponential errors with $n = 200$, every replicate fails to produce a PSD 
 
 :::
 
+
+:::
+
+::: {.callout-note collapse="true" title="Masking worsens the non-PSD error rate; lag-1 truncation improves it; combined, they roughly cancel out"}
+
+$n = 200$, compound covariance, normal errors, Scenario 1 (no change points), $\rho = 0$, $\text{amp} = 1$. Dimension is cut off at $p = 15$, beyond which every method reaches a 100% error rate.
+
+- **Mask:** masking the disjoint-pair covariance terms makes the error rate worse than the baseline parametric bootstrap
+- **Lag-1:** truncating to lag-1 (ignoring lag-2 and beyond) makes the error rate better than the baseline
+- **Lag-1 + Mask:** combining both roughly cancels out, tracking close to the baseline
+
+```{R}
+#| echo: false
+#| warning: false
+#| results: asis
+plot_dat <- results |>
+  pivot_wider(names_from = metric, values_from = metric_val) |>
+  filter(
+    n == 200,
+    cov_type == "compound",
+    r == 0, amp == 1,
+    err_type == "normal",
+    scenario == 1,
+    p <= 15,
+  ) |>
+  mutate(error_rate = n_errors / n_sim) |>
+  select(method, n, p, error_rate)
+
+make_err_plot <- function(methods) {
+  plot_dat |>
+    filter(method %in% methods) |>
+    ggplot(aes(x = p, y = error_rate, color = method)) +
+    geom_line() +
+    geom_point() +
+    scale_color_manual(values = method_colors, labels = method_labels) +
+    labs(x = "Dimension (p)", y = "Error Rate", color = "Method") +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+}
+
+tabs <- list(
+  "Mask"         = c("bs.parametric", "bs.parametric.mask"),
+  "Lag-1"        = c("bs.parametric", "bs.parametric.lag1"),
+  "Lag-1 + Mask" = c("bs.parametric", "bs.parametric.lag1.mask")
+)
+
+cat("::: {.panel-tabset}\n\n")
+iwalk(tabs, \(methods, label) {
+  cat(paste0("## ", label, "\n\n"))
+  print(make_err_plot(methods))
+  cat("\n\n")
+})
+cat(":::\n")
+```
 
 :::
 
