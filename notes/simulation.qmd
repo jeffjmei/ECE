@@ -11,3 +11,31 @@ $$
 has $\text{Cov}(E_t) = L^T \text{Cov}(Z_t) L = L^T L = \Sigma$.
 
 In `generate_err`, $L$ = `chol(S)` and the correlated errors are produced as `Z %*% chol(S)`. The marginal distribution of each entry of $Z$ — normal, $t$, log-normal, etc. — determines the marginal distribution of $\varepsilon_t$, while the covariance structure is always $\Sigma$ regardless of that choice.
+
+## Running Simulations on the Cluster
+
+Simulations are run as a SLURM job array, one task per row of `scripts/param_grid.csv`.
+
+**1. Build the parameter grid.** Edit `base_params`, `scenario_specs`, and `method_specs` in `scripts/make_grid.R`, then regenerate the CSV:
+
+```bash
+Rscript scripts/make_grid.R
+```
+
+**2. Upload.** Sync `R/` and `scripts/` (and the regenerated `scripts/param_grid.csv`) to the cluster.
+
+**3. Submit.**
+
+```bash
+bash scripts/submit.sh --time 12:00:00 --mem 8G --cpus 16
+```
+
+`submit.sh` first submits `scripts/install.slurm` (installs the package into the job environment), then submits `scripts/run_array.slurm` as an array job with `--dependency=afterok:<install job>`, sized to the number of rows in `param_grid.csv` and throttled to 500 concurrent tasks (`--array=1-N%500`). Each array task runs `scripts/simulate.R` on one row of the grid and writes its result to `data/`; SLURM logs land in `logs/`.
+
+**4. Download and file the results.** Every task appends to a single `data/results.csv` on the cluster. Once the array finishes, download that file, rename it to identify the run (e.g. `results-bs-parametric-mask.csv`), and drop it in `data/raw/`.
+
+**5. Combine.** `scripts/combine-csv.R` reads every CSV in `data/raw/`, row-binds them, and writes the merged table to `data/results.csv`:
+
+```bash
+Rscript scripts/combine-csv.R
+```
