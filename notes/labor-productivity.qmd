@@ -107,3 +107,28 @@ knitr::kable(pearson_pmat, caption = "Pearson P-Values")
 ```
 
 :::
+
+--- 
+
+## Bootstrap Methods
+
+```{R}
+bartlett_diag_test <- function(X) {
+  n <- nrow(X)
+  R <- cor(X)
+  p <- ncol(X)
+  q <- p * (p - 1) / 2
+
+  # Chi-squared statistic: -(n-1) * log(det(R))
+  chi2 <- -(n - 1) * log(det(R))
+  p_val <- pchisq(chi2, df = q, lower.tail = FALSE)
+
+  list(statistic = chi2, df = q, p.value = p_val)
+}
+```
+
+```{R}
+ece.test(X_mat, type="bs.multiplier")
+ece.test(X_mat, type="bs.parametric")
+bartlett_diag_test(X_mat)
+```
