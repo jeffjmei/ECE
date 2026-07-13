@@ -200,18 +200,19 @@ bs_multiplier_test <- function(X, B = 1000) {
 }
 
 # Parametric bootstrap test using a bandwidth-2 HAC variance estimate of the lag terms.
-bs_parametric_test <- function(X, B = 1000, mask_disjoint = FALSE, force_psd = FALSE) {
+bs_parametric_test <- function(X, B = 1000, drop_lag2 = FALSE, mask_disjoint = FALSE, force_psd = FALSE) {
   # Calculate Variance of ECE Terms
   n <- nrow(X)
   p <- ncol(X)
   S <- ece_terms(X)
-  W <- (1 / n^2) * (
-    t(S) %*% S +
-      t(rotate(S)) %*% S + t(S) %*% rotate(S) +
-      t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
-  )
+  W <- (1 / n^2) * (t(S) %*% S + t(rotate(S)) %*% S + t(S) %*% rotate(S))
+  if (!drop_lag2) {
+    W <- W + (1 / n^2) * (t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2))
+  }
+
+  # Apply 0-Masking for Mutually Exclusive Pairs
   O <- pair_overlap(p)
-  stopifnot(identical(colnames(W), colnames(O)))
+  stopifnot(identical(colnames(W), colnames(O))) # check
   if (mask_disjoint) W[O == 0] <- 0
   if (force_psd) W <- make_psd(W)
 
@@ -300,6 +301,14 @@ ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95,
     bs_parametric_test(X, B, mask_disjoint = TRUE)
   } else if (type == "bs.parametric.mask.psd") {
     bs_parametric_test(X, B, mask_disjoint = TRUE, force_psd = TRUE)
+  } else if (type == "bs.parametric.lag1") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE)
+  } else if (type == "bs.parametric.lag1.psd") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, force_psd = TRUE)
+  } else if (type == "bs.parametric.lag1.mask") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE)
+  } else if (type == "bs.parametric.lag1.mask.psd") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, force_psd = TRUE)
   } else if (type == "bs.parametric.naive") {
     bs_parametric_naive_test(X, B)
   }
