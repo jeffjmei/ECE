@@ -10,3 +10,4 @@ man
 _book/
 .quarto/
 archive/
+scripts/param_grid.csv
