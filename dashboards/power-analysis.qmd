@@ -274,7 +274,8 @@ lapply(t1_scenarios, function(sc) {
         d <- t1_p2 |> filter(scenario_label == s, n == n_val,
                               err_type %in% input$err_types,
                               method %in% input$methods)
-        ggplotly(plot_pvals(d, color_by = "method_label", facet = ~err_type))
+        ggplotly(plot_pvals(d, color_by = "method_label", facet = ~err_type)) |>
+          layout(legend = list(orientation = "h", x = 0, xanchor = "left", y = -0.2))
       })
     }
     if (any(t1_pp$scenario_label == s)) {
@@ -283,7 +284,8 @@ lapply(t1_scenarios, function(sc) {
         d <- t1_pp |> filter(scenario_label == s, n == n_val,
                               err_type %in% input$err_types,
                               method %in% input$methods)
-        ggplotly(plot_pvals(d, color_by = "method_label", facet = facet_grid(vars(err_type), vars(p))))
+        ggplotly(plot_pvals(d, color_by = "method_label", facet = facet_grid(vars(err_type), vars(p)))) |>
+          layout(legend = list(orientation = "h", x = 0, xanchor = "left", y = -0.2))
       })
     }
   })
