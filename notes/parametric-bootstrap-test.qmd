@@ -96,10 +96,10 @@ We want to characterize $W := \operatorname{Cov}(\bar S)$. Its general entry is 
 $$W_{(a,b),(c,d)} = \frac{1}{n^2}\sum_{i=1}^n\sum_{j=1}^n \operatorname{Cov}\!\left(S_{i,(a,b)}, S_{j,(c,d)}\right).$$
 Since $S_{i,(a,b)}$ depends only on $X_i, X_{i+1}, X_{i+2}$, this covariance is $0$ whenever $|i-j| \geq 3$ — the same bandwidth-2 structure used to build $V$ above — so only lags $m \in \{0,\pm1,\pm2\}$ survive.
 
-Theorem 1 below gives each of these lag covariances in closed form under the null model $X_i = \theta_i + \varepsilon_i$, $\theta_i$ a deterministic piecewise-constant mean. Its main payoff: the covariance is exactly $0$ at every lag whenever $\{a,b\}$ and $\{c,d\}$ are disjoint, and generally nonzero otherwise (equal pairs, or one shared coordinate). This is the one fact we can actually exploit — it lets us mask out the disjoint-pair entries of $W$ as exactly zero, rather than estimate a quantity known in advance to vanish, cutting the free entries of $W$ from all $q \times q$ pairs down to those sharing at least one coordinate.
+The Theorem below gives each of these lag covariances in closed form under the null model $X_i = \theta_i + \varepsilon_i$, $\theta_i$ a deterministic piecewise-constant mean. Its main payoff: the covariance is exactly $0$ at every lag whenever $\{a,b\}$ and $\{c,d\}$ are disjoint, and generally nonzero otherwise (equal pairs, or one shared coordinate). This is the one fact we can actually exploit — it lets us mask out the disjoint-pair entries of $W$ as exactly zero, rather than estimate a quantity known in advance to vanish, cutting the free entries of $W$ from all $q \times q$ pairs down to those sharing at least one coordinate.
 
 ::: {.callout-note collapse="true"}
-## Theorem 1: Lag-0, lag-1, and lag-2 autocovariance
+## Theorem: Lag-0, lag-1, and lag-2 autocovariance
 
 Assume the null model above, and take $a < b$, $c < d$.
 
@@ -122,9 +122,18 @@ $$\operatorname{Cov}\!\left(S_{i,(a,b)}, S_{i+2,(c,d)}\right) = -\frac{1}{4}\sig
 and $0$ when disjoint.
 :::
 
+::: {.callout-note collapse="true"}
+## Corollary: lag-2 vanishes when $L \geq 4$
+
+Every lag-2 case above (equal pairs, one shared coordinate) is a product of two factors of the form $(\theta_{i,\cdot} - \theta_{i+1,\cdot})(\theta_{i+3,\cdot} - \theta_{i+4,\cdot})$. The first factor is nonzero only if $i$ is a change point ($\theta_i \neq \theta_{i+1}$); the second only if $i+3$ is. If both hold, some segment between them has length $\leq 3$, so under the minimum-segment-length assumption $\mathcal{L}(\theta) \geq L$ with $L \geq 4$ (i.e. $\theta \in \Theta_4$), the two factors can never both be nonzero. Combined with the disjoint-pair case, which is $0$ at every lag unconditionally, this means $\operatorname{Cov}(S_i, S_{i+2}) = 0$ identically once $L \geq 4$.
+
+The sample-quantity term $S^\top C_2 S$ (and its transpose) in $V$ is then estimating a quantity known to be exactly zero, so it can be dropped without introducing bias:
+$$V = \frac{1}{n^2} S^\top \left(I + C_1 + C_1^\top\right) S, \qquad L \geq 4.$$
+:::
+
 ### Computational Verification
 
-We check Theorem 1's disjoint-pair claim directly: for each of the $q \times q$ entries of $W$, simulate its sampling distribution across many replicates, and compare mutually exclusive (disjoint) pairs against pairs that share a coordinate. Disjoint pairs are highlighted in red and should concentrate near zero; the annotation in each panel gives the sample mean.
+We check the Theorem's disjoint-pair claim directly: for each of the $q \times q$ entries of $W$, simulate its sampling distribution across many replicates, and compare mutually exclusive (disjoint) pairs against pairs that share a coordinate. Disjoint pairs are highlighted in red and should concentrate near zero; the annotation in each panel gives the sample mean.
 
 We use scenario 2 (square-wave mean shift) with $p = 5$ coordinates ($q = \binom{5}{2} = 10$ pairs), sample size $n = 1000$, and period $L = 4$, drawing 500 independent replicates of $X$.
 
