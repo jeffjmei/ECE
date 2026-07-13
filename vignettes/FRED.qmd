@@ -27,9 +27,9 @@ devtools::load_all("~/Documents/Research/Code/ECE")
 df_reactive <- reactive({
 
   # Load Data
-  directory <- "~/Documents/Research/Code/ECE/data/FRED/"
+  directory <- "~/Documents/Research/Code/ECE/data/real-data/"
   #filepath <- paste0(directory, "2023-08.csv")
-  filepath <- paste0(directory, "2024-02.csv")
+  filepath <- paste0(directory, "FRED-2026-05.csv")
 
   # Apply Transformation
   if(input$data_format == "raw"){
@@ -237,11 +237,11 @@ output$cov <- renderPrint({
   colnames(detrend_cov) <- rownames(detrend_cov) <- c("X1","X2","X3")
 
   # ECE
-  ece_cov <- equiv.cov(as.matrix(X))
+  ece_cov <- ece.cov(as.matrix(X))
   colnames(ece_cov) <- rownames(ece_cov) <- c("X1","X2","X3")
 
   # ECE-Segmentation
-  segment_ece_cov <- equiv.cov(cbind(
+  segment_ece_cov <- ece.cov(cbind(
     df$X1 - df$X1_mean,
     df$X2 - df$X2_mean,
     df$X3 - df$X3_mean
@@ -282,11 +282,11 @@ output$cor <- renderPrint({
   colnames(detrend_cor) <- rownames(detrend_cor) <- c("X1","X2","X3")
 
   # ECE
-  ece_cor <- cov2cor(equiv.cov(as.matrix(X)))
+  ece_cor <- cov2cor(ece.cov(as.matrix(X)))
   colnames(ece_cor) <- rownames(ece_cor) <- c("X1","X2","X3")
 
   # ECE-Segment
-  segment_ece_cor <- cov2cor(equiv.cov(cbind(
+  segment_ece_cor <- cov2cor(ece.cov(cbind(
     df$X1 - df$X1_mean,
     df$X2 - df$X2_mean,
     df$X3 - df$X3_mean
