@@ -125,6 +125,8 @@ kable(results, align = c("l", "c"), na = "—") |>
   kable_styling(full_width = FALSE)
 ```
 
+**Bartlett Test.** Computed via `psych::cortest.bartlett()` ([implementation](https://personality-project.org/r/html/cortest.bartlett.html)), based on Bartlett, M. S. (1951), "The Effect of Standardization on a χ² Approximation in Factor Analysis," *Biometrika*, 38, 337–344.
+
 **Why the Trend plot has so many zero values.** `RR` and `petCO2` update far more slowly than the recording rate: they are held constant across several consecutive rows (e.g. `23.30, 23.30, 23.30, 21.13, ...`), while `HR` changes almost every sample.
 
 ```{R zero-diff-fraction}
