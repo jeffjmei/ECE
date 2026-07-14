@@ -10,15 +10,22 @@ archive_raw <- function(raw_dir) {
 }
 
 split_by_method <- function(result, raw_dir, prefix) {
-  old_files <- list.files(raw_dir, pattern = "\\.csv$", full.names = TRUE)
-  file.remove(old_files)
+  stopifnot("method" %in% names(result), !anyNA(result$method))
+
+  tmp_dir <- file.path(tempfile("split-"))
+  dir.create(tmp_dir)
 
   result |>
     group_by(method) |>
     group_walk(\(df, key) {
       slug <- str_replace_all(key$method, "\\.", "-")
-      write_csv(df, file.path(raw_dir, paste0(prefix, "-", slug, ".csv")))
-    })
+      write_csv(df, file.path(tmp_dir, paste0(prefix, "-", slug, ".csv")))
+    }, .keep = TRUE)
+
+  old_files <- list.files(raw_dir, pattern = "\\.csv$", full.names = TRUE)
+  file.remove(old_files)
+  file.copy(list.files(tmp_dir, full.names = TRUE), raw_dir)
+  unlink(tmp_dir, recursive = TRUE)
 
   message("Split ", raw_dir, " into ", n_distinct(result$method), " per-method files")
 }
