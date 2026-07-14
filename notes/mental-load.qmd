@@ -147,11 +147,18 @@ k_ds  <- 3
 idx   <- seq(1, n, by = k_ds)
 X_ds  <- X[idx, ]
 cp_ds <- cp / k_ds
+
+seg_mean_ds <- segmented_mean(X_ds, round(cp_ds))
+X_resid_ds  <- X_ds - seg_mean_ds
 ```
+
+:::: {.panel-tabset}
+
+## Plot
 
 ::: {.panel-tabset}
 
-## Plot
+### Equivariant
 
 ```{R plot-mental-load-downsampled}
 #| echo: false
@@ -168,7 +175,31 @@ axis(1)
 mtext("Observation", side = 1, outer = TRUE, line = 2.5)
 ```
 
+### Segmented
+
+```{R plot-mental-load-downsampled-segmented}
+#| echo: false
+
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:3) {
+  plot(X_ds[, i], type = "l", xaxt = "n", yaxt = "n",
+        ylab = colnames(X_ds)[i], cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(v = cp_ds, lty = "dashed", col = "red")
+  lines(seg_mean_ds[, i], col = "darkgreen", lwd = 3)
+}
+axis(1)
+mtext("Observation", side = 1, outer = TRUE, line = 2.5)
+```
+
+:::
+
 ## ACF
+
+::: {.panel-tabset}
+
+### Equivariant
 
 ```{R acf-mental-load-downsampled}
 #| echo: false
@@ -190,7 +221,26 @@ axis(1, at = lag)
 mtext("Lag", side = 1, outer = TRUE, line = 2.5)
 ```
 
+### Segmented
+
+```{R acf-mental-load-downsampled-segmented}
+#| echo: false
+
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:3) {
+  acf(X_resid_ds[, i], main = "", xlab = "", ylab = colnames(X_ds)[i])
+}
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+:::
+
 ## Trend
+
+::: {.panel-tabset}
+
+### Equivariant
 
 ```{R trend-mental-load-downsampled}
 #| echo: false
@@ -217,7 +267,41 @@ axis(1)
 mtext("Observation", side = 1, outer = TRUE, line = 2.5)
 ```
 
+### Segmented
+
+```{R trend-mental-load-downsampled-segmented}
+#| echo: false
+
+pair_idx <- combn(3, 2)
+S_resid <- do.call(cbind, purrr::map2(pair_idx[1, ], pair_idx[2, ], \(i, j)
+  X_resid_ds[, i] * X_resid_ds[, j]))
+k <- 25
+S_resid_smooth <- stats::filter(S_resid, rep(1/k, k), sides = 2)
+
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:3) {
+  ylim <- quantile(S_resid[, i], probs = c(0.01, 0.99), na.rm = TRUE)
+  pair_label <- paste(colnames(X_ds)[pair_idx[1, i]], colnames(X_ds)[pair_idx[2, i]], sep = "-")
+  plot(S_resid[, i], type = "l", col = "lightgray", xaxt = "n", yaxt = "n",
+        ylab = pair_label, cex.lab = 0.8, ylim = ylim)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = mean(S_resid[, i]), col = "blue")
+  lines(S_resid_smooth[, i])
+  legend("topright", legend = sprintf("%.3f", mean(S_resid[, i])),
+         text.col = "blue", bty = "n", cex = 0.8)
+}
+axis(1)
+mtext("Observation", side = 1, outer = TRUE, line = 2.5)
+```
+
 :::
+
+::::
+
+::: {.panel-tabset}
+
+### Equivariant
 
 ```{R table-mental-load-pvalues-downsampled}
 #| echo: false
@@ -243,3 +327,32 @@ results_ds <- data.frame(
 kable(results_ds, align = c("l", "c"), na = "—") |>
   kable_styling(full_width = FALSE)
 ```
+
+### Segmented
+
+```{R table-mental-load-pvalues-downsampled-segmented}
+#| echo: false
+set.seed(123)
+results_resid <- data.frame(
+  Method  = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap (PSD)",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(test.diag(X_resid_ds, method="bs.multiplier")$p.value, 3),
+    round(test.diag(X_resid_ds, method="bs.parametric.psd")$p.value, 3),
+    NA,
+    round(bs_parametric_naive_test(X_resid_ds)$p.value, 3),
+    round(cortest.bartlett(cor(X_resid_ds), nrow(X_resid_ds))$p.value, 3)
+  ),
+  check.names = FALSE
+)
+
+kable(results_resid, align = c("l", "c"), na = "—") |>
+  kable_styling(full_width = FALSE)
+```
+
+:::
