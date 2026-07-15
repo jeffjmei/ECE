@@ -12,6 +12,8 @@ test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...)
     bs.parametric.lag1.psd = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.psd"), b_arg, list(...))),
     bs.parametric.lag1.mask = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.mask"), b_arg, list(...))),
     bs.parametric.lag1.mask.psd = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.mask.psd"), b_arg, list(...))),
+    bs.parametric.lag1.diag = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.diag"), b_arg, list(...))),
+    bs.parametric.lag1.diag.mask = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.diag.mask"), b_arg, list(...))),
     z.test = ece.test(X, type = "z.test", kappa = ece.kappa(X, method = "mom"), ...),
     z.test.gaussian = ece.test(X, type = "z.test", kappa = "gaussian", ...),
     z.test.oracle = ece.test(X, type = "z.test", kappa = params$kappa, ...),
