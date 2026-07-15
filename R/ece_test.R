@@ -320,6 +320,10 @@ ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95,
     bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = FALSE, diag_lag1 = TRUE)
   } else if (type == "bs.parametric.lag1.diag.mask") {
     bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, diag_lag1 = TRUE)
+  } else if (type == "bs.parametric.lag1.diag.psd") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = FALSE, diag_lag1 = TRUE, force_psd = TRUE)
+  } else if (type == "bs.parametric.lag1.diag.mask.psd") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, diag_lag1 = TRUE, force_psd = TRUE)
   } else if (type == "bs.parametric.naive") {
     bs_parametric_naive_test(X, B)
   }

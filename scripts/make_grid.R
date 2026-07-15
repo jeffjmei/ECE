@@ -13,9 +13,10 @@ max_submit <- 995
 base_params <- list(
   n        = c(200, 500, 1000, 2000, 3000, 5000),
   p        = c(2, 3, 5, 10, 15, 20, 25),
-  cov_type = c("compound", "ar1"),
-  r        = c(0),
-  # r        = c(0, 0.1, 0.2, 0.3, 0.4),
+  # cov_type = c("compound", "ar1"),
+  cov_type = c("compound"),
+  # r        = c(0),
+  r        = c(0, 0.1, 0.2, 0.3, 0.4),
   amp      = c(1),
   err_type = c("normal", "exponential"),
   seed     = 1,
@@ -40,8 +41,10 @@ method_specs <- tribble(
   # "bs.parametric.lag1.psd", 1000,
   # "bs.parametric.lag1.mask", 1000,
   # "bs.parametric.lag1.mask.psd", 1000,
-  "bs.parametric.lag1.diag", 1000,
-  "bs.parametric.lag1.diag.mask", 1000
+  # "bs.parametric.lag1.diag", 1000,
+  # "bs.parametric.lag1.diag.mask", 1000
+  "bs.parametric.lag1.diag.psd", 1000
+  # "bs.parametric.lag1.diag.mask.psd", 1000
   # "z.test", NA_real_,
   # "z.test.gaussian", NA_real_,
   # "z.test.null", NA_real_,
