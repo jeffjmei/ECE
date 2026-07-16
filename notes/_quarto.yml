@@ -32,6 +32,7 @@ book:
         - mental-load.qmd
     - part: "In Progress"
       chapters:
+        - diagnostics.qmd
         - positive-semidefinite.qmd
         - model-misspecification.qmd
         - package.qmd

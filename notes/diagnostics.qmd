@@ -1,0 +1,26 @@
+---
+title: "Diagnostics"
+---
+
+## Trend Plots
+
+The Trend tab (see [Mental Load](mental-load.qmd)) plots the pairwise ECE terms `lag_term(x, y)` over time, smoothed with a moving average, alongside the overall mean. It is a visual check for whether the covariance structure the estimator relies on is actually stable across the observation window, rather than drifting or jumping.
+
+`plot_ece_terms(X, window = NULL)` (`R/plot-helpers.R`) automates this: for each column pair it draws the raw ECE term (gray), a rolling-window mean (blue), and the global mean the test actually uses (dashed red), faceted by pair.
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+```
+
+For illustration, Scenario 2 (`L = 4`) induces a square-wave mean that flips sign every 4 observations:
+
+```{R trend-scenario-2}
+#| echo: false
+params <- scenario(2, n = 1000, r = 0.5, L = 4)
+X <- generate_data(params)
+plot_ece_terms(X)
+```
