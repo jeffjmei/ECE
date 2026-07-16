@@ -131,6 +131,55 @@ The sample-quantity term $S^\top C_2 S$ (and its transpose) in $V$ is then estim
 $$V = \frac{1}{n^2} S^\top \left(I + C_1 + C_1^\top\right) S, \qquad L \geq 4.$$
 :::
 
+### Variations
+
+Each variation below replaces part of $V$ with a value the Theorem pins to zero in advance. A sample term that estimates a known zero contributes only noise, so every entry we can pin is an entry we should not estimate.
+
+Assume $\theta \in \Theta_L$. The Theorem's three cases then reduce to the following, where "quadratic" denotes the $\sigma_a^2\sigma_b^2$ contribution and "linear" the contributions carrying mean jumps:
+
+| entry $W_{(a,b),(c,d)}$ | lag 0 | lag 1 | lag 2 |
+|---|---|---|---|
+| $(c,d) = (a,b)$ | quadratic $+$ linear | quadratic only ($L \geq 3$) | $0$ ($L \geq 4$) |
+| $\{a,b\} \cap \{c,d\} = \{j\}$ | linear only | $0$ ($L \geq 3$) | $0$ ($L \geq 4$) |
+| disjoint | $0$ | $0$ | $0$ |
+
+Reading the table by column gives the lag-2 drop and the lag-1 diagonalization; reading it by row gives the mask.
+
+::: {.callout-note collapse="true"}
+## Corollary: lag-1 is diagonal when $L \geq 3$
+
+Every linear term at lag 1 (equal pairs and one shared coordinate alike) is a product of two factors of the form $(\theta_{i,\cdot} - \theta_{i+1,\cdot})(\theta_{i+2,\cdot} - \theta_{i+3,\cdot})$. The first is nonzero only if $i$ is a change point, the second only if $i+2$ is. If both hold, the segment between them — indices $i+1, i+2$ — has length $2$, so $\theta \in \Theta_L$ with $L \geq 3$ rules it out. Every lag-1 linear term therefore vanishes, leaving
+$$\operatorname{Cov}\!\left(S_{i,(a,b)}, S_{i+1,(c,d)}\right) = \begin{cases} \frac{1}{2}\sigma_a^2\sigma_b^2, & (c,d) = (a,b), \\ 0, & \text{otherwise,}\end{cases}$$
+since lag 1 has no quadratic part off the diagonal. So $\operatorname{Cov}(S_i, S_{i+1})$ is a diagonal matrix. This is implied by the $L \geq 4$ already assumed for the lag-2 Corollary.
+
+Lag 0 is not diagonalized by the same argument: its shared-coordinate entry $\frac{1}{2}\sigma_j^2(\theta_{i,r} - \theta_{i+2,r})(\theta_{i,s} - \theta_{i+2,s})$ requires only *one* change point in the window, so no minimum segment length removes it.
+:::
+
+**`bs.parametric.lag1`** ($L \geq 4$). The lag-2 column is identically zero, so the $C_2$ terms are dropped:
+$$V = \frac{1}{n^2}\, S^\top \left(I + C_1 + C_1^\top\right) S.$$
+
+**`bs.parametric.mask`** (any $L$). The disjoint row is zero at every lag, unconditionally. Let $O_{(a,b),(c,d)} = \left|\{a,b\} \cap \{c,d\}\right|$ and let $M = \mathbf{1}\!\left[O > 0\right]$. Masking replaces the estimated disjoint entries with exact zeros,
+$$V = \frac{1}{n^2}\, M \circ \left[S^\top \left(I + C_1 + C_1^\top + C_2 + C_2^\top\right) S\right],$$
+cutting the free entries of $W$ from all $q \times q$ down to those sharing at least one coordinate. It composes with any of the other variations.
+
+**`bs.parametric.lag1.diag`** ($L \geq 4$). By the Corollary the lag-1 column has a single nonzero case, so $\operatorname{Cov}(S_i, S_{i+1})$ is diagonal and every off-diagonal entry of $S^\top(C_1 + C_1^\top)S$ estimates zero. Keeping only its diagonal,
+$$V = \frac{1}{n^2}\left(S^\top S + \operatorname{diag}\!\left[S^\top\left(C_1 + C_1^\top\right) S\right]\right).$$
+This is `bs.parametric.lag1` with the lag-1 off-diagonals additionally pinned. The lag-0 component stays full.
+
+**`bs.parametric.lag1.diag.mask`** ($L \geq 4$). Masking the remaining lag-0 component,
+$$V = \frac{1}{n^2}\left(M \circ S^\top S + \operatorname{diag}\!\left[S^\top\left(C_1 + C_1^\top\right) S\right]\right).$$
+Since $O_{(a,b),(a,b)} = 2$ always, $M$ alters only off-diagonal entries, while $\operatorname{diag}[\cdot]$ alters only the diagonal; the two act on disjoint entries and commute, so masking the lag-0 component is the same as masking the assembled $V$. Every entry of $V$ is now either pinned to zero or estimated by the one component of the table that contributes to it, which exhausts what the Theorem provides.
+
+::: {.callout-note collapse="true"}
+## Remark: positive semi-definiteness
+
+$V$ must be a valid covariance matrix to draw $S^{(b)} \sim N(0, V)$, and the truncated estimator $S^\top(I + C_1 + C_1^\top)S$ carries no such guarantee — this is the standard motivation for the Bartlett weights of Newey–West. The `.psd` variants repair it after the fact by clipping negative eigenvalues to zero.
+
+`bs.parametric.lag1.diag` needs no repair. $S^\top S$ is a Gram matrix, hence positive semi-definite, and the entries of $\operatorname{diag}[S^\top(C_1 + C_1^\top)S]$ estimate $\sigma_a^2\sigma_b^2 > 0$, so the added diagonal is non-negative with probability approaching one; adding a non-negative diagonal preserves positive semi-definiteness. The structure supplies what the eigenvalue clipping was approximating.
+
+Masking does not preserve positive semi-definiteness — zeroing off-diagonal entries of a PSD matrix generally destroys it — so `bs.parametric.lag1.diag.mask` may still require the `.psd` repair. The mask buys variance reduction on the disjoint entries, whose share grows with $p$, and pays for it through the clipping.
+:::
+
 ### Computational Verification
 
 We check the Theorem's disjoint-pair claim directly: for each of the $q \times q$ entries of $W$, simulate its sampling distribution across many replicates, and compare mutually exclusive (disjoint) pairs against pairs that share a coordinate. Disjoint pairs are highlighted in red and should concentrate near zero; the annotation in each panel gives the sample mean.
