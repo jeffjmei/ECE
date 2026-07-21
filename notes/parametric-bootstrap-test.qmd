@@ -182,57 +182,233 @@ Masking does not preserve positive semi-definiteness — zeroing off-diagonal en
 
 ### Computational Verification
 
-We check the Theorem's disjoint-pair claim directly: for each of the $q \times q$ entries of $W$, simulate its sampling distribution across many replicates, and compare mutually exclusive (disjoint) pairs against pairs that share a coordinate. Disjoint pairs are highlighted in red and should concentrate near zero; the annotation in each panel gives the sample mean.
+We check the Theorem's disjoint-pair claim directly: for each of the $q \times q$ entries of $W_0 := S^\top S / n^2$, $W_1 := S^\top(C_1 + C_1^\top)S / n^2$, $W_2 := S^\top(C_2 + C_2^\top)S / n^2$, and their sum $W = W_0 + W_1 + W_2$, simulate the sampling distribution across many replicates. A panel is highlighted in red when its sample mean is smaller than $10^{-4}$ in magnitude — i.e., practically indistinguishable from the theoretical $0$ — and the annotation in each panel gives that sample mean.
 
-We use scenario 2 (square-wave mean shift) with $p = 5$ coordinates ($q = \binom{5}{2} = 10$ pairs), sample size $n = 1000$, and period $L = 4$, drawing 500 independent replicates of $X$.
+We use $n = 1000$ observations and $p = 5$ coordinates ($q = \binom{5}{2} = 10$ pairs) throughout, drawing 500 independent replicates of $X$ for each combination of correlation $r$ and scenario. Scenario 1 is a flat (no changepoint) mean; Scenario 2 is the square-wave mean shift with period $L = 4$.
 
 ```{r}
 #| echo: false
-#| cache: true
+#| message: false
+n <- 1000
 p <- 5
-params <- scenario(2, n = 1000, p = p, L = 4)
 O <- pair_overlap(p)
 labels <- colnames(O)
 q <- length(labels)
-
-sims <- map(1:500, ~{
-  X <- generate_data(params)
-  n <- nrow(X)
-  S <- ece_terms(X)
-  (1 / n^2) * (
-    t(S) %*% S +
-      t(rotate(S)) %*% S + t(S) %*% rotate(S) +
-      t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
-  )
-}, .progress = TRUE)
-```
-
-```{r}
-#| echo: false
 idx <- expand.grid(i = 1:q, j = 1:q) |> filter(i <= j)
 
-w_long <- imap_dfr(sims, ~{
-  mutate(idx, rep = .y, value = .x[cbind(i, j)])
-}) |> mutate(
-  row_label = factor(labels[i], levels = labels),
-  col_label = factor(labels[j], levels = labels),
-  disjoint  = O[cbind(i, j)] == 0
-)
+run_sims <- function(params) {
+  map(1:500, ~{
+    X <- generate_data(params)
+    n <- nrow(X)
+    S <- ece_terms(X)
 
-panel_stats <- w_long |>
-  summarise(mean = mean(value), .by = c(row_label, col_label, disjoint)) |>
-  mutate(label = paste0("mean=", formatC(mean, format = "g", digits = 2)))
+    C1S <- rotate(S)
+    C2S <- rotate(S, 2)
 
-w_long |>
-  ggplot(aes(x = value, fill = disjoint)) +
-  geom_histogram(bins = 40, alpha = 0.8) +
-  scale_fill_manual(values = c(`TRUE` = "firebrick", `FALSE` = "steelblue"), guide = "none") +
-  geom_text(data = panel_stats, aes(x = Inf, y = Inf, label = label),
-            hjust = 1.1, vjust = 1.5, size = 2.5, color = "black") +
-  facet_grid(row_label ~ col_label, scales = "free") +
-  labs(x = NULL, y = NULL,
-       title = "Residuals: estimated - theoretical",
-       subtitle = "Red = mutually exclusive pairs (theoretical 0), annotation = sample mean") +
-  theme_minimal(base_size = 9) +
-  theme(axis.text = element_blank(), axis.ticks = element_blank())
+    W0 <- (1 / n^2) * (t(S) %*% S)
+    W1 <- (1 / n^2) * (t(C1S) %*% S + t(S) %*% C1S)
+    W2 <- (1 / n^2) * (t(C2S) %*% S + t(S) %*% C2S)
+    list(
+      W = W0 + W1 + W2,
+      W0 = W0,
+      W1 = W1,
+      W2 = W2
+    )
+  }, .progress = TRUE)
+}
+
+plot_w_component <- function(sims, component, zero_thresh = 1e-4) {
+  w_long <- imap_dfr(sims, ~{
+    mutate(idx, rep = .y, value = .x[[component]][cbind(i, j)])
+  }) |> mutate(
+    row_label = factor(labels[i], levels = labels),
+    col_label = factor(labels[j], levels = labels)
+  )
+
+  panel_stats <- w_long |>
+    summarise(mean = mean(value), .by = c(row_label, col_label)) |>
+    mutate(
+      near_zero = abs(mean) < zero_thresh,
+      label     = paste0("mean=", formatC(mean, format = "g", digits = 2))
+    )
+
+  w_long <- w_long |>
+    left_join(select(panel_stats, row_label, col_label, near_zero),
+               by = c("row_label", "col_label"))
+
+  w_long |>
+    ggplot(aes(x = value, fill = near_zero)) +
+    geom_histogram(bins = 40, alpha = 0.8) +
+    scale_fill_manual(values = c(`TRUE` = "firebrick", `FALSE` = "steelblue"), guide = "none") +
+    geom_text(data = panel_stats, aes(x = Inf, y = Inf, label = label),
+              hjust = 1.1, vjust = 1.5, size = 2.5, color = "black") +
+    facet_grid(row_label ~ col_label, scales = "free") +
+    labs(x = NULL, y = NULL) +
+    theme_minimal(base_size = 9) +
+    theme(axis.text = element_blank(), axis.ticks = element_blank())
+}
 ```
+
+::::: {.panel-tabset}
+
+## r = 0
+
+:::: {.panel-tabset}
+
+### Scenario 1
+
+```{r sim-s1-r0}
+#| echo: false
+#| cache: true
+params <- scenario(1, n = n, p = p, r = 0)
+sims_s1_r0 <- run_sims(params)
+```
+
+::: {.panel-tabset}
+
+#### W
+```{r}
+#| echo: false
+plot_w_component(sims_s1_r0, "W")
+```
+
+#### W0
+```{r}
+#| echo: false
+plot_w_component(sims_s1_r0, "W0")
+```
+
+#### W1
+```{r}
+#| echo: false
+plot_w_component(sims_s1_r0, "W1")
+```
+
+#### W2
+```{r}
+#| echo: false
+plot_w_component(sims_s1_r0, "W2")
+```
+
+:::
+
+### Scenario 2 (L = 4)
+
+```{r sim-s2-r0}
+#| echo: false
+#| cache: true
+params <- scenario(2, n = n, p = p, r = 0, L = 4)
+sims_s2_r0 <- run_sims(params)
+```
+
+::: {.panel-tabset}
+
+#### W
+```{r}
+#| echo: false
+plot_w_component(sims_s2_r0, "W")
+```
+
+#### W0
+```{r}
+#| echo: false
+plot_w_component(sims_s2_r0, "W0")
+```
+
+#### W1
+```{r}
+#| echo: false
+plot_w_component(sims_s2_r0, "W1")
+```
+
+#### W2
+```{r}
+#| echo: false
+plot_w_component(sims_s2_r0, "W2")
+```
+
+:::
+
+::::
+
+## r = 0.5
+
+:::: {.panel-tabset}
+
+### Scenario 1
+
+```{r sim-s1-r05}
+#| echo: false
+#| cache: true
+params <- scenario(1, n = n, p = p, r = 0.5)
+sims_s1_r05 <- run_sims(params)
+```
+
+::: {.panel-tabset}
+
+#### W
+```{r}
+#| echo: false
+plot_w_component(sims_s1_r05, "W")
+```
+
+#### W0
+```{r}
+#| echo: false
+plot_w_component(sims_s1_r05, "W0")
+```
+
+#### W1
+```{r}
+#| echo: false
+plot_w_component(sims_s1_r05, "W1")
+```
+
+#### W2
+```{r}
+#| echo: false
+plot_w_component(sims_s1_r05, "W2")
+```
+
+:::
+
+### Scenario 2 (L = 4)
+
+```{r sim-s2-r05}
+#| echo: false
+#| cache: true
+params <- scenario(2, n = n, p = p, r = 0.5, L = 4)
+sims_s2_r05 <- run_sims(params)
+```
+
+::: {.panel-tabset}
+
+#### W
+```{r}
+#| echo: false
+plot_w_component(sims_s2_r05, "W")
+```
+
+#### W0
+```{r}
+#| echo: false
+plot_w_component(sims_s2_r05, "W0")
+```
+
+#### W1
+```{r}
+#| echo: false
+plot_w_component(sims_s2_r05, "W1")
+```
+
+#### W2
+```{r}
+#| echo: false
+plot_w_component(sims_s2_r05, "W2")
+```
+
+:::
+
+::::
+
+:::::
