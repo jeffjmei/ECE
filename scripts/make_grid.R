@@ -3,8 +3,8 @@ library(dplyr)
 library(readr)
 
 # --- Which results set to diff against: comment out the one you don't want ---
-results_file <- "data/results.csv"
-# results_file <- "data/results-t1.csv"
+# results_file <- "data/results.csv"
+results_file <- "data/results-t1.csv"
 
 # --- Maximum Total Number of Submissions ---
 max_submit <- 995
@@ -13,10 +13,10 @@ max_submit <- 995
 base_params <- list(
   n        = c(200, 500, 1000, 2000, 3000, 5000),
   p        = c(2, 3, 5, 10, 15, 20, 25),
-  # cov_type = c("compound", "ar1"),
-  cov_type = c("compound"),
-  # r        = c(0),
-  r        = c(0, 0.1, 0.2, 0.3, 0.4),
+  cov_type = c("compound", "ar1"),
+  # cov_type = c("compound"),
+  r        = c(0),
+  # r        = c(0, 0.1, 0.2, 0.3, 0.4),
   amp      = c(1),
   err_type = c("normal", "exponential"),
   seed     = 1,
@@ -32,6 +32,7 @@ scenario_specs <- tribble(
 method_specs <- tribble(
   ~method, ~B,
   # "bs.multiplier", 1000,
+  "bs.multiplier.center", 1000,
   # "bs.multiplier.nosplit", 1000,
   # "bs.parametric", 1000,
   # "bs.parametric.psd", 1000,
@@ -42,8 +43,8 @@ method_specs <- tribble(
   # "bs.parametric.lag1.mask", 1000,
   # "bs.parametric.lag1.mask.psd", 1000,
   # "bs.parametric.lag1.diag", 1000,
-  # "bs.parametric.lag1.diag.mask", 1000
-  "bs.parametric.lag1.diag.psd", 1000
+  # "bs.parametric.lag1.diag.mask", 1000,
+  # "bs.parametric.lag1.diag.psd", 1000,
   # "bs.parametric.lag1.diag.mask.psd", 1000
   # "z.test", NA_real_,
   # "z.test.gaussian", NA_real_,

@@ -147,8 +147,9 @@ ece.cor.se <- function(x, y = NULL, L = 2, kappa, rho = NULL) {
 
 # Simulates the null distribution of max|colMeans(Z * s)| via Gaussian multiplier
 # bootstrap, where Z is an iid N(0,1) vector independent of s.
-bs_multiplier <- function(s, B = 1000) {
+bs_multiplier <- function(s, B = 1000, center = FALSE) {
   n <- nrow(s)
+  if (center) s <- scale(s, center = TRUE, scale = FALSE)
   map_dbl(1:B, ~ max(abs(colMeans(rnorm(n) * s))))
 }
 
@@ -181,7 +182,10 @@ bs_multiplier_nosplit_test <- function(X, B = 1000) {
 }
 
 # Multiplier bootstrap test via independent subsequence splitting and Cauchy combination.
-bs_multiplier_test <- function(X, B = 1000) {
+# `center`: if TRUE, demean each column of the term matrix before drawing the bootstrap
+# null, removing finite-sample mean contamination from the bootstrap variance. The
+# observed statistic is always computed from the raw (uncentered) terms.
+bs_multiplier_test <- function(X, B = 1000, center = FALSE) {
   # Make Terms Mean Zero and Independent
   splits <- ece_terms(X) |> split_indep()
 
@@ -189,7 +193,7 @@ bs_multiplier_test <- function(X, B = 1000) {
   bs_pval <- splits |>
     map_dbl(function(s) {
       stat_s <- max(abs(colMeans(s)))
-      mean(bs_multiplier(s, B) > stat_s)
+      mean(bs_multiplier(s, B, center = center) > stat_s)
     })
 
   # Combine p-Values
@@ -275,6 +279,9 @@ bs_parametric_naive_test <- function(X, B = 1000) {
 #'       correlation estimator. Requires a 2-column matrix.}
 #'     \item{\code{"bs.multiplier"}}{Multiplier bootstrap test using pairwise
 #'       lag terms and Cauchy combination of split p-values.}
+#'     \item{\code{"bs.multiplier.center"}}{Same as \code{"bs.multiplier"}, but
+#'       each term column is demeaned before the bootstrap draw to remove
+#'       finite-sample mean contamination from the null variance.}
 #'     \item{\code{"bs.parametric"}}{Parametric bootstrap test using a
 #'       bandwidth-2 variance estimate of the lag terms to approximate the
 #'       null distribution.}
@@ -298,6 +305,8 @@ ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95,
     z_test(X, conf.level = conf.level, kappa = kappa, rho = rho)
   } else if (type == "bs.multiplier") {
     bs_multiplier_test(X, B)
+  } else if (type == "bs.multiplier.center") {
+    bs_multiplier_test(X, B, center = TRUE)
   } else if (type == "bs.multiplier.nosplit") {
     bs_multiplier_nosplit_test(X, B)
   } else if (type == "bs.parametric") {

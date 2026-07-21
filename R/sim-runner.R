@@ -3,6 +3,7 @@ test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...)
   b_arg <- if (!is.null(B)) list(B = B) else list()
   switch(method,
     bs.multiplier = do.call(ece.test, c(list(X, type = "bs.multiplier"), b_arg, list(...))),
+    bs.multiplier.center = do.call(ece.test, c(list(X, type = "bs.multiplier.center"), b_arg, list(...))),
     bs.multiplier.nosplit = do.call(ece.test, c(list(X, type = "bs.multiplier.nosplit"), b_arg, list(...))),
     bs.parametric = do.call(ece.test, c(list(X, type = "bs.parametric"), b_arg, list(...))),
     bs.parametric.psd = do.call(ece.test, c(list(X, type = "bs.parametric.psd"), b_arg, list(...))),
@@ -74,7 +75,7 @@ run_sim <- function(config_row, N = 1000) {
       runtime = runtime,
       timestamp = Sys.time(),
       scenario_params = as.character(jsonlite::toJSON(params$scenario_param)),
-      method_params = as.character(if (config_row$method %in% c("bs.multiplier", "bs.parametric")) {
+      method_params = as.character(if (config_row$method %in% c("bs.multiplier", "bs.multiplier.center", "bs.parametric")) {
         jsonlite::toJSON(list(B = config_row$B))
       } else {
         jsonlite::toJSON(list())
@@ -144,7 +145,7 @@ run_sim_t1 <- function(config_row, N = 1000) {
       runtime = runtime,
       timestamp = Sys.time(),
       scenario_params = as.character(jsonlite::toJSON(params$scenario_param)),
-      method_params = as.character(if (config_row$method %in% c("bs.multiplier", "bs.parametric")) {
+      method_params = as.character(if (config_row$method %in% c("bs.multiplier", "bs.multiplier.center", "bs.parametric")) {
         jsonlite::toJSON(list(B = config_row$B))
       } else {
         jsonlite::toJSON(list())
