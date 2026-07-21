@@ -171,30 +171,125 @@ knitr::kable(pearson_pmat,     caption = "Pearson P-Values")
 
 :::
 
+## Diagnostics
+
+To understand the sign flip between the respiratory and cardiovascular block, we inspect the autocorrelation of each series and the running behavior of the pairwise covariance terms, comparing the Equivariant estimator's implicit adjustment against explicit (oracle) segmentation.
+
+```{R co2-residual}
+#| echo: false
+
+X_resid <- X - X_segment
+```
+
+:::: {.panel-tabset}
+
+## ACF
+
+::: {.panel-tabset}
+
+### Equivariant
+
+```{R co2-acf-equivariant}
+#| echo: false
+
+par(mfrow = c(ncol(X), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in seq_len(ncol(X))) {
+  res <- SIP::SIP.acf(X[, i], plot = FALSE)
+  lag <- res$lag
+  acf <- res$acf
+  bar_col <- ifelse(abs(acf) > res$h0.ci, "red", "black")
+  plot(lag, acf, type = "h", xaxt = "n", yaxt = "n", ylab = colnames(X)[i],
+        ylim = c(-0.2, 0.5), col = bar_col, cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = 0)
+  abline(h = c(-1, 1) * res$h0.ci, col = "blue", lty = 2)
+}
+axis(1, at = lag)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+### Segmented
+
+```{R co2-acf-segmented}
+#| echo: false
+
+par(mfrow = c(ncol(X_resid), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in seq_len(ncol(X_resid))) {
+  acf(X_resid[, i], main = "", xlab = "", ylab = colnames(X_resid)[i])
+}
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Equivariant
+
+```{R co2-trend-equivariant}
+#| echo: false
+
+S <- ece_terms(X)
+pair_idx <- combn(ncol(X), 2)
+pair_labels <- paste(colnames(X)[pair_idx[1, ]], colnames(X)[pair_idx[2, ]], sep = "-")
+
+k <- 15
+S_smooth <- stats::filter(S, rep(1 / k, k), sides = 2)
+
+par(mfrow = c(ncol(S), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in seq_len(ncol(S))) {
+  ylim <- quantile(S[, i], probs = c(0.01, 0.99), na.rm = TRUE)
+  plot(S[, i], type = "l", col = "lightgray", xaxt = "n", yaxt = "n",
+        ylab = pair_labels[i], cex.lab = 0.8, ylim = ylim)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = mean(S[, i]), col = "blue")
+  lines(S_smooth[, i])
+  legend("topright", legend = sprintf("%.3f", mean(S[, i])),
+         text.col = "blue", bty = "n", cex = 0.8)
+}
+axis(1)
+mtext("Breath index", side = 1, outer = TRUE, line = 2.5)
+```
+
+### Segmented
+
+```{R co2-trend-segmented}
+#| echo: false
+
+pair_idx <- combn(ncol(X_resid), 2)
+pair_labels <- paste(colnames(X_resid)[pair_idx[1, ]], colnames(X_resid)[pair_idx[2, ]], sep = "-")
+S_resid <- do.call(cbind, purrr::map2(pair_idx[1, ], pair_idx[2, ], \(i, j)
+  X_resid[, i] * X_resid[, j]))
+
+k <- 15
+S_resid_smooth <- stats::filter(S_resid, rep(1 / k, k), sides = 2)
+
+par(mfrow = c(ncol(S_resid), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in seq_len(ncol(S_resid))) {
+  ylim <- quantile(S_resid[, i], probs = c(0.01, 0.99), na.rm = TRUE)
+  plot(S_resid[, i], type = "l", col = "lightgray", xaxt = "n", yaxt = "n",
+        ylab = pair_labels[i], cex.lab = 0.8, ylim = ylim)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = mean(S_resid[, i]), col = "blue")
+  lines(S_resid_smooth[, i])
+  legend("topright", legend = sprintf("%.3f", mean(S_resid[, i])),
+         text.col = "blue", bty = "n", cex = 0.8)
+}
+axis(1)
+mtext("Breath index", side = 1, outer = TRUE, line = 2.5)
+```
+
+:::
+
+::::
+
 Both methods correctly identify the block-diagonal structure: `Ti`, `Te`, and `Tt` are mutually correlated, and `HR` and `RR` are negatively correlated. However, both methods detect a significant correlation between `Tt` and `HR` in _opposite_ directions. To understand which is correct, we refer to oracle segmentation. The data as a whole does not show strong variation across experimental phases in the off-diagonal block, suggesting neither method has a clear advantage here.
 
 This application is a reminder that even when the times experimental conditions change are known, it may be insufficient to fully remove the corresponding mean shifts. The changes in this dataset appear gradual rather than abrupt, which challenges the assumptions of both the segmentation and change-point models.
 
---- 
-
-## Bootstrap Methods
-
-```{R}
-ece.test(X, type="bs.parametric")$p.value
-ece.test(X, type="bs.multiplier")$p.value
-```
-
-```{R}
-ece.test(X[, 1:3], type="bs.parametric")$p.value
-ece.test(X[, 1:3], type="bs.multiplier")$p.value
-```
-
-```{R}
-ece.test(X[, 4:5], type="bs.parametric")$p.value
-ece.test(X[, 4:5], type="bs.multiplier")$p.value
-```
-
-```{R}
-ece.test(cbind(X[,1:3], X[,4:5]), type="bs.parametric")$p.value
-ece.test(cbind(X[,1:3], X[,4:5]), type="bs.multiplier")$p.value
-```
