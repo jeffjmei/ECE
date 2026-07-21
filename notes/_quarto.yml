@@ -37,6 +37,8 @@ book:
         - model-misspecification.qmd
         - package.qmd
         - partial-correlation.qmd
+        - pca.qmd
+        - ssa.qmd
   appendices:
     - computational-solution.qmd
     - mean-removal.qmd

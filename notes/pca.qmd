@@ -1,0 +1,151 @@
+---
+title: "PCA"
+---
+
+```{r}
+#| echo: false
+#| message: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(tidyverse)
+library(R.matlab)
+```
+
+## Motivation
+
+Principal component analysis (PCA) reduces a $p$-dimensional dataset to a small number of uncorrelated directions that capture most of its variance. Given data with covariance matrix $\Sigma$, PCA computes the eigendecomposition
+$$
+\Sigma = U \Lambda U^\top,
+$$
+where $U$ is orthogonal and $\Lambda = \mathrm{diag}(\lambda_1 \ge \cdots \ge \lambda_p)$. The columns of $U$ are the principal directions, and the eigenvalues $\lambda_k$ give the variance explained along each direction. In practice $\Sigma$ is unknown and replaced by an estimate $\hat\Sigma$, so the quality of the PCA output is only as good as the covariance estimator feeding it.
+
+Standard PCA uses the sample covariance matrix, which is biased when the data contain mean shifts: spurious variance from the jumps gets absorbed into the leading eigenvectors, distorting the recovered directions. The ECE estimates covariance from lagged differences, canceling mean shifts algebraically, so applying PCA to $\hat\Sigma_{\text{ECE}}$ in place of the sample covariance should recover principal directions robust to change points.
+
+## Demonstration
+
+We compare the eigenvalue spectrum of the sample covariance matrix against the ECE covariance matrix under two scenarios, both with true $\Sigma = I_5$ (no correlation, so every true eigenvalue equals 1):
+
+- **Scenario 1**: flat mean, no change points.
+- **Scenario 2**: a square-wave mean shift (change points every $L = 4$ observations), applied identically across all $p = 5$ series.
+
+Since $\Sigma = I$, the true eigenvectors are non-identifiable, so we look at the eigenvalue spectrum itself rather than eigenvector alignment. Under Scenario 2, the simultaneous jumps should inflate the leading eigenvalue of the sample covariance matrix, while the ECE covariance matrix should stay flat near 1 in both scenarios.
+
+```{r pca-sim}
+#| cache: true
+set.seed(1)
+n_sim <- 1000
+params_s1 <- scenario(1, n = 1000, p = 5, r = 0, err_type = "normal")
+params_s2 <- scenario(2, L = 4, n = 1000, p = 5, r = 0, err_type = "normal")
+
+run_pca_sim <- function(params, n_sim) {
+  map_dfr(1:n_sim, ~{
+    X <- generate_data(params)
+    eig_sample <- eigen(cov(X), only.values = TRUE)$values
+    eig_ece    <- eigen(ece.cov(X), only.values = TRUE)$values
+    bind_rows(
+      tibble(pc = seq_along(eig_sample), eigenvalue = eig_sample, method = "Sample Covariance"),
+      tibble(pc = seq_along(eig_ece),    eigenvalue = eig_ece,    method = "ECE")
+    )
+  })
+}
+
+pca_s1 <- run_pca_sim(params_s1, n_sim)
+pca_s2 <- run_pca_sim(params_s2, n_sim)
+```
+
+```{r}
+#| echo: false
+plot_eigen <- function(df, title) {
+  df |>
+    mutate(
+      pc     = factor(pc),
+      method = factor(method, levels = c("Sample Covariance", "ECE"))
+    ) |>
+    ggplot(aes(x = pc, y = eigenvalue, fill = method)) +
+    geom_boxplot(outlier.alpha = 0.2) +
+    geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+    labs(x = "Principal Component", y = "Eigenvalue", fill = NULL, title = title) +
+    theme_minimal() +
+    theme(legend.position = "top")
+}
+```
+
+::: {.panel-tabset}
+
+## Scenario 1 (no change points)
+
+```{r}
+#| echo: false
+plot_eigen(pca_s1, "p = 5 — Scenario 1, Σ = I, no change points")
+```
+
+## Scenario 2 (change points, L = 4)
+
+```{r}
+#| echo: false
+plot_eigen(pca_s2, "p = 5 — Scenario 2 (L = 4), Σ = I, with change points")
+```
+
+:::
+
+## Real Data: TROIKA
+
+The [TROIKA dataset](https://github.com/hpi-dhc/TROIKA) (`Zhang et al., 2015`) records wrist-worn PPG alongside a chest-worn ECG and a tri-axial accelerometer during exercise: each ~5-minute session moves through rest, walking, and running phases, sampled at 125 Hz. We use it as a motivating real-data setting for the mean-shift model: a burst of arm motion produces a simultaneous baseline jump across the PPG and accelerometer channels, which is exactly the kind of synchronized mean shift that inflates the leading eigenvalue of a sample covariance matrix even absent any real change in the underlying coupling. This makes TROIKA a natural candidate for comparing sample-covariance PCA against ECE-based PCA on the PPG + accelerometer channels.
+
+For now, we just visualize the raw channels for one subject to see the phase structure.
+
+```{r troika-load}
+#| echo: false
+troika <- readMat("~/Documents/Research/Code/ECE/data/real-data/troika/DATA_01_TYPE01.mat")$sig
+fs <- 125
+t  <- (seq_len(ncol(troika)) - 1) / fs
+rownames(troika) <- c("ECG", "PPG1", "PPG2", "ACCx", "ACCy", "ACCz")
+```
+
+```{r troika-plot}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 8
+par(mfrow = c(6, 1), mar = c(0, 4, 0, 1), oma = c(4, 0, 1, 0), mgp = c(2, 1, 0))
+for (ch in rownames(troika)) {
+  plot(t, troika[ch, ], type = "l", xaxt = "n", ylab = ch, cex.lab = 0.9)
+}
+axis(1)
+mtext("Time (s)", side = 1, outer = TRUE, line = 2.5)
+```
+
+### Trend
+
+Before comparing PCA methods, we check whether ECE's fixed-covariance assumption is even plausible here. We take the 5 sensor channels (PPG1, PPG2, ACCx, ACCy, ACCz — dropping ECG, which is only our ground-truth reference) and lay out the pairwise ECE terms (`lag_term()`) in the upper-triangular half of a $5\times 5$ grid mirroring the covariance matrix (the lower half is redundant since covariance is symmetric): diagonal cells show each channel's own local variance trend, off-diagonal cells show the pairwise covariance trend. In each cell, the gray line is the raw term, the black line is a moving-average smooth (`k = 250`, roughly 2 seconds), and the blue horizontal line is the global mean — the value ECE would actually use as $\hat\Sigma_{ij}$. If the smoothed trend hugs the blue line throughout, the fixed-covariance assumption holds; if it drifts systematically (e.g. during the walk/run phases), that's evidence the covariance itself is changing, not just the mean.
+
+```{r troika-trend}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 9
+chans <- c("PPG1", "PPG2", "ACCx", "ACCy", "ACCz")
+X_sensors <- t(troika[chans, ])
+p <- ncol(X_sensors)
+k <- 250
+roll <- function(v) as.numeric(stats::filter(v, rep(1 / k, k), sides = 2))
+
+par(mfrow = c(p, p), mar = c(2, 2, 0.5, 0.5), oma = c(4, 4, 3, 4))
+for (i in 1:p) {
+  for (j in 1:p) {
+    if (j < i) {
+      plot.new()
+      next
+    }
+    s <- lag_term(X_sensors[, i], X_sensors[, j])
+    ylim <- quantile(s, probs = c(0.01, 0.99), na.rm = TRUE)
+    plot(t, s, type = "l", col = "lightgray", xaxt = "n", yaxt = "n", ylim = ylim)
+    abline(h = mean(s), col = "blue")
+    lines(t, roll(s), col = "black")
+    if (i == j) {
+      axis(1, cex.axis = 0.7)
+      axis(2, cex.axis = 0.7)
+    }
+    if (i == 1) mtext(chans[j], side = 3, line = 0.5, cex = 0.7)
+    if (j == p) mtext(chans[i], side = 4, line = 1, cex = 0.7, las = 3)
+  }
+}
+mtext("Time (s)", side = 1, outer = TRUE, line = 2.5)
+```

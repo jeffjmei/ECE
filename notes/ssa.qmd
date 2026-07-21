@@ -1,0 +1,114 @@
+---
+title: "SSA"
+---
+
+```{r}
+#| echo: false
+#| message: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(tidyverse)
+library(SIP)
+```
+
+## Motivation
+
+Singular Spectrum Analysis (SSA) decomposes a single time series $y = [y_1, \ldots, y_M]$ into trend, oscillatory, and noise components. It has three steps:
+
+1. **Embedding.** Map $y$ into an $L \times K$ trajectory matrix ($K = M - L + 1$) of overlapping length-$L$ windows:
+$$
+\mathbf{Y} = \begin{bmatrix} y_1 & y_2 & \cdots & y_K \\ y_2 & y_3 & \cdots & y_{K+1} \\ \vdots & \vdots & \ddots & \vdots \\ y_L & y_{L+1} & \cdots & y_M \end{bmatrix}.
+$$
+2. **SVD.** Decompose $\mathbf{Y} = \sum_i \sigma_i u_i v_i^\top$.
+3. **Grouping and reconstruction.** Cluster the singular components into trend, periodic, and noise groups, then reconstruct by diagonal averaging.
+
+The SVD step is mathematically equivalent to eigendecomposing $\mathbf{Y}\mathbf{Y}^\top$, an $L \times L$ **lag-covariance matrix** of $y$ (entry $(a,b)$ is essentially the covariance between $y$ and $y$ shifted by $|a-b|$). So SSA is doing exactly the eigendecomposition-of-a-covariance-matrix operation PCA does — just the covariance is over *lags of one channel* instead of *across channels*, and (unlike PCA) the raw, uncentered series is used directly, since separating out any additive trend/level is itself one of SSA's jobs.
+
+This is exactly why SSA is vulnerable to the same mechanism we demonstrated for PCA. A motion-artifact baseline jump that falls inside the embedding window doesn't touch one column of $\mathbf{Y}$ — because of the sliding-window construction, the same jump appears (shifted by one sample each time) in up to $L$ consecutive columns simultaneously. That synchronized structure inflates the leading singular value/eigenvector of $\mathbf{Y}\mathbf{Y}^\top$, the same way a synchronized mean shift inflated PC1's eigenvalue in our earlier simulation — except here it happens automatically, in a single channel, without needing a second correlated series.
+
+**A note on estimation.** The natural first idea — estimate each lag's covariance by calling `ece.cov()` on two shifted views of the same series, $y_t$ and $y_{t+k}$ — turns out to be wrong. `ece.cov()`'s derivation assumes its two input series are independently realized processes that merely share an unknown mean-shift pattern; $y_t$ and $y_{t+k}$ built from the same series are not independent realizations at all, they're the exact same random draws re-indexed, and feeding that into `ece.cov()` produces estimates wildly off from the truth (checked directly: true lag-1 covariance of white noise $\approx 0$, `ece.cov()` on shifted copies returned $\approx -1$). The correct tool is `SIP::SIP.acf()`, used elsewhere in these notes (`mental-load.qmd`) for exactly this purpose: it is a properly derived single-series autocovariance estimator, robust to unknown mean shifts, that (with `type = "covariance"`) returns lag-0 through lag-$m$ covariance estimates directly. We use it to build the $L\times L$ Toeplitz lag-covariance matrix — entry $(a,b)$ set to the estimated covariance at lag $|a-b|$ — in place of the raw $\mathbf{Y}\mathbf{Y}^\top$.
+
+## Demonstration
+
+We compare the eigenvalue spectrum of the standard (uncentered) trajectory matrix $\mathbf{Y}\mathbf{Y}^\top / K$ against a Toeplitz matrix built from `SIP::SIP.acf(y, lag.max = L - 1, type = "covariance")`. Both scenarios use white noise ($y_t$ has no true autocorrelation, so the true lag-covariance matrix is $\sigma^2 I_L$, matching the $\Sigma = I$ setup from the PCA demonstration):
+
+- **Scenario 1**: pure white noise, no mean shift.
+- **Scenario 2**: white noise plus a square-wave mean shift (change points every 8 observations) — the same kind of transient baseline jump a motion artifact would produce. `SIP.acf()`'s debiasing needs each mean-shift segment to be comfortably longer than the requested `lag.max`; with $L = 5$ (`lag.max = 4`) a segment length of 4 is too short for reliable estimation (verified directly — segments of 4 produce a spurious spike at lag 3), so we use segments of length 8 here.
+
+Since neither scenario introduces true autocorrelation, we again look at the eigenvalue spectrum rather than eigenvector alignment. Under Scenario 2, the standard trajectory matrix should show inflated leading eigenvalues (from the shared jump appearing in overlapping embedding windows), while the ECE-based lag-covariance matrix should stay flat near 1 in both scenarios.
+
+```{r ssa-sim}
+#| cache: true
+set.seed(1)
+n_sim   <- 1000
+n       <- 1000
+L_embed <- 5
+amp     <- 1
+L_seg   <- 8
+
+simulate_y <- function(scenario, n, amp, L_seg) {
+  e <- rnorm(n)
+  if (scenario == 1) e else amp * square_wave(n, L_seg) + e
+}
+
+sample_trajectory_cov <- function(y, L_embed) {
+  n <- length(y)
+  K <- n - L_embed + 1
+  Ymat <- sapply(1:K, function(k) y[k:(k + L_embed - 1)])
+  (Ymat %*% t(Ymat)) / K
+}
+
+ece_autocov <- function(y, L_embed) {
+  r <- SIP.acf(y, lag.max = L_embed - 1, type = "covariance", plot = FALSE)
+  outer(1:L_embed, 1:L_embed, \(a, b) r$acf[abs(a - b) + 1])
+}
+
+run_ssa_sim <- function(scenario, n_sim, n, amp, L_seg, L_embed) {
+  map_dfr(1:n_sim, ~{
+    y <- simulate_y(scenario, n, amp, L_seg)
+    eig_sample <- eigen(sample_trajectory_cov(y, L_embed), only.values = TRUE)$values
+    eig_ece    <- eigen(ece_autocov(y, L_embed), only.values = TRUE)$values
+    bind_rows(
+      tibble(pc = seq_along(eig_sample), eigenvalue = eig_sample, method = "Trajectory (Standard)"),
+      tibble(pc = seq_along(eig_ece),    eigenvalue = eig_ece,    method = "ECE")
+    )
+  })
+}
+
+ssa_s1 <- run_ssa_sim(1, n_sim, n, amp, L_seg, L_embed)
+ssa_s2 <- run_ssa_sim(2, n_sim, n, amp, L_seg, L_embed)
+```
+
+```{r}
+#| echo: false
+plot_ssa_eigen <- function(df, title) {
+  df |>
+    mutate(
+      pc     = factor(pc),
+      method = factor(method, levels = c("Trajectory (Standard)", "ECE"))
+    ) |>
+    ggplot(aes(x = pc, y = eigenvalue, fill = method)) +
+    geom_boxplot(outlier.alpha = 0.2) +
+    geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+    labs(x = "Eigenvalue Index", y = "Eigenvalue", fill = NULL, title = title) +
+    theme_minimal() +
+    theme(legend.position = "top")
+}
+```
+
+::: {.panel-tabset}
+
+## Scenario 1 (no mean shift)
+
+```{r}
+#| echo: false
+plot_ssa_eigen(ssa_s1, "L = 5 — Scenario 1, white noise, no mean shift")
+```
+
+## Scenario 2 (mean shift, L = 8)
+
+```{r}
+#| echo: false
+plot_ssa_eigen(ssa_s2, "L = 5 — Scenario 2 (L = 8), white noise with mean shift")
+```
+
+:::
