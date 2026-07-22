@@ -1,0 +1,221 @@
+---
+title: "Confidence Interval"
+---
+
+## Motivation
+
+The naive confidence interval for $\rho$ takes the form
+
+$$\hat\rho \pm z_{\alpha/2} \, SE(\hat\rho)$$
+
+using the asymptotic normality of $\hat\rho$ directly. This works reasonably
+well when $\rho$ is near $0$, but degrades near the boundary $\rho \to \pm 1$:
+the sampling distribution of $\hat\rho$ becomes skewed, and the naive interval
+can overshoot $[-1, 1]$ or have poor coverage.
+
+The classical fix is the **Fisher $z$-transform**,
+
+$$\operatorname{arctanh}(\hat\rho) = \frac{1}{2}\ln\left(\frac{1+\hat\rho}{1-\hat\rho}\right),$$
+
+whose sampling distribution is better-approximated by a normal
+(variance-stabilizing, closer to symmetric) than that of $\hat\rho$ itself.
+
+## Objective
+
+Derive the asymptotic variance of $\operatorname{arctanh}(\hat\rho)$ via
+the delta method, using the known (or plug-in) asymptotic variance of
+$\hat\rho$ under the ECE framework. Use this to construct a confidence
+interval for $\operatorname{arctanh}(\hat\rho)$, then map it back through
+$\tanh$ to obtain a confidence interval for $\rho$ with better
+finite-sample coverage than the naive interval.
+
+::: callout-important
+## Theorem: Asymptotic Distribution of $\operatorname{arctanh}(\hat\rho)$
+
+Under the conditions of the [Z-Test theorem](z-test.qmd),
+$$
+\sqrt{n}\bigl(\operatorname{arctanh}(\hat\rho) - \operatorname{arctanh}(\rho)\bigr) \xrightarrow{d} N(0,\, \tau^2),
+$$
+$$
+\tau^2 = \frac{1}{n}\left[\frac{\omega_x^2+\omega_y^2-2\rho\,\omega_{xy}}{1-\rho^2} + \frac{1}{(1-\rho^2)^2}\left(\frac{\rho^2}{4}(\kappa_{40}+2\kappa_{22}+\kappa_{04}) - \rho(\kappa_{31}+\kappa_{13}) + \kappa_{22}\right) + \frac{5}{2}\right].
+$$
+
+::: {.callout-note collapse="true"}
+## Remark: Asymptotic Variance Under Gaussian Errors
+
+Under the Gaussian assumption ($\kappa_{40}=\kappa_{04}=3$, $\kappa_{31}=\kappa_{13}=3\rho$,
+$\kappa_{22}=1+2\rho^2$), $v^2$ reduces (per the Gaussian remark in
+[z-test.qmd](z-test.qmd)) to
+$$
+v^2 = \frac{1}{n}(1-\rho^2)\left(\omega_x^2+\omega_y^2-2\rho\,\omega_{xy} + \frac{7}{2}(1-\rho^2)\right).
+$$
+Dividing by $(1-\rho^2)^2$ leaves a single power of $(1-\rho^2)$ in the denominator on the
+$\omega$ terms, while $\frac{7}{2}(1-\rho^2)^2$ cancels to a constant:
+$$
+\tau^2_{\text{Gaussian}} = \frac{1}{n}\left[\frac{\omega_x^2+\omega_y^2-2\rho\,\omega_{xy}}{1-\rho^2} + \frac{7}{2}\right].
+$$
+This still depends on $\rho$ through the $\omega$ terms whenever change points are present.
+:::
+
+::: {.callout-note collapse="true"}
+## Remark: Exact Variance Stabilization Requires No Jumps
+
+Setting $\omega_x = \omega_y = \omega_{xy} = 0$ (no change points) in
+$\tau^2_{\text{Gaussian}}$ above removes the only $\rho$-dependent term, leaving
+$$
+\tau^2 = \frac{7}{2n},
+$$
+constant in $\rho$ — the classical variance-stabilizing property of the Fisher transform
+(up to a constant reflecting that ECE's estimator differs from the ordinary sample
+correlation). With change points present, or under non-Gaussian errors, $\tau^2$ retains
+genuine dependence on $\rho$.
+:::
+:::
+
+**Step 1.** Recall the asymptotic distribution of $\hat\rho$ established in `z-test.qmd`:
+$$
+\sqrt{n}(\hat\rho - \rho) \xrightarrow{d} N(0,\, v^2).
+$$
+
+**Step 2.** Compute $\varphi'(\rho)$ for $\varphi(\rho) = \operatorname{arctanh}(\rho) = \frac{1}{2}\ln\left(\frac{1+\rho}{1-\rho}\right)$.
+
+::: {.callout-note collapse="true"}
+## Derivative: $\varphi'(\rho)$
+
+Write
+$$
+\varphi(\rho) = \frac{1}{2}\ln(1+\rho) - \frac{1}{2}\ln(1-\rho).
+$$
+
+Differentiating term by term,
+$$
+\varphi'(\rho) = \frac{1}{2}\cdot\frac{1}{1+\rho} - \frac{1}{2}\cdot\frac{-1}{1-\rho}
+= \frac{1}{2}\left(\frac{1}{1+\rho} + \frac{1}{1-\rho}\right).
+$$
+
+Combining over the common denominator $(1+\rho)(1-\rho) = 1-\rho^2$,
+$$
+\varphi'(\rho) = \frac{1}{2}\cdot\frac{(1-\rho) + (1+\rho)}{1-\rho^2} = \frac{1}{2}\cdot\frac{2}{1-\rho^2} = \frac{1}{1-\rho^2}.
+$$
+:::
+
+**Step 3.** Apply the (univariate) delta method to obtain
+$$
+\tau^2 = [\varphi'(\rho)]^2\, v^2 = \frac{v^2}{(1-\rho^2)^2}.
+$$
+
+Substituting the general $v^2$ formula from `z-test.qmd` and dividing each term by
+$(1-\rho^2)^2$: the $(1-\rho^2)(\omega_x^2+\omega_y^2-2\rho\omega_{xy})$ term picks up a
+single power of $(1-\rho^2)$ in the denominator, the $\kappa$-cumulant terms and
+$\kappa_{22}$ pick up the full $(1-\rho^2)^{-2}$, and $\frac{5}{2}(1-\rho^2)^2$ cancels
+cleanly to the constant $\frac{5}{2}$, giving
+$$
+\tau^2 = \frac{1}{n}\left[\frac{\omega_x^2+\omega_y^2-2\rho\,\omega_{xy}}{1-\rho^2} + \frac{1}{(1-\rho^2)^2}\left(\frac{\rho^2}{4}(\kappa_{40}+2\kappa_{22}+\kappa_{04}) - \rho(\kappa_{31}+\kappa_{13}) + \kappa_{22}\right) + \frac{5}{2}\right].
+$$
+
+## Confidence Interval
+
+**Plug-in estimate.** Following the convention used for $\hat\rho$ (`ece.cor.se(X)`
+estimates $v$ directly from data), define
+$$
+\hat\tau = \frac{\hat v}{1-\hat\rho^2}.
+$$
+
+**CI on the $\operatorname{arctanh}$ scale.**
+$$
+\left[\,\operatorname{arctanh}(\hat\rho) - z_{\alpha/2}\hat\tau,\ \ \operatorname{arctanh}(\hat\rho) + z_{\alpha/2}\hat\tau\,\right].
+$$
+
+**Back-transform via $\tanh$.** Since $\tanh$ is monotonic, applying it to both
+endpoints gives a valid CI for $\rho$:
+$$
+\left[\,\tanh\!\left(\operatorname{arctanh}(\hat\rho) - z_{\alpha/2}\hat\tau\right),\ \ \tanh\!\left(\operatorname{arctanh}(\hat\rho) + z_{\alpha/2}\hat\tau\right)\,\right].
+$$
+
+Note this interval is generally **not symmetric around $\hat\rho$** (unlike the naive
+interval) — it is symmetric on the $\operatorname{arctanh}$ scale, then warped by
+$\tanh$, which pulls it away from the boundary $\pm 1$ and gives it better coverage
+properties there.
+
+## Diagnostics
+
+Variance stabilization is a claim about $\hat\tau$ (the SE on the
+$\operatorname{arctanh}$ scale), not about the back-transformed $\rho$-scale
+CI width — as established above, the back-transformed width shrinks like
+$(1-\rho^2)$ regardless of stabilization, since that factor cancels between
+$\hat\tau$ and $\tanh'$. To see stabilization directly, we plot $\hat\tau$
+itself against $\rho$ for each $\rho \in \{0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.95\}$
+($n = 1000$), comparing Scenario 1 (no change points, where the Gaussian
+remark predicts $\tau^2 = 7/(2n)$, flat in $\rho$) against Scenario 2 with
+$L = 4$ (change points present, where the $\omega$ terms should make
+$\hat\tau$ grow as $\rho \to \pm 1$). The theoretical curve
+$\tau = \texttt{ece.cor.se.formula(params)} / (1-\rho^2)$ is overlaid in red.
+The number of replicates is kept small for now during development; this will
+be increased once the pipeline is verified.
+
+```{r}
+#| message: false
+devtools::load_all("..")
+library(tidyverse)
+```
+
+```{r}
+#| echo: false
+tau_hat_once <- function(params) {
+  X   <- generate_data(params)
+  rxy <- ece.cor(X)[1, 2]
+  se  <- ece.cor.se(X, kappa = "gaussian")
+  se / (1 - rxy^2)
+}
+
+sim_tau <- function(scenario_num, L, rho_grid, n = 1000, nsim = 20) {
+  map_dfr(rho_grid, \(rho) {
+    params <- scenario(scenario_num, n = n, r = rho, L = L)
+    tibble(
+      rho           = rho,
+      tau_hat       = map_dbl(1:nsim, ~ tau_hat_once(params)),
+      tau_theoretical = ece.cor.se.formula(params) / (1 - rho^2)
+    )
+  })
+}
+```
+
+```{r}
+#| echo: false
+#| cache: true
+rho_grid <- c(0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.95)
+tau_s1 <- sim_tau(1, L = 2, rho_grid = rho_grid)
+tau_s2 <- sim_tau(2, L = 4, rho_grid = rho_grid)
+```
+
+```{r}
+#| echo: false
+tau_plot <- function(tau_sim) {
+  theoretical <- tau_sim |> distinct(rho, tau_theoretical)
+  tau_sim |>
+    ggplot(aes(x = factor(rho), y = tau_hat)) +
+    geom_boxplot(fill = "steelblue", alpha = 0.6) +
+    geom_point(data = theoretical, aes(x = factor(rho), y = tau_theoretical),
+               color = "firebrick", size = 2) +
+    labs(x = expression(rho), y = expression(hat(tau)),
+         title = "Estimated tau (arctanh-scale SE) vs. rho",
+         subtitle = "Red = theoretical tau; flat = stabilized, rising = not stabilized") +
+    theme_minimal()
+}
+```
+
+::: {.panel-tabset}
+## Scenario 1
+
+```{r}
+#| echo: false
+tau_plot(tau_s1)
+```
+
+## Scenario 2 (L=4)
+
+```{r}
+#| echo: false
+tau_plot(tau_s2)
+```
+:::
