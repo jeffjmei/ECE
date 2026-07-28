@@ -34,7 +34,7 @@ scenario_specs <- tribble(
 method_specs <- tribble(
   ~method, ~B,
   # "bs.multiplier", 1000,
-  "bs.multiplier.center", 1000,
+  # "bs.multiplier.center", 1000,
   # "bs.multiplier.nosplit", 1000,
   # "bs.parametric", 1000,
   # "bs.parametric.psd", 1000,
@@ -56,9 +56,9 @@ method_specs <- tribble(
   # "z.test.null.regress", NA_real_,
   # "z.test.oracle", NA_real_,
   # "z.test.null.oracle", NA_real_
-  # "segment.oracle", NA_real_,
-  # "segment.aic", NA_real_,
-  # "segment.bic", NA_real_
+  "segment.oracle", NA_real_,
+  "segment.aic", NA_real_,
+  "segment.bic", NA_real_
 )
 
 # Final Changes
