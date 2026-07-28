@@ -77,11 +77,13 @@ run_sim <- function(config_row, N = 1000) {
 
   base_row <- config_row |>
     dplyr::mutate(
-      mean_seed = mean_seed,
       n_sim = N,
       runtime = runtime,
       timestamp = Sys.time(),
-      scenario_params = as.character(jsonlite::toJSON(params$scenario_param[setdiff(names(params$scenario_param), "cp")])),
+      scenario_params = as.character(jsonlite::toJSON(c(
+        params$scenario_param[setdiff(names(params$scenario_param), "cp")],
+        list(mean_seed = mean_seed)
+      ))),
       method_params = as.character(if (config_row$method %in% c("bs.multiplier", "bs.multiplier.center", "bs.parametric")) {
         jsonlite::toJSON(list(B = config_row$B))
       } else {
@@ -94,7 +96,7 @@ run_sim <- function(config_row, N = 1000) {
     dplyr::mutate(base_row, metric = "n_errors", metric_val = sum(is.na(p_vals)))
   ) |>
     dplyr::select(
-      scenario, n, p, cov_type, r, amp, err_type, method, seed, mean_seed,
+      scenario, n, p, cov_type, r, amp, err_type, method, seed,
       metric, metric_val, n_sim, runtime, timestamp, scenario_params, method_params
     )
 }
@@ -150,12 +152,14 @@ run_sim_t1 <- function(config_row, N = 1000) {
 
   base_row <- config_row |>
     dplyr::mutate(
-      mean_seed = mean_seed,
       n_errors = sum(is.na(p_vals)),
       n_sim = N,
       runtime = runtime,
       timestamp = Sys.time(),
-      scenario_params = as.character(jsonlite::toJSON(params$scenario_param[setdiff(names(params$scenario_param), "cp")])),
+      scenario_params = as.character(jsonlite::toJSON(c(
+        params$scenario_param[setdiff(names(params$scenario_param), "cp")],
+        list(mean_seed = mean_seed)
+      ))),
       method_params = as.character(if (config_row$method %in% c("bs.multiplier", "bs.multiplier.center", "bs.parametric")) {
         jsonlite::toJSON(list(B = config_row$B))
       } else {
@@ -165,7 +169,7 @@ run_sim_t1 <- function(config_row, N = 1000) {
 
   dplyr::bind_cols(
     dplyr::select(
-      base_row, scenario, n, p, cov_type, r, amp, err_type, method, seed, mean_seed,
+      base_row, scenario, n, p, cov_type, r, amp, err_type, method, seed,
       n_errors, n_sim, runtime, timestamp, scenario_params, method_params
     ),
     dplyr::as_tibble(buckets)
