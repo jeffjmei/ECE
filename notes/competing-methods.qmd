@@ -1,0 +1,51 @@
+---
+title: "Competing Methods"
+execute:
+  echo: false
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(tidyverse)
+```
+
+ECE avoids modeling the mean shift $h(t)$ directly. The competing methods in this
+chapter take the opposite approach: estimate $h(t)$ (or remove it) first, then test
+correlation on what's left. This chapter documents each method and how it's called;
+head-to-head power/size comparisons against ECE live in [type-i-error.qmd] and
+[power.qmd].
+
+## Segmentation
+
+`segment_test()` fits a piecewise-constant mean to each column separately, then
+tests the correlation between the residuals. Change points are located one of two
+ways, controlled by `penalty`:
+
+- `"Oracle"` — uses the true change points from `params$scenario_param$cp` (only
+  available in simulation, where the generating scenario is known).
+- `"AIC"` / `"BIC"` — estimates change points per column via
+  `changepoint::cpts()`, then takes the union across columns.
+
+After subtracting the fitted segment means, the residual correlation $r$ is tested
+with a standard t-statistic, $t = r\sqrt{df / (1 - r^2)}$, on $df = n - 2$
+(or $n - K - 2$ with `correct_df = TRUE`, penalizing for the $K$ estimated change
+points).
+
+```{R}
+#| eval: false
+params <- scenario(2, n = 1000, r = 0, L = 100)
+X <- generate_data(params)
+segment_test(X, params, penalty = "Oracle")
+segment_test(X, params, penalty = "AIC")
+```
+
+## First Differencing
+
+TODO — not yet implemented in `R/`. Sketch: difference each column
+($\Delta X_t = X_t - X_{t-1}$) to remove a piecewise-constant or slowly-varying
+mean, then test correlation on the differenced series. Differencing trades mean-shift
+robustness for a variance penalty (doubles the noise variance) and induces MA(1)
+autocorrelation in the differenced errors, which a naive correlation test ignores.

@@ -24,6 +24,7 @@ book:
       chapters:
         - simulation.qmd
         - scenarios.qmd
+        - competing-methods.qmd
         - type-i-error.qmd
         - power.qmd
         - diagnostics.qmd
