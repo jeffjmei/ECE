@@ -1,0 +1,197 @@
+---
+title: "Scenarios"
+execute:
+  echo: false
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(tidyverse)
+```
+
+`scenario(scenario_num, ...)` builds the parameter list for one of five mean-shift patterns used throughout the simulation studies. Each scenario adds a different nonstationary mean $h(t)$ on top of correlated errors $\varepsilon_t$, so that $X_t = h(t) + \varepsilon_t$. The goal of ECE is to remain valid for testing $\text{Cor}(X)$ under all of these mean patterns without explicitly modeling $h(t)$.
+
+For each scenario below we fix `n=1000`, `r=0`, `amp=1` and show two diagnostics: the generated data `X` (colored, faint) with the true mean signal `h` overlaid (black), and `plot_ece_terms`, which plots the raw pairwise ECE term over time (gray), a rolling-window mean (blue), and the global mean the test actually uses (dashed red). Since $r = 0$, any visible drift in the rolling mean away from the global mean is a symptom of the mean shift leaking into the covariance estimate, not genuine correlation.
+
+## Scenario 1: Flat
+
+```{R}
+params <- scenario(1, n = 1000, r = 0)
+```
+
+No mean shift: `h` is identically zero. This is the stationary baseline against which the other scenarios are compared.
+
+::: {.panel-tabset}
+
+## Signal
+
+```{R scenario-1-h}
+X <- generate_data(params)
+h_df <- tibble(t = seq_len(params$n), h = params$h[, 1])
+X_df <- bind_rows(
+  tibble(t = seq_len(params$n), value = X[, 1], series = "X1"),
+  tibble(t = seq_len(params$n), value = X[, 2], series = "X2")
+)
+ggplot() +
+  geom_line(data = X_df, aes(t, value, color = series), alpha = 0.4) +
+  geom_line(data = h_df, aes(t, h), color = "black", linewidth = 1) +
+  scale_color_manual(values = c(X1 = "steelblue", X2 = "firebrick")) +
+  labs(title = "Scenario 1", x = "Index", y = "Value") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## Trend
+
+```{R scenario-1-trend}
+plot_ece_terms(X)
+```
+
+:::
+
+## Scenario 2: Square Wave
+
+```{R}
+params <- scenario(2, n = 1000, r = 0, L = 100)
+```
+
+The mean flips sign every `L` observations, producing a square wave with hard change points at `seq(L + 1, n, by = L)`. This is the canonical piecewise-constant mean-shift setting that segmentation-based methods are designed for.
+
+::: {.panel-tabset}
+
+## Signal
+
+```{R scenario-2-h}
+X <- generate_data(params)
+h_df <- tibble(t = seq_len(params$n), h = params$h[, 1])
+X_df <- bind_rows(
+  tibble(t = seq_len(params$n), value = X[, 1], series = "X1"),
+  tibble(t = seq_len(params$n), value = X[, 2], series = "X2")
+)
+ggplot() +
+  geom_line(data = X_df, aes(t, value, color = series), alpha = 0.4) +
+  geom_line(data = h_df, aes(t, h), color = "black", linewidth = 1) +
+  scale_color_manual(values = c(X1 = "steelblue", X2 = "firebrick")) +
+  labs(title = "Scenario 2", x = "Index", y = "Value") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## Trend
+
+```{R scenario-2-trend}
+plot_ece_terms(X)
+```
+
+:::
+
+## Scenario 3: Sine Wave
+
+```{R}
+params <- scenario(3, n = 1000, r = 0, period = 365)
+```
+
+The mean drifts smoothly as $\sin(2\pi t / \text{period})$ — a slow seasonal trend with no discrete change points at all. ECE tolerates slow oscillation but degrades as the period shortens toward the sampling rate.
+
+::: {.panel-tabset}
+
+## Signal
+
+```{R scenario-3-h}
+X <- generate_data(params)
+h_df <- tibble(t = seq_len(params$n), h = params$h[, 1])
+X_df <- bind_rows(
+  tibble(t = seq_len(params$n), value = X[, 1], series = "X1"),
+  tibble(t = seq_len(params$n), value = X[, 2], series = "X2")
+)
+ggplot() +
+  geom_line(data = X_df, aes(t, value, color = series), alpha = 0.4) +
+  geom_line(data = h_df, aes(t, h), color = "black", linewidth = 1) +
+  scale_color_manual(values = c(X1 = "steelblue", X2 = "firebrick")) +
+  labs(title = "Scenario 3", x = "Index", y = "Value") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## Trend
+
+```{R scenario-3-trend}
+plot_ece_terms(X)
+```
+
+:::
+
+## Scenario 4: Random Walk
+
+```{R}
+params <- scenario(4, n = 1000, r = 0)
+```
+
+The mean is a cumulative sum of iid Gaussian innovations, `cumsum(rnorm(n))`: a stochastic, unbounded drift with no fixed change points and no periodicity.
+
+::: {.panel-tabset}
+
+## Signal
+
+```{R scenario-4-h}
+X <- generate_data(params)
+h_df <- tibble(t = seq_len(params$n), h = params$h[, 1])
+X_df <- bind_rows(
+  tibble(t = seq_len(params$n), value = X[, 1], series = "X1"),
+  tibble(t = seq_len(params$n), value = X[, 2], series = "X2")
+)
+ggplot() +
+  geom_line(data = X_df, aes(t, value, color = series), alpha = 0.4) +
+  geom_line(data = h_df, aes(t, h), color = "black", linewidth = 1) +
+  scale_color_manual(values = c(X1 = "steelblue", X2 = "firebrick")) +
+  labs(title = "Scenario 4", x = "Index", y = "Value") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## Trend
+
+```{R scenario-4-trend}
+plot_ece_terms(X)
+```
+
+:::
+
+## Scenario 5: Semi Random Walk
+
+```{R}
+params <- scenario(5, n = 1000, r = 0, L = 4, prob = 0.10)
+```
+
+The series is broken into blocks of length `L`; each block is a change point with probability `prob`, and at each change point the mean jumps by a Gaussian step. Between change points the mean is flat. This interpolates between Scenario 1 (no jumps) and Scenario 2 (jumps everywhere), and is the only scenario with both flat segments and irregular, randomly-spaced change points.
+
+::: {.panel-tabset}
+
+## Signal
+
+```{R scenario-5-h}
+X <- generate_data(params)
+h_df <- tibble(t = seq_len(params$n), h = params$h[, 1])
+X_df <- bind_rows(
+  tibble(t = seq_len(params$n), value = X[, 1], series = "X1"),
+  tibble(t = seq_len(params$n), value = X[, 2], series = "X2")
+)
+ggplot() +
+  geom_line(data = X_df, aes(t, value, color = series), alpha = 0.4) +
+  geom_line(data = h_df, aes(t, h), color = "black", linewidth = 1) +
+  scale_color_manual(values = c(X1 = "steelblue", X2 = "firebrick")) +
+  labs(title = "Scenario 5", x = "Index", y = "Value") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## Trend
+
+```{R scenario-5-trend}
+plot_ece_terms(X)
+```
+
+:::

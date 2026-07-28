@@ -23,6 +23,7 @@ book:
     - part: "Numerical Studies"
       chapters:
         - simulation.qmd
+        - scenarios.qmd
         - type-i-error.qmd
         - power.qmd
         - diagnostics.qmd
