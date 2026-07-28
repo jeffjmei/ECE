@@ -143,79 +143,489 @@ Variance stabilization is a claim about $\hat\tau$ (the SE on the
 $\operatorname{arctanh}$ scale), not about the back-transformed $\rho$-scale
 CI width — as established above, the back-transformed width shrinks like
 $(1-\rho^2)$ regardless of stabilization, since that factor cancels between
-$\hat\tau$ and $\tanh'$. To see stabilization directly, we plot $\hat\tau$
-itself against $\rho$ for each $\rho \in \{0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.95\}$
-($n = 1000$), comparing Scenario 1 (no change points, where the Gaussian
-remark predicts $\tau^2 = 7/(2n)$, flat in $\rho$) against Scenario 2 with
-$L = 4$ (change points present, where the $\omega$ terms should make
-$\hat\tau$ grow as $\rho \to \pm 1$). The theoretical curve
-$\tau = \texttt{ece.cor.se.formula(params)} / (1-\rho^2)$ is overlaid in red.
-The number of replicates is kept small for now during development; this will
-be increased once the pipeline is verified.
+$\hat\tau$ and $\tanh'$. To see stabilization directly, we compare the naive
+variance $v^2$ against the transformed variance $\tau^2 = v^2/(1-\rho^2)^2$
+as functions of $\rho \in [-0.9, 0.9]$, using the (deterministic) Gaussian
+formula from the Remark above with $\omega_x^2, \omega_y^2, \omega_{xy}$
+computed once via `ece.complexity()`. Scenario 1 (no change points) has
+$\omega_x = \omega_y = \omega_{xy} = 0$, so $\tau^2$ is exactly constant in
+$\rho$; Scenario 2 with $L = 4$ has change points, so $\tau^2$ retains
+$\rho$-dependence but is still far flatter than the naive $v^2$.
 
 ```{r}
 #| message: false
+#| echo: false
 devtools::load_all("..")
 library(tidyverse)
 ```
 
 ```{r}
 #| echo: false
-tau_hat_once <- function(params) {
-  X   <- generate_data(params)
-  rxy <- ece.cor(X)[1, 2]
-  se  <- ece.cor.se(X, kappa = "gaussian")
-  se / (1 - rxy^2)
-}
+variance_compare <- function(scenario_num, n = 200, rho_grid = seq(-0.9, 0.9, by = 0.1), ...) {
+  params <- scenario(scenario_num, n = n, r = 0.5, ...)
+  w   <- ece.complexity(params$h)
+  wx2 <- w[1, 1]
+  wy2 <- w[2, 2]
+  wxy <- w[1, 2]
 
-sim_tau <- function(scenario_num, L, rho_grid, n = 1000, nsim = 20) {
-  map_dfr(rho_grid, \(rho) {
-    params <- scenario(scenario_num, n = n, r = rho, L = L)
-    tibble(
-      rho           = rho,
-      tau_hat       = map_dbl(1:nsim, ~ tau_hat_once(params)),
-      tau_theoretical = ece.cor.se.formula(params) / (1 - rho^2)
-    )
-  })
+  tibble(rho = rho_grid) |>
+    mutate(
+      naive       = (1 - rho^2) * (wx2 + wy2 - 2 * rho * wxy + 7 / 2 * (1 - rho^2)),
+      transformed = naive / (1 - rho^2)^2
+    ) |>
+    pivot_longer(c(naive, transformed), names_to = "scale", values_to = "variance")
 }
 ```
 
 ```{r}
 #| echo: false
-#| cache: true
-rho_grid <- c(0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.95)
-tau_s1 <- sim_tau(1, L = 2, rho_grid = rho_grid)
-tau_s2 <- sim_tau(2, L = 4, rho_grid = rho_grid)
+vc <- bind_rows(
+  variance_compare(1)          |> mutate(scenario = "Scenario 1"),
+  variance_compare(2, L = 4)   |> mutate(scenario = "Scenario 2 (L=4)")
+) |>
+  mutate(scenario = factor(scenario, levels = c("Scenario 1", "Scenario 2 (L=4)")),
+         scale    = factor(scale, levels = c("naive", "transformed")))
 ```
 
 ```{r}
 #| echo: false
-tau_plot <- function(tau_sim) {
-  theoretical <- tau_sim |> distinct(rho, tau_theoretical)
-  tau_sim |>
-    ggplot(aes(x = factor(rho), y = tau_hat)) +
-    geom_boxplot(fill = "steelblue", alpha = 0.6) +
-    geom_point(data = theoretical, aes(x = factor(rho), y = tau_theoretical),
-               color = "firebrick", size = 2) +
-    labs(x = expression(rho), y = expression(hat(tau)),
-         title = "Estimated tau (arctanh-scale SE) vs. rho",
-         subtitle = "Red = theoretical tau; flat = stabilized, rising = not stabilized") +
-    theme_minimal()
+variance_plot <- function(vc_subset, title) {
+  vc_subset |>
+    ggplot(aes(x = rho, y = variance, color = scale)) +
+    geom_line(linewidth = 1) +
+    facet_wrap(~scenario) +
+    scale_color_manual(values = c(naive = "black", transformed = "firebrick"),
+                        breaks = c("naive", "transformed"),
+                        labels = c(expression(v^2), expression(tau^2))) +
+    labs(x = expression(rho), y = "Asymptotic variance", color = NULL, title = title) +
+    theme_minimal() +
+    theme(legend.position = "bottom")
 }
 ```
 
 ::: {.panel-tabset}
-## Scenario 1
+## $\rho > 0$
 
 ```{r}
 #| echo: false
-tau_plot(tau_s1)
+vc |> filter(rho >= 0) |> variance_plot("Naive vs. Fisher-transformed variance across ρ (ρ ≥ 0)")
 ```
 
-## Scenario 2 (L=4)
+## $\rho < 0$
 
 ```{r}
 #| echo: false
-tau_plot(tau_s2)
+vc |> filter(rho <= 0) |> variance_plot("Naive vs. Fisher-transformed variance across ρ (ρ ≤ 0)")
 ```
 :::
+
+## Coverage Simulation
+
+The variance comparison above is a claim about the asymptotic formulas; it
+says nothing about how the two intervals actually perform in finite samples.
+Here we simulate empirical coverage and average width of the naive and
+Fisher-transformed CIs, at nominal level $0.90$, across a grid of $\rho$ and
+both scenarios, at $n = 200$ with `nsim = 2000` replicates per cell.
+
+```{r z-test-fn}
+#| echo: false
+z_test <- function(X, conf.level = 0.95, kappa = "gaussian", rho = NULL, ztransform = FALSE) {
+  z_crit <- qnorm((1 + conf.level) / 2)
+  if (ncol(X) != 2) stop("type = 'z.test' requires a 2-column matrix")
+  rxy <- ece.cor(X)[1, 2]
+  se <- ece.cor.se(X[, 1], X[, 2], kappa = kappa, rho = rho)
+  if (ztransform) {
+    se <- se / (1 - rxy^2)
+    ci <- (atanh(rxy) + c(-1, 1) * z_crit * se) |>
+      tanh() # transform back into original scale
+  } else {
+    ci <- rxy + c(-1, 1) * z_crit * se
+  }
+  list(
+    estimate = rxy,
+    se       = se,
+    conf.int = structure(ci, conf.level = conf.level),
+    p.value  = 2 * pnorm(abs(rxy / se), lower.tail = FALSE)
+  )
+}
+```
+
+```{r coverage-grid-fn}
+#| echo: false
+coverage_grid <- function(rho_grid, scenario_num, L = NULL, n = 200,
+                           nsim = 2000, conf.level = 0.90) {
+  map_dfr(rho_grid, \(rho) {
+    params <- if (is.null(L)) scenario(scenario_num, n = n, r = rho)
+              else scenario(scenario_num, n = n, r = rho, L = L)
+    n_warn <- 0
+
+    sims <- map_dfr(1:nsim, ~ {
+      X <- generate_data(params)
+      map_dfr(c(FALSE, TRUE), \(zt) {
+        fit <- withCallingHandlers(
+          z_test(X, conf.level = conf.level, kappa = "gaussian", ztransform = zt),
+          warning = function(w) { n_warn <<- n_warn + 1; invokeRestart("muffleWarning") }
+        )
+        tibble(method  = if (zt) "Fisher" else "Naive",
+               covered = fit$conf.int[1] < rho & rho < fit$conf.int[2],
+               width   = diff(fit$conf.int))
+      })
+    })
+
+    sims |>
+      summarise(coverage = mean(covered, na.rm = TRUE), width = mean(width, na.rm = TRUE), .by = method) |>
+      mutate(se = sqrt(coverage * (1 - coverage) / nsim), rho = rho, n_warnings = n_warn)
+  })
+}
+```
+
+```{r ece-coverage-sim}
+#| echo: false
+#| cache: true
+#| dependson: ["z-test-fn", "coverage-grid-fn"]
+rho_grid <- c(-0.99, -0.95, seq(-0.9, 0.9, by = 0.1), 0.95, 0.99)
+cov_s1 <- coverage_grid(rho_grid, 1, nsim = 2000) |> mutate(scenario = "Scenario 1")
+cov_s2 <- coverage_grid(rho_grid, 2, L = 4, nsim = 2000) |> mutate(scenario = "Scenario 2 (L=4)")
+cov <- bind_rows(cov_s1, cov_s2) |>
+  pivot_longer(c(coverage, width), names_to = "metric", values_to = "value") |>
+  mutate(method = factor(method, levels = c("Naive", "Fisher")))
+```
+
+```{r}
+#| echo: false
+coverage_plot <- function(cov_subset, title) {
+  cov_subset |>
+    ggplot(aes(x = rho, y = value, color = method)) +
+    geom_ribbon(data = ~filter(.x, metric == "coverage"),
+                aes(ymin = value - 1.96 * se, ymax = value + 1.96 * se, fill = method),
+                alpha = 0.15, color = NA) +
+    geom_hline(data = tibble(metric = "coverage", value = 0.90),
+               aes(yintercept = value), linetype = "dashed", color = "gray50") +
+    geom_line(linewidth = 1) +
+    geom_point(size = 1.5) +
+    facet_grid(metric ~ scenario, scales = "free_y") +
+    scale_color_manual(values = c(Naive = "black", Fisher = "firebrick")) +
+    scale_fill_manual(values = c(Naive = "black", Fisher = "firebrick"), guide = "none") +
+    labs(x = expression(rho), y = NULL, color = NULL, title = title) +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+}
+
+n_warnings_in <- function(cov_long, rho_filter) {
+  cov_long |>
+    filter(rho_filter(rho)) |>
+    distinct(scenario, rho, n_warnings) |>
+    pull(n_warnings) |>
+    sum()
+}
+```
+
+::: {.panel-tabset}
+## $\rho > 0$
+
+```{r}
+#| echo: false
+coverage_plot(filter(cov, rho >= 0),
+              "Coverage and width of naive vs. Fisher-transformed CIs (n = 200, nsim = 2000)")
+cat(n_warnings_in(cov, \(r) r >= 0), "warnings suppressed during this simulation (rho >= 0).\n")
+```
+
+## $\rho < 0$
+
+```{r}
+#| echo: false
+coverage_plot(filter(cov, rho <= 0),
+              "Coverage and width of naive vs. Fisher-transformed CIs (n = 200, nsim = 2000)")
+cat(n_warnings_in(cov, \(r) r <= 0), "warnings suppressed during this simulation (rho <= 0).\n")
+```
+:::
+
+### Classical Pearson Correlation, for Comparison
+
+Is the modest ECE gap above unusual, or is this just what a Fisher transform
+buys you at $n = 200$ in general? Same $n$, same `rho_grid`, same `nsim`, same
+nominal level — but now for ordinary i.i.d. bivariate normal data and the
+textbook Pearson correlation, no ECE estimator involved: naive uses
+$SE(r) = (1-r^2)/\sqrt{n}$; Fisher uses $SE(\operatorname{arctanh}(r)) = 1/\sqrt{n-3}$.
+
+```{r pearson-coverage-grid-fn}
+#| echo: false
+pearson_coverage_grid <- function(rho_grid, n = 200, nsim = 2000, conf.level = 0.90) {
+  z_crit <- qnorm((1 + conf.level) / 2)
+  map_dfr(rho_grid, \(rho) {
+    n_warn <- 0
+    sims <- map_dfr(1:nsim, ~ {
+      x <- rnorm(n)
+      y <- rho * x + sqrt(1 - rho^2) * rnorm(n)
+      withCallingHandlers({
+        r <- cor(x, y)
+        ci_naive  <- r + c(-1, 1) * z_crit * (1 - r^2) / sqrt(n)
+        ci_fisher <- tanh(atanh(r) + c(-1, 1) * z_crit / sqrt(n - 3))
+        bind_rows(
+          tibble(method = "Naive",  covered = ci_naive[1] < rho & rho < ci_naive[2],  width = diff(ci_naive)),
+          tibble(method = "Fisher", covered = ci_fisher[1] < rho & rho < ci_fisher[2], width = diff(ci_fisher))
+        )
+      }, warning = function(w) { n_warn <<- n_warn + 1; invokeRestart("muffleWarning") })
+    })
+    sims |>
+      summarise(coverage = mean(covered, na.rm = TRUE), width = mean(width, na.rm = TRUE), .by = method) |>
+      mutate(se = sqrt(coverage * (1 - coverage) / nsim), rho = rho, n_warnings = n_warn)
+  })
+}
+```
+
+```{r pearson-coverage-sim}
+#| echo: false
+#| cache: true
+#| dependson: ["ece-coverage-sim", "pearson-coverage-grid-fn"]
+set.seed(123)
+cov_pearson <- pearson_coverage_grid(rho_grid, n = 200, nsim = 2000) |>
+  pivot_longer(c(coverage, width), names_to = "metric", values_to = "value") |>
+  mutate(method = factor(method, levels = c("Naive", "Fisher")))
+```
+
+```{r}
+#| echo: false
+pearson_coverage_plot <- function(cov_subset, title) {
+  cov_subset |>
+    ggplot(aes(x = rho, y = value, color = method)) +
+    geom_ribbon(data = ~filter(.x, metric == "coverage"),
+                aes(ymin = value - 1.96 * se, ymax = value + 1.96 * se, fill = method),
+                alpha = 0.15, color = NA) +
+    geom_hline(data = tibble(metric = "coverage", value = 0.90),
+               aes(yintercept = value), linetype = "dashed", color = "gray50") +
+    geom_line(linewidth = 1) +
+    geom_point(size = 1.5) +
+    facet_grid(metric ~ ., scales = "free_y") +
+    scale_color_manual(values = c(Naive = "black", Fisher = "firebrick")) +
+    scale_fill_manual(values = c(Naive = "black", Fisher = "firebrick"), guide = "none") +
+    labs(x = expression(rho), y = NULL, color = NULL, title = title) +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+}
+
+n_warnings_in_pearson <- function(cov_long, rho_filter) {
+  cov_long |>
+    filter(rho_filter(rho)) |>
+    distinct(rho, n_warnings) |>
+    pull(n_warnings) |>
+    sum()
+}
+```
+
+::: {.panel-tabset}
+## $\rho > 0$
+
+```{r}
+#| echo: false
+pearson_coverage_plot(filter(cov_pearson, rho >= 0),
+                       "Classical Pearson correlation: naive vs. Fisher-transformed CIs (n = 200, nsim = 2000)")
+cat(n_warnings_in_pearson(cov_pearson, \(r) r >= 0), "warnings suppressed during this simulation (rho >= 0).\n")
+```
+
+## $\rho < 0$
+
+```{r}
+#| echo: false
+pearson_coverage_plot(filter(cov_pearson, rho <= 0),
+                       "Classical Pearson correlation: naive vs. Fisher-transformed CIs (n = 200, nsim = 2000)")
+cat(n_warnings_in_pearson(cov_pearson, \(r) r <= 0), "warnings suppressed during this simulation (rho <= 0).\n")
+```
+:::
+
+::: {.callout-note collapse="true"}
+## Remark: Why Scenario 2 Doesn't Show a Larger Naive/Fisher Gap
+
+One might expect Scenario 2 (change points present) to show *more* naive
+undercoverage near the boundary than Scenario 1, since $\omega_x, \omega_y,
+\omega_{xy} \neq 0$ there. The plot above shows the opposite: both scenarios
+look qualitatively similar for the naive method.
+
+The reason is specific to how `mean_square_wave()` builds the mean shift
+(`R/sim-scenarios.R`): it applies the **same** square wave to both columns of
+`h`, so $X$ and $Y$ jump at identical times with identical signs. This forces
+$\omega_x = \omega_y = \omega_{xy}$ exactly, and the naive-variance term
+reduces to
+$$
+\omega_x^2+\omega_y^2-2\rho\,\omega_{xy} = 2\omega_x^2(1-\rho),
+$$
+which itself vanishes as $\rho \to 1$ at the same order as the $(1-\rho^2)$
+prefactor already multiplying it. So the "extra" variance from change points
+does not act as a floor near the boundary — it decays just as fast. Numerically,
+at $n=200$, $L=4$, the naive $v^2$ in Scenario 2 is only about $1.3\times$
+Scenario 1's near $\rho = 0.9$–$0.99$, not dramatically larger.
+
+This means Scenario 2 as currently defined is a weak test of the "change
+points make the naive interval worse" hypothesis, since $X$ and $Y$ move in
+lockstep. A sharper test would need independent jump patterns for $X$ and $Y$
+(different timing, phase, or sign) so that $\omega_x^2+\omega_y^2-2\rho\,\omega_{xy}$
+does not cancel near the boundary — left for future work.
+:::
+
+## Complexity Parameter Estimate
+
+**How the estimate is produced.** `ece.complexity(x, y, L)` (via the internal
+`ece_pair()`) estimates $\omega_{xy}$ by regression on lagged cross-products.
+For lags $k = 1, \dots, L$, define
+$$
+R_k = \frac{T_k(X,Y)}{2n}, \qquad T_k(X,Y) = \sum_{i=1}^n (X_i - X_{i+k})(Y_i - Y_{i+k}),
+$$
+(indices taken circularly). Since $\mathbb{E}[T_k(X,Y)] = k\,W_{xy} + 2n\sigma_{xy}$
+(established in `z-test.qmd`, with $W_{xy} = T_1(\theta_x,\theta_y)$ and
+$\omega_{xy} = W_{xy}/n$), $R_k$ is linear in $k$ with intercept $\sigma_{xy}$
+and slope $\omega_{xy}/2$:
+$$
+\mathbb{E}[R_k] = \sigma_{xy} + \frac{k}{2}\omega_{xy}.
+$$
+`ece_pair` regresses $R_1, \dots, R_L$ on $(1, k)$ by OLS and reports the
+intercept as `cov` and twice the slope as `complexity`. The package default
+(and the only case used elsewhere in these notes) is $L = 2$, for which the
+regression uses exactly two points and reduces to a closed form: the slope of
+a line through $(1, R_1)$ and $(2, R_2)$ is $R_2 - R_1$, so
+$$
+\hat\omega_{xy} = 2(R_2 - R_1) = \frac{T_2(X,Y) - T_1(X,Y)}{n}.
+$$
+
+::: callout-important
+## Theorem: Mean and Variance of $\hat\omega_{xy}$ ($L = 2$)
+
+$$
+\mathbb{E}[\hat\omega_{xy}] = \omega_{xy},
+$$
+$$
+\operatorname{Var}(\hat\omega_{xy}) = \frac{1}{n}\Big[4(\sigma_x^2\sigma_y^2 + \sigma_{xy}^2) + 2(\sigma_y^2\omega_x^2 + \sigma_x^2\omega_y^2) + 4\sigma_{xy}\,\omega_{xy}\Big].
+$$
+
+::: {.callout-note collapse="true"}
+## Remark: Scale-Normalized Form
+
+Setting $\sigma_x = \sigma_y = 1$, $\sigma_{xy} = \rho$,
+$$
+\operatorname{Var}(\hat\omega_{xy}) = \frac{1}{n}\Big[4(1+\rho^2) + 2(\omega_x^2+\omega_y^2) + 4\rho\,\omega_{xy}\Big].
+$$
+:::
+
+::: {.callout-note collapse="true"}
+## Remark: No Dependence on Fourth Cumulants
+
+$\operatorname{Var}(T_k(X,Y))$ depends on $\kappa_{22}$ (see `z-test.qmd`), but
+the $\kappa_{22}\sigma_x^2\sigma_y^2$ contribution is identical across
+$\operatorname{Var}(T_1)$, $\operatorname{Var}(T_2)$, and
+$\operatorname{Cov}(T_1,T_2)$ up to a fixed multiple of $n$, and cancels
+exactly in $\operatorname{Var}(T_2 - T_1)$. So $\operatorname{Var}(\hat\omega_{xy})$
+has no dependence on the error distribution's kurtosis — it only needs finite
+second moments to be well-defined, unlike $v^2$ and $\tau^2$ above which both
+involve $\kappa_{40}, \kappa_{22}, \kappa_{04}$, etc.
+:::
+:::
+
+**Step 1.** By linearity of $\mathbb{E}[T_k(X,Y)] = k\,W_{xy} + 2n\sigma_{xy}$,
+$$
+\mathbb{E}[\hat\omega_{xy}] = \frac{\mathbb{E}[T_2(X,Y)] - \mathbb{E}[T_1(X,Y)]}{n} = \frac{(2W_{xy}+2n\sigma_{xy}) - (W_{xy}+2n\sigma_{xy})}{n} = \frac{W_{xy}}{n} = \omega_{xy}.
+$$
+The estimator is exactly unbiased for any $n$ — no asymptotics required.
+
+**Step 2.** Compute $\operatorname{Var}(T_2(X,Y) - T_1(X,Y))$ using the
+$\Sigma_Z$ building blocks from `z-test.qmd` (`var_Qh_est`, `cov_Qh_Qk_est`
+in `R/theory-estimators.R`):
+$$
+\operatorname{Var}(T_2 - T_1) = \operatorname{Var}(T_2) + \operatorname{Var}(T_1) - 2\operatorname{Cov}(T_1, T_2).
+$$
+Substituting the formulas for $\operatorname{Var}(T_k(X,Y))$ and
+$\operatorname{Cov}(T_1(X,Y), T_2(X,Y))$ and collecting terms, every
+$\kappa_{22}\sigma_x^2\sigma_y^2$ contribution cancels, leaving
+$$
+\operatorname{Var}(T_2 - T_1) = 4n(\sigma_x^2\sigma_y^2+\sigma_{xy}^2) + 2n(\sigma_y^2\omega_x^2+\sigma_x^2\omega_y^2) + 4n\sigma_{xy}\,\omega_{xy}.
+$$
+Dividing by $n^2$ gives $\operatorname{Var}(\hat\omega_{xy})$ as stated in the Theorem.
+
+::: {.callout-note collapse="true"}
+## Consistency Check: Diagonal Case $\hat\omega_x^2$
+
+Setting $y = x$ (so $\sigma_y = \sigma_x$, $\sigma_{xy} = \sigma_x^2$,
+$\omega_y = \omega_x$, $\omega_{xy} = \omega_x^2$) in the Theorem's variance
+formula gives
+$$
+\operatorname{Var}(\hat\omega_x^2) = \frac{1}{n}\Big[4(\sigma_x^4+\sigma_x^4) + 2(\sigma_x^2\omega_x^2+\sigma_x^2\omega_x^2) + 4\sigma_x^2\omega_x^2\Big] = \frac{8\sigma_x^2(\sigma_x^2+\omega_x^2)}{n},
+$$
+which matches deriving $\operatorname{Var}(T_2(X,X)-T_1(X,X))$ directly from
+`var_Tk_est`/`cov_Th_Tk_est` (the auto-complexity building blocks), a
+useful check that the general cross-term derivation specializes correctly.
+:::
+
+### Diagnostics
+
+```{r}
+#| message: false
+#| echo: false
+devtools::load_all("..")
+library(tidyverse)
+```
+
+We first verify the closed-form variance algebraically against the sum of
+building blocks, for arbitrary (not necessarily scenario-derived) inputs, and
+confirm it does not depend on the value of $\kappa_{22}$ passed in:
+
+```{r}
+#| message: false
+library(testthat)
+n <- 200; sx <- 1.3; sy <- 0.8; sxy <- 0.4; wx <- 2.1; wy <- 1.4; wxy <- 0.9
+
+var_omega_xy <- function(n, sx, sy, sxy, wx, wy, wxy) {
+  (4 * (sx^2 * sy^2 + sxy^2) + 2 * (sy^2 * wx + sx^2 * wy) + 4 * sxy * wxy) / n
+}
+
+test_that("Var(omega_hat_xy) matches sum of building blocks, any k22", {
+  for (k22 in c(-3, 0, 1, 5)) {
+    V1  <- var_Qh_est(n, sx, sy, sxy, wx, wy, wxy, k22, k = 1)
+    V2  <- var_Qh_est(n, sx, sy, sxy, wx, wy, wxy, k22, k = 2)
+    C12 <- cov_Qh_Qk_est(n, sx, sy, sxy, wx, wy, wxy, k22)
+    expect_equal((V1 + V2 - 2 * C12) / n^2, var_omega_xy(n, sx, sy, sxy, wx, wy, wxy))
+  }
+})
+```
+
+Next, a Monte Carlo check: simulate Scenario 2 ($n = 200$, $L = 4$, $\rho =
+0.5$), repeatedly estimate $\hat\omega_{xy}$ via `ece.complexity(X, L = 2)`,
+and compare the empirical mean and variance of the residual
+$\hat\omega_{xy} - \omega_{xy}$ against the theoretical values above (the
+residual should center at zero with the theoretical variance).
+
+```{r complexity-bias-sim}
+#| echo: false
+#| cache: true
+params <- scenario(2, n = 200, r = 0.5, L = 4)
+n   <- params$n
+sx  <- sqrt(params$S[1, 1]); sy <- sqrt(params$S[2, 2]); sxy <- params$S[1, 2]
+wx  <- lag_diff(params$h[, 1]) / n
+wy  <- lag_diff(params$h[, 2]) / n
+wxy <- lag_diff(params$h[, 1], params$h[, 2]) / n
+
+omega_hat <- map_dbl(1:2000, ~ ece.complexity(generate_data(params), L = 2)[1, 2],
+                      .progress = TRUE)
+theoretical_var <- var_omega_xy(n, sx, sy, sxy, wx, wy, wxy)
+```
+
+```{r}
+#| echo: false
+tibble(residual = omega_hat - wxy) |>
+  ggplot(aes(x = residual)) +
+  geom_histogram(bins = 40, fill = "steelblue", alpha = 0.8) +
+  geom_vline(xintercept = 0, color = "firebrick", linewidth = 0.8) +
+  geom_vline(xintercept = mean(omega_hat) - wxy, color = "orange", linewidth = 0.8, linetype = "dashed") +
+  labs(x = expression(hat(omega)[xy] - omega[xy]), y = NULL,
+       title = "Bias of the complexity estimator",
+       subtitle = paste0("Red = 0 (theoretical bias); orange = sample mean; t-test p = ",
+                          signif(t.test(omega_hat - wxy)$p.value, 3))) +
+  theme_minimal()
+```
+
+```{r}
+#| echo: false
+tibble(
+  quantity  = c("mean", "variance"),
+  empirical = c(mean(omega_hat), var(omega_hat)),
+  theoretical = c(wxy, theoretical_var)
+)
+```
+
