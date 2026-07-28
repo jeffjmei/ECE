@@ -7,6 +7,20 @@ sin_wave <- function(n, period = 365) {
   sin(2 * pi * (1:n) / period)
 }
 
+random_walk <- function(n) {
+  cumsum(rnorm(n))
+}
+
+semi_random_walk <- function(n, L = 4, prob = 0.10) {
+  n_blocks <- floor(n / L)
+  n_cp <- round(prob * n_blocks)
+  cp_idx <- sort(sample.int(n_blocks, n_cp)) * L
+
+  breaks <- c(1, cp_idx, n + 1)
+  steps <- c(0, rnorm(n_cp))
+  rep(cumsum(steps), times = diff(breaks))
+}
+
 generate_err <- function(params) {
   n <- params$n
   p <- nrow(params$S)

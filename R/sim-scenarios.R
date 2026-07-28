@@ -39,6 +39,17 @@ mean_sin_wave <- function(n, p, amp, period = 365, ...) {
   list(h = matrix(rep(amp * sin_wave(n, period), p), n, p), scenario_param = list(period = period))
 }
 
+mean_random_walk <- function(n, p, amp, ...) {
+  list(h = matrix(rep(amp * random_walk(n), p), n, p), scenario_param = list())
+}
+
+mean_semi_random_walk <- function(n, p, amp, L = 4, prob = 0.10, ...) {
+  list(
+    h = matrix(rep(amp * semi_random_walk(n, L, prob), p), n, p),
+    scenario_param = list(L = L, prob = prob)
+  )
+}
+
 #' @export
 scenario <- function(scenario_num = 1, n = 1000, p = 2, r = 0, amp = 1,
                      cov_type = "compound", err_type = "normal", seed = 1,
@@ -51,6 +62,8 @@ scenario <- function(scenario_num = 1, n = 1000, p = 2, r = 0, amp = 1,
     "1" = mean_flat(n, p, amp, ...),
     "2" = mean_square_wave(n, p, amp, ...),
     "3" = mean_sin_wave(n, p, amp, ...),
+    "4" = mean_random_walk(n, p, amp, ...),
+    "5" = mean_semi_random_walk(n, p, amp, ...),
     stop("Unknown scenario: ", scenario_num)
   )
 
