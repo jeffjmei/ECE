@@ -28,25 +28,30 @@ kappa_from_params <- function(params) {
 }
 
 mean_flat <- function(n, p, amp, ...) {
-  list(h = matrix(0, n, p), scenario_param = list())
+  list(h = matrix(0, n, p), scenario_param = list(cp = integer(0)))
 }
 
 mean_square_wave <- function(n, p, amp, L = n / 2, ...) {
-  list(h = matrix(rep(amp * square_wave(n, L), p), n, p), scenario_param = list(L = L))
+  cp <- seq(L + 1, n, by = L)
+  list(h = matrix(rep(amp * square_wave(n, L), p), n, p), scenario_param = list(L = L, cp = cp))
 }
 
 mean_sin_wave <- function(n, p, amp, period = 365, ...) {
-  list(h = matrix(rep(amp * sin_wave(n, period), p), n, p), scenario_param = list(period = period))
+  list(
+    h = matrix(rep(amp * sin_wave(n, period), p), n, p),
+    scenario_param = list(period = period, cp = integer(0))
+  )
 }
 
 mean_random_walk <- function(n, p, amp, ...) {
-  list(h = matrix(rep(amp * random_walk(n), p), n, p), scenario_param = list())
+  list(h = matrix(rep(amp * random_walk(n), p), n, p), scenario_param = list(cp = integer(0)))
 }
 
 mean_semi_random_walk <- function(n, p, amp, L = 4, prob = 0.10, ...) {
+  result <- semi_random_walk(n, L, prob)
   list(
-    h = matrix(rep(amp * semi_random_walk(n, L, prob), p), n, p),
-    scenario_param = list(L = L, prob = prob)
+    h = matrix(rep(amp * result$series, p), n, p),
+    scenario_param = list(L = L, prob = prob, cp = result$cp)
   )
 }
 

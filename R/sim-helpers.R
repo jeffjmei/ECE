@@ -18,7 +18,7 @@ semi_random_walk <- function(n, L = 4, prob = 0.10) {
 
   breaks <- c(1, cp_idx, n + 1)
   steps <- c(0, rnorm(n_cp))
-  rep(cumsum(steps), times = diff(breaks))
+  list(series = rep(cumsum(steps), times = diff(breaks)), cp = cp_idx)
 }
 
 generate_err <- function(params) {
