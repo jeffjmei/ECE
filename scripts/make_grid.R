@@ -24,9 +24,11 @@ base_params <- list(
 )
 
 scenario_specs <- tribble(
-  ~scenario, ~L,
-  1, NA_real_,
-  2, 4
+  ~scenario, ~L,       ~prob,
+  1,         NA_real_, NA_real_,
+  2,         4,        NA_real_,
+  4,         NA_real_, NA_real_,
+  5,         4,        0.10
 )
 
 method_specs <- tribble(
