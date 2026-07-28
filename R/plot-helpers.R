@@ -181,7 +181,7 @@ plot_ece_terms <- function(X, window = NULL) {
       ggplot2::aes(yintercept = global),
       linetype = "dashed", color = "firebrick"
     ) +
-    ggplot2::geom_line(ggplot2::aes(y = run), color = "steelblue") +
+    ggplot2::geom_line(ggplot2::aes(y = run), color = "steelblue", na.rm = TRUE) +
     ggplot2::facet_wrap(~pair, scales = "free_y") +
     ggplot2::labs(
       x = "time", y = "ECE term (covariance scale)",
