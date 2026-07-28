@@ -34,9 +34,11 @@ test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...)
 
 #' @export
 run_sim <- function(config_row, N = 1000) {
-  standard_cols <- c("scenario", "n", "p", "cov_type", "r", "amp", "err_type", "method", "B", "seed", "n_sims")
+  standard_cols <- c("scenario", "n", "p", "cov_type", "r", "amp", "err_type", "method", "B", "seed", "mean_seed", "n_sims")
   extra_params <- as.list(config_row[setdiff(names(config_row), standard_cols)])
   extra_params <- extra_params[!is.na(extra_params)]
+
+  mean_seed <- if (is.null(config_row$mean_seed) || is.na(config_row$mean_seed)) 1 else config_row$mean_seed
 
   params <- do.call(scenario, c(
     list(
@@ -46,7 +48,8 @@ run_sim <- function(config_row, N = 1000) {
       r            = config_row$r,
       amp          = config_row$amp,
       cov_type     = config_row$cov_type,
-      err_type     = config_row$err_type
+      err_type     = config_row$err_type,
+      seed         = mean_seed
     ),
     extra_params
   ))
@@ -74,10 +77,11 @@ run_sim <- function(config_row, N = 1000) {
 
   base_row <- config_row |>
     dplyr::mutate(
+      mean_seed = mean_seed,
       n_sim = N,
       runtime = runtime,
       timestamp = Sys.time(),
-      scenario_params = as.character(jsonlite::toJSON(params$scenario_param)),
+      scenario_params = as.character(jsonlite::toJSON(params$scenario_param[setdiff(names(params$scenario_param), "cp")])),
       method_params = as.character(if (config_row$method %in% c("bs.multiplier", "bs.multiplier.center", "bs.parametric")) {
         jsonlite::toJSON(list(B = config_row$B))
       } else {
@@ -90,16 +94,18 @@ run_sim <- function(config_row, N = 1000) {
     dplyr::mutate(base_row, metric = "n_errors", metric_val = sum(is.na(p_vals)))
   ) |>
     dplyr::select(
-      scenario, n, p, cov_type, r, amp, err_type, method, seed,
+      scenario, n, p, cov_type, r, amp, err_type, method, seed, mean_seed,
       metric, metric_val, n_sim, runtime, timestamp, scenario_params, method_params
     )
 }
 
 #' @export
 run_sim_t1 <- function(config_row, N = 1000) {
-  standard_cols <- c("scenario", "n", "p", "cov_type", "r", "amp", "err_type", "method", "B", "seed", "n_sims")
+  standard_cols <- c("scenario", "n", "p", "cov_type", "r", "amp", "err_type", "method", "B", "seed", "mean_seed", "n_sims")
   extra_params <- as.list(config_row[setdiff(names(config_row), standard_cols)])
   extra_params <- extra_params[!is.na(extra_params)]
+
+  mean_seed <- if (is.null(config_row$mean_seed) || is.na(config_row$mean_seed)) 1 else config_row$mean_seed
 
   params <- do.call(scenario, c(
     list(
@@ -109,7 +115,8 @@ run_sim_t1 <- function(config_row, N = 1000) {
       r            = config_row$r,
       amp          = config_row$amp,
       cov_type     = config_row$cov_type,
-      err_type     = config_row$err_type
+      err_type     = config_row$err_type,
+      seed         = mean_seed
     ),
     extra_params
   ))
@@ -143,11 +150,12 @@ run_sim_t1 <- function(config_row, N = 1000) {
 
   base_row <- config_row |>
     dplyr::mutate(
+      mean_seed = mean_seed,
       n_errors = sum(is.na(p_vals)),
       n_sim = N,
       runtime = runtime,
       timestamp = Sys.time(),
-      scenario_params = as.character(jsonlite::toJSON(params$scenario_param)),
+      scenario_params = as.character(jsonlite::toJSON(params$scenario_param[setdiff(names(params$scenario_param), "cp")])),
       method_params = as.character(if (config_row$method %in% c("bs.multiplier", "bs.multiplier.center", "bs.parametric")) {
         jsonlite::toJSON(list(B = config_row$B))
       } else {
@@ -157,7 +165,7 @@ run_sim_t1 <- function(config_row, N = 1000) {
 
   dplyr::bind_cols(
     dplyr::select(
-      base_row, scenario, n, p, cov_type, r, amp, err_type, method, seed,
+      base_row, scenario, n, p, cov_type, r, amp, err_type, method, seed, mean_seed,
       n_errors, n_sim, runtime, timestamp, scenario_params, method_params
     ),
     dplyr::as_tibble(buckets)

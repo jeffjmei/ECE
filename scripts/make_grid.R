@@ -24,11 +24,11 @@ base_params <- list(
 )
 
 scenario_specs <- tribble(
-  ~scenario, ~L,       ~prob,
-  1,         NA_real_, NA_real_,
-  2,         4,        NA_real_,
-  4,         NA_real_, NA_real_,
-  5,         4,        0.10
+  ~scenario, ~L,       ~prob,    ~mean_seed,
+  1,         NA_real_, NA_real_, 1,
+  2,         4,        NA_real_, 1,
+  4,         NA_real_, NA_real_, 1,
+  5,         4,        0.10,     1
 )
 
 method_specs <- tribble(
@@ -72,10 +72,13 @@ full_grid <- do.call(crossing, base_params) |>
   filter(!(p == 2 & cov_type == "ar1"))
 
 # --- Compare Against Existing Simulations ---
-join_cols <- c("n", "p", "cov_type", "r", "amp", "err_type", "seed", "n_sims", "scenario", "method")
+join_cols <- c("n", "p", "cov_type", "r", "amp", "err_type", "seed", "mean_seed", "n_sims", "scenario", "method")
 if (file.exists(results_file)) {
   existing <- read_csv(results_file, show_col_types = FALSE) |>
-    rename(n_sims = n_sim) |>
+    rename(n_sims = n_sim)
+  # older results predate mean_seed; they were all generated with mean_seed = 1
+  if (!"mean_seed" %in% names(existing)) existing$mean_seed <- 1
+  existing <- existing |>
     select(all_of(join_cols)) |>
     distinct()
 } else {

@@ -60,6 +60,18 @@ test_that("params$kappa differs from params$kappa_null when r = 0.5", {
   }
 })
 
+test_that("same seed reproduces the same semi-random-walk change points", {
+  params1 <- scenario(5, n = 500, L = 4, prob = 0.1, seed = 42)
+  params2 <- scenario(5, n = 500, L = 4, prob = 0.1, seed = 42)
+  expect_identical(params1$scenario_param$cp, params2$scenario_param$cp)
+})
+
+test_that("different seeds give different semi-random-walk change points", {
+  params1 <- scenario(5, n = 500, L = 4, prob = 0.1, seed = 42)
+  params2 <- scenario(5, n = 500, L = 4, prob = 0.1, seed = 7)
+  expect_false(identical(params1$scenario_param$cp, params2$scenario_param$cp))
+})
+
 test_that("generate_err produces correct covariance structure", {
   S <- diag(2); S[1, 2] <- S[2, 1] <- 0.5
   for (err in c("normal", "t", "lognormal", "exponential")) {
