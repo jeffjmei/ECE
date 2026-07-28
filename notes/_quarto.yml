@@ -19,11 +19,13 @@ book:
         - multiplier-bootstrap-test.qmd
         - parametric-bootstrap-test.qmd
         - independence-test.qmd
+        - confidence-interval.qmd
     - part: "Numerical Studies"
       chapters:
         - simulation.qmd
         - type-i-error.qmd
         - power.qmd
+        - diagnostics.qmd
     - part: "Real Data"
       chapters:
         - co2-inhalation.qmd
@@ -32,8 +34,6 @@ book:
         - mental-load.qmd
     - part: "In Progress"
       chapters:
-        - confidence-interval.qmd
-        - diagnostics.qmd
         - positive-semidefinite.qmd
         - model-misspecification.qmd
         - package.qmd
