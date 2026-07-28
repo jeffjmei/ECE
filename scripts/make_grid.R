@@ -56,14 +56,18 @@ method_specs <- tribble(
   # "z.test.null.regress", NA_real_,
   # "z.test.oracle", NA_real_,
   # "z.test.null.oracle", NA_real_
+  # "segment.oracle", NA_real_,
+  # "segment.aic", NA_real_,
+  # "segment.bic", NA_real_
 )
 
 # Final Changes
 full_grid <- do.call(crossing, base_params) |>
   crossing(scenario_specs) |>
   crossing(method_specs) |>
-  # z.test.* methods require a 2-column matrix (R/ece_test.R:164)
+  # z.test.* and segment.* methods require a 2-column matrix
   filter(!(startsWith(method, "z.test") & p != 2)) |>
+  filter(!(startsWith(method, "segment") & p != 2)) |>
   # compound and ar1 are identical covariance structures when p == 2; keep only one
   filter(!(p == 2 & cov_type == "ar1"))
 

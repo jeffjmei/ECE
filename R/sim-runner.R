@@ -25,6 +25,9 @@ test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...)
     z.test.null.regress = ece.test(X, type = "z.test", kappa = ece.kappa(X, rho = 0, method = "regress"), rho = 0, ...),
     z.test.null.gaussian = ece.test(X, type = "z.test", kappa = "gaussian", rho = 0, ...),
     z.test.null.oracle = ece.test(X, type = "z.test", kappa = params$kappa_null, rho = 0, ...),
+    segment.oracle = segment_test(X, params, penalty = "Oracle", ...),
+    segment.aic = segment_test(X, params, penalty = "AIC", ...),
+    segment.bic = segment_test(X, params, penalty = "BIC", ...),
     stop("Unknown method: ", method)
   )
 }
