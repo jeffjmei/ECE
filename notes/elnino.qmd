@@ -1,0 +1,247 @@
+---
+title: "El Niño / PDO"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+library(zoo)
+```
+
+Two Pacific climate indices:
+
+- `nino34_anom`: monthly Niño 3.4 SST anomaly, unsmoothed, NOAA CPC (1950–present). Source: <https://www.cpc.ncep.noaa.gov/data/indices/> (`ersst5.nino.mth.91-20.ascii`)
+- `pdo`: monthly Pacific Decadal Oscillation index, NOAA NCEI (1854–present, joined to the overlapping range). Source: <https://www.ncei.noaa.gov/access/monitoring/pdo/>
+
+Both are monthly and unsmoothed — unlike ONI's 3-month rolling mean, which would introduce autocorrelation by construction and violate `model-assumptions.qmd`. The ENSO–PDO correlation is known to be non-stationary across decadal climate regimes (e.g. the 1976–77 Pacific climate shift), making this a natural real-data test case for ECE.
+
+```{R}
+#| echo: false
+#| message: false
+#| label: elnino-load
+
+nino <- read_table(
+  "~/Documents/Research/Code/ECE/data/real-data/elnino/nino34-raw.txt",
+  skip = 1,
+  col_names = c("year", "month", "nino12", "nino12_anom", "nino3", "nino3_anom",
+                "nino4", "nino4_anom", "nino34", "nino34_anom")
+) |>
+  select(year, month, nino34_anom)
+
+pdo <- read_table(
+  "~/Documents/Research/Code/ECE/data/real-data/elnino/pdo-raw.txt",
+  skip = 2,
+  col_names = c("year", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+) |>
+  pivot_longer(-year, names_to = "month_name", values_to = "pdo") |>
+  mutate(month = match(month_name, month.abb)) |>
+  select(year, month, pdo)
+
+X <- inner_join(nino, pdo, by = c("year", "month")) |>
+  arrange(year, month) |>
+  mutate(date = as.Date(sprintf("%d-%02d-01", year, month))) |>
+  filter(pdo > -99)
+```
+
+```{R}
+#| echo: false
+#| label: fig-elnino-raw
+#| fig-cap: "Niño 3.4 anomaly and PDO index, monthly."
+
+X |>
+  select(date, nino34_anom, pdo) |>
+  pivot_longer(-date, names_to = "series", values_to = "value") |>
+  ggplot(aes(date, value, color = series)) +
+  geom_line() +
+  labs(title = "Niño 3.4 Anomaly vs. PDO Index", x = NULL, y = NULL, color = NULL) +
+  theme_minimal()
+```
+
+```{R}
+#| echo: false
+#| label: elnino-matrix
+
+X_mat <- as.matrix(X[, c("nino34_anom", "pdo")])
+```
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R plot-elnino}
+#| echo: false
+
+par(mfrow = c(2, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:2) {
+  plot(X_mat[, i], type = "l", xaxt = "n", yaxt = "n",
+        ylab = colnames(X_mat)[i], cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+}
+axis(1)
+mtext("Month index (1950–present)", side = 1, outer = TRUE, line = 2.5)
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R acf-elnino-naive}
+#| echo: false
+
+par(mfrow = c(2, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:2) {
+  acf(X_mat[, i], main = "", xlab = "", ylab = colnames(X_mat)[i])
+}
+mtext("Lag (months)", side = 1, outer = TRUE, line = 0.5)
+```
+
+### Mean-Shift-Invariant
+
+```{R acf-elnino-invariant}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R trend-elnino-naive}
+#| echo: false
+
+win <- 120 # 10-year window at monthly resolution
+
+roll_cor <- rollapply(
+  X_mat, width = win,
+  FUN = function(m) cor(m[, 1], m[, 2]),
+  by.column = FALSE, fill = NA, align = "right"
+)
+
+plot(X$date, roll_cor, type = "l", xlab = NULL, ylab = "correlation",
+      main = paste0(win, "-month rolling correlation"))
+abline(h = 0, lty = "dashed", col = "grey50")
+```
+
+### Mean-Shift-Invariant
+
+```{R trend-elnino-invariant}
+#| echo: false
+
+plot_ece_terms(X_mat)
+```
+
+:::
+
+:::
+
+Naive ACF (base-R `acf()`): lag-1 autocorrelation ~0.9–0.95 for both series, decaying slowly — violates `model-assumptions.qmd`. Mean-Shift-Invariant ACF (`SIP::SIP.acf`): both series read as uncorrelated at every lag. `SIP.acf` discounts mean-shift-induced autocorrelation, so the gap suggests the naive values are inflated by the regime-shifting mean, not pure error autocorrelation — though this doesn't prove the residual process is white.
+
+Faded bars in the Mean-Shift-Invariant ACF mark lags where `SIP.acf`'s own difference-based variance estimate came out negative and fell back to the naive `var(x)` (see `plot_sip_acf()`/`sip_acf_with_fallback()` in `R/plot-helpers.R`). Since `var(x)` is inflated by mean shifts relative to the variance `SIP.acf` is meant to use, those lags' values rest on a mismatched denominator and are less trustworthy than the rest. For `nino34_anom` every lag shown falls back (fully faded); for `pdo` none do.
+
+Naive Trend (rolling Pearson correlation) shows the same regime swings seen above, level relationship included. Mean-Shift-Invariant Trend (`plot_ece_terms`, differenced product terms) is what ECE's test statistic actually uses, and it still drifts from its global mean over multi-year stretches — some non-stationarity survives mean-shift removal.
+
+## Downsampling
+
+Keep every 3rd observation (`k = 3`), matching `mental-load.qmd` and ENSO/PDO's typical 3-month tracking cadence.
+
+```{R downsample-elnino}
+#| echo: false
+
+k_ds <- 3
+idx  <- seq(1, nrow(X_mat), by = k_ds)
+X_ds <- X_mat[idx, ]
+```
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R plot-elnino-downsampled}
+#| echo: false
+
+par(mfrow = c(2, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:2) {
+  plot(X_ds[, i], type = "l", xaxt = "n", yaxt = "n",
+        ylab = colnames(X_ds)[i], cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+}
+axis(1)
+mtext("Index (every 3rd month)", side = 1, outer = TRUE, line = 2.5)
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R acf-elnino-downsampled-naive}
+#| echo: false
+
+par(mfrow = c(2, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:2) {
+  acf(X_ds[, i], main = "", xlab = "", ylab = colnames(X_ds)[i])
+}
+mtext("Lag (every 3rd month)", side = 1, outer = TRUE, line = 0.5)
+```
+
+### Mean-Shift-Invariant
+
+```{R acf-elnino-downsampled-invariant}
+#| echo: false
+
+plot_sip_acf(X_ds)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R trend-elnino-downsampled-naive}
+#| echo: false
+
+win_ds <- round(120 / k_ds) # same ~10-year span as the full-sample window
+
+roll_cor_ds <- rollapply(
+  X_ds, width = win_ds,
+  FUN = function(m) cor(m[, 1], m[, 2]),
+  by.column = FALSE, fill = NA, align = "right"
+)
+
+plot(seq_along(roll_cor_ds), roll_cor_ds, type = "l", xlab = "Index (every 3rd month)",
+      ylab = "correlation", main = paste0(win_ds, "-obs (~10yr) rolling correlation"))
+abline(h = 0, lty = "dashed", col = "grey50")
+```
+
+### Mean-Shift-Invariant
+
+```{R trend-elnino-downsampled-invariant}
+#| echo: false
+
+plot_ece_terms(X_ds)
+```
+
+:::
+
+:::
+
+Mean-Shift-Invariant ACF stays near-zero before and after downsampling. Naive ACF drops but doesn't clear: lag-1 autocorrelation ~0.95→0.76 (`nino34_anom`), ~0.98→0.70 (`pdo`). `k = 3` is not enough to whiten either series — ENSO/PDO persistence runs months to years, unlike the sensor-artifact case in `mental-load.qmd`. A larger stride or explicit pre-whitening would be needed to satisfy the naive no-autocorrelation assumption; the mean-shift-invariant view suggests less of that persistence reaches the quantity ECE actually uses.

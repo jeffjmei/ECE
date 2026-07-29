@@ -189,3 +189,67 @@ plot_ece_terms <- function(X, window = NULL) {
     ) +
     ggplot2::theme_minimal()
 }
+
+# Runs SIP::SIP.acf while intercepting its "sample variance will be used"
+# warnings, which fire per-lag whenever SIP.acf's own difference-based
+# variance estimate comes out negative and it falls back to var(x) instead.
+# The warning message is the only place that lag index is exposed (SIP.acf's
+# return value doesn't carry it), so we parse it out of the message text and
+# suppress the warning from printing. Returns SIP.acf's result with an added
+# `fallback` logical vector, aligned with `lag`, flagging which lags used the
+# substituted variance.
+sip_acf_with_fallback <- function(x, lag.max = 4, ci.level = 0.95) {
+  fallback <- logical(lag.max + 1)
+
+  res <- withCallingHandlers(
+    SIP::SIP.acf(x, lag.max = lag.max, ci.level = ci.level, plot = FALSE),
+    warning = function(w) {
+      if (grepl("sample variance will be used", conditionMessage(w))) {
+        lag_i <- as.integer(regmatches(
+          conditionMessage(w),
+          regexpr("(?<=at )[0-9]+", conditionMessage(w), perl = TRUE)
+        ))
+        fallback[lag_i + 1] <<- TRUE
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+  res$fallback <- fallback
+  res
+}
+
+# Diagnostic: mean-shift-invariant ACF via SIP::SIP.acf
+#
+# For each column of `X`, draws a base-R acf()-style plot (thin vertical
+# lines from 0, dashed blue confidence bounds) using the SIP.acf estimate,
+# with bars colored red where |acf| exceeds the null CI. Unlike a naive
+# acf(), SIP.acf discounts autocorrelation induced by mean shifts, so
+# comparing this against base-R acf() shows how much of the naive series'
+# autocorrelation is attributable to a non-stationary mean versus genuine
+# residual dependence.
+#
+# Lags where SIP.acf's own variance estimate went negative (see
+# sip_acf_with_fallback()) fall back to the naive var(x) as a denominator.
+# If the series has real mean shifts, var(x) is inflated by that mean
+# structure relative to the mean-shift-adjusted variance SIP.acf is meant to
+# use, so those lags' bars are drawn at reduced opacity to flag them as less
+# trustworthy than the rest.
+plot_sip_acf <- function(X, lag.max = 4, ci.level = 0.95) {
+  X <- as.matrix(X)
+  p <- ncol(X)
+  if (is.null(colnames(X))) colnames(X) <- paste0("V", seq_len(p))
+
+  par(mfrow = c(p, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+  for (i in seq_len(p)) {
+    res <- sip_acf_with_fallback(X[, i], lag.max = lag.max, ci.level = ci.level)
+    lag <- res$lag
+    acf <- res$acf
+    bar_col <- ifelse(abs(acf) > res$h0.ci, "red", "black")
+    bar_col <- mapply(adjustcolor, bar_col, alpha.f = ifelse(res$fallback, 0.3, 1))
+    plot(lag, acf, type = "h", xlab = "", ylab = colnames(X)[i], col = bar_col)
+    abline(h = 0)
+    abline(h = c(-1, 1) * res$h0.ci, col = "blue", lty = 2)
+  }
+  mtext("Lag", side = 1, outer = TRUE, line = 0.5)
+}
