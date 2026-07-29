@@ -130,6 +130,24 @@ ece_terms <- function(x) {
   S
 }
 
+#' Centered Rolling Mean
+#'
+#' A symmetric moving average, computed via [stats::filter()]. Used as the
+#' naive (non-mean-shift-invariant) counterpart to ECE's difference-based
+#' mean removal.
+#'
+#' @param v A numeric vector.
+#' @param window Window width; `floor(window / 2)` points are used on each
+#'   side, so the first/last `floor(window / 2)` entries of the result are
+#'   `NA`.
+#'
+#' @return A numeric vector the same length as `v`.
+#'
+#' @export
+rolling_mean <- function(v, window) {
+  as.numeric(stats::filter(v, rep(1 / window, window), sides = 2))
+}
+
 #' Split into Independent Subsequences
 #'
 #' Splits the rows of a matrix into \code{stride} non-overlapping subsequences

@@ -65,6 +65,10 @@ X |>
 #| label: elnino-matrix
 
 X_mat <- as.matrix(X[, c("nino34_anom", "pdo")])
+
+win <- 25 # matches the window used in mental-load.qmd
+roll_mat <- apply(X_mat, 2, function(col) rolling_mean(col, win))
+colnames(roll_mat) <- colnames(X_mat)
 ```
 
 ::: {.panel-tabset}
@@ -80,6 +84,7 @@ for (i in 1:2) {
   plot(X_mat[, i], type = "l", xaxt = "n", yaxt = "n",
         ylab = colnames(X_mat)[i], cex.lab = 0.8)
   axis(2, labels = FALSE, tck = -0.02)
+  lines(roll_mat[, i], col = "steelblue", lwd = 2)
 }
 axis(1)
 mtext("Month index (1950–present)", side = 1, outer = TRUE, line = 2.5)
@@ -97,7 +102,8 @@ mtext("Month index (1950–present)", side = 1, outer = TRUE, line = 2.5)
 par(mfrow = c(2, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
 
 for (i in 1:2) {
-  acf(X_mat[, i], main = "", xlab = "", ylab = colnames(X_mat)[i])
+  resid_i <- na.omit(X_mat[, i] - roll_mat[, i])
+  acf(resid_i, main = "", xlab = "", ylab = colnames(X_mat)[i])
 }
 mtext("Lag (months)", side = 1, outer = TRUE, line = 0.5)
 ```
@@ -121,7 +127,6 @@ plot_sip_acf(X_mat)
 ```{R trend-elnino-naive}
 #| echo: false
 
-win <- 25 # matches the window used in mental-load.qmd
 plot_naive_terms(X_mat, window = win)
 ```
 
@@ -135,9 +140,17 @@ plot_ece_terms(X_mat, window = win)
 
 :::
 
+## Variance
+
+```{R variance-elnino}
+#| echo: false
+
+plot_ece_variance(X_mat, window = win)
+```
+
 :::
 
-Naive ACF (base-R `acf()`): lag-1 autocorrelation ~0.9–0.95 for both series, decaying slowly — violates `model-assumptions.qmd`. Mean-Shift-Invariant ACF (`SIP::SIP.acf`): both series read as uncorrelated at every lag. `SIP.acf` discounts mean-shift-induced autocorrelation, so the gap suggests the naive values are inflated by the regime-shifting mean, not pure error autocorrelation — though this doesn't prove the residual process is white.
+Naive ACF (base-R `acf()`) now runs on rolling-mean residuals (`X - roll_mat`, same `win = 25` fit shown on the Plot tab), not raw levels — the raw-level version was misleading, since a flat global mean is an underfit for a series with real multi-year structure, and that underfit shows up as inflated apparent autocorrelation rather than genuine short-lag dependence. Even after removing the rolling mean, lag-1 autocorrelation is still ~0.90 (`nino34_anom`) and ~0.66 (`pdo`) — some real short-lag persistence remains — but it now decays to zero within about 5–6 lags (versus staying elevated well past lag 20 on raw levels), then mildly overshoots negative for a few lags, a typical ringing artifact of removing a smooth filter. Mean-Shift-Invariant ACF (`SIP::SIP.acf`): both series read as uncorrelated at every lag. `SIP.acf` discounts mean-shift-induced autocorrelation, so the gap suggests the naive values (raw or residual) are still partly inflated by mean structure the rolling mean didn't fully capture, not pure error autocorrelation — though this doesn't prove the residual process is white.
 
 Faded bars in the Mean-Shift-Invariant ACF mark lags where `SIP.acf`'s own difference-based variance estimate came out negative and fell back to the naive `var(x)` (see `plot_sip_acf()`/`sip_acf_with_fallback()` in `R/plot-helpers.R`). Since `var(x)` is inflated by mean shifts relative to the variance `SIP.acf` is meant to use, those lags' values rest on a mismatched denominator and are less trustworthy than the rest. For `nino34_anom` every lag shown falls back (fully faded); for `pdo` none do.
 
@@ -153,6 +166,10 @@ Keep every 3rd observation (`k = 3`), matching `mental-load.qmd` and ENSO/PDO's 
 k_ds <- 3
 idx  <- seq(1, nrow(X_mat), by = k_ds)
 X_ds <- X_mat[idx, ]
+
+win_ds <- 25 # same fixed window as the full-sample case
+roll_mat_ds <- apply(X_ds, 2, function(col) rolling_mean(col, win_ds))
+colnames(roll_mat_ds) <- colnames(X_ds)
 ```
 
 ::: {.panel-tabset}
@@ -168,6 +185,7 @@ for (i in 1:2) {
   plot(X_ds[, i], type = "l", xaxt = "n", yaxt = "n",
         ylab = colnames(X_ds)[i], cex.lab = 0.8)
   axis(2, labels = FALSE, tck = -0.02)
+  lines(roll_mat_ds[, i], col = "steelblue", lwd = 2)
 }
 axis(1)
 mtext("Index (every 3rd month)", side = 1, outer = TRUE, line = 2.5)
@@ -185,7 +203,8 @@ mtext("Index (every 3rd month)", side = 1, outer = TRUE, line = 2.5)
 par(mfrow = c(2, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
 
 for (i in 1:2) {
-  acf(X_ds[, i], main = "", xlab = "", ylab = colnames(X_ds)[i])
+  resid_i <- na.omit(X_ds[, i] - roll_mat_ds[, i])
+  acf(resid_i, main = "", xlab = "", ylab = colnames(X_ds)[i])
 }
 mtext("Lag (every 3rd month)", side = 1, outer = TRUE, line = 0.5)
 ```
@@ -209,7 +228,6 @@ plot_sip_acf(X_ds)
 ```{R trend-elnino-downsampled-naive}
 #| echo: false
 
-win_ds <- 25 # same fixed window as the full-sample case
 plot_naive_terms(X_ds, window = win_ds)
 ```
 
@@ -223,6 +241,16 @@ plot_ece_terms(X_ds, window = win_ds)
 
 :::
 
+## Variance
+
+```{R variance-elnino-downsampled}
+#| echo: false
+
+plot_ece_variance(X_ds, window = win_ds)
+```
+
 :::
 
-Mean-Shift-Invariant ACF stays near-zero before and after downsampling. Naive ACF drops but doesn't clear: lag-1 autocorrelation ~0.95→0.76 (`nino34_anom`), ~0.98→0.70 (`pdo`). `k = 3` is not enough to whiten either series — ENSO/PDO persistence runs months to years, unlike the sensor-artifact case in `mental-load.qmd`. A larger stride or explicit pre-whitening would be needed to satisfy the naive no-autocorrelation assumption; the mean-shift-invariant view suggests less of that persistence reaches the quantity ECE actually uses.
+Mean-Shift-Invariant ACF stays near-zero before and after downsampling. Naive ACF (on rolling-mean residuals) drops further with downsampling: lag-1 autocorrelation ~0.90→0.75 (`nino34_anom`), ~0.66→0.51 (`pdo`). `k = 3` is not enough to whiten either series — ENSO/PDO persistence runs months to years, unlike the sensor-artifact case in `mental-load.qmd`. A larger stride or explicit pre-whitening would be needed to satisfy the naive no-autocorrelation assumption; the mean-shift-invariant view suggests less of that persistence reaches the quantity ECE actually uses.
+
+The Variance tab (`plot_ece_variance`) plots each column's own diagonal ECE term (`lag_term(x, x)`) the same way the Trend tab plots the off-diagonal — this is the quantity whose average is the "variance" that showed up negative/near-zero in `ece.cov()`'s diagonal at small `L`. For `nino34_anom` (downsampled), the rolling mean hovers at or below zero for most of the series, not just near the edges — a persistent property of the whole record, not a one-off event. There is a large late spike near the very end of the series, but with only ~1–2 points out of ~306 involved, it has little effect on the global mean; trimming that stretch earlier left the `L`-instability essentially unchanged. `pdo`'s diagonal term, by contrast, stays mostly at or above zero throughout. This is the more complete picture behind why `ece.cov(X_ds, L=2)`'s diagonal for `nino34_anom` comes out negative: not an outlier, but a chronic near-zero equivariant variance driven by the series' own strong short-lag autocorrelation.
