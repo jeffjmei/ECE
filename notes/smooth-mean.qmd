@@ -29,7 +29,7 @@ Piecewise-constant contamination is **linear** in $k$ — each extra lag can str
 
 For $\theta_x(t) = \sin(2\pi f t)$, $\theta_y(t) = A\sin(2\pi f t + \phi)$, the predicted constant is $\int_0^1 \theta_x'\theta_y'\,dt = A(2\pi f)^2\cdot\tfrac12\cos(\phi)$. The chunk below checks $T_k(\theta_x,\theta_y) \approx \frac{k^2}{n}\cdot A(2\pi f)^2\cdot\tfrac12\cos(\phi)$ across several lags.
 
-```{r}
+```{r sine-quadratic-test}
 #| message: false
 #| warning: false
 devtools::load_all("..")
@@ -76,6 +76,19 @@ $$
 \mathbb{E}[T_k(X,Y)] = 2n\sigma_{xy} + \sum_{m=1}^M k^m\,\omega_{xy}^{(m)}.
 $$
 $M$ indexes how many shapes of contamination are protected against at once. $\omega_{xy}^{(1)}$: jump synchrony. $\omega_{xy}^{(2)}$: curvature synchrony — whether $\theta_x, \theta_y$ bend together, independent of shared slow drift (see [Omega Estimation](omega-estimation.qmd)'s frequency-weighting discussion).
+
+## Two Mechanisms, Not One Taylor Series
+
+The $k$ and $k^2$ terms are not successive orders of one Taylor expansion. An exact identity holds for any $\theta$, no Taylor needed:
+$$
+\mathbb{E}[T_k(X,Y)] = T_k(\theta_x,\theta_y) + 2n\sigma_{xy}
+$$
+(bilinear algebra, see [Bilinear Form](bilinear-form.qmd)). The two polynomial terms come from unrelated mechanisms for modeling $T_k(\theta,\theta)$:
+
+- **$k\,\omega_{xy}^{(1)}$ (jumps).** Exact — counts boundary crossings in a lag-$k$ window. No differentiability involved; $\theta$ isn't differentiable at a jump.
+- **$k^2\,\omega_{xy}^{(2)}$ (curvature).** From the Taylor expansion above; exact iff $\theta''=0$ (piecewise linear). Leading-order only for general smooth $\theta$.
+
+A shared regression on $(1,k,k^2)$ absorbs both only if they don't co-occur in the same window. A jump and slope change at the same boundary produce a cross term in $T_k$ proportional to neither $k$ nor $k^2$; the regression misattributes it to both coefficients — the failure mode in "Piecewise-Linear, Discontinuous, Segments = L" below.
 
 ## Does This Work at All?
 
@@ -162,7 +175,6 @@ regression_matrix_plot <- function(sc) {
     ggplot2::theme(legend.position = "bottom")
 }
 
-sine_sc <- run_scenario(scenario(scenario_num = 3, n = n, period = 25, amp = 3, r = 0.5, err_type = "normal"))
 square_sc <- run_scenario(scenario(scenario_num = 2, n = n, L = 4, amp = 3, r = 0.5, err_type = "normal"))
 
 set.seed(2)
@@ -172,6 +184,13 @@ pwlin_theta <- cumsum(pwlin_slopes)
 pwlin_params <- scenario(scenario_num = 1, n = n, amp = 3, r = 0.5, err_type = "normal")
 pwlin_params$h <- matrix(rep(pwlin_theta, 2), n, 2)
 pwlin_sc <- run_scenario(pwlin_params)
+
+sine_sc <- run_scenario(scenario(scenario_num = 3, n = n, period = 25, amp = 3, r = 0.5, err_type = "normal"))
+
+saw_theta <- 3 * rep(0:(L - 1), n / L)
+saw_params <- scenario(scenario_num = 1, n = n, amp = 3, r = 0.5, err_type = "normal")
+saw_params$h <- matrix(rep(saw_theta, 2), n, 2)
+saw_sc <- run_scenario(saw_params)
 
 set.seed(4)
 jump_a <- rnorm(n / L, sd = 3)
@@ -184,43 +203,20 @@ jump_sc <- run_scenario(jump_params)
 
 :::: {.panel-tabset}
 
-## Fast Sine (scenario 3)
-
-::: {.panel-tabset}
-
-### Mean and Noise
-
-```{r}
-#| echo: false
-mean_noise_plot(sine_sc)
-```
-
-### Regression
-
-```{r}
-#| echo: false
-library(patchwork)
-regression_matrix_plot(sine_sc)
-```
-
-:::
-
-The points curve visibly upward — real quadratic contamination, sharp enough now that the linear fit's intercept lands *below zero*. The quadratic fit (red curve) still passes right through the true intercept. Reading off each fit's intercept: linear gives $\hat\sigma_{xy} \approx -0.13$ — wrong sign — while quadratic gives $\approx 0.44$, against a true $\sigma_{xy} = 0.5$. The original method doesn't just lose precision here; it fails qualitatively. The generalization still works.
-
 ## Square Wave (scenario 2, L=4)
 
 ::: {.panel-tabset}
 
 ### Mean and Noise
 
-```{r}
+```{r square-mean-noise}
 #| echo: false
 mean_noise_plot(square_sc)
 ```
 
 ### Regression
 
-```{r}
+```{r square-regression}
 #| echo: false
 library(patchwork)
 regression_matrix_plot(square_sc)
@@ -236,14 +232,14 @@ Here $\theta$ is exactly piecewise constant with segments of length $L=4$ — sq
 
 ### Mean and Noise
 
-```{r}
+```{r pwlin-mean-noise}
 #| echo: false
 mean_noise_plot(pwlin_sc)
 ```
 
 ### Regression
 
-```{r}
+```{r pwlin-regression}
 #| echo: false
 library(patchwork)
 regression_matrix_plot(pwlin_sc)
@@ -253,20 +249,66 @@ regression_matrix_plot(pwlin_sc)
 
 Now a case squarely inside the $M=2$ model's class: $\theta$ is piecewise **linear**, slope drawn i.i.d. $N(0, 0.2^2)$ per block of length $L_{\text{seg}}=20$ — 5 times the lag window $L=4$, so most $k=1,\ldots,4$ windows stay within one segment and see a single constant slope. Within such a window, $\theta_i - \theta_{i+k}$ is *exactly* linear in $k$, so contamination is exactly quadratic in $k$ with no truncation error — unlike the sine case above. The linear fit is visibly biased ($\hat\sigma_{xy}\approx0.40$ against true $0.5$), since it can't absorb any curvature. The quadratic fit lands almost exactly on the truth ($\approx0.49$), confirming the generalization isn't just a leading-order patch for sinusoids — it recovers the truth (up to boundary-crossing effects at segments $\approx L$) whenever contamination truly has this shape.
 
+## Fast Sine (scenario 3)
+
+::: {.panel-tabset}
+
+### Mean and Noise
+
+```{r sine-mean-noise}
+#| echo: false
+mean_noise_plot(sine_sc)
+```
+
+### Regression
+
+```{r sine-regression}
+#| echo: false
+library(patchwork)
+regression_matrix_plot(sine_sc)
+```
+
+:::
+
+The points curve visibly upward — real quadratic contamination, sharp enough now that the linear fit's intercept lands *below zero*. The quadratic fit (red curve) still passes right through the true intercept. Reading off each fit's intercept: linear gives $\hat\sigma_{xy} \approx -0.13$ — wrong sign — while quadratic gives $\approx 0.44$, against a true $\sigma_{xy} = 0.5$. The original method doesn't just lose precision here; it fails qualitatively. The generalization still works.
+
+## Sawtooth (constant slope, period = L)
+
+::: {.panel-tabset}
+
+### Mean and Noise
+
+```{r saw-mean-noise}
+#| echo: false
+mean_noise_plot(saw_sc)
+```
+
+### Regression
+
+```{r saw-regression}
+#| echo: false
+library(patchwork)
+regression_matrix_plot(saw_sc)
+```
+
+:::
+
+The failure below came from randomness, not from combining a jump with a slope per se. Here $\theta$ is a deterministic sawtooth — $\theta_i = 3(i \bmod 4)$, a fixed slope that resets every $L=4$ steps, so every "segment" has the identical slope and the identical reset. This makes $T_k(\theta,\theta)$ an *exact* quadratic in $k$ with no residual at all: $T_k(\theta,\theta) = n(Lk-k^2)$ (amplitude-squared factor omitted), verified to machine precision. The linear fit is catastrophic ($\hat\sigma_{xy}\approx23$, true $0.5$) — a steady drift is the worst case for a $k$-only model. The quadratic fit lands almost exactly on the truth ($\approx0.50$). Unlike the next case, jump and slope here aren't independent per segment — they're the same fixed pair repeating, so their cross term is itself a clean function of $k$ that the $k^2$ coefficient absorbs. Entanglement only defeats the model when it varies unpredictably from segment to segment.
+
 ## Piecewise-Linear, Discontinuous, Segments = L
 
 ::: {.panel-tabset}
 
 ### Mean and Noise
 
-```{r}
+```{r jump-mean-noise}
 #| echo: false
 mean_noise_plot(jump_sc)
 ```
 
 ### Regression
 
-```{r}
+```{r jump-regression}
 #| echo: false
 library(patchwork)
 regression_matrix_plot(jump_sc)
@@ -274,7 +316,7 @@ regression_matrix_plot(jump_sc)
 
 :::
 
-A more extreme version: segments still have length exactly $L=4$, but now each segment gets its own i.i.d. random slope ($N(0,1)$) *and* its own i.i.d. random level ($N(0,3^2)$) — no continuity constraint at block boundaries, so this is jumps and curvature superimposed at the shortest possible spacing. The hypothesis was that this should still work, since jumps load onto the $k$ coefficient and curvature onto $k^2$. It doesn't: both fits are badly wrong here. The linear fit overshoots substantially ($\hat\sigma_{xy}\approx1.5$, true $0.5$), and the quadratic fit undershoots to near zero ($\approx0.12$) — worse, in relative terms, than the linear fit in the fast-sine case above. Because every lag window straddles a boundary (segment length equals $L$, leaving no within-segment room), the jump and curvature contributions mix inside each $T_k$ term rather than adding cleanly — the cross term between them lands on neither the $k$ nor the $k^2$ coefficient, and the OLS fit misattributes it to the intercept. This is the "mixed, entangled" case flagged as an open problem above, made concrete: no amount of matching segment length to $L$ rescues it once jump and curvature vary together.
+A more extreme version of the sawtooth above: segments still have length exactly $L=4$, but now each segment gets its own i.i.d. random slope ($N(0,1)$) *and* its own i.i.d. random level ($N(0,3^2)$) — no continuity constraint at block boundaries, so this is jumps and curvature superimposed at the shortest possible spacing. The hypothesis was that this should still work, since jumps load onto the $k$ coefficient and curvature onto $k^2$. It doesn't: both fits are badly wrong here. The linear fit overshoots substantially ($\hat\sigma_{xy}\approx1.5$, true $0.5$), and the quadratic fit undershoots to near zero ($\approx0.12$) — worse, in relative terms, than the linear fit in the fast-sine case above. Because every lag window straddles a boundary (segment length equals $L$, leaving no within-segment room), the jump and curvature contributions mix inside each $T_k$ term rather than adding cleanly — the cross term between them lands on neither the $k$ nor the $k^2$ coefficient, and the OLS fit misattributes it to the intercept. This is the "mixed, entangled" case flagged as an open problem above, made concrete: no amount of matching segment length to $L$ rescues it once jump and curvature vary together.
 
 ::::
 
@@ -302,7 +344,7 @@ Net: exact unbiasedness survives only for the original piecewise-constant class.
 
 No closed form is needed to test the $M=2$ estimator — it's a direct OLS fit. Fix $L=4$ throughout.
 
-```{r}
+```{r sigma-hat-quad-def}
 #| message: false
 #| warning: false
 devtools::load_all("..")
@@ -324,6 +366,7 @@ For a sinusoidal $\theta$ (`scenario(scenario_num = 3)`, $n=200$, amplitude 3, $
 ```{r smooth-sim-sweep}
 #| cache: true
 #| message: false
+#| dependson: ["sigma-hat-quad-def"]
 periods <- c(2000, 1000, 500, 200, 100, 50, 25, 10)
 reps <- 300
 L <- 4
@@ -346,7 +389,7 @@ sweep <- map_dfr(periods, function(P) {
 })
 ```
 
-```{r}
+```{r smooth-sim-sweep-plot}
 #| echo: false
 sweep |>
   tidyr::pivot_longer(c(bias_linear, bias_quadratic), names_to = "estimator", values_to = "bias") |>
@@ -366,9 +409,10 @@ The quadratic estimator keeps bias near zero much further into the fast-oscillat
 
 Now overlay a slow sine (period 1000, amplitude 3) with jumps spaced $L_{\text{seg}}=2$ apart (amplitude 3) — closer than $L=4$, the case flagged as uncovered above.
 
-```{r}
+```{r smooth-mixed-sim}
 #| cache: true
 #| message: false
+#| dependson: ["sigma-hat-quad-def"]
 n <- 200
 params <- scenario(scenario_num = 1, n = n, r = 0.5, err_type = "normal")
 true_sigma <- params$S[1, 2]
