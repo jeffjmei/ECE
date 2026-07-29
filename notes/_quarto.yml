@@ -13,6 +13,7 @@ book:
         - lagged-differences.qmd
         - bilinear-form.qmd
         - kappa-estimation.qmd
+        - omega-estimation.qmd
     - part: "Inference"
       chapters:
         - z-test.qmd

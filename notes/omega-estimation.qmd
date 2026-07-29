@@ -1,0 +1,162 @@
+# Omega Estimation
+
+```{r}
+#| echo: false
+#| message: false
+devtools::load_all("..")
+library(purrr)
+```
+
+::: callout-important
+## Parameter
+
+$$
+\omega_{xy} = \frac{T_1(\theta_x,\theta_y)}{n}
+$$
+
+## Estimator
+
+$$
+\hat\omega_{xy} = \frac{T_2(X,Y) - T_1(X,Y)}{n}
+$$
+:::
+
+## Asymptotic Distribution
+
+::: callout-important
+## Theorem: Asymptotic Distribution of $\hat\omega_{xy}$
+
+Under the conditions of the [Z-Test theorem](z-test.qmd),
+$$
+\sqrt{n}(\hat\omega_{xy} - \omega_{xy}) \xrightarrow{d} N(0,\, u^2),
+$$
+$$
+u^2 = \frac{2}{n}\Bigl[2(\sigma_x^2\sigma_y^2 + \sigma_{xy}^2) + \sigma_y^2\omega_x^2 + \sigma_x^2\omega_y^2 + 2\sigma_{xy}\omega_{xy}\Bigr].
+$$
+:::
+
+::: {.callout-note collapse="true"}
+## Proof: Asymptotic Distribution of $\hat\omega_{xy}$
+
+Recall from the [Z-Test chapter](z-test.qmd) the vector
+$$
+Z = (T_1(X,X),\, T_2(X,X),\, T_1(Y,Y),\, T_2(Y,Y),\, T_1(X,Y),\, T_2(X,Y))^T,
+$$
+which satisfies $\frac{1}{\sqrt{n}}(Z - \mathbb{E}[Z]) \xrightarrow{d} N(\mathbf{0}, \Sigma_Z)$. Since
+$$
+\hat\omega_{xy} = \frac{T_2(X,Y) - T_1(X,Y)}{n} = \frac{a^T Z}{n}, \qquad a = (0,0,0,0,-1,1)^T,
+$$
+$\hat\omega_{xy}$ is (up to scaling) a linear combination of $Z$, so its asymptotic distribution follows directly from joint normality of $Z$ — no delta method is needed.
+
+**Mean.** From the bias formula $\mathbb{E}[T_k(X,Y)] = 2n\sigma_{xy} + kn\,\omega_{xy}$ (established in the [Lagged Differences chapter](lagged-differences.qmd), using $\omega_{xy} = T_1(\theta_x,\theta_y)/n$),
+$$
+\mathbb{E}[T_2(X,Y) - T_1(X,Y)] = n\,\omega_{xy},
+$$
+so $\mathbb{E}[\hat\omega_{xy}] = \omega_{xy}$.
+
+**Variance.** Since $a^T Z = T_2(X,Y) - T_1(X,Y)$,
+$$
+\operatorname{Var}(T_2(X,Y) - T_1(X,Y)) = a^T \Sigma_Z a = \operatorname{Var}(T_2(X,Y)) - 2\operatorname{Cov}(T_1(X,Y), T_2(X,Y)) + \operatorname{Var}(T_1(X,Y)).
+$$
+
+::: {.callout-note collapse="true"}
+## Derivation of $\operatorname{Var}(T_2(X,Y) - T_1(X,Y))$
+
+Using the $\Sigma_Z$ entries from the Z-Test chapter,
+$$
+\operatorname{Var}(T_1(X,Y)) = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 2n\sigma_{xy}^2 + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2 + 4n\sigma_{xy}\omega_{xy},
+$$
+$$
+\operatorname{Var}(T_2(X,Y)) = 2n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 2n\sigma_{xy}^2 + 4n\sigma_y^2\omega_x^2 + 4n\sigma_x^2\omega_y^2 + 8n\sigma_{xy}\omega_{xy},
+$$
+$$
+\operatorname{Cov}(T_1(X,Y), T_2(X,Y)) = 4n(\sigma_x^2\sigma_y^2\kappa_{22} - \sigma_{xy}^2) + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2 + 4n\sigma_{xy}\omega_{xy}.
+$$
+
+The $\kappa_{22}$-dependent terms cancel:
+
+$$
+\operatorname{Var}(T_1(X,Y)) + \operatorname{Var}(T_2(X,Y)) = 4n\sigma_x^2\sigma_y^2(2\kappa_{22}+1) - 4n\sigma_{xy}^2 + 6n\sigma_y^2\omega_x^2 + 6n\sigma_x^2\omega_y^2 + 12n\sigma_{xy}\omega_{xy},
+$$
+$$
+2\operatorname{Cov}(T_1(X,Y), T_2(X,Y)) = 8n\sigma_x^2\sigma_y^2\kappa_{22} - 8n\sigma_{xy}^2 + 4n\sigma_y^2\omega_x^2 + 4n\sigma_x^2\omega_y^2 + 8n\sigma_{xy}\omega_{xy}.
+$$
+
+Subtracting,
+
+$$
+\operatorname{Var}(T_2(X,Y) - T_1(X,Y)) = 4n\sigma_x^2\sigma_y^2 + 4n\sigma_{xy}^2 + 2n\sigma_y^2\omega_x^2 + 2n\sigma_x^2\omega_y^2 + 4n\sigma_{xy}\omega_{xy},
+$$
+
+i.e. $2n\bigl[2(\sigma_x^2\sigma_y^2 + \sigma_{xy}^2) + \sigma_y^2\omega_x^2 + \sigma_x^2\omega_y^2 + 2\sigma_{xy}\omega_{xy}\bigr]$, with the $\kappa_{22}$ terms cancelling entirely.
+:::
+
+Dividing by $n^2$,
+
+$$
+\operatorname{Var}(\hat\omega_{xy}) = \frac{\operatorname{Var}(T_2(X,Y) - T_1(X,Y))}{n^2} = \frac{2}{n}\Bigl[2(\sigma_x^2\sigma_y^2 + \sigma_{xy}^2) + \sigma_y^2\omega_x^2 + \sigma_x^2\omega_y^2 + 2\sigma_{xy}\omega_{xy}\Bigr] = u^2.
+$$
+
+Since $a^TZ$ is a linear combination of the jointly asymptotically normal vector $Z$, the Cramér-Wold device gives $\sqrt{n}(\hat\omega_{xy} - \omega_{xy}) \xrightarrow{d} N(0, u^2)$. $\square$
+:::
+
+::: {.callout-note collapse="true"}
+## Test: Closed-form variance matches $\Sigma_Z$ entries
+
+```{r}
+#| message: false
+devtools::load_all("..")
+library(testthat)
+
+set.seed(1)
+n <- 50
+sx <- 1.3
+sy <- 0.8
+sxy <- 0.4
+k22 <- 1.7
+hx <- cumsum(rnorm(n))
+hy <- cumsum(rnorm(n))
+
+var_T1 <- var_Qh(n, sx, sy, sxy, hx, hy, k22, k = 1)
+var_T2 <- var_Qh(n, sx, sy, sxy, hx, hy, k22, k = 2)
+cov_T1_T2 <- cov_Qh_Qk(n, sx, sy, sxy, hx, hy, k22)
+
+var_diff <- var_T1 + var_T2 - 2 * cov_T1_T2
+
+wx2 <- lag_diff(hx) / n
+wy2 <- lag_diff(hy) / n
+wxy <- lag_diff(hx, hy) / n
+
+closed_form <- 4 * n * (sx^2 * sy^2 + sxy^2) + 2 * n * sy^2 * wx2 + 2 * n * sx^2 * wy2 + 4 * n * sxy * wxy
+
+test_that("Var(T2 - T1) matches closed form", {
+  expect_equal(var_diff, closed_form)
+})
+```
+:::
+
+## Simulation
+
+::: {.callout-tip collapse="true"}
+## Simulation: Does $\hat\omega_{xy}$ Recover the Truth Under a Sinusoidal Mean?
+
+All the theory above assumes a piecewise-constant mean $\theta$. Here we stress-test $\hat\omega_{xy}$ under a sinusoidal mean instead — not piecewise-constant, the same kind of misspecification studied in the [Model Misspecification](model-misspecification.qmd) chapter's "Case Study: Sinusoidal Mean." We use `scenario(scenario_num = 3)` with $n = 200$, `period = 1000` (a slowly-varying trend that completes only a fifth of a cycle over the window — the regime where these estimators are known to stay accurate, as opposed to fast oscillation), amplitude 3, $r = 0.5$, and Gaussian errors. Since this scenario gives $X$ and $Y$ the identical sine wave, $\omega_{xy} = \omega_x^2 = \omega_y^2$ here by construction. We draw 1000 replicates and check that the sample mean of $\hat\omega_{xy}$ (computed via `ece.complexity()`, which for `L=2` equals exactly $(T_2(X,Y)-T_1(X,Y))/n$) lands on the true $\omega_{xy}$ (red line).
+
+```{r omega-sim-sine}
+#| echo: false
+#| cache: true
+#| message: false
+params <- scenario(scenario_num = 3, n = 200, period = 1000, amp = 3, r = 0.5, err_type = "normal")
+true_omega <- lag_diff(params$h[, 1], params$h[, 2]) / params$n
+
+sim <- map_dbl(1:1000, ~ {
+  X <- generate_data(params)
+  ece.complexity(X[, 1], X[, 2])
+})
+```
+
+```{r}
+#| echo: false
+make_sim_hist(sim, true_omega, expression(hat(omega)[xy]))
+```
+:::
