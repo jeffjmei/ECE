@@ -8,59 +8,29 @@ Every prior chapter assumes piecewise-constant $\theta$: the bias formula in [La
 
 ## Bias Under a Smooth Mean
 
-Let $\theta_x(t), \theta_y(t)$ be differentiable, sampled at $t = i/n$. For lag $k \ll n$, a Taylor expansion gives
-
+Recall that the expectation of $T_k(X,Y)$ is
 $$
-\theta_{x,i} - \theta_{x,i+k} \approx -\theta_x'(t)\cdot\frac{k}{n}.
+\mathbb{E}[T_k(X,Y)] = T_k(\theta_x,\theta_y) + 2n\sigma_{xy},
+$$
+exact for any $\theta$ (bilinear algebra, see [Bilinear Form](bilinear-form.qmd)). What follows models $T_k(\theta_x,\theta_y)$ as a function of $k$.
+
+**Piecewise constant.** From [Lagged Differences](lagged-differences.qmd) and [Omega Estimation](omega-estimation.qmd):
+$$
+T_k(\theta_x,\theta_y) = k\,n\,\omega_{xy}, \quad \text{exact}.
 $$
 
-Substituting into $T_k(\theta_x,\theta_y) = \sum_i (\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i}-\theta_{y,i+k})$ and treating the sum as a Riemann sum,
+**Constant slope, plus mean shifts.** Let $\theta_x = b_x\cdot i + (\text{piecewise-constant jumps, spaced} \ge L)$, and likewise $\theta_y$ with slope $b_y$ — one fixed slope for the *entire* series, not a per-segment value. Then
+$$
+T_k(\theta_x,\theta_y) = c_1 k + c_2 k^2 + k\,n\,\omega_{xy},
+$$
+exact, for constants $c_1,c_2$ depending on $b_x,b_y,n$ — no residual, at any jump spacing $\ge L$ and any jump sizes or timing (verified numerically, including irregular timing and spacing down to $L$ itself). Two things make this exact where general piecewise linear fails:
 
-\begin{align}
-T_k(\theta_x,\theta_y) &= \sum_i (\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i}-\theta_{y,i+k}) \\
-&\approx \frac{k^2}{n^2}\sum_i \theta_x'(t)\theta_y'(t) \\
-&\approx \frac{k^2}{n}\int_0^1 \theta_x'(t)\theta_y'(t)\,dt.
-\end{align}
+- The slope is a single global constant, not segment-dependent, so its contribution to $T_k$ — even wrapped circularly — reduces to a fixed combination of $k$ and $k^2$ for every window, regardless of where the jumps fall.
+- Its interaction with the jump component is itself a fixed $k$-linear term (it mixes into $\omega_{xy}^{(1)}$; nothing is left unmodeled).
 
-Piecewise-constant contamination is **linear** in $k$ — each extra lag can straddle one more change point. Smooth contamination is **quadratic** in $k$ — it comes from squaring a derivative times a step of size $k/n$.
+**Segment-varying slope.** If the slope instead differs from segment to segment — genuine piecewise linearity, no single global value — the identity above no longer holds: windows straddling a segment boundary see an unpredictable slope pair, contributing a residual proportional to neither $k$ nor $k^2$. Small when segments are long relative to $L$ ("Piecewise-Linear (random slopes)" below); large once slope and jump both vary per segment at spacing $\approx L$ ("Piecewise-Linear, Discontinuous, Segments = L" below). The sawtooth below is the degenerate case where the slope *is* constant and the "jump" is a fixed, exactly-repeating reset — it falls under the first bullet, not this one.
 
-::: {.callout-note collapse="true"}
-## Test: Quadratic-in-$k$ bias for a sinusoidal $\theta$
-
-For $\theta_x(t) = \sin(2\pi f t)$, $\theta_y(t) = A\sin(2\pi f t + \phi)$, the predicted constant is $\int_0^1 \theta_x'\theta_y'\,dt = A(2\pi f)^2\cdot\tfrac12\cos(\phi)$. The chunk below checks $T_k(\theta_x,\theta_y) \approx \frac{k^2}{n}\cdot A(2\pi f)^2\cdot\tfrac12\cos(\phi)$ across several lags.
-
-```{r sine-quadratic-test}
-#| message: false
-#| warning: false
-devtools::load_all("..")
-library(testthat)
-
-n <- 2000
-f <- 3
-A <- 1.5
-phi <- 0.7
-t <- (1:n) / n
-theta_x <- sin(2 * pi * f * t)
-theta_y <- A * sin(2 * pi * f * t + phi)
-
-ks <- c(1, 2, 3, 5, 8)
-Tk_numerical <- sapply(ks, function(k) lag_diff(theta_x, theta_y, k = k))
-Tk_predicted <- sapply(ks, function(k) k^2 / n * A * (2 * pi * f)^2 * 0.5 * cos(phi))
-
-test_that("quadratic-in-k bias formula holds for a sinusoidal theta", {
-  expect_equal(Tk_numerical, Tk_predicted, tolerance = 1e-3)
-})
-
-plot(ks, Tk_numerical,
-  type = "b", pch = 19, col = "steelblue",
-  xlab = "Lag k", ylab = expression(T[k](theta[x], theta[y])),
-  main = "Quadratic growth in k for a smooth (sinusoidal) mean"
-)
-lines(ks, Tk_predicted, col = "firebrick", lty = 2)
-legend("topleft", legend = c("numerical", "predicted (quadratic)"),
-       col = c("steelblue", "firebrick"), lty = c(1, 2), pch = c(19, NA))
-```
-:::
+**Two distinct mechanisms.** Jumps load onto $k$; a global slope loads onto $k^2$ plus a $k$-linear cross term — unrelated identities, not orders of one expansion. What breaks the shared regression isn't the jump and slope occurring near each other — it's the slope varying unpredictably from segment to segment.
 
 ## Polynomial Order of Contamination
 
@@ -69,26 +39,13 @@ Contamination in $T_k$ is a polynomial in $k$; its degree depends on $\theta$'s 
 | Model for $\theta$ | Bias in $\mathbb{E}[T_k(X,Y)]$ | Leading term |
 |---|---|---|
 | Piecewise constant | linear in $k$ | $k\,\omega_{xy}^{(1)}$, $\omega_{xy}^{(1)} = \omega_{xy}$ (see [Omega Estimation](omega-estimation.qmd)) |
-| Smooth (differentiable) | quadratic in $k$ | $k^2\,\omega_{xy}^{(2)}$, $\omega_{xy}^{(2)} = \tfrac1n\int\theta_x'\theta_y'\,dt$ |
+| Constant global slope | quadratic in $k$ | $k^2\,\omega_{xy}^{(2)}$, $\omega_{xy}^{(2)} = b_xb_y$ (exact; a per-segment slope only holds this approximately) |
 
 General model:
 $$
 \mathbb{E}[T_k(X,Y)] = 2n\sigma_{xy} + \sum_{m=1}^M k^m\,\omega_{xy}^{(m)}.
 $$
 $M$ indexes how many shapes of contamination are protected against at once. $\omega_{xy}^{(1)}$: jump synchrony. $\omega_{xy}^{(2)}$: curvature synchrony — whether $\theta_x, \theta_y$ bend together, independent of shared slow drift (see [Omega Estimation](omega-estimation.qmd)'s frequency-weighting discussion).
-
-## Two Mechanisms, Not One Taylor Series
-
-The $k$ and $k^2$ terms are not successive orders of one Taylor expansion. An exact identity holds for any $\theta$, no Taylor needed:
-$$
-\mathbb{E}[T_k(X,Y)] = T_k(\theta_x,\theta_y) + 2n\sigma_{xy}
-$$
-(bilinear algebra, see [Bilinear Form](bilinear-form.qmd)). The two polynomial terms come from unrelated mechanisms for modeling $T_k(\theta,\theta)$:
-
-- **$k\,\omega_{xy}^{(1)}$ (jumps).** Exact — counts boundary crossings in a lag-$k$ window. No differentiability involved; $\theta$ isn't differentiable at a jump.
-- **$k^2\,\omega_{xy}^{(2)}$ (curvature).** From the Taylor expansion above; exact iff $\theta''=0$ (piecewise linear). Leading-order only for general smooth $\theta$.
-
-A shared regression on $(1,k,k^2)$ absorbs both only if they don't co-occur in the same window. A jump and slope change at the same boundary produce a cross term in $T_k$ proportional to neither $k$ nor $k^2$; the regression misattributes it to both coefficients — the failure mode in "Piecewise-Linear, Discontinuous, Segments = L" below.
 
 ## Does This Work at All?
 
@@ -335,111 +292,11 @@ Not yet solved in closed form. Next step: repeat `bilinear-form.qmd`'s linear-ca
 ## What Is and Isn't Preserved
 
 - **Pure jumps, spaced $\ge L$.** Exact, unchanged. The $k$ coefficient is the same algebraic identity as the original ECE; a jump contributes only there, nothing to $k^2$.
-- **Pure smooth curvature.** Approximate only. The $k^2$ term is a truncated Taylor expansion — bias remains from third-order derivatives and beyond. No finite-sample exact guarantee, unlike the piecewise-constant case.
-- **Mixed: jumps closer than $L$, or a jump entangled with curvature.** Uncovered. Contamination doesn't decompose cleanly into $k$ and $k^2$ terms. Open problem.
+- **Constant global slope, plus jumps spaced $\ge L$.** Exact, at any jump spacing or timing — the slope is one fixed value, not segment-dependent, so it never introduces an unmodeled residual.
+- **Segment-varying slope (genuine piecewise linearity).** Approximate only. Exact within a segment; a residual remains from windows straddling a segment boundary, vanishing as segment length grows relative to $L$.
+- **Segment-varying slope entangled with jumps at spacing $\approx L$.** Uncovered. Contamination doesn't decompose cleanly into $k$ and $k^2$ terms. Open problem.
 
-Net: exact unbiasedness survives only for the original piecewise-constant class. Smooth contamination gets leading-order correction, not exact removal. Mixed cases are unprotected.
-
-## Simulation
-
-No closed form is needed to test the $M=2$ estimator — it's a direct OLS fit. Fix $L=4$ throughout.
-
-```{r sigma-hat-quad-def}
-#| message: false
-#| warning: false
-devtools::load_all("..")
-library(purrr)
-
-sigma_hat_quad <- function(x, y, L = 4) {
-  n <- length(x)
-  R <- sapply(1:L, function(k) lag_diff(x, y, k))
-  K <- cbind(1, 1:L, (1:L)^2)
-  beta <- solve(t(K) %*% K) %*% t(K) %*% R
-  as.numeric(beta[1]) / (2 * n)
-}
-```
-
-### Pure Smooth: Period Sweep
-
-For a sinusoidal $\theta$ (`scenario(scenario_num = 3)`, $n=200$, amplitude 3, $r=0.5$, Gaussian errors), compare the bias of the current linear ECE (`ece.cov`, $L=4$) against `sigma_hat_quad` ($L=4$) as the period shrinks from slow to fast — 300 replicates per period.
-
-```{r smooth-sim-sweep}
-#| cache: true
-#| message: false
-#| dependson: ["sigma-hat-quad-def"]
-periods <- c(2000, 1000, 500, 200, 100, 50, 25, 10)
-reps <- 300
-L <- 4
-
-sweep <- map_dfr(periods, function(P) {
-  params <- scenario(scenario_num = 3, n = 200, period = P, amp = 3, r = 0.5, err_type = "normal")
-  true_sigma <- params$S[1, 2]
-  ests <- map_dfr(1:reps, function(i) {
-    X <- generate_data(params)
-    tibble::tibble(
-      m1 = ece.cov(X[, 1], X[, 2], L = L),
-      m2 = sigma_hat_quad(X[, 1], X[, 2], L = L)
-    )
-  })
-  tibble::tibble(
-    period = P,
-    bias_linear = mean(ests$m1) - true_sigma,
-    bias_quadratic = mean(ests$m2) - true_sigma
-  )
-})
-```
-
-```{r smooth-sim-sweep-plot}
-#| echo: false
-sweep |>
-  tidyr::pivot_longer(c(bias_linear, bias_quadratic), names_to = "estimator", values_to = "bias") |>
-  ggplot2::ggplot(ggplot2::aes(x = period, y = bias, color = estimator)) +
-  ggplot2::geom_line() +
-  ggplot2::geom_point() +
-  ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
-  ggplot2::scale_x_log10() +
-  ggplot2::labs(x = "Period (log scale, slow → fast going left)", y = expression(hat(sigma)[xy] - sigma[xy]),
-                title = "Bias vs. oscillation speed: linear (M=1) vs. quadratic (M=2)") +
-  ggplot2::theme_minimal()
-```
-
-The quadratic estimator keeps bias near zero much further into the fast-oscillation range than the linear one — it extends the robust range, it doesn't remove the breakdown. At the fastest period (10), $L=4$ lags no longer satisfy the Taylor-validity condition from the previous section, and both estimators fail together.
-
-### Mixed: Smooth Trend Plus Closely-Spaced Jumps
-
-Now overlay a slow sine (period 1000, amplitude 3) with jumps spaced $L_{\text{seg}}=2$ apart (amplitude 3) — closer than $L=4$, the case flagged as uncovered above.
-
-```{r smooth-mixed-sim}
-#| cache: true
-#| message: false
-#| dependson: ["sigma-hat-quad-def"]
-n <- 200
-params <- scenario(scenario_num = 1, n = n, r = 0.5, err_type = "normal")
-true_sigma <- params$S[1, 2]
-
-theta <- 3 * sin(2 * pi * (1:n) / 1000) + 3 * square_wave(n, L = 2)
-params$h <- matrix(rep(theta, 2), n, 2)
-
-mixed_ests <- map_dfr(1:300, function(i) {
-  X <- generate_data(params)
-  tibble::tibble(
-    m1 = ece.cov(X[, 1], X[, 2], L = 4),
-    m2 = sigma_hat_quad(X[, 1], X[, 2], L = 4)
-  )
-})
-
-tibble::tibble(
-  true_sigma = true_sigma,
-  bias_linear = mean(mixed_ests$m1) - true_sigma,
-  bias_quadratic = mean(mixed_ests$m2) - true_sigma
-)
-```
-
-Both estimators are severely biased — neither the linear nor the quadratic model captures contamination from jumps spaced closer than $L$. This confirms the "mixed" case above is a real gap, not just a theoretical caveat: adding the $k^2$ term does not rescue this scenario.
-
-## Connection to Difference-Based Nonparametric Regression
-
-Choosing difference weights that vanish against polynomials up to degree $m$, to remove a smooth trend before estimating variance, is established in nonparametric regression: Rice (1984); Hall, Kay & Titterington (1990); Müller & Stadtmüller; Wang, Brown, Cai & Levine. This chapter's generalization is the bivariate cross-covariance analog, reusing the min-norm-subject-to-constraints framework already built for $L>2$ in [Bilinear Form](bilinear-form.qmd).
+Net: exact unbiasedness survives for piecewise-constant jumps and for a constant global slope (together or separately). It's specifically a slope that varies segment to segment that only gets a leading-order correction, or — combined with jumps at close spacing — no correction at all.
 
 ## Open Questions
 
