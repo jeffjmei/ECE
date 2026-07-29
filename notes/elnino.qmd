@@ -8,7 +8,6 @@ title: "El Niño / PDO"
 #| warning: false
 devtools::load_all()
 library(tidyverse)
-library(zoo)
 ```
 
 Two Pacific climate indices:
@@ -24,7 +23,7 @@ Both are monthly and unsmoothed — unlike ONI's 3-month rolling mean, which wou
 #| label: elnino-load
 
 nino <- read_table(
-  "~/Documents/Research/Code/ECE/data/real-data/elnino/nino34-raw.txt",
+  "../data/real-data/elnino/nino34-raw.txt",
   skip = 1,
   col_names = c("year", "month", "nino12", "nino12_anom", "nino3", "nino3_anom",
                 "nino4", "nino4_anom", "nino34", "nino34_anom")
@@ -32,7 +31,7 @@ nino <- read_table(
   select(year, month, nino34_anom)
 
 pdo <- read_table(
-  "~/Documents/Research/Code/ECE/data/real-data/elnino/pdo-raw.txt",
+  "../data/real-data/elnino/pdo-raw.txt",
   skip = 2,
   col_names = c("year", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -122,17 +121,8 @@ plot_sip_acf(X_mat)
 ```{R trend-elnino-naive}
 #| echo: false
 
-win <- 120 # 10-year window at monthly resolution
-
-roll_cor <- rollapply(
-  X_mat, width = win,
-  FUN = function(m) cor(m[, 1], m[, 2]),
-  by.column = FALSE, fill = NA, align = "right"
-)
-
-plot(X$date, roll_cor, type = "l", xlab = NULL, ylab = "correlation",
-      main = paste0(win, "-month rolling correlation"))
-abline(h = 0, lty = "dashed", col = "grey50")
+win <- 25 # matches the window used in mental-load.qmd
+plot_naive_terms(X_mat, window = win)
 ```
 
 ### Mean-Shift-Invariant
@@ -140,7 +130,7 @@ abline(h = 0, lty = "dashed", col = "grey50")
 ```{R trend-elnino-invariant}
 #| echo: false
 
-plot_ece_terms(X_mat)
+plot_ece_terms(X_mat, window = win)
 ```
 
 :::
@@ -151,7 +141,7 @@ Naive ACF (base-R `acf()`): lag-1 autocorrelation ~0.9–0.95 for both series, d
 
 Faded bars in the Mean-Shift-Invariant ACF mark lags where `SIP.acf`'s own difference-based variance estimate came out negative and fell back to the naive `var(x)` (see `plot_sip_acf()`/`sip_acf_with_fallback()` in `R/plot-helpers.R`). Since `var(x)` is inflated by mean shifts relative to the variance `SIP.acf` is meant to use, those lags' values rest on a mismatched denominator and are less trustworthy than the rest. For `nino34_anom` every lag shown falls back (fully faded); for `pdo` none do.
 
-Naive Trend (rolling Pearson correlation) shows the same regime swings seen above, level relationship included. Mean-Shift-Invariant Trend (`plot_ece_terms`, differenced product terms) is what ECE's test statistic actually uses, and it still drifts from its global mean over multi-year stretches — some non-stationarity survives mean-shift removal.
+Naive Trend (`plot_naive_terms`) removes a rolling mean per series, then plots the raw product of those residuals (gray) with its own rolling mean on top (blue) against the global mean (dashed) — same grammar as the Mean-Shift-Invariant Trend (`plot_ece_terms`), but mean-removal is a rolling mean instead of ECE's difference-based construction. `plot_ece_terms` is what ECE's test statistic actually uses, and it still drifts from its global mean over multi-year stretches — some non-stationarity survives mean-shift removal either way.
 
 ## Downsampling
 
@@ -219,17 +209,8 @@ plot_sip_acf(X_ds)
 ```{R trend-elnino-downsampled-naive}
 #| echo: false
 
-win_ds <- round(120 / k_ds) # same ~10-year span as the full-sample window
-
-roll_cor_ds <- rollapply(
-  X_ds, width = win_ds,
-  FUN = function(m) cor(m[, 1], m[, 2]),
-  by.column = FALSE, fill = NA, align = "right"
-)
-
-plot(seq_along(roll_cor_ds), roll_cor_ds, type = "l", xlab = "Index (every 3rd month)",
-      ylab = "correlation", main = paste0(win_ds, "-obs (~10yr) rolling correlation"))
-abline(h = 0, lty = "dashed", col = "grey50")
+win_ds <- 25 # same fixed window as the full-sample case
+plot_naive_terms(X_ds, window = win_ds)
 ```
 
 ### Mean-Shift-Invariant
@@ -237,7 +218,7 @@ abline(h = 0, lty = "dashed", col = "grey50")
 ```{R trend-elnino-downsampled-invariant}
 #| echo: false
 
-plot_ece_terms(X_ds)
+plot_ece_terms(X_ds, window = win_ds)
 ```
 
 :::

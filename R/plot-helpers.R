@@ -190,6 +190,53 @@ plot_ece_terms <- function(X, window = NULL) {
     ggplot2::theme_minimal()
 }
 
+# Diagnostic: naive analog to plot_ece_terms().
+#
+# Same visual grammar as plot_ece_terms() (raw pairwise product in gray, a
+# rolling-window mean in blue, dashed global mean), but the mean is removed
+# naively — a rolling mean per column — rather than through ECE's
+# difference-based, mean-shift-invariant construction. Drift here reflects
+# both genuine covariance non-stationarity and any mean-shift leakage the
+# rolling mean failed to remove, so comparing this against plot_ece_terms()
+# shows how much of the naive drift is a mean-shift artifact.
+plot_naive_terms <- function(X, window = NULL) {
+  X <- as.matrix(X)
+  n <- nrow(X)
+  p <- ncol(X)
+  if (is.null(window)) window <- max(10, floor(n / 5))
+
+  roll <- function(v) as.numeric(stats::filter(v, rep(1 / window, window), sides = 2))
+  R <- apply(X, 2, function(col) col - roll(col))
+  idx <- combn(p, 2)
+
+  dat <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
+    i <- idx[1, k]
+    j <- idx[2, k]
+    s <- R[, i] * R[, j]
+    tibble::tibble(
+      t      = seq_len(n),
+      pair   = paste(i, j, sep = "-"),
+      raw    = s,
+      run    = roll(s),
+      global = mean(s, na.rm = TRUE)
+    )
+  })
+
+  ggplot2::ggplot(dat, ggplot2::aes(x = t)) +
+    ggplot2::geom_line(ggplot2::aes(y = raw), color = "gray80", na.rm = TRUE) +
+    ggplot2::geom_hline(
+      ggplot2::aes(yintercept = global),
+      linetype = "dashed", color = "firebrick"
+    ) +
+    ggplot2::geom_line(ggplot2::aes(y = run), color = "steelblue", na.rm = TRUE) +
+    ggplot2::facet_wrap(~pair, scales = "free_y") +
+    ggplot2::labs(
+      x = "time", y = "naive term (covariance scale)",
+      subtitle = sprintf("gray = raw product of rolling-mean residuals, blue = %d-window mean, dashed = global mean", window)
+    ) +
+    ggplot2::theme_minimal()
+}
+
 # Runs SIP::SIP.acf while intercepting its "sample variance will be used"
 # warnings, which fire per-lag whenever SIP.acf's own difference-based
 # variance estimate comes out negative and it falls back to var(x) instead.
