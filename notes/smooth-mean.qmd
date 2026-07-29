@@ -16,9 +16,11 @@ $$
 
 Substituting into $T_k(\theta_x,\theta_y) = \sum_i (\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i}-\theta_{y,i+k})$ and treating the sum as a Riemann sum,
 
-$$
-T_k(\theta_x,\theta_y) \approx \frac{k^2}{n}\int_0^1 \theta_x'(t)\theta_y'(t)\,dt.
-$$
+\begin{align}
+T_k(\theta_x,\theta_y) &= \sum_i (\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i}-\theta_{y,i+k}) \\
+&\approx \frac{k^2}{n^2}\sum_i \theta_x'(t)\theta_y'(t) \\
+&\approx \frac{k^2}{n}\int_0^1 \theta_x'(t)\theta_y'(t)\,dt.
+\end{align}
 
 Piecewise-constant contamination is **linear** in $k$ — each extra lag can straddle one more change point. Smooth contamination is **quadratic** in $k$ — it comes from squaring a derivative times a step of size $k/n$.
 
@@ -84,24 +86,8 @@ Before generalizing anything further, a direct check: for a fast sinusoidal $\th
 #| cache: true
 #| message: false
 n <- 200
-params <- scenario(scenario_num = 3, n = n, period = 25, amp = 3, r = 0.5, err_type = "normal")
 L <- 4
 reps <- 1000
-
-set.seed(1)
-X_example <- generate_data(params)
-
-Tk_mat <- lapply(1:reps, function(i) {
-  X <- generate_data(params)
-  list(
-    xx = sapply(1:L, function(k) lag_diff(X[, 1], X[, 1], k = k)),
-    yy = sapply(1:L, function(k) lag_diff(X[, 2], X[, 2], k = k)),
-    xy = sapply(1:L, function(k) lag_diff(X[, 1], X[, 2], k = k))
-  )
-})
-Tk_avg_xx <- Reduce(`+`, lapply(Tk_mat, `[[`, "xx")) / reps
-Tk_avg_yy <- Reduce(`+`, lapply(Tk_mat, `[[`, "yy")) / reps
-Tk_avg_xy <- Reduce(`+`, lapply(Tk_mat, `[[`, "xy")) / reps
 
 K1 <- cbind(1, 1:L)
 K2 <- cbind(1, 1:L, (1:L)^2)
@@ -134,43 +120,163 @@ fit_panel <- function(Tk_avg, true_val, ylab) {
     ggplot2::labs(x = "Lag k", y = ylab) +
     ggplot2::theme_minimal()
 }
+
+run_scenario <- function(params) {
+  set.seed(1)
+  X_example <- generate_data(params)
+
+  Tk_mat <- lapply(1:reps, function(i) {
+    X <- generate_data(params)
+    list(
+      xx = sapply(1:L, function(k) lag_diff(X[, 1], X[, 1], k = k)),
+      yy = sapply(1:L, function(k) lag_diff(X[, 2], X[, 2], k = k)),
+      xy = sapply(1:L, function(k) lag_diff(X[, 1], X[, 2], k = k))
+    )
+  })
+
+  list(
+    params = params,
+    X_example = X_example,
+    Tk_avg_xx = Reduce(`+`, lapply(Tk_mat, `[[`, "xx")) / reps,
+    Tk_avg_yy = Reduce(`+`, lapply(Tk_mat, `[[`, "yy")) / reps,
+    Tk_avg_xy = Reduce(`+`, lapply(Tk_mat, `[[`, "xy")) / reps
+  )
+}
+
+mean_noise_plot <- function(sc) {
+  tibble::tibble(i = 1:n, theta = sc$params$h[, 1], x = sc$X_example[, 1]) |>
+    ggplot2::ggplot(ggplot2::aes(x = i)) +
+    ggplot2::geom_line(ggplot2::aes(y = x), color = "grey80") +
+    ggplot2::geom_line(ggplot2::aes(y = theta), color = "steelblue", linewidth = 1) +
+    ggplot2::labs(x = "Index i", y = "Value") +
+    ggplot2::theme_minimal()
+}
+
+regression_matrix_plot <- function(sc) {
+  p_xx <- fit_panel(sc$Tk_avg_xx, sc$params$S[1, 1], expression(T[k](X, X) / (2 * n)))
+  p_yy <- fit_panel(sc$Tk_avg_yy, sc$params$S[2, 2], expression(T[k](Y, Y) / (2 * n)))
+  p_xy <- fit_panel(sc$Tk_avg_xy, sc$params$S[1, 2], expression(T[k](X, Y) / (2 * n)))
+
+  (p_xx | p_xy) / (patchwork::plot_spacer() | p_yy) +
+    patchwork::plot_layout(guides = "collect") &
+    ggplot2::theme(legend.position = "bottom")
+}
+
+sine_sc <- run_scenario(scenario(scenario_num = 3, n = n, period = 25, amp = 3, r = 0.5, err_type = "normal"))
+square_sc <- run_scenario(scenario(scenario_num = 2, n = n, L = 4, amp = 3, r = 0.5, err_type = "normal"))
+
+set.seed(2)
+L_seg <- 20
+pwlin_slopes <- rep(rnorm(n / L_seg, sd = 0.2), each = L_seg)
+pwlin_theta <- cumsum(pwlin_slopes)
+pwlin_params <- scenario(scenario_num = 1, n = n, amp = 3, r = 0.5, err_type = "normal")
+pwlin_params$h <- matrix(rep(pwlin_theta, 2), n, 2)
+pwlin_sc <- run_scenario(pwlin_params)
+
+set.seed(4)
+jump_a <- rnorm(n / L, sd = 3)
+jump_b <- rnorm(n / L, sd = 1)
+jump_theta <- rep(jump_a, each = L) + rep(jump_b, each = L) * rep(0:(L - 1), n / L)
+jump_params <- scenario(scenario_num = 1, n = n, amp = 3, r = 0.5, err_type = "normal")
+jump_params$h <- matrix(rep(jump_theta, 2), n, 2)
+jump_sc <- run_scenario(jump_params)
 ```
+
+:::: {.panel-tabset}
+
+## Fast Sine (scenario 3)
 
 ::: {.panel-tabset}
 
-## Mean and Noise
+### Mean and Noise
 
 ```{r}
 #| echo: false
-tibble::tibble(i = 1:n, theta = params$h[, 1], x = X_example[, 1]) |>
-  ggplot2::ggplot(ggplot2::aes(x = i)) +
-  ggplot2::geom_line(ggplot2::aes(y = x), color = "grey80") +
-  ggplot2::geom_line(ggplot2::aes(y = theta), color = "steelblue", linewidth = 1) +
-  ggplot2::labs(
-    x = "Index i", y = "Value",
-    title = "Mean (blue) and noise (grey line = mean + noise)"
-  ) +
-  ggplot2::theme_minimal()
+mean_noise_plot(sine_sc)
 ```
 
-## Regression
+### Regression
 
 ```{r}
 #| echo: false
 library(patchwork)
-
-p_xx <- fit_panel(Tk_avg_xx, params$S[1, 1], expression(T[k](X, X) / (2 * n)))
-p_yy <- fit_panel(Tk_avg_yy, params$S[2, 2], expression(T[k](Y, Y) / (2 * n)))
-p_xy <- fit_panel(Tk_avg_xy, params$S[1, 2], expression(T[k](X, Y) / (2 * n)))
-
-(p_xx | p_xy) / (patchwork::plot_spacer() | p_yy) +
-  patchwork::plot_layout(guides = "collect") &
-  ggplot2::theme(legend.position = "bottom")
+regression_matrix_plot(sine_sc)
 ```
 
 :::
 
 The points curve visibly upward — real quadratic contamination, sharp enough now that the linear fit's intercept lands *below zero*. The quadratic fit (red curve) still passes right through the true intercept. Reading off each fit's intercept: linear gives $\hat\sigma_{xy} \approx -0.13$ — wrong sign — while quadratic gives $\approx 0.44$, against a true $\sigma_{xy} = 0.5$. The original method doesn't just lose precision here; it fails qualitatively. The generalization still works.
+
+## Square Wave (scenario 2, L=4)
+
+::: {.panel-tabset}
+
+### Mean and Noise
+
+```{r}
+#| echo: false
+mean_noise_plot(square_sc)
+```
+
+### Regression
+
+```{r}
+#| echo: false
+library(patchwork)
+regression_matrix_plot(square_sc)
+```
+
+:::
+
+Here $\theta$ is exactly piecewise constant with segments of length $L=4$ — squarely the original model's home turf. Both fits track the points closely and both intercepts land on the true value: this is a check that the generalization doesn't cost anything when the piecewise-constant assumption already holds.
+
+## Piecewise-Linear (random slopes)
+
+::: {.panel-tabset}
+
+### Mean and Noise
+
+```{r}
+#| echo: false
+mean_noise_plot(pwlin_sc)
+```
+
+### Regression
+
+```{r}
+#| echo: false
+library(patchwork)
+regression_matrix_plot(pwlin_sc)
+```
+
+:::
+
+Now a case squarely inside the $M=2$ model's class: $\theta$ is piecewise **linear**, slope drawn i.i.d. $N(0, 0.2^2)$ per block of length $L_{\text{seg}}=20$ — 5 times the lag window $L=4$, so most $k=1,\ldots,4$ windows stay within one segment and see a single constant slope. Within such a window, $\theta_i - \theta_{i+k}$ is *exactly* linear in $k$, so contamination is exactly quadratic in $k$ with no truncation error — unlike the sine case above. The linear fit is visibly biased ($\hat\sigma_{xy}\approx0.40$ against true $0.5$), since it can't absorb any curvature. The quadratic fit lands almost exactly on the truth ($\approx0.49$), confirming the generalization isn't just a leading-order patch for sinusoids — it recovers the truth (up to boundary-crossing effects at segments $\approx L$) whenever contamination truly has this shape.
+
+## Piecewise-Linear, Discontinuous, Segments = L
+
+::: {.panel-tabset}
+
+### Mean and Noise
+
+```{r}
+#| echo: false
+mean_noise_plot(jump_sc)
+```
+
+### Regression
+
+```{r}
+#| echo: false
+library(patchwork)
+regression_matrix_plot(jump_sc)
+```
+
+:::
+
+A more extreme version: segments still have length exactly $L=4$, but now each segment gets its own i.i.d. random slope ($N(0,1)$) *and* its own i.i.d. random level ($N(0,3^2)$) — no continuity constraint at block boundaries, so this is jumps and curvature superimposed at the shortest possible spacing. The hypothesis was that this should still work, since jumps load onto the $k$ coefficient and curvature onto $k^2$. It doesn't: both fits are badly wrong here. The linear fit overshoots substantially ($\hat\sigma_{xy}\approx1.5$, true $0.5$), and the quadratic fit undershoots to near zero ($\approx0.12$) — worse, in relative terms, than the linear fit in the fast-sine case above. Because every lag window straddles a boundary (segment length equals $L$, leaving no within-segment room), the jump and curvature contributions mix inside each $T_k$ term rather than adding cleanly — the cross term between them lands on neither the $k$ nor the $k^2$ coefficient, and the OLS fit misattributes it to the intercept. This is the "mixed, entangled" case flagged as an open problem above, made concrete: no amount of matching segment length to $L$ rescues it once jump and curvature vary together.
+
+::::
 
 ## Generalized Regression Estimator (Sketch)
 
