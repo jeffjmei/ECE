@@ -40,6 +40,7 @@ book:
       chapters:
         - positive-semidefinite.qmd
         - model-misspecification.qmd
+        - smooth-mean.qmd
         - package.qmd
         - partial-correlation.qmd
         - pca.qmd

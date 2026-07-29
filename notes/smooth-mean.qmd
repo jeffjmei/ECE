@@ -1,0 +1,107 @@
+---
+title: "Smooth Mean"
+---
+
+## Motivation
+
+Every prior chapter assumes piecewise-constant $\theta$: the bias formula in [Lagged Differences](lagged-differences.qmd), the [Omega Estimation](omega-estimation.qmd) parameter, and the ECE construction in [Bilinear Form](bilinear-form.qmd) all depend on it. Real trends are often smooth instead — slow drift, gradual regime change. This chapter asks what changes if $\theta$ is smooth, and whether the same lag-based machinery generalizes.
+
+## Bias Under a Smooth Mean
+
+Let $\theta_x(t), \theta_y(t)$ be differentiable, sampled at $t = i/n$. For lag $k \ll n$, a Taylor expansion gives
+
+$$
+\theta_{x,i} - \theta_{x,i+k} \approx -\theta_x'(t)\cdot\frac{k}{n}.
+$$
+
+Substituting into $T_k(\theta_x,\theta_y) = \sum_i (\theta_{x,i}-\theta_{x,i+k})(\theta_{y,i}-\theta_{y,i+k})$ and treating the sum as a Riemann sum,
+
+$$
+T_k(\theta_x,\theta_y) \approx \frac{k^2}{n}\int_0^1 \theta_x'(t)\theta_y'(t)\,dt.
+$$
+
+Piecewise-constant contamination is **linear** in $k$ — each extra lag can straddle one more change point. Smooth contamination is **quadratic** in $k$ — it comes from squaring a derivative times a step of size $k/n$.
+
+::: {.callout-note collapse="true"}
+## Test: Quadratic-in-$k$ bias for a sinusoidal $\theta$
+
+For $\theta_x(t) = \sin(2\pi f t)$, $\theta_y(t) = A\sin(2\pi f t + \phi)$, the predicted constant is $\int_0^1 \theta_x'\theta_y'\,dt = A(2\pi f)^2\cdot\tfrac12\cos(\phi)$. The chunk below checks $T_k(\theta_x,\theta_y) \approx \frac{k^2}{n}\cdot A(2\pi f)^2\cdot\tfrac12\cos(\phi)$ across several lags.
+
+```{r}
+#| message: false
+#| warning: false
+devtools::load_all("..")
+library(testthat)
+
+n <- 2000
+f <- 3
+A <- 1.5
+phi <- 0.7
+t <- (1:n) / n
+theta_x <- sin(2 * pi * f * t)
+theta_y <- A * sin(2 * pi * f * t + phi)
+
+ks <- c(1, 2, 3, 5, 8)
+Tk_numerical <- sapply(ks, function(k) lag_diff(theta_x, theta_y, k = k))
+Tk_predicted <- sapply(ks, function(k) k^2 / n * A * (2 * pi * f)^2 * 0.5 * cos(phi))
+
+test_that("quadratic-in-k bias formula holds for a sinusoidal theta", {
+  expect_equal(Tk_numerical, Tk_predicted, tolerance = 1e-3)
+})
+
+plot(ks, Tk_numerical,
+  type = "b", pch = 19, col = "steelblue",
+  xlab = "Lag k", ylab = expression(T[k](theta[x], theta[y])),
+  main = "Quadratic growth in k for a smooth (sinusoidal) mean"
+)
+lines(ks, Tk_predicted, col = "firebrick", lty = 2)
+legend("topleft", legend = c("numerical", "predicted (quadratic)"),
+       col = c("steelblue", "firebrick"), lty = c(1, 2), pch = c(19, NA))
+```
+:::
+
+## Polynomial Order of Contamination
+
+Contamination in $T_k$ is a polynomial in $k$; its degree depends on $\theta$'s shape.
+
+| Model for $\theta$ | Bias in $\mathbb{E}[T_k(X,Y)]$ | Leading term |
+|---|---|---|
+| Piecewise constant | linear in $k$ | $k\,\omega_{xy}^{(1)}$, $\omega_{xy}^{(1)} = \omega_{xy}$ (see [Omega Estimation](omega-estimation.qmd)) |
+| Smooth (differentiable) | quadratic in $k$ | $k^2\,\omega_{xy}^{(2)}$, $\omega_{xy}^{(2)} = \tfrac1n\int\theta_x'\theta_y'\,dt$ |
+
+General model:
+$$
+\mathbb{E}[T_k(X,Y)] = 2n\sigma_{xy} + \sum_{m=1}^M k^m\,\omega_{xy}^{(m)}.
+$$
+$M$ indexes how many shapes of contamination are protected against at once. $\omega_{xy}^{(1)}$: jump synchrony. $\omega_{xy}^{(2)}$: curvature synchrony — whether $\theta_x, \theta_y$ bend together, independent of shared slow drift (see [Omega Estimation](omega-estimation.qmd)'s frequency-weighting discussion).
+
+## Generalized Regression Estimator (Sketch)
+
+[Bilinear Form](bilinear-form.qmd)'s "Regression Approach" fits $R_k = T_k(X,Y)/(2n)$ on $(1,k)$ across $k=1,\ldots,L$ to extract $\sigma_{xy}$. Adding a $k^2$ column:
+
+$$
+\mathbb{E}[R] = K\beta, \qquad K = \begin{bmatrix} 1 & 1 & 1 \\ 1 & 2 & 4 \\ \vdots & \vdots & \vdots \\ 1 & L & L^2 \end{bmatrix} \in \mathbb{R}^{L\times 3}, \qquad \beta = \begin{pmatrix} 2n\sigma_{xy} \\ \omega_{xy}^{(1)} \\ \omega_{xy}^{(2)} \end{pmatrix},
+$$
+
+requiring $L \ge 3$ lags to identify all three coefficients. This protects $\hat\sigma_{xy}$ against a pure jump (exactly) or pure smooth curvature (to leading order) — not necessarily both at once; see below.
+
+Not yet solved in closed form. Next step: repeat `bilinear-form.qmd`'s linear-case derivation — solve the OLS system, express as $X^TAY$ with $A$ a symmetric circulant, check feasibility and minimum-norm optimality.
+
+## What Is and Isn't Preserved
+
+- **Pure jumps, spaced $\ge L$.** Exact, unchanged. The $k$ coefficient is the same algebraic identity as the original ECE; a jump contributes only there, nothing to $k^2$.
+- **Pure smooth curvature.** Approximate only. The $k^2$ term is a truncated Taylor expansion — bias remains from third-order derivatives and beyond. No finite-sample exact guarantee, unlike the piecewise-constant case.
+- **Mixed: jumps closer than $L$, or a jump entangled with curvature.** Uncovered. Contamination doesn't decompose cleanly into $k$ and $k^2$ terms. Open problem.
+
+Net: exact unbiasedness survives only for the original piecewise-constant class. Smooth contamination gets leading-order correction, not exact removal. Mixed cases are unprotected.
+
+## Connection to Difference-Based Nonparametric Regression
+
+Choosing difference weights that vanish against polynomials up to degree $m$, to remove a smooth trend before estimating variance, is established in nonparametric regression: Rice (1984); Hall, Kay & Titterington (1990); Müller & Stadtmüller; Wang, Brown, Cai & Levine. This chapter's generalization is the bivariate cross-covariance analog, reusing the min-norm-subject-to-constraints framework already built for $L>2$ in [Bilinear Form](bilinear-form.qmd).
+
+## Open Questions
+
+- Closed-form $\hat\sigma_{xy}, \hat\omega_{xy}^{(1)}, \hat\omega_{xy}^{(2)}$ for the $L\ge3$ regression, and their joint asymptotic distribution (paralleling [Omega Estimation](omega-estimation.qmd)).
+- Bias-variance tradeoff as a function of $M$ and $L$ — mirroring the $L>2$ noise-variance analysis in [Bilinear Form](bilinear-form.qmd).
+- Handling the mixed case: jumps and curvature close together, or jumps spaced closer than $L$.
+- Polynomial-in-$k$ vs. direct frequency-domain filter design (a high-pass filter with a specified rolloff) — more flexible, at the cost of a tuning parameter.
