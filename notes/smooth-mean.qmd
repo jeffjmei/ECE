@@ -75,9 +75,106 @@ $$
 $$
 $M$ indexes how many shapes of contamination are protected against at once. $\omega_{xy}^{(1)}$: jump synchrony. $\omega_{xy}^{(2)}$: curvature synchrony — whether $\theta_x, \theta_y$ bend together, independent of shared slow drift (see [Omega Estimation](omega-estimation.qmd)'s frequency-weighting discussion).
 
+## Does This Work at All?
+
+Before generalizing anything further, a direct check: for a fast sinusoidal $\theta$ (period 25, $n=200$), does fitting a line through $T_k(X,Y)$ actually look wrong, and does adding a $k^2$ term fix it? Both fits use $k=1,\ldots,L=4$ — the only points shown — and are extended back to $k=0$, where the true $2n\sigma_{xy}$ is marked.
+
+```{r smooth-fit-comparison}
+#| echo: false
+#| cache: true
+#| message: false
+n <- 200
+params <- scenario(scenario_num = 3, n = n, period = 25, amp = 3, r = 0.5, err_type = "normal")
+L <- 4
+reps <- 1000
+
+set.seed(1)
+X_example <- generate_data(params)
+
+Tk_mat <- lapply(1:reps, function(i) {
+  X <- generate_data(params)
+  list(
+    xx = sapply(1:L, function(k) lag_diff(X[, 1], X[, 1], k = k)),
+    yy = sapply(1:L, function(k) lag_diff(X[, 2], X[, 2], k = k)),
+    xy = sapply(1:L, function(k) lag_diff(X[, 1], X[, 2], k = k))
+  )
+})
+Tk_avg_xx <- Reduce(`+`, lapply(Tk_mat, `[[`, "xx")) / reps
+Tk_avg_yy <- Reduce(`+`, lapply(Tk_mat, `[[`, "yy")) / reps
+Tk_avg_xy <- Reduce(`+`, lapply(Tk_mat, `[[`, "xy")) / reps
+
+K1 <- cbind(1, 1:L)
+K2 <- cbind(1, 1:L, (1:L)^2)
+
+fit_panel <- function(Tk_avg, true_val, ylab) {
+  beta1 <- solve(t(K1) %*% K1) %*% t(K1) %*% Tk_avg
+  beta2 <- solve(t(K2) %*% K2) %*% t(K2) %*% Tk_avg
+
+  points_df <- tibble::tibble(k = 1:L, Tk = Tk_avg / (2 * n))
+  kseq <- seq(0, L, length.out = 200)
+  lines_df <- tibble::tibble(
+    k = rep(kseq, 2),
+    fit = rep(c("Linear (M=1)", "Quadratic (M=2)"), each = length(kseq)),
+    val = c(
+      beta1[1] + beta1[2] * kseq,
+      beta2[1] + beta2[2] * kseq + beta2[3] * kseq^2
+    ) / (2 * n)
+  )
+
+  ggplot2::ggplot() +
+    ggplot2::geom_hline(yintercept = 0, color = "grey40") +
+    ggplot2::geom_vline(xintercept = 0, color = "grey40") +
+    ggplot2::geom_point(data = points_df, ggplot2::aes(x = k, y = Tk), size = 2) +
+    ggplot2::geom_line(data = lines_df, ggplot2::aes(x = k, y = val, color = fit)) +
+    ggplot2::geom_point(ggplot2::aes(x = 0, y = true_val), color = "red", size = 3) +
+    ggplot2::scale_color_manual(
+      values = c("Linear (M=1)" = "black", "Quadratic (M=2)" = "firebrick"), name = NULL
+    ) +
+    ggplot2::scale_x_continuous(breaks = 0:L) +
+    ggplot2::labs(x = "Lag k", y = ylab) +
+    ggplot2::theme_minimal()
+}
+```
+
+::: {.panel-tabset}
+
+## Mean and Noise
+
+```{r}
+#| echo: false
+tibble::tibble(i = 1:n, theta = params$h[, 1], x = X_example[, 1]) |>
+  ggplot2::ggplot(ggplot2::aes(x = i)) +
+  ggplot2::geom_line(ggplot2::aes(y = x), color = "grey80") +
+  ggplot2::geom_line(ggplot2::aes(y = theta), color = "steelblue", linewidth = 1) +
+  ggplot2::labs(
+    x = "Index i", y = "Value",
+    title = "Mean (blue) and noise (grey line = mean + noise)"
+  ) +
+  ggplot2::theme_minimal()
+```
+
+## Regression
+
+```{r}
+#| echo: false
+library(patchwork)
+
+p_xx <- fit_panel(Tk_avg_xx, params$S[1, 1], expression(T[k](X, X) / (2 * n)))
+p_yy <- fit_panel(Tk_avg_yy, params$S[2, 2], expression(T[k](Y, Y) / (2 * n)))
+p_xy <- fit_panel(Tk_avg_xy, params$S[1, 2], expression(T[k](X, Y) / (2 * n)))
+
+(p_xx | p_xy) / (patchwork::plot_spacer() | p_yy) +
+  patchwork::plot_layout(guides = "collect") &
+  ggplot2::theme(legend.position = "bottom")
+```
+
+:::
+
+The points curve visibly upward — real quadratic contamination, sharp enough now that the linear fit's intercept lands *below zero*. The quadratic fit (red curve) still passes right through the true intercept. Reading off each fit's intercept: linear gives $\hat\sigma_{xy} \approx -0.13$ — wrong sign — while quadratic gives $\approx 0.44$, against a true $\sigma_{xy} = 0.5$. The original method doesn't just lose precision here; it fails qualitatively. The generalization still works.
+
 ## Generalized Regression Estimator (Sketch)
 
-[Bilinear Form](bilinear-form.qmd)'s "Regression Approach" fits $R_k = T_k(X,Y)/(2n)$ on $(1,k)$ across $k=1,\ldots,L$ to extract $\sigma_{xy}$. Adding a $k^2$ column:
+[Bilinear Form](bilinear-form.qmd)'s "Regression Approach" fits $R_k = T_k(X,Y)$ on $(1,k)$ across $k=1,\ldots,L$ to extract $\sigma_{xy}$. Adding a $k^2$ column:
 
 $$
 \mathbb{E}[R] = K\beta, \qquad K = \begin{bmatrix} 1 & 1 & 1 \\ 1 & 2 & 4 \\ \vdots & \vdots & \vdots \\ 1 & L & L^2 \end{bmatrix} \in \mathbb{R}^{L\times 3}, \qquad \beta = \begin{pmatrix} 2n\sigma_{xy} \\ \omega_{xy}^{(1)} \\ \omega_{xy}^{(2)} \end{pmatrix},
@@ -94,6 +191,101 @@ Not yet solved in closed form. Next step: repeat `bilinear-form.qmd`'s linear-ca
 - **Mixed: jumps closer than $L$, or a jump entangled with curvature.** Uncovered. Contamination doesn't decompose cleanly into $k$ and $k^2$ terms. Open problem.
 
 Net: exact unbiasedness survives only for the original piecewise-constant class. Smooth contamination gets leading-order correction, not exact removal. Mixed cases are unprotected.
+
+## Simulation
+
+No closed form is needed to test the $M=2$ estimator — it's a direct OLS fit. Fix $L=4$ throughout.
+
+```{r}
+#| message: false
+#| warning: false
+devtools::load_all("..")
+library(purrr)
+
+sigma_hat_quad <- function(x, y, L = 4) {
+  n <- length(x)
+  R <- sapply(1:L, function(k) lag_diff(x, y, k))
+  K <- cbind(1, 1:L, (1:L)^2)
+  beta <- solve(t(K) %*% K) %*% t(K) %*% R
+  as.numeric(beta[1]) / (2 * n)
+}
+```
+
+### Pure Smooth: Period Sweep
+
+For a sinusoidal $\theta$ (`scenario(scenario_num = 3)`, $n=200$, amplitude 3, $r=0.5$, Gaussian errors), compare the bias of the current linear ECE (`ece.cov`, $L=4$) against `sigma_hat_quad` ($L=4$) as the period shrinks from slow to fast — 300 replicates per period.
+
+```{r smooth-sim-sweep}
+#| cache: true
+#| message: false
+periods <- c(2000, 1000, 500, 200, 100, 50, 25, 10)
+reps <- 300
+L <- 4
+
+sweep <- map_dfr(periods, function(P) {
+  params <- scenario(scenario_num = 3, n = 200, period = P, amp = 3, r = 0.5, err_type = "normal")
+  true_sigma <- params$S[1, 2]
+  ests <- map_dfr(1:reps, function(i) {
+    X <- generate_data(params)
+    tibble::tibble(
+      m1 = ece.cov(X[, 1], X[, 2], L = L),
+      m2 = sigma_hat_quad(X[, 1], X[, 2], L = L)
+    )
+  })
+  tibble::tibble(
+    period = P,
+    bias_linear = mean(ests$m1) - true_sigma,
+    bias_quadratic = mean(ests$m2) - true_sigma
+  )
+})
+```
+
+```{r}
+#| echo: false
+sweep |>
+  tidyr::pivot_longer(c(bias_linear, bias_quadratic), names_to = "estimator", values_to = "bias") |>
+  ggplot2::ggplot(ggplot2::aes(x = period, y = bias, color = estimator)) +
+  ggplot2::geom_line() +
+  ggplot2::geom_point() +
+  ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  ggplot2::scale_x_log10() +
+  ggplot2::labs(x = "Period (log scale, slow → fast going left)", y = expression(hat(sigma)[xy] - sigma[xy]),
+                title = "Bias vs. oscillation speed: linear (M=1) vs. quadratic (M=2)") +
+  ggplot2::theme_minimal()
+```
+
+The quadratic estimator keeps bias near zero much further into the fast-oscillation range than the linear one — it extends the robust range, it doesn't remove the breakdown. At the fastest period (10), $L=4$ lags no longer satisfy the Taylor-validity condition from the previous section, and both estimators fail together.
+
+### Mixed: Smooth Trend Plus Closely-Spaced Jumps
+
+Now overlay a slow sine (period 1000, amplitude 3) with jumps spaced $L_{\text{seg}}=2$ apart (amplitude 3) — closer than $L=4$, the case flagged as uncovered above.
+
+```{r}
+#| cache: true
+#| message: false
+n <- 200
+params <- scenario(scenario_num = 1, n = n, r = 0.5, err_type = "normal")
+true_sigma <- params$S[1, 2]
+
+theta <- 3 * sin(2 * pi * (1:n) / 1000) + 3 * square_wave(n, L = 2)
+params$h <- matrix(rep(theta, 2), n, 2)
+
+mixed_ests <- map_dfr(1:300, function(i) {
+  X <- generate_data(params)
+  tibble::tibble(
+    m1 = ece.cov(X[, 1], X[, 2], L = 4),
+    m2 = sigma_hat_quad(X[, 1], X[, 2], L = 4)
+  )
+})
+
+tibble::tibble(
+  true_sigma = true_sigma,
+  bias_linear = mean(mixed_ests$m1) - true_sigma,
+  bias_quadratic = mean(mixed_ests$m2) - true_sigma
+)
+```
+
+Both estimators are severely biased — neither the linear nor the quadratic model captures contamination from jumps spaced closer than $L$. This confirms the "mixed" case above is a real gap, not just a theoretical caveat: adding the $k^2$ term does not rescue this scenario.
 
 ## Connection to Difference-Based Nonparametric Regression
 
