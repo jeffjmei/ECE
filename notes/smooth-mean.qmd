@@ -95,6 +95,12 @@ run_scenario <- function(params) {
   set.seed(1)
   X_example <- generate_data(params)
 
+  fit_est <- function(Tk) {
+    b1 <- solve(t(K1) %*% K1) %*% t(K1) %*% Tk
+    b2 <- solve(t(K2) %*% K2) %*% t(K2) %*% Tk
+    c(linear = b1[1], quadratic = b2[1]) / (2 * n)
+  }
+
   Tk_mat <- lapply(1:reps, function(i) {
     X <- generate_data(params)
     list(
@@ -109,7 +115,10 @@ run_scenario <- function(params) {
     X_example = X_example,
     Tk_avg_xx = Reduce(`+`, lapply(Tk_mat, `[[`, "xx")) / reps,
     Tk_avg_yy = Reduce(`+`, lapply(Tk_mat, `[[`, "yy")) / reps,
-    Tk_avg_xy = Reduce(`+`, lapply(Tk_mat, `[[`, "xy")) / reps
+    Tk_avg_xy = Reduce(`+`, lapply(Tk_mat, `[[`, "xy")) / reps,
+    est_xx = t(sapply(Tk_mat, function(m) fit_est(m$xx))),
+    est_yy = t(sapply(Tk_mat, function(m) fit_est(m$yy))),
+    est_xy = t(sapply(Tk_mat, function(m) fit_est(m$xy)))
   )
 }
 
@@ -130,6 +139,54 @@ regression_matrix_plot <- function(sc) {
   (p_xx | p_xy) / (patchwork::plot_spacer() | p_yy) +
     patchwork::plot_layout(guides = "collect") &
     ggplot2::theme(legend.position = "bottom")
+}
+
+hist_panel <- function(est_mat, true_val, xlab) {
+  df <- tibble::tibble(
+    val = c(est_mat[, "linear"], est_mat[, "quadratic"]),
+    fit = rep(c("Linear (M=1)", "Quadratic (M=2)"), each = nrow(est_mat))
+  )
+  means_df <- tibble::tibble(
+    fit = c("Linear (M=1)", "Quadratic (M=2)"),
+    mean_val = c(mean(est_mat[, "linear"]), mean(est_mat[, "quadratic"]))
+  )
+
+  ggplot2::ggplot(df, ggplot2::aes(x = val, fill = fit)) +
+    ggplot2::geom_histogram(
+      ggplot2::aes(y = ggplot2::after_stat(density)),
+      bins = 40, color = "white", alpha = 0.6, position = "identity"
+    ) +
+    ggplot2::geom_vline(xintercept = true_val, color = "red") +
+    ggplot2::geom_vline(
+      data = means_df,
+      ggplot2::aes(xintercept = mean_val, color = fit),
+      linetype = "dashed"
+    ) +
+    ggplot2::scale_fill_manual(values = c("Linear (M=1)" = "black", "Quadratic (M=2)" = "firebrick"), name = NULL) +
+    ggplot2::scale_color_manual(values = c("Linear (M=1)" = "black", "Quadratic (M=2)" = "firebrick"), guide = "none") +
+    ggplot2::labs(x = xlab, y = "density") +
+    ggplot2::theme_minimal()
+}
+
+histogram_matrix_plot <- function(sc) {
+  p_xx <- hist_panel(sc$est_xx, sc$params$S[1, 1], expression(hat(sigma)[x]^2))
+  p_yy <- hist_panel(sc$est_yy, sc$params$S[2, 2], expression(hat(sigma)[y]^2))
+  p_xy <- hist_panel(sc$est_xy, sc$params$S[1, 2], expression(hat(sigma)[xy]))
+
+  (p_xx | p_xy) / (patchwork::plot_spacer() | p_yy) +
+    patchwork::plot_layout(guides = "collect") &
+    ggplot2::theme(legend.position = "bottom")
+}
+
+estimate_table <- function(sc) {
+  beta1 <- function(Tk) solve(t(K1) %*% K1) %*% t(K1) %*% Tk
+  beta2 <- function(Tk) solve(t(K2) %*% K2) %*% t(K2) %*% Tk
+  tibble::tibble(
+    Quantity = c("$\\sigma_x^2$", "$\\sigma_y^2$", "$\\sigma_{xy}$"),
+    True = c(sc$params$S[1, 1], sc$params$S[2, 2], sc$params$S[1, 2]),
+    Linear = c(beta1(sc$Tk_avg_xx)[1], beta1(sc$Tk_avg_yy)[1], beta1(sc$Tk_avg_xy)[1]) / (2 * n),
+    Quadratic = c(beta2(sc$Tk_avg_xx)[1], beta2(sc$Tk_avg_yy)[1], beta2(sc$Tk_avg_xy)[1]) / (2 * n)
+  )
 }
 
 square_sc <- run_scenario(scenario(scenario_num = 2, n = n, L = 4, amp = 3, r = 0.5, err_type = "normal"))
@@ -179,6 +236,19 @@ library(patchwork)
 regression_matrix_plot(square_sc)
 ```
 
+```{r square-estimate-table}
+#| echo: false
+knitr::kable(estimate_table(square_sc), digits = 3)
+```
+
+### Histograms
+
+```{r square-histograms}
+#| echo: false
+library(patchwork)
+histogram_matrix_plot(square_sc)
+```
+
 :::
 
 Here $\theta$ is exactly piecewise constant with segments of length $L=4$ — squarely the original model's home turf. Both fits track the points closely and both intercepts land on the true value: this is a check that the generalization doesn't cost anything when the piecewise-constant assumption already holds.
@@ -200,6 +270,19 @@ mean_noise_plot(pwlin_sc)
 #| echo: false
 library(patchwork)
 regression_matrix_plot(pwlin_sc)
+```
+
+```{r pwlin-estimate-table}
+#| echo: false
+knitr::kable(estimate_table(pwlin_sc), digits = 3)
+```
+
+### Histograms
+
+```{r pwlin-histograms}
+#| echo: false
+library(patchwork)
+histogram_matrix_plot(pwlin_sc)
 ```
 
 :::
@@ -225,6 +308,19 @@ library(patchwork)
 regression_matrix_plot(sine_sc)
 ```
 
+```{r sine-estimate-table}
+#| echo: false
+knitr::kable(estimate_table(sine_sc), digits = 3)
+```
+
+### Histograms
+
+```{r sine-histograms}
+#| echo: false
+library(patchwork)
+histogram_matrix_plot(sine_sc)
+```
+
 :::
 
 The points curve visibly upward — real quadratic contamination, sharp enough now that the linear fit's intercept lands *below zero*. The quadratic fit (red curve) still passes right through the true intercept. Reading off each fit's intercept: linear gives $\hat\sigma_{xy} \approx -0.13$ — wrong sign — while quadratic gives $\approx 0.44$, against a true $\sigma_{xy} = 0.5$. The original method doesn't just lose precision here; it fails qualitatively. The generalization still works.
@@ -248,6 +344,19 @@ library(patchwork)
 regression_matrix_plot(saw_sc)
 ```
 
+```{r saw-estimate-table}
+#| echo: false
+knitr::kable(estimate_table(saw_sc), digits = 3)
+```
+
+### Histograms
+
+```{r saw-histograms}
+#| echo: false
+library(patchwork)
+histogram_matrix_plot(saw_sc)
+```
+
 :::
 
 The failure below came from randomness, not from combining a jump with a slope per se. Here $\theta$ is a deterministic sawtooth — $\theta_i = 3(i \bmod 4)$, a fixed slope that resets every $L=4$ steps, so every "segment" has the identical slope and the identical reset. This makes $T_k(\theta,\theta)$ an *exact* quadratic in $k$ with no residual at all: $T_k(\theta,\theta) = n(Lk-k^2)$ (amplitude-squared factor omitted), verified to machine precision. The linear fit is catastrophic ($\hat\sigma_{xy}\approx23$, true $0.5$) — a steady drift is the worst case for a $k$-only model. The quadratic fit lands almost exactly on the truth ($\approx0.50$). Unlike the next case, jump and slope here aren't independent per segment — they're the same fixed pair repeating, so their cross term is itself a clean function of $k$ that the $k^2$ coefficient absorbs. Entanglement only defeats the model when it varies unpredictably from segment to segment.
@@ -269,6 +378,19 @@ mean_noise_plot(jump_sc)
 #| echo: false
 library(patchwork)
 regression_matrix_plot(jump_sc)
+```
+
+```{r jump-estimate-table}
+#| echo: false
+knitr::kable(estimate_table(jump_sc), digits = 3)
+```
+
+### Histograms
+
+```{r jump-histograms}
+#| echo: false
+library(patchwork)
+histogram_matrix_plot(jump_sc)
 ```
 
 :::
@@ -304,3 +426,207 @@ Net: exact unbiasedness survives for piecewise-constant jumps and for a constant
 - Bias-variance tradeoff as a function of $M$ and $L$ — mirroring the $L>2$ noise-variance analysis in [Bilinear Form](bilinear-form.qmd).
 - Handling the mixed case: jumps and curvature close together, or jumps spaced closer than $L$.
 - Polynomial-in-$k$ vs. direct frequency-domain filter design (a high-pass filter with a specified rolloff) — more flexible, at the cost of a tuning parameter.
+
+## Piecewise Linear Bilinear Analysis
+
+**Goal.** Repeat [Bilinear Form](bilinear-form.qmd)'s derivation of $A$ for the class relevant here: $\Theta_L^{(1)}$, vectors that are affine-linear on each block of a partition into contiguous segments of length $\ge L$ — arbitrary intercept *and* slope per segment, not just a global slope. Find a symmetric circulant $A$ (equivariant, as before) with $\theta_x^TA\theta_y=0$ for all $\theta_x,\theta_y\in\Theta_L^{(1)}$, and $\operatorname{tr}(A)=1$.
+
+**Reduction to windowed conditions.** A segment of length $\ell$ contributes $a\mathbf1_\ell + b\mathbf t_\ell$ for arbitrary $a,b$, where $\mathbf t_\ell = (0,1,\ldots,\ell-1)^T$ is the local ramp. By the same window-decomposition argument [Bilinear Form](bilinear-form.qmd) uses for $\Theta_L$, unbiasedness for all such segments requires three families of conditions on the diagonal window $A_\ell$ (the $\ell\times\ell$ contiguous submatrix), for $\ell=L,\ldots,\lfloor n/2\rfloor$:
+$$
+g_{00}(\ell) = \mathbf1_\ell^TA_\ell\mathbf1_\ell = 0, \qquad
+g_{01}(\ell) = \mathbf1_\ell^TA_\ell\mathbf t_\ell = 0, \qquad
+g_{11}(\ell) = \mathbf t_\ell^TA_\ell\mathbf t_\ell = 0.
+$$
+$g_{00}$ is exactly the original ECE constraint.
+
+**Lemma.** For any symmetric $\ell\times\ell$ window $A_\ell$, $g_{01}(\ell) = \tfrac{\ell-1}{2}g_{00}(\ell)$.
+
+*Proof.* Let $S(q) = \sum_p (A_\ell)_{pq}$ be the $q$-th column sum. Reflecting the window ($p\mapsto\ell+1-p$) gives $S(\ell+1-q) = S(q)$. Then
+$$
+g_{01}(\ell) = \sum_q (q-1)S(q) = \sum_q (\ell-q)S(\ell+1-q) = \sum_q(\ell-q)S(q),
+$$
+substituting $q\mapsto\ell+1-q$ and using the reflection symmetry. Averaging the two expressions,
+$$
+g_{01}(\ell) = \frac12\sum_q\bigl[(q-1)+(\ell-q)\bigr]S(q) = \frac{\ell-1}{2}\sum_q S(q) = \frac{\ell-1}{2}g_{00}(\ell). \qquad\square
+$$
+
+**Corollary.** Whenever $g_{00}(\ell)=0$ (the original constraint), $g_{01}(\ell)=0$ automatically. The intercept/slope cross term needs no new work — the only genuinely new condition is $g_{11}(\ell)=0$.
+
+```{r pwlin-bilinear-lemma}
+#| message: false
+devtools::load_all("..")
+library(testthat)
+
+set.seed(3)
+n <- 20
+half <- floor(n / 2)
+a_half <- rnorm(half + 1)
+a <- expand_sym(a_half, n)
+A <- circ(a)
+
+g00 <- function(A, ell) sum(A[1:ell, 1:ell])
+g01 <- function(A, ell) {
+  idx <- 1:ell
+  t <- 0:(ell - 1)
+  sum(sweep(A[idx, idx], 2, t, "*"))
+}
+
+test_that("g01(ell) = (ell-1)/2 * g00(ell) for a random symmetric circulant", {
+  for (ell in 2:half) {
+    expect_equal(g01(A, ell), (ell - 1) / 2 * g00(A, ell))
+  }
+})
+```
+
+**The reduced problem.** Piecewise-linear unbiasedness reduces to finding a symmetric circulant $a=(a_0,\ldots,a_{\lfloor n/2\rfloor})$ satisfying both $g_{00}(\ell)=0$ and $g_{11}(\ell)=0$ for $\ell=L,\ldots,\lfloor n/2\rfloor$, plus $\operatorname{tr}(A)=1$ — same unknowns as the original, twice as many equality-constraint families.
+
+Expanding $g_{11}(\ell) = \sum_{u,v=0}^{\ell-1}uv\,a_{|u-v|}$ by gap $i=|u-v|$ gives coefficients
+$$
+[a_0]: \sum_{u=0}^{\ell-1}u^2, \qquad [a_i]: 2\sum_{u=0}^{\ell-1-i}u(u+i), \quad i=1,\ldots,\ell-1,
+$$
+mirroring $g_{00}(\ell) = \ell a_0 + \sum 2(\ell-i)a_i$ from [Bilinear Form](bilinear-form.qmd), just weighted by the ramp instead of uniformly.
+
+```{r pwlin-bilinear-constraint}
+#| message: false
+devtools::load_all("..")
+
+g11_row <- function(ell, half) {
+  c0 <- sum((0:(ell - 1))^2)
+  ci <- sapply(1:half, function(i) {
+    m <- ell - 1 - i
+    if (m < 0) {
+      return(0)
+    }
+    u <- 0:m
+    2 * sum(u * (u + i))
+  })
+  c(c0, ci)
+}
+
+g11_matrix <- function(n, L) {
+  half <- floor(n / 2)
+  rows <- half - L + 1
+  G <- matrix(0, rows, half + 1)
+  for (row in seq_len(rows)) {
+    G[row, ] <- g11_row(row + L - 1, half)
+  }
+  G
+}
+
+# null_space() uses an absolute SVD tolerance, which misjudges rank once
+# g11's entries (growing like ell^3) badly condition the matrix at larger n.
+# Use a relative tolerance instead.
+null_space_rel <- function(G, reltol = 1e-8) {
+  sv <- svd(G, nu = 0, nv = ncol(G))
+  rank_G <- sum(sv$d > reltol * sv$d[1])
+  sv$v[, (rank_G + 1):ncol(G), drop = FALSE]
+}
+
+for (cfg in list(c(20, 3), c(20, 4), c(100, 3), c(200, 4), c(200, 5))) {
+  n <- cfg[1]
+  L <- cfg[2]
+  G0 <- constraint_matrix(n, L)
+  G_ext <- rbind(G0, g11_matrix(n, L))
+  cat(sprintf(
+    "n=%d L=%d | dim null(g00 only)=%d  dim null(g00 & g11)=%d\n",
+    n, L, ncol(null_space_rel(G0)), ncol(null_space_rel(G_ext))
+  ))
+}
+
+n <- 200
+L <- 4
+G0 <- constraint_matrix(n, L)
+G_ext <- rbind(G0, g11_matrix(n, L))
+ns <- null_space_rel(G_ext)
+cat("a0 entries of the null-space basis (n=200, L=4):", ns[1, ], "\n")
+```
+
+**What this shows.** With a correctly-scaled tolerance, the pattern is exact, not approximate: the combined null space has dimension $L-1$, precisely one less than $g_{00}$ alone (dimension $L$). So $g_{11}$ contributes exactly one net new independent constraint, regardless of $n$ — not "often just one," but always one, at every $(n,L)$ checked. And critically, one of the basis vectors has $a_0\ne0$ (confirmed above for $n=200,L=4$) — so the trace constraint $\operatorname{tr}(A)=1$ is satisfiable, and a piecewise-linear-unbiased estimator exists, not just a homogeneous solution.
+
+**Constructing an explicit solution.** Take the null-space vector with $a_0\ne0$, rescale so $a_0=1$, and normalize by $n$ — mirroring `ece_first_row()`'s construction for the original problem.
+
+```{r pwlin-bilinear-solve}
+#| message: false
+devtools::load_all("..")
+library(testthat)
+
+a_half <- ns[, which(abs(ns[1, ]) > 1e-8)[1]]
+a_half <- a_half / a_half[1]
+a_pwlin <- expand_sym(a_half, n)
+A_pwlin <- circ(a_pwlin) / n
+
+half <- floor(n / 2)
+g00_vals <- sapply(L:half, function(ell) sum(A_pwlin[1:ell, 1:ell]))
+g11_vals <- sapply(L:half, function(ell) {
+  t <- 0:(ell - 1)
+  as.numeric(t %*% A_pwlin[1:ell, 1:ell] %*% t)
+})
+
+test_that("A_pwlin satisfies both constraint families and the trace condition", {
+  expect_equal(g00_vals, rep(0, length(g00_vals)), tolerance = 1e-6)
+  expect_equal(g11_vals, rep(0, length(g11_vals)), tolerance = 1e-6)
+  expect_equal(sum(diag(A_pwlin)), 1)
+})
+```
+
+This isn't the *only* feasible solution — the null space is 3-dimensional at $L=4$ — just one member of the feasible set. `ece_min_norm()` finds the minimum-norm solution for the original problem via $a = G_{\text{aug}}^T(G_{\text{aug}}G_{\text{aug}}^T)^{-1}b_{\text{aug}}$, minimizing $\operatorname{tr}(A^2)$ and hence the noise term of $\operatorname{Var}(X^TAY)$ — the natural thing to check here too.
+
+**Minimum-norm check.** That direct formula fails on this extended system: $G_{\text{aug}}$ has 195 rows but rank only 99 (most $g_{11}$ rows are redundant, consistent with the nullity finding above), so $G_{\text{aug}}G_{\text{aug}}^T$ is singular and `solve()` errors. The fix is the same idea without inverting a singular matrix: since the free directions (`ns_free`, the null space of the full augmented system) are already orthonormal from the SVD, the minimum-norm solution is just the particular solution with any component along `ns_free` projected out — $a_{\min} = a_{\text{pwlin}} - N N^T a_{\text{pwlin}}$.
+
+```{r pwlin-bilinear-minnorm}
+#| message: false
+G_aug <- rbind(c(1, rep(0, half)), G_ext)
+ns_free <- null_space_rel(G_aug)
+
+a_min_half <- a_half - as.numeric(ns_free %*% (t(ns_free) %*% a_half))
+
+test_that("the arbitrary solution already has minimum norm", {
+  expect_equal(sum(a_min_half^2), sum(a_half^2))
+})
+```
+
+It matches exactly — the "arbitrary" choice made above already *is* the minimum-norm (minimum-noise-variance) solution. So the scenario test below reflects the best circulant estimator in this class, not an artifact of a poor pick.
+
+## Testing Against the Failing Scenarios
+
+The real test: does $\hat\sigma_{xy}^{\text{new}} = X^TA_{\text{pwlin}}Y$ actually fix the two scenarios that broke the $M=2$ regression estimator? Reusing `pwlin_params` and `jump_params` from earlier in this chapter:
+
+```{r pwlin-bilinear-test}
+#| cache: true
+#| dependson: ["smooth-fit-comparison", "pwlin-bilinear-solve"]
+sigma_hat_new <- function(x, y) as.numeric(t(x) %*% A_pwlin %*% y)
+sigma_hat_quad <- function(x, y, L = 4) {
+  R <- sapply(1:L, function(k) lag_diff(x, y, k))
+  K <- cbind(1, 1:L, (1:L)^2)
+  beta <- solve(t(K) %*% K) %*% t(K) %*% R
+  as.numeric(beta[1]) / (2 * n)
+}
+
+test_new_estimator <- function(params, reps = 1000, seed = 1) {
+  true_sigma <- params$S[1, 2]
+  set.seed(seed)
+  ests <- sapply(1:reps, function(i) {
+    X <- generate_data(params)
+    c(
+      linear = ece.cov(X[, 1], X[, 2], L = L),
+      quadratic = sigma_hat_quad(X[, 1], X[, 2], L = L),
+      pwlin_bilinear = sigma_hat_new(X[, 1], X[, 2])
+    )
+  })
+  c(true = true_sigma, rowMeans(ests))
+}
+
+results <- rbind(
+  `Piecewise-Linear (random slopes)` = test_new_estimator(pwlin_params),
+  `Piecewise-Linear, Discontinuous` = test_new_estimator(jump_params)
+)
+```
+
+```{r pwlin-bilinear-test-table}
+#| echo: false
+knitr::kable(round(results, 3))
+```
+
+Mixed result. On "Piecewise-Linear, Discontinuous, Segments = L" — the case that broke *both* earlier estimators (linear at $1.55$, quadratic at $0.15$, true $0.5$) — the new estimator lands at $0.54$: a real improvement, not a marginal one. But on "Piecewise-Linear (random slopes)," it's worse than the quadratic regression ($0.47$ vs. $0.49$, true $0.5$), though still far better than linear ($0.40$). Since this is confirmed to be the minimum-variance choice, not an arbitrary one, the mixed result isn't an artifact of a poor pick: exact unbiasedness for the *full* $\Theta_L^{(1)}$ class genuinely doesn't uniformly dominate the $M=2$ regression estimator in finite samples. Whether the $M=2$ estimator itself is close to minimum-variance within its own (smaller) feasible set — which would explain why it's hard to beat despite being biased in the discontinuous case — is the natural next question.
+
+**Open.** Solve the reduced system in closed form (paralleling `bilinear-form.qmd`'s $L=2$ hand-solve), and check whether the minimum-variance $M=2$ regression estimator (not yet derived; the current version only enforces unbiasedness) closes the remaining gap on "Piecewise-Linear (random slopes)" — the same three-step arc the original derivation followed.
