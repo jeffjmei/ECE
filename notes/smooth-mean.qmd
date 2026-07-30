@@ -28,7 +28,7 @@ exact, for constants $c_1,c_2$ depending on $b_x,b_y,n$ — no residual, at any 
 - The slope is a single global constant, not segment-dependent, so its contribution to $T_k$ — even wrapped circularly — reduces to a fixed combination of $k$ and $k^2$ for every window, regardless of where the jumps fall.
 - Its interaction with the jump component is itself a fixed $k$-linear term (it mixes into $\omega_{xy}^{(1)}$; nothing is left unmodeled).
 
-**Segment-varying slope.** If the slope instead differs from segment to segment — genuine piecewise linearity, no single global value — the identity above no longer holds: windows straddling a segment boundary see an unpredictable slope pair, contributing a residual proportional to neither $k$ nor $k^2$. Small when segments are long relative to $L$ ("Piecewise-Linear (random slopes)" below); large once slope and jump both vary per segment at spacing $\approx L$ ("Piecewise-Linear, Discontinuous, Segments = L" below). The sawtooth below is the degenerate case where the slope *is* constant and the "jump" is a fixed, exactly-repeating reset — it falls under the first bullet, not this one.
+**Segment-varying slope.** If the slope instead differs from segment to segment — genuine piecewise linearity, no single global value — the identity above no longer holds: windows straddling a segment boundary see an unpredictable slope pair, contributing a residual proportional to neither $k$ nor $k^2$. Small when segments are long relative to $L$ ("Piecewise-Linear (random slopes)" below); large once slope and jump both vary per segment at spacing $\approx L$ ("Piecewise-Linear, Discontinuous, L = 4" below). The sawtooth below is the degenerate case where the slope *is* constant and the "jump" is a fixed, exactly-repeating reset — it falls under the first bullet, not this one.
 
 **Two distinct mechanisms.** Jumps load onto $k$; a global slope loads onto $k^2$ plus a $k$-linear cross term — unrelated identities, not orders of one expansion. What breaks the shared regression isn't the jump and slope occurring near each other — it's the slope varying unpredictably from segment to segment.
 
@@ -47,9 +47,9 @@ $$
 $$
 $M$ indexes how many shapes of contamination are protected against at once. $\omega_{xy}^{(1)}$: jump synchrony. $\omega_{xy}^{(2)}$: curvature synchrony — whether $\theta_x, \theta_y$ bend together, independent of shared slow drift (see [Omega Estimation](omega-estimation.qmd)'s frequency-weighting discussion).
 
-## Does This Work at All?
+## Simulations
 
-Before generalizing anything further, a direct check: for a fast sinusoidal $\theta$ (period 25, $n=200$), does fitting a line through $T_k(X,Y)$ actually look wrong, and does adding a $k^2$ term fix it? Both fits use $k=1,\ldots,L=4$ — the only points shown — and are extended back to $k=0$, where the true $2n\sigma_{xy}$ is marked.
+Before generalizing anything further, a direct check: for a fast sinusoidal $\theta$ (period 25, $n=200$), does fitting a line through $T_k(X,Y)$ actually look wrong, and does adding a $k^2$ term fix it? Both fits use $k=1,\ldots,L=4$ — the only points shown — and are extended back to $k=0$, where the true $2n\sigma_{xy}$ is marked. Each scenario below is run with 1000 replicates.
 
 ```{r smooth-fit-comparison}
 #| echo: false
@@ -262,6 +262,15 @@ jump_theta <- rep(jump_a, each = L) + rep(jump_b, each = L) * rep(0:(L - 1), n /
 jump_params <- scenario(scenario_num = 1, n = n, amp = 3, r = 0.5, err_type = "normal")
 jump_params$h <- matrix(rep(jump_theta, 2), n, 2)
 jump_sc <- run_scenario(jump_params)
+
+jump8_seg <- 8
+set.seed(5)
+jump8_a <- rnorm(n / jump8_seg, sd = 3)
+jump8_b <- rnorm(n / jump8_seg, sd = 1)
+jump8_theta <- rep(jump8_a, each = jump8_seg) + rep(jump8_b, each = jump8_seg) * rep(0:(jump8_seg - 1), n / jump8_seg)
+jump8_params <- scenario(scenario_num = 1, n = n, amp = 3, r = 0.5, err_type = "normal")
+jump8_params$h <- matrix(rep(jump8_theta, 2), n, 2)
+jump8_sc <- run_scenario(jump8_params)
 ```
 
 :::: {.panel-tabset}
@@ -410,7 +419,7 @@ knitr::kable(estimate_table(saw_sc), digits = 3)
 
 The failure below came from randomness, not from combining a jump with a slope per se. Here $\theta$ is a deterministic sawtooth — $\theta_i = 3(i \bmod 4)$, a fixed slope that resets every $L=4$ steps, so every "segment" has the identical slope and the identical reset. This makes $T_k(\theta,\theta)$ an *exact* quadratic in $k$ with no residual at all: $T_k(\theta,\theta) = n(Lk-k^2)$ (amplitude-squared factor omitted), verified to machine precision. The linear fit is catastrophic ($\hat\sigma_{xy}\approx23$, true $0.5$) — a steady drift is the worst case for a $k$-only model. The quadratic fit lands almost exactly on the truth ($\approx0.50$). Unlike the next case, jump and slope here aren't independent per segment — they're the same fixed pair repeating, so their cross term is itself a clean function of $k$ that the $k^2$ coefficient absorbs. Entanglement only defeats the model when it varies unpredictably from segment to segment.
 
-## Piecewise-Linear, Discontinuous, Segments = L
+## Piecewise-Linear, Discontinuous, L = 4
 
 ::: {.panel-tabset}
 
@@ -445,6 +454,42 @@ knitr::kable(estimate_table(jump_sc), digits = 3)
 :::
 
 A more extreme version of the sawtooth above: segments still have length exactly $L=4$, but now each segment gets its own i.i.d. random slope ($N(0,1)$) *and* its own i.i.d. random level ($N(0,3^2)$) — no continuity constraint at block boundaries, so this is jumps and curvature superimposed at the shortest possible spacing. The hypothesis was that this should still work, since jumps load onto the $k$ coefficient and curvature onto $k^2$. It doesn't: both fits are badly wrong here. The linear fit overshoots substantially ($\hat\sigma_{xy}\approx1.5$, true $0.5$), and the quadratic fit undershoots to near zero ($\approx0.12$) — worse, in relative terms, than the linear fit in the fast-sine case above. Because every lag window straddles a boundary (segment length equals $L$, leaving no within-segment room), the jump and curvature contributions mix inside each $T_k$ term rather than adding cleanly — the cross term between them lands on neither the $k$ nor the $k^2$ coefficient, and the OLS fit misattributes it to the intercept. This is the "mixed, entangled" case flagged as an open problem above, made concrete: no amount of matching segment length to $L$ rescues it once jump and curvature vary together.
+
+## Piecewise-Linear, Discontinuous, L = 8
+
+::: {.panel-tabset}
+
+### Mean and Noise
+
+```{r jump8-mean-noise}
+#| echo: false
+mean_noise_plot(jump8_sc)
+```
+
+### Regression
+
+```{r jump8-regression}
+#| echo: false
+library(patchwork)
+regression_matrix_plot(jump8_sc)
+```
+
+### Histograms
+
+```{r jump8-histograms}
+#| echo: false
+library(patchwork)
+histogram_matrix_plot(jump8_sc)
+```
+
+```{r jump8-estimate-table}
+#| echo: false
+knitr::kable(estimate_table(jump8_sc), digits = 3)
+```
+
+:::
+
+Same construction as the $L=4$ case — i.i.d. random slope and level per segment, no continuity constraint at boundaries — but segments are now twice as long as the lag window ($8$ vs. $L=4$), giving each $T_k$ window, $k=1,\ldots,4$, room to occasionally stay inside a single segment instead of straddling a boundary every time. This is the same slack that made "Piecewise-Linear (random slopes)" (segment length $20$) tractable for the quadratic fit above, just far less generous. If entanglement is really about spacing rather than randomness per se, doubling the segment length should partially recover the quadratic fit's accuracy without eliminating the effect entirely.
 
 ::::
 
@@ -676,6 +721,211 @@ results <- rbind(
 knitr::kable(round(results, 3))
 ```
 
-Mixed result. On "Piecewise-Linear, Discontinuous, Segments = L" — the case that broke *both* earlier estimators (linear at $1.55$, quadratic at $0.15$, true $0.5$) — the new estimator lands at $0.54$: a real improvement, not a marginal one. But on "Piecewise-Linear (random slopes)," it's worse than the quadratic regression ($0.47$ vs. $0.49$, true $0.5$), though still far better than linear ($0.40$). Since this is confirmed to be the minimum-variance choice, not an arbitrary one, the mixed result isn't an artifact of a poor pick: exact unbiasedness for the *full* $\Theta_L^{(1)}$ class genuinely doesn't uniformly dominate the $M=2$ regression estimator in finite samples. Whether the $M=2$ estimator itself is close to minimum-variance within its own (smaller) feasible set — which would explain why it's hard to beat despite being biased in the discontinuous case — is the natural next question.
+Mixed result. On "Piecewise-Linear, Discontinuous, L = 4" — the case that broke *both* earlier estimators (linear at $1.55$, quadratic at $0.15$, true $0.5$) — the new estimator lands at $0.54$: a real improvement, not a marginal one. But on "Piecewise-Linear (random slopes)," it's worse than the quadratic regression ($0.47$ vs. $0.49$, true $0.5$), though still far better than linear ($0.40$). Since this is confirmed to be the minimum-variance choice, not an arbitrary one, the mixed result isn't an artifact of a poor pick: exact unbiasedness for the *full* $\Theta_L^{(1)}$ class genuinely doesn't uniformly dominate the $M=2$ regression estimator in finite samples. Whether the $M=2$ estimator itself is close to minimum-variance within its own (smaller) feasible set — which would explain why it's hard to beat despite being biased in the discontinuous case — is the natural next question.
 
 **Open.** Solve the reduced system in closed form (paralleling `bilinear-form.qmd`'s $L=2$ hand-solve), and check whether the minimum-variance $M=2$ regression estimator (not yet derived; the current version only enforces unbiasedness) closes the remaining gap on "Piecewise-Linear (random slopes)" — the same three-step arc the original derivation followed.
+
+## Full Comparison: Adding the PW-Linear Bilinear Estimator
+
+The two-scenario check above only covers the cases that broke the $M=2$ regression estimator. Here it's added as a third estimator to all five scenarios from [Simulations](#simulations), so it can be judged against Linear and Quadratic everywhere, not just where it was designed to help. Since $\hat\sigma^{\text{new}} = X^TA_{\text{pwlin}}Y$ is a direct bilinear form — not a fit through $T_k$ — it doesn't add anything to the Regression panels; only the histograms and summary tables gain a column. Each scenario's noise is regenerated with the same seed used in [Simulations](#simulations), so this is the identical data, not a new draw — only the new estimator is actually computed here.
+
+```{r pwlin-full-comparison-setup}
+#| echo: false
+#| cache: true
+#| dependson: ["smooth-fit-comparison", "pwlin-bilinear-solve"]
+compute_pwlin_estimates <- function(params, seed = 1) {
+  set.seed(seed)
+  ests <- lapply(1:reps, function(i) {
+    X <- generate_data(params)
+    c(
+      xx = as.numeric(t(X[, 1]) %*% A_pwlin %*% X[, 1]),
+      yy = as.numeric(t(X[, 2]) %*% A_pwlin %*% X[, 2]),
+      xy = as.numeric(t(X[, 1]) %*% A_pwlin %*% X[, 2])
+    )
+  })
+  do.call(rbind, ests)
+}
+
+augment_scenario <- function(sc) {
+  pw <- compute_pwlin_estimates(sc$params)
+  list(
+    params = sc$params,
+    est_xx = cbind(sc$est_xx, pwlin_bilinear = pw[, "xx"]),
+    est_yy = cbind(sc$est_yy, pwlin_bilinear = pw[, "yy"]),
+    est_xy = cbind(sc$est_xy, pwlin_bilinear = pw[, "xy"])
+  )
+}
+
+fit3_cols <- c("Linear (M=1)" = "black", "Quadratic (M=2)" = "firebrick", "PW-Linear Bilinear" = "seagreen4")
+
+hist_panel3 <- function(est_mat, true_val, xlab) {
+  fits <- names(fit3_cols)
+  df <- tibble::tibble(
+    val = c(est_mat[, "linear"], est_mat[, "quadratic"], est_mat[, "pwlin_bilinear"]),
+    fit = rep(fits, each = nrow(est_mat))
+  )
+  means_df <- tibble::tibble(
+    fit = fits,
+    mean_val = c(mean(est_mat[, "linear"]), mean(est_mat[, "quadratic"]), mean(est_mat[, "pwlin_bilinear"]))
+  )
+
+  ggplot2::ggplot(df, ggplot2::aes(x = val, fill = fit)) +
+    ggplot2::geom_histogram(
+      ggplot2::aes(y = ggplot2::after_stat(density)),
+      bins = 40, color = "white", alpha = 0.6, position = "identity"
+    ) +
+    ggplot2::geom_vline(xintercept = true_val, color = "red") +
+    ggplot2::geom_vline(
+      data = means_df,
+      ggplot2::aes(xintercept = mean_val, color = fit),
+      linetype = "dashed"
+    ) +
+    ggplot2::scale_fill_manual(values = fit3_cols, name = NULL) +
+    ggplot2::scale_color_manual(values = fit3_cols, guide = "none") +
+    ggplot2::labs(x = xlab, y = "density") +
+    ggplot2::theme_minimal()
+}
+
+hist_corr_panel3 <- function(sc) {
+  r_lin <- suppressWarnings(sc$est_xy[, "linear"] / sqrt(sc$est_xx[, "linear"] * sc$est_yy[, "linear"]))
+  r_quad <- suppressWarnings(sc$est_xy[, "quadratic"] / sqrt(sc$est_xx[, "quadratic"] * sc$est_yy[, "quadratic"]))
+  r_pw <- suppressWarnings(sc$est_xy[, "pwlin_bilinear"] / sqrt(sc$est_xx[, "pwlin_bilinear"] * sc$est_yy[, "pwlin_bilinear"]))
+  true_r <- sc$params$r
+  fits <- names(fit3_cols)
+
+  df <- tibble::tibble(
+    val = c(r_lin, r_quad, r_pw),
+    fit = rep(fits, each = length(r_lin))
+  )
+  df <- df[is.finite(df$val) & abs(df$val) < 2, ]
+
+  means_df <- tibble::tibble(
+    fit = fits,
+    mean_val = c(mean(r_lin, na.rm = TRUE), mean(r_quad, na.rm = TRUE), mean(r_pw, na.rm = TRUE))
+  )
+
+  ggplot2::ggplot(df, ggplot2::aes(x = val, fill = fit)) +
+    ggplot2::geom_histogram(
+      ggplot2::aes(y = ggplot2::after_stat(density)),
+      bins = 40, color = "white", alpha = 0.6, position = "identity"
+    ) +
+    ggplot2::geom_vline(xintercept = true_r, color = "red") +
+    ggplot2::geom_vline(
+      data = means_df,
+      ggplot2::aes(xintercept = mean_val, color = fit),
+      linetype = "dashed"
+    ) +
+    ggplot2::scale_fill_manual(values = fit3_cols, name = NULL) +
+    ggplot2::scale_color_manual(values = fit3_cols, guide = "none") +
+    ggplot2::labs(x = expression(hat(r)), y = "density") +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(panel.border = ggplot2::element_rect(color = "grey30", fill = NA, linewidth = 0.8))
+}
+
+histogram_matrix_plot3 <- function(sc) {
+  p_xx <- hist_panel3(sc$est_xx, sc$params$S[1, 1], expression(hat(sigma)[x]^2))
+  p_yy <- hist_panel3(sc$est_yy, sc$params$S[2, 2], expression(hat(sigma)[y]^2))
+  p_xy <- hist_panel3(sc$est_xy, sc$params$S[1, 2], expression(hat(sigma)[xy]))
+  p_r <- hist_corr_panel3(sc)
+
+  (p_xx | p_xy) / (p_r | p_yy) +
+    patchwork::plot_layout(guides = "collect") &
+    ggplot2::theme(legend.position = "bottom", plot.margin = ggplot2::margin(8, 8, 8, 8))
+}
+
+estimate_table3 <- function(sc) {
+  True <- c(sc$params$S[1, 1], sc$params$S[2, 2], sc$params$S[1, 2])
+  Linear <- c(mean(sc$est_xx[, "linear"]), mean(sc$est_yy[, "linear"]), mean(sc$est_xy[, "linear"]))
+  Quadratic <- c(mean(sc$est_xx[, "quadratic"]), mean(sc$est_yy[, "quadratic"]), mean(sc$est_xy[, "quadratic"]))
+  PWLinBilinear <- c(mean(sc$est_xx[, "pwlin_bilinear"]), mean(sc$est_yy[, "pwlin_bilinear"]), mean(sc$est_xy[, "pwlin_bilinear"]))
+
+  rbind(
+    tibble::tibble(
+      Quantity = c("$\\sigma_x^2$", "$\\sigma_y^2$", "$\\sigma_{xy}$"),
+      True = True, Linear = Linear, Quadratic = Quadratic, `PW-Linear Bilinear` = PWLinBilinear
+    ),
+    tibble::tibble(
+      Quantity = "$r$",
+      True = True[3] / sqrt(True[1] * True[2]),
+      Linear = Linear[3] / sqrt(Linear[1] * Linear[2]),
+      Quadratic = Quadratic[3] / sqrt(Quadratic[1] * Quadratic[2]),
+      `PW-Linear Bilinear` = PWLinBilinear[3] / sqrt(PWLinBilinear[1] * PWLinBilinear[2])
+    )
+  )
+}
+
+square_sc_full <- augment_scenario(square_sc)
+pwlin_sc_full <- augment_scenario(pwlin_sc)
+sine_sc_full <- augment_scenario(sine_sc)
+saw_sc_full <- augment_scenario(saw_sc)
+jump_sc_full <- augment_scenario(jump_sc)
+```
+
+:::: {.panel-tabset}
+
+## Square Wave
+
+```{r square-full-histograms}
+#| echo: false
+library(patchwork)
+histogram_matrix_plot3(square_sc_full)
+```
+
+```{r square-full-table}
+#| echo: false
+knitr::kable(estimate_table3(square_sc_full), digits = 3)
+```
+
+## Piecewise-Linear (random slopes)
+
+```{r pwlin-full-histograms}
+#| echo: false
+library(patchwork)
+histogram_matrix_plot3(pwlin_sc_full)
+```
+
+```{r pwlin-full-table}
+#| echo: false
+knitr::kable(estimate_table3(pwlin_sc_full), digits = 3)
+```
+
+## Fast Sine
+
+```{r sine-full-histograms}
+#| echo: false
+library(patchwork)
+histogram_matrix_plot3(sine_sc_full)
+```
+
+```{r sine-full-table}
+#| echo: false
+knitr::kable(estimate_table3(sine_sc_full), digits = 3)
+```
+
+## Sawtooth
+
+```{r saw-full-histograms}
+#| echo: false
+library(patchwork)
+histogram_matrix_plot3(saw_sc_full)
+```
+
+```{r saw-full-table}
+#| echo: false
+knitr::kable(estimate_table3(saw_sc_full), digits = 3)
+```
+
+## Piecewise-Linear, Discontinuous
+
+```{r jump-full-histograms}
+#| echo: false
+library(patchwork)
+histogram_matrix_plot3(jump_sc_full)
+```
+
+```{r jump-full-table}
+#| echo: false
+knitr::kable(estimate_table3(jump_sc_full), digits = 3)
+```
+
+::::
