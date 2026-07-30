@@ -1,0 +1,728 @@
+---
+title: "Piecewise Linear"
+---
+
+Recall that for any $\theta_x$
+$$
+\mathbb{E}[T_k(X)] = 2n\sigma_x^2 + T_k(\theta_x).
+$$
+Clearly, our target value $\sigma_x^2$ is a consequence of the expression. We only need to characterize $T_k(\theta_x)$. We now characterize $T_k(\theta_x)$ under several scenarios. 
+
+**Piecewise Constant.**  As we've shown before, we have 
+$$
+T_k(\theta_x) = 
+k T_1 (\theta_x).
+$$
+
+```{R fig-pwc}
+#| echo: false
+
+n <- 8
+h <- c(rep(-1, n/2), rep(1, n/2))
+e <- rnorm(n)
+X <- h + e
+
+# show means
+plot(h)
+segments(1, -1, 4, -1)
+segments(5,  1, 8,  1)
+#lines(h, type="s")
+
+# draw
+k <- 2
+i <- 1
+segments(i, h[i], i + k, h[i +k], lwd=2, col="red", lty="dashed")
+segments(i, h[i], i + k, h[i], lwd=2, col="red", lty="dashed")
+segments(i + k, h[i], i + k, h[i +k], lwd=2, col="red")
+
+# draw
+k <- 2
+i <- 3
+segments(i, h[i], i + k, h[i +k], lwd=2, col="blue", lty="dashed")
+segments(i, h[i], i + k, h[i], lwd=2, col="blue", lty="dashed")
+segments(i + k, h[i], i + k, h[i +k], lwd=2, col="blue")
+
+# draw
+k <- 2
+i <- 4
+segments(i, h[i], i + k, h[i +k], lwd=2, col="blue", lty="dashed")
+segments(i, h[i], i + k, h[i], lwd=2, col="blue", lty="dashed")
+segments(i + k, h[i], i + k, h[i +k], lwd=2, col="blue")
+
+
+```
+
+**Linear.**
+Since $\theta_x$ is linear, $(\theta_{x,i} - \theta_{x,i+1}) = \beta_x$ is constant, and so $(\theta_{x,i} - \theta_{x,i+k}) = k\beta_x$. Then
+$$
+T_k(\theta_x) = \sum_{i=1}^{n-k} (\theta_{x,i} - \theta_{x,i+k})^2 = (n-k)k^2\beta_x^2.
+$$
+
+```{R fig-linear}
+#| echo: false
+
+n <- 8
+h <- seq(-n/2 + 1, n/2, 1)
+e <- rnorm(n)
+X <- h + e
+
+# show means
+plot(h)
+segments(1, h[1], n, h[n])
+
+# draw
+k <- 2
+i <- 1
+segments(i, h[i], i + k, h[i +k], lwd=2, col="red", lty="dashed")
+segments(i, h[i], i + k, h[i], lwd=2, col="red", lty="dashed")
+segments(i + k, h[i], i + k, h[i +k], lwd=2, col="red")
+```
+
+**Piecewise Linear, Constant Slope.** As in the piecewise constant case, two cases arise: pairs within a single linear piece pick up only the slope contribution ($k^2$ scaling, red), while pairs that straddle the breakpoint pick up an additional jump term (blue).
+
+Let $m$ be the breakpoint, with $k \le m \le n-k$. For $i, i+k$ on the same side of $m$, $(\theta_{x,i} - \theta_{x,i+k}) = k\beta_x$, exactly as in the linear case. For $i \le m < i+k$, the pair straddles the jump and
+$$
+\theta_{x,i} - \theta_{x,i+k} = k\beta_x - \delta_x.
+$$
+There are $k$ such crossing pairs, so
+$$
+T_k(\theta_x) = \sum_{i=1}^{n-k} (\theta_{x,i} - \theta_{x,i+k})^2 = (n-2k)k^2\beta_x^2 + k(k\beta_x - \delta_x)^2.
+$$
+
+```{R fig-pwl-constant-slope}
+#| echo: false
+
+n <- 8
+h <- seq(-n/2 + 1, n/2, 1)
+h[1:(n/2)] <-  h[1:(n/2)] - 1
+h[(n/2 + 1):n] <-  h[(n/2 + 1):n] + 1
+e <- rnorm(n)
+X <- h + e
+
+# show means
+plot(h)
+segments(1, h[1], 4, h[4])
+segments(5, h[5], 8, h[8])
+
+# draw
+k <- 2
+i <- 1
+segments(i, h[i], i + k, h[i +k], lwd=2, col="red", lty="dashed")
+segments(i, h[i], i + k, h[i], lwd=2, col="red", lty="dashed")
+segments(i + k, h[i], i + k, h[i +k], lwd=2, col="red")
+
+
+# draw
+k <- 2
+i <- 4
+segments(i, h[i], i + k, h[i +k], lwd=2, col="blue", lty="dashed")
+segments(i, h[i], i + k, h[i], lwd=2, col="blue", lty="dashed")
+segments(i + k, h[i], i + k, h[i +k], lwd=2, col="blue")
+
+# draw
+k <- 2
+i <- 3
+segments(i, h[i], i + k, h[i +k], lwd=2, col="blue", lty="dashed")
+segments(i, h[i], i + k, h[i], lwd=2, col="blue", lty="dashed")
+segments(i + k, h[i], i + k, h[i +k], lwd=2, col="blue")
+```
+
+**Piecewise Linear, Non-Constant Slope.** Let $\beta_x^{(1)}, \beta_x^{(2)}$ be the left and right slopes, with breakpoint $m$ ($k \le m \le n-k$). Non-crossing pairs contribute as in the Linear case: $(m-k)k^2(\beta_x^{(1)})^2$ from the left, $(n-m-k)k^2(\beta_x^{(2)})^2$ from the right. For a crossing pair $i = m-a$ ($a=0,\dots,k-1$), the path from $i$ to $i+k$ takes $a+1$ left steps, one jump, and $k-1-a$ right steps, so
+$$
+\theta_{x,i} - \theta_{x,i+k} = (a+1)\beta_x^{(1)} + (k-1-a)\beta_x^{(2)} - \delta_x.
+$$
+This is affine in $a$, so summing its square over $a=0,\dots,k-1$ contributes a polynomial in $k$ of degree 3 — same degree as the constant-slope case. So
+$$
+T_k(\theta_x) = (m-k)k^2(\beta_x^{(1)})^2 + (n-m-k)k^2(\beta_x^{(2)})^2 + \sum_{a=0}^{k-1}\bigl[(a+1)\beta_x^{(1)} + (k-1-a)\beta_x^{(2)} - \delta_x\bigr]^2,
+$$
+still decomposable into $\{k,k^2,k^3\}$ — non-constant slope doesn't require a higher-order basis.
+
+```{R fig-pwl}
+#| echo: false
+
+n <- 8
+h <- seq(-n/2 + 1, n/2, 1)
+h[1:(n/2)] <-  h[1:(n/2)] - 1
+h[(n/2 + 1):n] <-  -h[(n/2 + 1):n] - 1/2
+e <- rnorm(n)
+X <- h + e
+
+# show means
+plot(h)
+segments(1, h[1], 4, h[4])
+segments(5, h[5], 8, h[8])
+
+# draw
+k <- 2
+i <- 1
+segments(i, h[i], i + k, h[i +k], lwd=2, col="red", lty="dashed")
+segments(i, h[i], i + k, h[i], lwd=2, col="red", lty="dashed")
+segments(i + k, h[i], i + k, h[i +k], lwd=2, col="red")
+
+
+# draw
+k <- 2
+i <- 4
+segments(i, h[i], i + k, h[i +k], lwd=2, col="blue", lty="dashed")
+segments(i, h[i], i + k, h[i], lwd=2, col="blue", lty="dashed")
+segments(i + k, h[i], i + k, h[i +k], lwd=2, col="blue")
+
+# draw
+k <- 2
+i <- 3
+segments(i, h[i], i + k, h[i +k], lwd=2, col="blue", lty="dashed")
+segments(i, h[i], i + k, h[i], lwd=2, col="blue", lty="dashed")
+segments(i + k, h[i], i + k, h[i +k], lwd=2, col="blue")
+```
+
+```{R fig-pwl-2}
+#| echo: false
+
+n <- 8
+h <- seq(-n/2 + 1, n/2, 1)
+h[1:(n/2)] <-  h[1:(n/2)]
+h[(n/2 + 1):n] <-  -0.5 * h[(n/2 + 1):n]
+e <- rnorm(n)
+X <- h + e
+
+# show means
+plot(h)
+segments(1, h[1], 4, h[4])
+segments(5, h[5], 8, h[8])
+
+# draw
+k <- 3
+for(i in 1:(n - k)){
+  segments(i, h[i], i + k, h[i +k], lwd=0.5, col="forestgreen", lty="dashed")
+  #segments(i, h[i], i + k, h[i], lwd=0.5, col="forestgreen", lty="dashed")
+  #segments(i + k, h[i], i + k, h[i +k], lwd=2, col="forestgreen")
+}
+
+k <- 2
+for(i in 1:(n - k)){
+  segments(i, h[i], i + k, h[i +k], lwd=0.5, col="firebrick", lty="dashed")
+  #segments(i, h[i], i + k, h[i], lwd=0.5, col="firebrick", lty="dashed")
+  #segments(i + k, h[i], i + k, h[i +k], lwd=2, col="firebrick")
+}
+
+k <- 1
+for(i in 1:(n - k)){
+  segments(i, h[i], i + k, h[i +k], lwd=0.5, col="steelblue", lty="dashed")
+  #segments(i, h[i], i + k, h[i], lwd=0.5, col="steelblue", lty="dashed")
+  #segments(i + k, h[i], i + k, h[i +k], lwd=2, col="steelblue")
+}
+
+```
+
+## A Generalized Estimator: Constant Slope with a Jump
+
+The original ECE regresses $R_k = T_k(X)$ on $(1,k)$ across $k=1,2$, exploiting $T_k(\theta_x) = kT_1(\theta_x)$ — linear in $k$ for piecewise-constant $\theta_x$. For constant-slope, single-jump $\theta_x$, $T_k(\theta_x)$ is instead cubic in $k$ with no constant term. The same idea generalizes directly: regress $R_k$ on $(1,k,k^2,k^3)$ across $k=1,\dots,L$ and read off the intercept.
+
+::: callout-important
+## Theorem: Unbiasedness of the Cubic-Regression Estimator
+
+Let $\theta_x$ have one breakpoint $m$, constant slope $\beta_x$, and jump $\delta_x$. Let $L\ge4$ with $L\le\min(m,n-m)$. Fit
+$$
+R_k = \gamma_0 + \gamma_1k + \gamma_2k^2 + \gamma_3k^3, \qquad k=1,\dots,L,
+$$
+by OLS. Then $\mathbb{E}[\hat\gamma_0] = 2n\sigma_x^2$.
+:::
+
+::: {.callout-note collapse="true"}
+## Proof
+
+From the Piecewise Linear, Constant Slope derivation above,
+$$
+T_k(\theta_x) = (n-2k)k^2\beta_x^2 + k(k\beta_x-\delta_x)^2 = nk^2\beta_x^2 - k^3\beta_x^2 - 2k^2\beta_x\delta_x + k\delta_x^2,
+$$
+exactly cubic in $k$ with zero constant term, for every $k\le\min(m,n-m)$. Since $R_k = 2n\sigma_x^2 + T_k(\theta_x)$ exactly (bilinear algebra) and the right side is exactly a degree-3 polynomial in $k$ with intercept $2n\sigma_x^2$, the design matrix $(1,k,k^2,k^3)_{k=1}^L$ correctly specifies the mean model. OLS is unbiased for every coefficient of a correctly-specified linear model, so $\mathbb{E}[\hat\gamma_0] = 2n\sigma_x^2$. $\qquad\square$
+
+```{r pwlin-jump-proof-check}
+#| message: false
+library(testthat)
+
+lag_diff_lin <- function(x, y = x, k) {
+  n <- length(x)
+  sum((x[1:(n - k)] - x[(k + 1):n]) * (y[1:(n - k)] - y[(k + 1):n]))
+}
+
+n <- 50
+m <- 25
+beta_x <- -2
+delta_x <- 30
+sigma2 <- 1
+L <- 4
+theta <- -beta_x * (1:n) + delta_x * as.numeric(1:n > m)
+
+pred_Tk <- function(k) (n - 2 * k) * k^2 * beta_x^2 + k * (k * beta_x - delta_x)^2
+
+test_that("T_k(theta_x) matches the closed cubic form", {
+  for (k in 1:6) expect_equal(lag_diff_lin(theta, k = k), pred_Tk(k))
+})
+
+Rk_exact <- sapply(1:L, function(k) 2 * n * sigma2 + lag_diff_lin(theta, k = k))
+K3 <- outer(1:L, 0:3, `^`)
+gamma_hat <- solve(t(K3) %*% K3) %*% t(K3) %*% Rk_exact
+
+test_that("the cubic-regression intercept recovers 2n sigma_x^2 exactly, no noise", {
+  expect_equal(gamma_hat[1] / (2 * n), sigma2)
+})
+```
+:::
+
+::: callout-important
+## Corollary: Multiple Breakpoints
+
+Let $\theta_x$ have breakpoints $m_1,\dots,m_J$, each pair spaced $\ge L$ apart, constant slope $\beta_x$ throughout, and jumps $\delta_1,\dots,\delta_J$. Let $S_1=\sum_j\delta_j$, $S_2=\sum_j\delta_j^2$. Then
+$$
+T_k(\theta_x) = (n-k)k^2\beta_x^2 - 2k^2\beta_xS_1 + kS_2,
+$$
+still exactly cubic in $k$ with zero constant term. The cubic-regression estimator of the Theorem above is therefore unbiased regardless of $J$, the individual $\delta_j$, or the breakpoint locations — only $S_1,S_2$ enter, and the regression never needs them.
+:::
+
+::: {.callout-note collapse="true"}
+## Proof
+
+Each breakpoint removes $k$ pairs from the non-crossing count (spacing $\ge L\ge k$ keeps the crossing sets disjoint), so there are $(n-k) - Jk$ non-crossing pairs and $k$ crossing pairs per breakpoint. Summing,
+$$
+T_k(\theta_x) = \bigl[(n-k)-Jk\bigr]k^2\beta_x^2 + \sum_{j=1}^J k(k\beta_x-\delta_j)^2.
+$$
+Expanding the sum, $\sum_j k(k\beta_x-\delta_j)^2 = Jk^3\beta_x^2 - 2k^2\beta_x S_1 + kS_2$. The $Jk^3\beta_x^2$ term exactly cancels the $-Jk^3\beta_x^2$ inside $[(n-k)-Jk]k^2\beta_x^2$, leaving
+$$
+T_k(\theta_x) = (n-k)k^2\beta_x^2 - 2k^2\beta_xS_1 + kS_2. \qquad\square
+$$
+
+```{r pwlin-jump-multi-check}
+#| message: false
+library(testthat)
+
+lag_diff_lin <- function(x, y = x, k) {
+  n <- length(x)
+  sum((x[1:(n - k)] - x[(k + 1):n]) * (y[1:(n - k)] - y[(k + 1):n]))
+}
+
+n <- 200
+beta_x <- -0.7
+breakpoints <- c(40, 90, 150)
+deltas <- c(5, -8, 12)
+
+theta <- -beta_x * (1:n)
+for (j in seq_along(breakpoints)) {
+  theta[(breakpoints[j] + 1):n] <- theta[(breakpoints[j] + 1):n] + deltas[j]
+}
+S1 <- sum(deltas)
+S2 <- sum(deltas^2)
+
+pred_Tk <- function(k) (n - k) * k^2 * beta_x^2 - 2 * k^2 * beta_x * S1 + k * S2
+
+test_that("T_k(theta_x) matches the closed cubic form with three irregularly-spaced breakpoints", {
+  for (k in 1:4) expect_equal(lag_diff_lin(theta, k = k), pred_Tk(k))
+})
+```
+:::
+
+### Simulation
+
+$n=50$, breakpoint $m=25$, slope $\beta_x=-2$ (so $\theta$ rises by $2$ per step), jump $\delta_x=30$, $\sigma_x^2=1$, $L=4$, $1000$ replicates. Comparing three fits: Linear ($M=1$), Quadratic ($M=2$), Cubic ($M=3$).
+
+```{r pwlin-jump-setup}
+#| echo: false
+#| cache: true
+
+lag_diff_lin <- function(x, y = x, k) {
+  n <- length(x)
+  sum((x[1:(n - k)] - x[(k + 1):n]) * (y[1:(n - k)] - y[(k + 1):n]))
+}
+
+fit_poly <- function(Rk, L, M, n) {
+  K <- outer(1:L, 0:M, `^`)
+  beta <- solve(t(K) %*% K) %*% t(K) %*% Rk
+  beta[1] / (2 * n)
+}
+
+n <- 50
+m <- 25
+s <- 2
+delta <- 30
+sigma <- 1
+L <- 4
+reps <- 1000
+
+theta <- s * (1:n) + delta * as.numeric(1:n > m)
+
+set.seed(1)
+X_example <- theta + rnorm(n, sd = sigma)
+
+set.seed(1)
+Tk_mat <- t(sapply(1:reps, function(r) {
+  X <- theta + rnorm(n, sd = sigma)
+  sapply(1:L, function(k) lag_diff_lin(X, k = k))
+}))
+Tk_avg <- colMeans(Tk_mat)
+
+fit_labs <- c("Linear (M=1)", "Quadratic (M=2)", "Cubic (M=3)")
+fit_cols <- c("Linear (M=1)" = "black", "Quadratic (M=2)" = "steelblue", "Cubic (M=3)" = "firebrick")
+fit_ltys <- c("Linear (M=1)" = "solid", "Quadratic (M=2)" = "dashed", "Cubic (M=3)" = "dotted")
+
+ests <- t(apply(Tk_mat, 1, function(Tk) {
+  c(fit_poly(Tk, L, 1, n), fit_poly(Tk, L, 2, n), fit_poly(Tk, L, 3, n))
+}))
+colnames(ests) <- fit_labs
+```
+
+```{r pwlin-jump-mean-noise}
+#| echo: false
+#| dependson: ["pwlin-jump-setup"]
+tibble::tibble(i = 1:n, theta = theta, x = X_example) |>
+  ggplot2::ggplot(ggplot2::aes(x = i)) +
+  ggplot2::geom_line(ggplot2::aes(y = x), color = "grey80") +
+  ggplot2::geom_line(ggplot2::aes(y = theta), color = "steelblue", linewidth = 1) +
+  ggplot2::labs(x = "Index i", y = "Value") +
+  ggplot2::theme_minimal()
+```
+
+```{r pwlin-jump-regression}
+#| echo: false
+#| dependson: ["pwlin-jump-setup"]
+Rk_noiseless <- sapply(1:L, function(k) lag_diff_lin(theta, k = k)) # X = theta exactly, no noise: true sigma_x^2 = 0
+
+K_seq <- seq(0, L, length.out = 200)
+fits <- lapply(1:3, function(M) {
+  K <- outer(1:L, 0:M, `^`)
+  beta <- solve(t(K) %*% K) %*% t(K) %*% Rk_noiseless
+  Kseq <- outer(K_seq, 0:M, `^`)
+  as.numeric(Kseq %*% beta) / (2 * n)
+})
+names(fits) <- fit_labs
+
+lines_df <- tibble::tibble(k = rep(K_seq, 3), fit = rep(fit_labs, each = length(K_seq)), val = unlist(fits))
+points_df <- tibble::tibble(k = 1:L, val = Rk_noiseless / (2 * n))
+
+ggplot2::ggplot() +
+  ggplot2::geom_hline(yintercept = 0, color = "grey40") +
+  ggplot2::geom_vline(xintercept = 0, color = "grey40") +
+  ggplot2::geom_line(data = lines_df, ggplot2::aes(x = k, y = val, color = fit, linetype = fit), linewidth = 0.9) +
+  ggplot2::geom_point(data = points_df, ggplot2::aes(x = k, y = val), size = 2) +
+  ggplot2::geom_point(ggplot2::aes(x = 0, y = 0), color = "red", size = 3) +
+  ggplot2::scale_color_manual(values = fit_cols, name = NULL) +
+  ggplot2::scale_linetype_manual(values = fit_ltys, name = NULL) +
+  ggplot2::scale_x_continuous(breaks = 0:L) +
+  ggplot2::labs(x = "Lag k", y = expression(R[k] / (2 * n) ~ "(no noise:" ~ X == theta[x] * ")")) +
+  ggplot2::theme_minimal()
+```
+
+No noise, no simulation: $X$ is set equal to $\theta_x$ itself, so the true $\sigma_x^2$ is exactly $0$ (red point at $k=0$). Cubic's line passes through every point and through $0$ with zero residual — a correctly-specified model reports no variance when there is none. Linear and Quadratic both extrapolate to a nonzero (Linear even negative) "variance" that is pure model-misspecification artifact, not sampling noise.
+
+```{r pwlin-jump-histogram}
+#| echo: false
+#| dependson: ["pwlin-jump-setup"]
+hist_df <- tibble::tibble(val = as.vector(ests), fit = rep(fit_labs, each = nrow(ests)))
+means_df <- tibble::tibble(fit = fit_labs, mean_val = colMeans(ests))
+
+ggplot2::ggplot(hist_df, ggplot2::aes(x = val, fill = fit)) +
+  ggplot2::geom_histogram(ggplot2::aes(y = ggplot2::after_stat(density)), bins = 40, color = "white", alpha = 0.6, position = "identity") +
+  ggplot2::geom_vline(xintercept = sigma^2, color = "red") +
+  ggplot2::geom_vline(data = means_df, ggplot2::aes(xintercept = mean_val, color = fit), linetype = "dashed") +
+  ggplot2::scale_fill_manual(values = fit_cols, name = NULL) +
+  ggplot2::scale_color_manual(values = fit_cols, guide = "none") +
+  ggplot2::labs(x = expression(hat(sigma)[x]^2), y = "density") +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+Linear is centered around $-14$ against a true value of $1$ — wrong sign, not just biased. Quadratic is centered near $0.6$, better but still visibly off. Cubic is centered on the true value.
+
+```{r pwlin-jump-convergence}
+#| echo: false
+#| cache: true
+#| dependson: ["pwlin-jump-setup"]
+n_grid <- c(20, 50, 100, 200, 500, 1000, 2000)
+reps_n <- 500
+
+sweep_df <- purrr::map_dfr(n_grid, function(n_val) {
+  m_val <- n_val / 2
+  theta_val <- s * (1:n_val) + delta * as.numeric(1:n_val > m_val)
+  set.seed(1)
+  ests_val <- t(sapply(1:reps_n, function(r) {
+    X <- theta_val + rnorm(n_val, sd = sigma)
+    Tk <- sapply(1:L, function(k) lag_diff_lin(X, k = k))
+    c(fit_poly(Tk, L, 1, n_val), fit_poly(Tk, L, 2, n_val), fit_poly(Tk, L, 3, n_val))
+  }))
+  colnames(ests_val) <- fit_labs
+  tibble::tibble(n = n_val, fit = fit_labs, est = colMeans(ests_val))
+})
+```
+
+```{r pwlin-jump-convergence-plot}
+#| echo: false
+#| dependson: ["pwlin-jump-convergence"]
+ggplot2::ggplot(sweep_df, ggplot2::aes(x = n, y = est, color = fit)) +
+  ggplot2::geom_hline(yintercept = sigma^2, color = "red", linetype = "dashed") +
+  ggplot2::geom_line() +
+  ggplot2::geom_point(size = 2) +
+  ggplot2::scale_x_continuous(trans = "log10", breaks = n_grid) +
+  ggplot2::scale_color_manual(values = fit_cols, name = NULL) +
+  ggplot2::labs(x = "Sample size n (log scale)", y = expression(hat(sigma)[x]^2)) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+Holding $\beta_x,\delta_x,L$ fixed and growing $n$ (with $m=n/2$): Cubic stays exactly on the truth at every $n$ — guaranteed by the theorem, not a large-sample property. Quadratic's bias shrinks toward $0$ as $n$ grows — the single jump's contribution to $T_k(\theta_x)$ doesn't scale with $n$, so it becomes negligible next to the $n$-scaling slope term the quadratic term already captures. Linear does not converge; its bias approaches a fixed nonzero constant, because even the leading-order term in $T_k(\theta_x)$ is quadratic in $k$, which no degree-1 model can absorb at any sample size.
+
+### Simulation: Multiple Breakpoints
+
+Same setup as the Corollary's numeric check: $n=200$, breakpoints at $40,90,150$ (all spaced well beyond $L=4$), constant slope $\beta_x=-0.7$, jumps $(5,-8,12)$, $\sigma_x^2=1$, $1000$ replicates.
+
+```{r pwlin-jump-multi-setup}
+#| echo: false
+#| cache: true
+#| dependson: ["pwlin-jump-setup"]
+n <- 200
+breakpoints <- c(40, 90, 150)
+deltas <- c(5, -8, 12)
+s <- 0.7
+sigma <- 1
+L <- 4
+reps <- 1000
+
+theta <- s * (1:n)
+for (j in seq_along(breakpoints)) {
+  theta[(breakpoints[j] + 1):n] <- theta[(breakpoints[j] + 1):n] + deltas[j]
+}
+
+set.seed(1)
+X_example <- theta + rnorm(n, sd = sigma)
+
+set.seed(1)
+Tk_mat <- t(sapply(1:reps, function(r) {
+  X <- theta + rnorm(n, sd = sigma)
+  sapply(1:L, function(k) lag_diff_lin(X, k = k))
+}))
+Tk_avg <- colMeans(Tk_mat)
+
+ests <- t(apply(Tk_mat, 1, function(Tk) {
+  c(fit_poly(Tk, L, 1, n), fit_poly(Tk, L, 2, n), fit_poly(Tk, L, 3, n))
+}))
+colnames(ests) <- fit_labs
+```
+
+```{r pwlin-jump-multi-mean-noise}
+#| echo: false
+#| dependson: ["pwlin-jump-multi-setup"]
+tibble::tibble(i = 1:n, theta = theta, x = X_example) |>
+  ggplot2::ggplot(ggplot2::aes(x = i)) +
+  ggplot2::geom_line(ggplot2::aes(y = x), color = "grey80") +
+  ggplot2::geom_line(ggplot2::aes(y = theta), color = "steelblue", linewidth = 1) +
+  ggplot2::labs(x = "Index i", y = "Value") +
+  ggplot2::theme_minimal()
+```
+
+```{r pwlin-jump-multi-regression}
+#| echo: false
+#| dependson: ["pwlin-jump-multi-setup"]
+Rk_noiseless <- sapply(1:L, function(k) lag_diff_lin(theta, k = k)) # X = theta exactly, no noise: true sigma_x^2 = 0
+
+K_seq <- seq(0, L, length.out = 200)
+fits <- lapply(1:3, function(M) {
+  K <- outer(1:L, 0:M, `^`)
+  beta <- solve(t(K) %*% K) %*% t(K) %*% Rk_noiseless
+  Kseq <- outer(K_seq, 0:M, `^`)
+  as.numeric(Kseq %*% beta) / (2 * n)
+})
+names(fits) <- fit_labs
+
+lines_df <- tibble::tibble(k = rep(K_seq, 3), fit = rep(fit_labs, each = length(K_seq)), val = unlist(fits))
+points_df <- tibble::tibble(k = 1:L, val = Rk_noiseless / (2 * n))
+
+ggplot2::ggplot() +
+  ggplot2::geom_hline(yintercept = 0, color = "grey40") +
+  ggplot2::geom_vline(xintercept = 0, color = "grey40") +
+  ggplot2::geom_line(data = lines_df, ggplot2::aes(x = k, y = val, color = fit, linetype = fit), linewidth = 0.9) +
+  ggplot2::geom_point(data = points_df, ggplot2::aes(x = k, y = val), size = 2) +
+  ggplot2::geom_point(ggplot2::aes(x = 0, y = 0), color = "red", size = 3) +
+  ggplot2::scale_color_manual(values = fit_cols, name = NULL) +
+  ggplot2::scale_linetype_manual(values = fit_ltys, name = NULL) +
+  ggplot2::scale_x_continuous(breaks = 0:L) +
+  ggplot2::labs(x = "Lag k", y = expression(R[k] / (2 * n) ~ "(no noise:" ~ X == theta[x] * ")")) +
+  ggplot2::theme_minimal()
+```
+
+No noise again — three breakpoints, true $\sigma_x^2=0$. Cubic's line still passes through every point and through $0$ with zero residual. Quadratic tracks it almost perfectly too here (the dashed blue line covers the dotted red one for most of the range); the two only visibly separate right at $k=0$, where Quadratic reports a small spurious nonzero value and Cubic reports exactly $0$.
+
+```{r pwlin-jump-multi-histogram}
+#| echo: false
+#| dependson: ["pwlin-jump-multi-setup"]
+hist_df <- tibble::tibble(val = as.vector(ests), fit = rep(fit_labs, each = nrow(ests)))
+means_df <- tibble::tibble(fit = fit_labs, mean_val = colMeans(ests))
+
+ggplot2::ggplot(hist_df, ggplot2::aes(x = val, fill = fit)) +
+  ggplot2::geom_histogram(ggplot2::aes(y = ggplot2::after_stat(density)), bins = 40, color = "white", alpha = 0.6, position = "identity") +
+  ggplot2::geom_vline(xintercept = sigma^2, color = "red") +
+  ggplot2::geom_vline(data = means_df, ggplot2::aes(xintercept = mean_val, color = fit), linetype = "dashed") +
+  ggplot2::scale_fill_manual(values = fit_cols, name = NULL) +
+  ggplot2::scale_color_manual(values = fit_cols, guide = "none") +
+  ggplot2::labs(x = expression(hat(sigma)[x]^2), y = "density") +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+Three breakpoints, irregularly spaced and irregularly signed jumps, no per-breakpoint information given to the estimator: Linear is again badly biased (wrong sign), Quadratic is close but off, Cubic is centered on the truth — matching the Corollary exactly.
+
+## General Piecewise Linear
+
+The Corollary above still assumes one slope shared by every segment. The natural completion is to let each segment have its own slope: breakpoints $m_1<\dots<m_J$, segment slopes $\beta_x^{(0)},\dots,\beta_x^{(J)}$, jumps $\delta_1,\dots,\delta_J$ — a fully general piecewise-linear $\theta_x$. The tractable case is when consecutive breakpoints are spaced $\ge L$ apart, so no lag-$k$ window ($k\le L$) ever crosses more than one; closely-spaced breakpoints, where a window can cross two at once, remain open.
+
+::: callout-important
+## Theorem: General Piecewise-Linear, Spaced Breakpoints
+
+Let $\theta_x$ have breakpoints $m_1 < \dots < m_J$ with segment slopes $\beta_x^{(0)},\dots,\beta_x^{(J)}$ and jumps $\delta_1,\dots,\delta_J$, consecutive breakpoints spaced $\ge L$ apart. Let $L\ge4$. Fit
+$$
+R_k = \gamma_0 + \gamma_1k + \gamma_2k^2 + \gamma_3k^3, \qquad k=1,\dots,L,
+$$
+by OLS. Then $\mathbb{E}[\hat\gamma_0] = 2n\sigma_x^2$ — regardless of $J$ or how the slopes and jumps vary segment to segment.
+:::
+
+::: {.callout-note collapse="true"}
+## Proof
+
+For $k\le L$, spacing $\ge L$ guarantees every pair $(i,i+k)$ either lies in a single segment or straddles exactly one breakpoint. A non-crossing pair in segment $j$ (length $\ell_j$) contributes, summed over that segment, $(\ell_j-k)k^2(\beta_x^{(j)})^2$ — cubic in $k$ with zero constant term, as in the Linear case. A crossing pair at breakpoint $j$ contributes, from the Piecewise Linear, Non-Constant Slope derivation above, a sum of squares of an affine function of position — also cubic in $k$ with zero constant term. $T_k(\theta_x)$ is a finite sum of such terms, and a sum of degree-$\le\!3$, zero-constant-term polynomials in $k$ is itself one — so $T_k(\theta_x)$ is exactly cubic in $k$ for $k=1,\dots,L$, with zero constant term. The rest is identical to the single-breakpoint Theorem: $R_k=2n\sigma_x^2+T_k(\theta_x)$ exactly, the cubic design matrix correctly specifies the mean model, and OLS is unbiased for $\hat\gamma_0$. $\qquad\square$
+
+```{r pwlin-general-proof-check}
+#| message: false
+library(testthat)
+
+lag_diff_lin <- function(x, y = x, k) {
+  n <- length(x)
+  sum((x[1:(n - k)] - x[(k + 1):n]) * (y[1:(n - k)] - y[(k + 1):n]))
+}
+
+build_theta <- function(n, breakpoints, slopes, jumps) {
+  step_idx <- findInterval(1:(n - 1), c(0, breakpoints, n), rightmost.closed = TRUE)
+  theta <- c(0, cumsum(slopes[step_idx]))
+  for (j in seq_along(breakpoints)) {
+    theta[(breakpoints[j] + 1):n] <- theta[(breakpoints[j] + 1):n] + jumps[j]
+  }
+  theta
+}
+
+n <- 200
+L <- 4
+breakpoints <- c(40, 90, 150)
+slopes <- c(0.3, -0.9, 1.4, 0.1) # one per segment: 4 segments for 3 breakpoints
+jumps <- c(6, -10, 15)
+sigma2 <- 1
+
+theta <- build_theta(n, breakpoints, slopes, jumps)
+Rk_exact <- sapply(1:L, function(k) 2 * n * sigma2 + lag_diff_lin(theta, k = k))
+K3 <- outer(1:L, 0:3, `^`)
+gamma_hat <- solve(t(K3) %*% K3) %*% t(K3) %*% Rk_exact
+
+test_that("the cubic-regression intercept recovers 2n sigma_x^2 exactly for varying per-segment slopes and jumps", {
+  expect_equal(gamma_hat[1] / (2 * n), sigma2)
+})
+```
+:::
+
+### Simulation: Varying Slopes and Jumps
+
+Same breakpoints as before ($n=200$, breakpoints at $40,90,150$), but now each of the $4$ segments has its own slope ($0.3,-0.9,1.4,0.1$) and each breakpoint its own jump ($6,-10,15$) — a genuinely general piecewise-linear mean, $\sigma_x^2=1$, $L=4$, $1000$ replicates.
+
+```{r pwlin-general-setup}
+#| echo: false
+#| cache: true
+#| dependson: ["pwlin-jump-setup"]
+n <- 200
+breakpoints <- c(40, 90, 150)
+slopes <- c(0.3, -0.9, 1.4, 0.1)
+jumps <- c(6, -10, 15)
+sigma <- 1
+L <- 4
+reps <- 1000
+
+build_theta <- function(n, breakpoints, slopes, jumps) {
+  step_idx <- findInterval(1:(n - 1), c(0, breakpoints, n), rightmost.closed = TRUE)
+  theta <- c(0, cumsum(slopes[step_idx]))
+  for (j in seq_along(breakpoints)) {
+    theta[(breakpoints[j] + 1):n] <- theta[(breakpoints[j] + 1):n] + jumps[j]
+  }
+  theta
+}
+theta <- build_theta(n, breakpoints, slopes, jumps)
+
+set.seed(1)
+X_example <- theta + rnorm(n, sd = sigma)
+
+set.seed(1)
+Tk_mat <- t(sapply(1:reps, function(r) {
+  X <- theta + rnorm(n, sd = sigma)
+  sapply(1:L, function(k) lag_diff_lin(X, k = k))
+}))
+Tk_avg <- colMeans(Tk_mat)
+
+ests <- t(apply(Tk_mat, 1, function(Tk) {
+  c(fit_poly(Tk, L, 1, n), fit_poly(Tk, L, 2, n), fit_poly(Tk, L, 3, n))
+}))
+colnames(ests) <- fit_labs
+```
+
+```{r pwlin-general-mean-noise}
+#| echo: false
+#| dependson: ["pwlin-general-setup"]
+tibble::tibble(i = 1:n, theta = theta, x = X_example) |>
+  ggplot2::ggplot(ggplot2::aes(x = i)) +
+  ggplot2::geom_line(ggplot2::aes(y = x), color = "grey80") +
+  ggplot2::geom_line(ggplot2::aes(y = theta), color = "steelblue", linewidth = 1) +
+  ggplot2::labs(x = "Index i", y = "Value") +
+  ggplot2::theme_minimal()
+```
+
+```{r pwlin-general-regression}
+#| echo: false
+#| dependson: ["pwlin-general-setup"]
+Rk_noiseless <- sapply(1:L, function(k) lag_diff_lin(theta, k = k)) # X = theta exactly, no noise: true sigma_x^2 = 0
+
+K_seq <- seq(0, L, length.out = 200)
+fits <- lapply(1:3, function(M) {
+  K <- outer(1:L, 0:M, `^`)
+  beta <- solve(t(K) %*% K) %*% t(K) %*% Rk_noiseless
+  Kseq <- outer(K_seq, 0:M, `^`)
+  as.numeric(Kseq %*% beta) / (2 * n)
+})
+names(fits) <- fit_labs
+
+lines_df <- tibble::tibble(k = rep(K_seq, 3), fit = rep(fit_labs, each = length(K_seq)), val = unlist(fits))
+points_df <- tibble::tibble(k = 1:L, val = Rk_noiseless / (2 * n))
+
+ggplot2::ggplot() +
+  ggplot2::geom_hline(yintercept = 0, color = "grey40") +
+  ggplot2::geom_vline(xintercept = 0, color = "grey40") +
+  ggplot2::geom_line(data = lines_df, ggplot2::aes(x = k, y = val, color = fit, linetype = fit), linewidth = 0.9) +
+  ggplot2::geom_point(data = points_df, ggplot2::aes(x = k, y = val), size = 2) +
+  ggplot2::geom_point(ggplot2::aes(x = 0, y = 0), color = "red", size = 3) +
+  ggplot2::scale_color_manual(values = fit_cols, name = NULL) +
+  ggplot2::scale_linetype_manual(values = fit_ltys, name = NULL) +
+  ggplot2::scale_x_continuous(breaks = 0:L) +
+  ggplot2::labs(x = "Lag k", y = expression(R[k] / (2 * n) ~ "(no noise:" ~ X == theta[x] * ")")) +
+  ggplot2::theme_minimal()
+```
+
+No noise — different slopes and jumps at every segment, true $\sigma_x^2=0$, and Cubic's line still passes through every point and through $0$ with zero residual, while Linear and Quadratic both report spurious nonzero values.
+
+```{r pwlin-general-histogram}
+#| echo: false
+#| dependson: ["pwlin-general-setup"]
+hist_df <- tibble::tibble(val = as.vector(ests), fit = rep(fit_labs, each = nrow(ests)))
+means_df <- tibble::tibble(fit = fit_labs, mean_val = colMeans(ests))
+
+ggplot2::ggplot(hist_df, ggplot2::aes(x = val, fill = fit)) +
+  ggplot2::geom_histogram(ggplot2::aes(y = ggplot2::after_stat(density)), bins = 40, color = "white", alpha = 0.6, position = "identity") +
+  ggplot2::geom_vline(xintercept = sigma^2, color = "red") +
+  ggplot2::geom_vline(data = means_df, ggplot2::aes(xintercept = mean_val, color = fit), linetype = "dashed") +
+  ggplot2::scale_fill_manual(values = fit_cols, name = NULL) +
+  ggplot2::scale_color_manual(values = fit_cols, guide = "none") +
+  ggplot2::labs(x = expression(hat(sigma)[x]^2), y = "density") +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+No two segments share a slope, no two jumps share a sign or size, and the estimator is given none of this structure — yet Linear and Quadratic are both visibly biased while Cubic is centered on the truth, exactly as the Theorem guarantees.
