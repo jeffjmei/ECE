@@ -223,7 +223,13 @@ estimate_table <- function(sc) {
   Linear <- c(beta1(sc$Tk_avg_xx)[1], beta1(sc$Tk_avg_yy)[1], beta1(sc$Tk_avg_xy)[1]) / (2 * n)
   Quadratic <- c(beta2(sc$Tk_avg_xx)[1], beta2(sc$Tk_avg_yy)[1], beta2(sc$Tk_avg_xy)[1]) / (2 * n)
 
-  # correlation = cov / sqrt(var_x * var_y); the 1/(2n) factor cancels
+  # r = mean of the per-replicate ratio sigma_xy/sqrt(sigma_x^2 sigma_y^2), matching
+  # the dashed mean line in the Histograms tab's correlation panel exactly -- NOT the
+  # ratio of the averaged variances above, which understates the instability caused
+  # by replicates where the variance estimate lands near zero.
+  r_lin <- mean(suppressWarnings(sc$est_xy[, "linear"] / sqrt(sc$est_xx[, "linear"] * sc$est_yy[, "linear"])), na.rm = TRUE)
+  r_quad <- mean(suppressWarnings(sc$est_xy[, "quadratic"] / sqrt(sc$est_xx[, "quadratic"] * sc$est_yy[, "quadratic"])), na.rm = TRUE)
+
   rbind(
     tibble::tibble(
       Quantity = c("$\\sigma_x^2$", "$\\sigma_y^2$", "$\\sigma_{xy}$"),
@@ -231,9 +237,7 @@ estimate_table <- function(sc) {
     ),
     tibble::tibble(
       Quantity = "$r$",
-      True = True[3] / sqrt(True[1] * True[2]),
-      Linear = Linear[3] / sqrt(Linear[1] * Linear[2]),
-      Quadratic = Quadratic[3] / sqrt(Quadratic[1] * Quadratic[2])
+      True = sc$params$r, Linear = r_lin, Quadratic = r_quad
     )
   )
 }
@@ -263,14 +267,15 @@ jump_params <- scenario(scenario_num = 1, n = n, amp = 3, r = 0.5, err_type = "n
 jump_params$h <- matrix(rep(jump_theta, 2), n, 2)
 jump_sc <- run_scenario(jump_params)
 
-jump8_seg <- 8
+jump16_seg <- 16
+jump16_nseg <- ceiling(n / jump16_seg)
 set.seed(5)
-jump8_a <- rnorm(n / jump8_seg, sd = 3)
-jump8_b <- rnorm(n / jump8_seg, sd = 1)
-jump8_theta <- rep(jump8_a, each = jump8_seg) + rep(jump8_b, each = jump8_seg) * rep(0:(jump8_seg - 1), n / jump8_seg)
-jump8_params <- scenario(scenario_num = 1, n = n, amp = 3, r = 0.5, err_type = "normal")
-jump8_params$h <- matrix(rep(jump8_theta, 2), n, 2)
-jump8_sc <- run_scenario(jump8_params)
+jump16_a <- rnorm(jump16_nseg, sd = 3)
+jump16_b <- rnorm(jump16_nseg, sd = 1)
+jump16_theta <- (rep(jump16_a, each = jump16_seg) + rep(jump16_b, each = jump16_seg) * rep(0:(jump16_seg - 1), jump16_nseg))[1:n]
+jump16_params <- scenario(scenario_num = 1, n = n, amp = 3, r = 0.5, err_type = "normal")
+jump16_params$h <- matrix(rep(jump16_theta, 2), n, 2)
+jump16_sc <- run_scenario(jump16_params)
 ```
 
 :::: {.panel-tabset}
@@ -455,41 +460,41 @@ knitr::kable(estimate_table(jump_sc), digits = 3)
 
 A more extreme version of the sawtooth above: segments still have length exactly $L=4$, but now each segment gets its own i.i.d. random slope ($N(0,1)$) *and* its own i.i.d. random level ($N(0,3^2)$) — no continuity constraint at block boundaries, so this is jumps and curvature superimposed at the shortest possible spacing. The hypothesis was that this should still work, since jumps load onto the $k$ coefficient and curvature onto $k^2$. It doesn't: both fits are badly wrong here. The linear fit overshoots substantially ($\hat\sigma_{xy}\approx1.5$, true $0.5$), and the quadratic fit undershoots to near zero ($\approx0.12$) — worse, in relative terms, than the linear fit in the fast-sine case above. Because every lag window straddles a boundary (segment length equals $L$, leaving no within-segment room), the jump and curvature contributions mix inside each $T_k$ term rather than adding cleanly — the cross term between them lands on neither the $k$ nor the $k^2$ coefficient, and the OLS fit misattributes it to the intercept. This is the "mixed, entangled" case flagged as an open problem above, made concrete: no amount of matching segment length to $L$ rescues it once jump and curvature vary together.
 
-## Piecewise-Linear, Discontinuous, L = 8
+## Piecewise-Linear, Discontinuous, L = 16
 
 ::: {.panel-tabset}
 
 ### Mean and Noise
 
-```{r jump8-mean-noise}
+```{r jump16-mean-noise}
 #| echo: false
-mean_noise_plot(jump8_sc)
+mean_noise_plot(jump16_sc)
 ```
 
 ### Regression
 
-```{r jump8-regression}
+```{r jump16-regression}
 #| echo: false
 library(patchwork)
-regression_matrix_plot(jump8_sc)
+regression_matrix_plot(jump16_sc)
 ```
 
 ### Histograms
 
-```{r jump8-histograms}
+```{r jump16-histograms}
 #| echo: false
 library(patchwork)
-histogram_matrix_plot(jump8_sc)
+histogram_matrix_plot(jump16_sc)
 ```
 
-```{r jump8-estimate-table}
+```{r jump16-estimate-table}
 #| echo: false
-knitr::kable(estimate_table(jump8_sc), digits = 3)
+knitr::kable(estimate_table(jump16_sc), digits = 3)
 ```
 
 :::
 
-Same construction as the $L=4$ case — i.i.d. random slope and level per segment, no continuity constraint at boundaries — but segments are now twice as long as the lag window ($8$ vs. $L=4$), giving each $T_k$ window, $k=1,\ldots,4$, room to occasionally stay inside a single segment instead of straddling a boundary every time. This is the same slack that made "Piecewise-Linear (random slopes)" (segment length $20$) tractable for the quadratic fit above, just far less generous. If entanglement is really about spacing rather than randomness per se, doubling the segment length should partially recover the quadratic fit's accuracy without eliminating the effect entirely.
+Same construction as the $L=4$ case — i.i.d. random slope and level per segment, no continuity constraint at boundaries — but segments are now four times as long as the lag window ($16$ vs. $L=4$), giving each $T_k$ window, $k=1,\ldots,4$, room to stay inside a single segment far more often than it straddles a boundary. This is the same slack that made "Piecewise-Linear (random slopes)" (segment length $20$) tractable for the quadratic fit above, just less generous. Quadrupling the segment length recovers most of the quadratic fit's accuracy ($\hat\sigma_{xy}\approx0.45$ against true $0.5$, up from $\approx0.15$ at $L=4$) without eliminating the effect entirely — confirming the entanglement is about spacing relative to the lag window, not randomness per se.
 
 ::::
 
@@ -839,6 +844,12 @@ estimate_table3 <- function(sc) {
   Quadratic <- c(mean(sc$est_xx[, "quadratic"]), mean(sc$est_yy[, "quadratic"]), mean(sc$est_xy[, "quadratic"]))
   PWLinBilinear <- c(mean(sc$est_xx[, "pwlin_bilinear"]), mean(sc$est_yy[, "pwlin_bilinear"]), mean(sc$est_xy[, "pwlin_bilinear"]))
 
+  # r = mean of the per-replicate ratio, matching hist_corr_panel3()'s dashed mean
+  # line -- see estimate_table()'s comment for why this differs from ratio-of-means.
+  r_lin <- mean(suppressWarnings(sc$est_xy[, "linear"] / sqrt(sc$est_xx[, "linear"] * sc$est_yy[, "linear"])), na.rm = TRUE)
+  r_quad <- mean(suppressWarnings(sc$est_xy[, "quadratic"] / sqrt(sc$est_xx[, "quadratic"] * sc$est_yy[, "quadratic"])), na.rm = TRUE)
+  r_pw <- mean(suppressWarnings(sc$est_xy[, "pwlin_bilinear"] / sqrt(sc$est_xx[, "pwlin_bilinear"] * sc$est_yy[, "pwlin_bilinear"])), na.rm = TRUE)
+
   rbind(
     tibble::tibble(
       Quantity = c("$\\sigma_x^2$", "$\\sigma_y^2$", "$\\sigma_{xy}$"),
@@ -846,10 +857,7 @@ estimate_table3 <- function(sc) {
     ),
     tibble::tibble(
       Quantity = "$r$",
-      True = True[3] / sqrt(True[1] * True[2]),
-      Linear = Linear[3] / sqrt(Linear[1] * Linear[2]),
-      Quadratic = Quadratic[3] / sqrt(Quadratic[1] * Quadratic[2]),
-      `PW-Linear Bilinear` = PWLinBilinear[3] / sqrt(PWLinBilinear[1] * PWLinBilinear[2])
+      True = sc$params$r, Linear = r_lin, Quadratic = r_quad, `PW-Linear Bilinear` = r_pw
     )
   )
 }
