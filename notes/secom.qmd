@@ -1,0 +1,303 @@
+---
+title: "Semiconductor Manufacturing (SECOM)"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+```
+
+UCI SECOM dataset (`archive.ics.uci.edu/dataset/179/secom`): process-control data from a semiconductor wafer fabrication line. **1567 lots**, processed sequentially between 2008-07-19 and 2008-10-17 (irregular spacing — median 37 minutes between lots, occasional multi-day gaps for downtime). Each lot carries **590 sensor channels** recorded during processing (chamber temperatures, pressures, flows, etc. — anonymized, no channel names) plus a pass/fail label.
+
+This is a different kind of candidate than the other real-data chapters: there's no documented change-point event (no antenna log, no dam-closure date, no CO2 protocol). Any mean shift has to be *discovered* by screening the 590 channels, not given. This chapter is exploratory — it screens for candidate sensor pairs before committing to a chapter structure.
+
+```{R secom-load}
+#| echo: false
+#| message: false
+
+X_raw <- read.table("../data/secom/secom.data", header = FALSE, sep = " ", na.strings = "NA")
+labels <- read.table("../data/secom/secom_labels.data", header = FALSE, sep = " ")
+names(labels) <- c("label", "time")
+labels$time <- as.POSIXct(gsub("\"", "", labels$time), format = "%d/%m/%Y %H:%M:%S")
+
+miss_frac <- colMeans(is.na(X_raw))
+var_col <- apply(X_raw, 2, var, na.rm = TRUE)
+const_col <- var_col == 0 | is.na(var_col)
+good_cols <- which(!const_col & miss_frac < 0.02)
+
+X_good <- X_raw[, good_cols]
+X_complete <- X_good[complete.cases(X_good), ]
+```
+
+Of 590 channels, `r sum(const_col)` are constant and `r sum(miss_frac > 0.05)` are missing more than 5% of lots — dropping those (and requiring < 2% missingness) leaves **`r length(good_cols)` usable channels**, `r nrow(X_complete)` complete lots.
+
+## Screening for candidates
+
+For each usable channel, a shift score compares the mean of the first third of the run to the last third, scaled by the channel's SD. Among the most-shifted channels, we then look for pairs that are correlated with each other (so there's a real "two series, one relationship" story) but not near-duplicates (correlation close to ±1 usually means two sensors reading the same physical thing).
+
+```{R secom-screen}
+#| echo: false
+
+n <- nrow(X_complete)
+first_third <- 1:floor(n / 3)
+last_third <- (n - floor(n / 3) + 1):n
+
+shift_score <- sapply(X_complete, function(v) abs(mean(v[first_third]) - mean(v[last_third])) / sd(v))
+names(shift_score) <- good_cols
+
+C <- cor(X_complete)
+colnames(C) <- rownames(C) <- good_cols
+```
+
+Three flavors of candidate turned up, none as clean as the other real-data chapters:
+
+::: {.panel-tabset}
+
+## Gradual drift
+
+```{R fig-secom-drift}
+#| echo: false
+
+cols <- c(170, 305, 441)
+df <- X_raw[, cols]
+names(df) <- paste0("s", cols)
+df$idx <- seq_len(nrow(df))
+df <- df[complete.cases(df), ] |>
+  pivot_longer(starts_with("s"), names_to = "sensor", values_to = "value")
+
+ggplot(df, aes(idx, value)) +
+  geom_line(linewidth = 0.3) +
+  facet_wrap(~sensor, scales = "free_y", ncol = 1) +
+  labs(title = "Sensors 170, 305, 441 — gradual drift", x = "lot index", y = NULL) +
+  theme_minimal()
+```
+
+Level creeps up smoothly across the whole three-month run — no dateable event, more like the ozone seasonal drift than a discrete shift. But these three correlate at r = 0.976–0.996 with each other: almost certainly redundant reads of the same physical quantity, not two genuinely different things that happen to move together.
+
+## Saturating sensors
+
+```{R fig-secom-saturating}
+#| echo: false
+
+cols <- c(26, 28, 32)
+df <- X_raw[, cols]
+names(df) <- paste0("s", cols)
+df$idx <- seq_len(nrow(df))
+df <- df[complete.cases(df), ] |>
+  pivot_longer(starts_with("s"), names_to = "sensor", values_to = "value")
+
+ggplot(df, aes(idx, value)) +
+  geom_line(linewidth = 0.3) +
+  facet_wrap(~sensor, scales = "free_y", ncol = 1) +
+  labs(title = "Sensors 26, 28, 32 — saturating / duty-cycle-like", x = "lot index", y = NULL) +
+  theme_minimal()
+```
+
+Pinned near a ceiling most of the time with sporadic dips to a floor — a bounded or duty-cycle-type signal, not a smoothly-varying mean. Poor fit for ECE's piecewise-constant-mean, fixed-covariance model.
+
+## Discrete step
+
+```{R fig-secom-step}
+#| echo: false
+
+cols <- c(544, 545, 546)
+df <- X_raw[, cols]
+names(df) <- paste0("s", cols)
+df$idx <- seq_len(nrow(df))
+df <- df[complete.cases(df), ] |>
+  pivot_longer(starts_with("s"), names_to = "sensor", values_to = "value")
+
+ggplot(df, aes(idx, value)) +
+  geom_line(linewidth = 0.3) +
+  facet_wrap(~sensor, scales = "free_y", ncol = 1) +
+  labs(title = "Sensors 544, 545, 546 — discrete step near lot 730", x = "lot index", y = NULL) +
+  theme_minimal()
+```
+
+```{R secom-step-detail}
+#| echo: false
+
+cols <- c(544, 545, 546)
+df <- X_raw[, cols]
+names(df) <- paste0("s", cols)
+df <- df[complete.cases(df), ]
+bp <- 93  # index into complete-case subset where the flat pre-shift segment ends
+pre <- df[1:bp, ]
+post <- df[(bp + 1):nrow(df), ]
+```
+
+The cleanest thing resembling a dateable event: all three jump together around lot 730 (2008-08-04, ~17:46) — plausibly a real recipe, tool, or calibration change. Two caveats keep this from being a clean case: `s544` and `s546` correlate at r = 0.99 (likely redundant), and all three read essentially **zero/constant before the shift** (`r round(sd(pre$s544), 4)`, `r round(sd(pre$s545), 4)`, `r round(sd(pre$s546), 4)` — pre-shift SDs), so "pre-regime correlation" is undefined rather than just biased. That's closer to "sensor was off, then turned on" than "same relationship, obscured by a mean shift."
+
+:::
+
+Of the three, the gradual-drift cluster (`s170`, `s305`, `s441`) is the one we dig into below — despite the near-duplicate correlation, its smoothly-varying mean is the closest match to ECE's model of anything found in this screen, and it follows the same rolling-mean-baseline approach used in `air-pollution.qmd`.
+
+## Diagnostics: Gradual Drift Cluster
+
+```{R secom-drift-load}
+#| echo: false
+#| label: secom-drift-load
+
+cols <- c(170, 305, 441)
+X_data <- X_raw[, cols]
+names(X_data) <- c("s170", "s305", "s441")
+X_data$idx <- seq_len(nrow(X_data))
+X_data <- X_data[complete.cases(X_data[, c("s170", "s305", "s441")]), ]
+
+X_mat <- as.matrix(X_data[, c("s170", "s305", "s441")])
+win   <- 25
+```
+
+```{R secom-drift-residuals}
+#| echo: false
+#| label: secom-drift-residuals
+
+X_roll  <- apply(X_mat, 2, rolling_mean, window = win)
+colnames(X_roll) <- colnames(X_mat)
+X_resid <- X_mat - X_roll
+```
+
+```{R secom-drift-tables}
+#| echo: false
+#| label: secom-drift-tables
+
+ece_cor  <- ece.cor(X_mat) |> round(3)
+rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_mat)
+
+X_resid_complete <- X_resid[complete.cases(X_resid), ]
+rolling_cor <- cor(X_resid_complete) |> round(3)
+pearson_cor <- cor(X_mat) |> round(3)
+
+ece_pmat     <- ece_pval(X_mat) |> round(3)
+rolling_pmat <- cor_pval(X_resid_complete) |> round(3)
+pearson_pmat <- cor_pval(X_mat) |> round(3)
+```
+
+::: {.panel-tabset}
+
+### Plot
+
+```{R fig-secom-drift-series}
+#| echo: false
+#| fig-cap: "Sensors 170, 305, 441, faceted. Blue = rolling mean."
+#| fig-height: 7
+
+X_long <- X_data |>
+  select(idx, s170, s305, s441) |>
+  bind_cols(as.data.frame(X_roll) |> rename_with(~ paste0(.x, "_roll"), everything())) |>
+  pivot_longer(cols = -idx, names_to = "series", values_to = "value") |>
+  mutate(
+    type = if_else(str_ends(series, "_roll"), "Rolling Mean", "Raw"),
+    sensor = str_remove(series, "_roll$")
+  )
+
+ggplot(X_long, aes(x = idx, y = value)) +
+  geom_line(data = ~ filter(.x, type == "Raw"), color = "gray50", alpha = 0.5, linewidth = 0.3) +
+  geom_line(data = ~ filter(.x, type == "Rolling Mean"), color = "steelblue", linewidth = 0.7) +
+  facet_wrap(~sensor, ncol = 1, scales = "free_y") +
+  labs(title = "Sensors 170, 305, 441", x = "lot index", y = NULL) +
+  theme_minimal()
+```
+
+### Residuals
+
+```{R fig-secom-drift-residual}
+#| echo: false
+
+X_data |>
+  select(idx) |>
+  bind_cols(as.data.frame(X_resid)) |>
+  pivot_longer(-idx, names_to = "sensor", values_to = "value") |>
+  ggplot(aes(idx, value, color = sensor)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  labs(title = "Rolling-Mean Residuals", x = "lot index", y = "Sensor anomaly", color = NULL) +
+  theme_minimal()
+```
+
+### ACF
+
+::: {.panel-tabset}
+
+#### Naive
+
+```{R acf-secom-drift-naive}
+#| echo: false
+
+par(mfrow = c(1, 3), mar = c(2, 3, 2, 1), oma = c(2, 0, 0, 0), mgp = c(1.8, 1, 0))
+acf(X_resid[, "s170"], main = "s170", na.action = na.pass)
+acf(X_resid[, "s305"], main = "s305", na.action = na.pass)
+acf(X_resid[, "s441"], main = "s441", na.action = na.pass)
+mtext("Lag (lots)", side = 1, outer = TRUE, line = 0.5)
+```
+
+Lag-1 residual autocorrelation is essentially zero (-0.06 to -0.07) — unlike ozone's rolling residuals, there's no leftover day-to-day persistence here once the drift is removed. Lot-to-lot readings really do behave close to independent.
+
+#### Mean-Shift-Invariant
+
+```{R acf-secom-drift-invariant}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+`SIP::SIP.acf` on the raw series agrees with the naive rolling-residual ACF: near-zero at every lag. With no real autocorrelation to discount, naive and mean-shift-invariant ACF have nothing to disagree about here.
+
+:::
+
+### Trend
+
+::: {.panel-tabset}
+
+#### Naive
+
+```{R trend-secom-drift-naive}
+#| echo: false
+
+plot_naive_terms(X_mat, window = win)
+```
+
+#### Mean-Shift-Invariant
+
+```{R trend-secom-drift-invariant}
+#| echo: false
+
+plot_ece_terms(X_mat, window = win)
+```
+
+:::
+
+### Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(ece_cor,     caption = "ECE Correlation")
+knitr::kable(rolling_cor, caption = "Rolling Correlation")
+knitr::kable(pearson_cor, caption = "Pearson Correlation")
+```
+
+Unlike ozone, all three methods land in the same place: **0.97–0.996** across every pair, whichever way the mean is handled. That's consistent with the redundant-sensor read on this cluster from the screening section — if `s170`/`s305`/`s441` are genuinely near-duplicate reads of one physical quantity, there's no mean-shift confound for ECE to correct, because Pearson was never wrong on this cluster to begin with. This cluster doesn't demonstrate ECE's advantage; it demonstrates the boundary case where naive and ECE agree because the naive answer was already right.
+
+### P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(ece_pmat,     caption = "ECE P-Values")
+knitr::kable(rolling_pmat, caption = "Rolling P-Values")
+knitr::kable(pearson_pmat, caption = "Pearson P-Values")
+```
+
+All three methods reject independence at every pair (p ≈ 0) — no surprise given correlations this high.
+
+:::
+
+## Where this leaves us
+
+The gradual-drift cluster is clean in the sense that matters for diagnostics (near-zero residual autocorrelation, a genuinely smooth mean shift), but it's not a case where naive correlation needed correcting — it's a control case where naive and ECE agree, most likely because the three sensors aren't independent measurements to begin with. The discrete-step and saturating clusters remain open if a genuine naive-vs-ECE divergence (a real "the mean shift fooled Pearson" story) is wanted; so does further screening for a pair that's correlated but not redundant.

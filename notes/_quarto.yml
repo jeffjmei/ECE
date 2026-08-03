@@ -39,6 +39,7 @@ book:
         - glen-canyon-dam.qmd
         - gps-antenna-offset.qmd
         - air-pollution.qmd
+        - secom.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd
