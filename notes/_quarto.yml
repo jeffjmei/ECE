@@ -42,6 +42,7 @@ book:
         - secom.qmd
         - steel-industry.qmd
         - interest-rates.qmd
+        - wearable-gestures.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd

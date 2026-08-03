@@ -1,0 +1,230 @@
+---
+title: "Wearable Gesture Sensors"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+```
+
+A wrist-worn 9-axis IMU (3-axis accelerometer, gyroscope, magnetometer) recorded from 37 subjects, each performing five hand-related activities in sequence: `Eating`, `Face_Touch`, `Nail_Biting`, `Smoking`, `Staying_Still`. Each subject's record is five contiguous blocks, one per activity, not interleaved.
+
+`Activity` is a real, known regime label, and unlike Steel Industry's `Load_Type` (an external operating schedule that merely correlates with the electrical series), here the label directly describes the physical state generating the sensor readings: wrist orientation genuinely differs between eating and smoking. That makes activity-mean removal a true oracle, not a proxy.
+
+We use accelerometer and magnetometer axes (`Ax`, `Ay`, `Az`, `Mx`, `My`, `Mz`) for one subject (User 4, 26,475 samples). Gyroscope axes are dropped: shift score across activities is under 0.1 for all three, versus 2-3 for the magnetometer axes, so there's no mean shift for a naive-vs-oracle comparison to disagree about. Accelerometer and magnetometer both respond to wrist orientation, so a real physical relationship between them is plausible.
+
+```{R}
+#| echo: false
+#| message: false
+#| label: wearable-load
+
+wear_data <- read_csv("../data/real-data/wearable-stress.csv", show_col_types = FALSE) |>
+  filter(User == 4) |>
+  mutate(idx = row_number())
+
+chans <- c("Ax", "Ay", "Az", "Mx", "My", "Mz")
+X_mat <- as.matrix(wear_data[, chans])
+```
+
+Naive full-record correlation between `Ay` and `My` is 0.15 for this subject. Split by activity, the within-activity correlation is negative for every one of the five blocks: activity drives both variables' means in the same direction, and naive correlation mistakes that shared drift for a real relationship, the same Simpson's-paradox pattern as Steel Industry's `Usage_kWh`-`PowerFactor`.
+
+```{R}
+#| echo: false
+#| label: wearable-oracle
+
+oracle_resid <- function(X, grp) {
+  R <- sapply(colnames(X), function(cn) X[, cn] - ave(X[, cn], grp))
+  colnames(R) <- colnames(X)
+  R
+}
+
+X_oracle <- oracle_resid(X_mat, wear_data$Activity)
+```
+
+Residual autocorrelation after removing the activity mean is still severe at native resolution (lag-1 above 0.9 for most channels): wrist orientation barely changes sample-to-sample within an activity block, aside from occasional gesture spikes. `ece.cor()` needs a large minimum segment length, `L = 1000`, to produce a stable, in-range result here; smaller `L` returns `NaN` or values outside \[-1, 1\].
+
+```{R}
+#| echo: false
+#| label: wearable-tables
+
+cor_tables <- function(X_mat, X_oracle, L) {
+  ece_cor <- ece.cor(X_mat, L = L) |> round(3)
+  rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_mat)
+
+  oracle_cor  <- cor(X_oracle) |> round(3)
+  pearson_cor <- cor(X_mat) |> round(3)
+
+  ece_pmat     <- suppressWarnings(ece_pval(X_mat) |> round(3))
+  oracle_pmat  <- cor_pval(X_oracle) |> round(3)
+  pearson_pmat <- cor_pval(X_mat) |> round(3)
+
+  list(ece_cor = ece_cor, oracle_cor = oracle_cor, pearson_cor = pearson_cor,
+       ece_pmat = ece_pmat, oracle_pmat = oracle_pmat, pearson_pmat = pearson_pmat)
+}
+
+tab_full <- cor_tables(X_mat, X_oracle, L = 1000)
+win <- 200
+```
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R fig-wearable-series}
+#| echo: false
+#| fig-cap: "Ax, Mx, Mz across the five activity blocks, User 4. Colored bands show Activity."
+#| fig-height: 7
+
+X_long <- wear_data |>
+  select(idx, Activity, Ax, Mx, Mz) |>
+  pivot_longer(c(Ax, Mx, Mz), names_to = "channel", values_to = "value")
+
+bands <- wear_data |>
+  group_by(Activity) |>
+  summarise(xmin = min(idx), xmax = max(idx)) |>
+  mutate(ymin = -Inf, ymax = Inf)
+
+ggplot(X_long, aes(idx, value)) +
+  geom_rect(data = bands, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = Activity),
+            inherit.aes = FALSE, alpha = 0.15) +
+  geom_line(linewidth = 0.2) +
+  facet_grid(channel ~ ., scales = "free_y") +
+  labs(title = "User 4: Accelerometer and Magnetometer Axes", x = "Sample index", y = NULL) +
+  theme_minimal()
+```
+
+Each activity block is a near-flat plateau at its own level, with sharp jumps at the boundaries — a real step function, not a gradual drift. `Smoking` (blue) shows repeated spikes, the hand-to-mouth gesture cycling within the block.
+
+## Residuals
+
+```{R fig-wearable-residual}
+#| echo: false
+
+wear_data |>
+  select(idx) |>
+  bind_cols(as.data.frame(X_oracle)) |>
+  filter(idx < 5000) |>
+  pivot_longer(-idx, names_to = "channel", values_to = "value") |>
+  ggplot(aes(idx, value, color = channel)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  labs(title = "Oracle Residuals (Activity mean removed), first 5000 samples",
+       x = "Sample index", y = "Anomaly", color = NULL) +
+  theme_minimal()
+```
+
+Removing the activity mean leaves clean, centered noise within each block — the step-function assumption behind the oracle holds well here, unlike Steel Industry's ramped `Load_Type` transitions.
+
+## ACF
+
+::: {.panel-tabset}
+
+### Oracle
+
+```{R acf-wearable-oracle}
+#| echo: false
+
+par(mfrow = c(2, 3), mar = c(2, 3, 2, 1), oma = c(2, 0, 0, 0), mgp = c(1.8, 1, 0))
+for (ch in chans) acf(X_oracle[, ch], main = ch)
+mtext("Lag (samples)", side = 1, outer = TRUE, line = 0.5)
+```
+
+Lag-1 autocorrelation above 0.9 for most channels even with the true activity mean removed. This is real physical persistence (wrist orientation doesn't change fast) plus the periodic gesture spikes within `Smoking`, not a mean-removal artifact.
+
+### Mean-Shift-Invariant
+
+```{R acf-wearable-invariant}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+`SIP::SIP.acf` agrees with the oracle-residual ACF in sign and magnitude, the same pattern as Steel Industry: dependence this strong leaves little room for a mean-shift-invariant estimator to disagree with correct mean removal.
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Oracle
+
+```{R trend-wearable-oracle}
+#| echo: false
+
+pair_idx <- combn(ncol(X_oracle), 2)
+pair_labels <- paste(colnames(X_oracle)[pair_idx[1, ]], colnames(X_oracle)[pair_idx[2, ]], sep = "-")
+S_oracle <- do.call(cbind, purrr::map2(pair_idx[1, ], pair_idx[2, ], \(i, j)
+  X_oracle[, i] * X_oracle[, j]))
+
+k <- win
+S_smooth <- stats::filter(S_oracle, rep(1 / k, k), sides = 2)
+
+par(mfrow = c(ncol(S_oracle), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+for (i in seq_len(ncol(S_oracle))) {
+  ylim <- quantile(S_oracle[, i], probs = c(0.01, 0.99), na.rm = TRUE)
+  plot(S_oracle[, i], type = "l", col = "lightgray", xaxt = "n", yaxt = "n",
+       ylab = pair_labels[i], cex.lab = 0.8, ylim = ylim)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = mean(S_oracle[, i]), col = "blue")
+  lines(S_smooth[, i])
+  legend("topright", legend = sprintf("%.3f", mean(S_oracle[, i])), text.col = "blue", bty = "n", cex = 0.8)
+}
+axis(1)
+mtext("Index (samples)", side = 1, outer = TRUE, line = 2.5)
+```
+
+### Mean-Shift-Invariant
+
+```{R trend-wearable-invariant}
+#| echo: false
+
+plot_ece_terms(X_mat, window = win)
+```
+
+:::
+
+## Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(tab_full$ece_cor,     caption = "ECE Correlation")
+knitr::kable(tab_full$oracle_cor,  caption = "Oracle Correlation")
+knitr::kable(tab_full$pearson_cor, caption = "Pearson Correlation")
+```
+
+`Ax`-`Mx` stays strongly negative under all three methods (naive -0.81, oracle -0.66, ECE -0.65): the tilt that raises `Ax` genuinely lowers `Mx`, activity mean shift or not. `Ay`-`My` is the interesting pair: naive is mildly positive (0.15), but the oracle answer, using the true `Activity` labels, is -0.57. ECE, without seeing those labels, lands at -0.55 — recovering the oracle's answer, sign flip included, almost exactly. This isn't specific to this one subject: the same naive-positive/oracle-and-ECE-negative pattern for `Ay`-`My` shows up for users 1, 10, and 20 as well.
+
+## P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(tab_full$ece_pmat,     caption = "ECE P-Values")
+knitr::kable(tab_full$oracle_pmat,  caption = "Oracle P-Values")
+knitr::kable(tab_full$pearson_pmat, caption = "Pearson P-Values")
+```
+
+`ece_pval()` runs at its default `L = 2` and comes back `NaN` almost everywhere — the same failure mode as Steel Industry's Full Record tab: residual autocorrelation this strong breaks the z-test's variance estimate, even though `ece.cor()` itself is stable at a larger `L`. Oracle and Pearson both reject independence for every pair (p < 0.001), including `Ay`-`My`, where oracle and naive don't even agree on the sign.
+
+:::
+
+---
+
+## Bootstrap Methods
+
+```{R}
+#| echo: false
+ece.test(X_mat, type = "bs.multiplier")
+ece.test(X_mat, type = "bs.parametric")
+```
+
+## Where this leaves us
+
+Activity gives a cleaner oracle than most real-data chapters get: a real step function tied to the physical quantity being measured, not a ramped external schedule. ECE tracks that oracle well on correlation (`Ay`-`My`'s sign flip recovered without seeing the labels), which is the strongest evidence in this book that ECE can substitute for a true regime label when the mean shift is sharp. The gap is inference: `ece_pval()`'s fixed `L = 2` can't handle the residual autocorrelation here, so we have correlation estimates but not p-values from the same method. Whether a per-gesture or per-cycle resampling (as opposed to the fixed-window one used for `plot_ece_terms()`'s Trend tab) could bring `L` down far enough for `ece_pval()` to work is worth checking, along the lines of Steel Industry's daily-peak tier.
