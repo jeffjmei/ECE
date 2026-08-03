@@ -38,6 +38,7 @@ book:
         - elnino.qmd
         - glen-canyon-dam.qmd
         - gps-antenna-offset.qmd
+        - air-pollution.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd

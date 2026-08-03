@@ -1,0 +1,488 @@
+---
+title: "Air Pollution"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+```
+
+EPA AQS publishes daily Air Quality Index (AQI) by metropolitan area (CBSA), by pollutant (`aqs.epa.gov/aqsweb/airdata`). We compare **ozone** AQI across three nearby Arizona cities:
+
+- `Payson` (CBSA 37740)
+- `Prescott` (CBSA 39140)
+- `Flagstaff` (CBSA 22380)
+
+All three sit 90–100 driving miles apart in central/northern Arizona and share the same regional airshed and photochemistry, so genuine ozone correlation between them is plausible. But ozone is strongly seasonal — high in summer, low in winter — and all three cities ride the same seasonal cycle regardless of whether their day-to-day *deviations* are related. This is a different flavor of mean shift than the rest of this part: not a single dateable event, but a slow, continuously drifting one. A piecewise-constant segmentation oracle (`segment_mean()`, PELT) doesn't fit that shape well, so instead we compare against a **rolling-mean baseline** (`rolling_mean()`, a fixed-window moving average) — a more natural fit for a smoothly varying seasonal signal — and against ECE, which needs only a minimum segment length.
+
+```{R}
+#| echo: false
+#| message: false
+#| label: air-pollution-load
+
+years <- 2020:2025
+files <- paste0("../data/air-quality/daily_aqi_by_cbsa_", years, ".csv")
+raw_df <- map_dfr(files, read_csv, show_col_types = FALSE)
+df <- raw_df |> janitor::clean_names()
+
+X_data <- df |>
+  filter(cbsa_code %in% c(37740, 39140, 22380), defining_parameter == "Ozone") |>
+  select(date, cbsa_code, aqi) |>
+  pivot_wider(names_from = cbsa_code, values_from = aqi) |>
+  drop_na() |>
+  rename(Payson = `37740`, Prescott = `39140`, Flagstaff = `22380`) |>
+  arrange(date)
+
+X_mat <- as.matrix(X_data[, c("Payson", "Prescott", "Flagstaff")])
+win   <- 25
+```
+
+```{R}
+#| echo: false
+#| label: air-pollution-residuals
+
+X_roll   <- apply(X_mat, 2, rolling_mean, window = win)
+colnames(X_roll) <- colnames(X_mat)
+X_resid  <- X_mat - X_roll
+```
+
+The naive rolling-residual ACF (below) shows **positive** lag-1 autocorrelation, around 0.43–0.46 for all three cities, close to the mean-shift-invariant `SIP.acf` value (0.18–0.24) — a much smaller gap than the earlier segmentation-based version, which came out sharply negative and, as it turned out, was largely a PELT segmentation artifact rather than real dependence. We also downsample by `k = 2` and `k = 3` days below to check how that residual dependence behaves as sampling spacing grows.
+
+```{R}
+#| echo: false
+#| label: air-pollution-downsample
+
+downsample <- function(df, k) df[seq(1, nrow(df), by = k), ]
+
+X_data_ds2 <- downsample(X_data, 2)
+X_mat_ds2  <- as.matrix(X_data_ds2[, c("Payson", "Prescott", "Flagstaff")])
+X_roll_ds2 <- apply(X_mat_ds2, 2, rolling_mean, window = win)
+colnames(X_roll_ds2) <- colnames(X_mat_ds2)
+X_resid_ds2 <- X_mat_ds2 - X_roll_ds2
+
+X_data_ds3 <- downsample(X_data, 3)
+X_mat_ds3  <- as.matrix(X_data_ds3[, c("Payson", "Prescott", "Flagstaff")])
+X_roll_ds3 <- apply(X_mat_ds3, 2, rolling_mean, window = win)
+colnames(X_roll_ds3) <- colnames(X_mat_ds3)
+X_resid_ds3 <- X_mat_ds3 - X_roll_ds3
+```
+
+```{R}
+#| echo: false
+#| label: air-pollution-tables
+
+cor_tables <- function(X_mat, X_resid) {
+  ece_cor  <- ece.cor(X_mat) |> round(3)
+  rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_mat)
+
+  X_resid_complete <- X_resid[complete.cases(X_resid), ]
+  rolling_cor <- cor(X_resid_complete) |> round(3)
+  pearson_cor <- cor(X_mat) |> round(3)
+
+  ece_pmat     <- ece_pval(X_mat) |> round(3)
+  rolling_pmat <- cor_pval(X_resid_complete) |> round(3)
+  pearson_pmat <- cor_pval(X_mat) |> round(3)
+
+  list(ece_cor = ece_cor, rolling_cor = rolling_cor, pearson_cor = pearson_cor,
+       ece_pmat = ece_pmat, rolling_pmat = rolling_pmat, pearson_pmat = pearson_pmat)
+}
+
+tab_full <- cor_tables(X_mat, X_resid)
+tab_ds2  <- cor_tables(X_mat_ds2, X_resid_ds2)
+tab_ds3  <- cor_tables(X_mat_ds3, X_resid_ds3)
+```
+
+::: {.panel-tabset}
+
+## Full Record
+
+::: {.panel-tabset}
+
+### Plot
+
+```{R fig-air-pollution-series-full}
+#| echo: false
+#| fig-cap: "Daily ozone AQI, three Arizona metros, faceted by city. Blue = rolling mean."
+#| fig-height: 7
+
+X_long <- X_data |>
+  bind_cols(as.data.frame(X_roll) |> rename_with(~ paste0(.x, "_roll"), everything())) |>
+  pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
+  mutate(
+    type = if_else(str_ends(series, "_roll"), "Rolling Mean", "Raw"),
+    city = str_remove(series, "_roll$")
+  )
+
+ggplot(X_long, aes(x = date, y = value)) +
+  geom_line(data = ~ filter(.x, type == "Raw"), color = "gray50", alpha = 0.5, linewidth = 0.3) +
+  geom_line(data = ~ filter(.x, type == "Rolling Mean"), color = "steelblue", linewidth = 0.7) +
+  facet_wrap(~city, ncol = 1) +
+  labs(title = "Ozone AQI by City", x = NULL, y = "AQI",
+       caption = "Source: EPA AQS, daily AQI by CBSA") +
+  theme_minimal()
+```
+
+The rolling mean (`win = 25`) tracks the seasonal envelope, but lags behind sharp local swings and doesn't fully flatten out the summer peak or winter trough — a fixed short window trades off smoothing against staying on top of a slow multi-month cycle.
+
+### Residuals
+
+```{R fig-air-pollution-residual-full}
+#| echo: false
+
+X_data |>
+  select(date) |>
+  bind_cols(as.data.frame(X_resid)) |>
+  pivot_longer(-date, names_to = "city", values_to = "value") |>
+  ggplot(aes(date, value, color = city)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  labs(title = "Rolling-Mean Residuals", x = NULL, y = "AQI anomaly", color = NULL) +
+  theme_minimal()
+```
+
+Whatever covariance we estimate is the average across this whole window — residual spread visibly varies by season (heteroscedasticity), which none of Pearson, Rolling, or ECE account for.
+
+### ACF
+
+::: {.panel-tabset}
+
+#### Naive
+
+```{R acf-air-pollution-naive-full}
+#| echo: false
+
+par(mfrow = c(1, 3), mar = c(2, 3, 2, 1), oma = c(2, 0, 0, 0), mgp = c(1.8, 1, 0))
+acf(X_resid[, "Payson"], main = "Payson", na.action = na.pass)
+acf(X_resid[, "Prescott"], main = "Prescott", na.action = na.pass)
+acf(X_resid[, "Flagstaff"], main = "Flagstaff", na.action = na.pass)
+mtext("Lag (days)", side = 1, outer = TRUE, line = 0.5)
+```
+
+Positive lag-1 autocorrelation (~0.43–0.46) in every series — day-to-day AQI drifts rather than zigzags, once the mean is removed with a rolling average instead of a piecewise-constant segmentation.
+
+#### Mean-Shift-Invariant
+
+```{R acf-air-pollution-invariant-full}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+`SIP::SIP.acf`, applied directly to the raw series (no windowing needed — it discounts mean-shift-induced autocorrelation itself), gives lag-1 around 0.18–0.24, smaller than but the same sign as the rolling-residual value, with no lags falling back to the naive variance estimate. The two now broadly agree — a real, if partial, gap remains, plausibly because a 25-day window can't fully separate day-to-day persistence from the much slower seasonal drift it's riding on.
+
+:::
+
+### Trend
+
+::: {.panel-tabset}
+
+#### Naive
+
+```{R trend-air-pollution-naive-full}
+#| echo: false
+
+plot_naive_terms(X_mat, window = win)
+```
+
+#### Mean-Shift-Invariant
+
+```{R trend-air-pollution-invariant-full}
+#| echo: false
+
+plot_ece_terms(X_mat, window = win)
+```
+
+Naive Trend (`plot_naive_terms`) removes a rolling mean per city, then plots the raw product of those residuals against its own rolling-window mean — same grammar as Mean-Shift-Invariant Trend (`plot_ece_terms`), but mean-removal is a fixed-window rolling mean rather than ECE's difference-based, mean-shift-invariant construction. Both are shown on the raw AQI series directly; the "Naive" tab here is now the same rolling-mean construction used for the Residuals/ACF tabs above.
+
+:::
+
+### Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(tab_full$ece_cor,     caption = "ECE Correlation")
+knitr::kable(tab_full$rolling_cor, caption = "Rolling Correlation")
+knitr::kable(tab_full$pearson_cor, caption = "Pearson Correlation")
+```
+
+Pearson correlation on the raw series is **0.70–0.77** across all three pairs, regardless of distance — it is mostly measuring "all three cities have summer," not city-to-city ozone transport. A 25-day rolling mean only partially fixes this: residual correlation drops to **0.42–0.70**, still much closer to raw Pearson than to ECE. That gap is a real limitation of a fixed short window against a much slower seasonal cycle — it can't remove the confound without lagging behind the sharp swings, no matter how the window is tuned (a wider window smooths less locally and leaks *more* seasonal correlation through, not less; a narrower one leaks less but still doesn't reach ECE's answer). ECE, using only a minimum segment length and no window size to choose, collapses to **0.05–0.37** — the two methods no longer agree the way Segment and ECE did, which is itself informative: a rolling mean is a weaker adjustment than a piecewise-constant segmentation for a mean shift this fast relative to the sampling rate. What ECE leaves broadly tracks proximity: Prescott–Flagstaff (95 mi apart) sit around 0.37, while Payson–Flagstaff (94 mi) and Payson–Prescott (99 mi) sit near zero — plausible given Payson sits at lower elevation, separated from the other two by the Mogollon Rim.
+
+### P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(tab_full$ece_pmat,     caption = "ECE P-Values")
+knitr::kable(tab_full$rolling_pmat, caption = "Rolling P-Values")
+knitr::kable(tab_full$pearson_pmat, caption = "Pearson P-Values")
+```
+
+Pearson and Rolling both reject independence for every pair (p ≈ 0) — including Payson–Flagstaff, the pair ECE finds no evidence for (p ≈ 0.17). That's the seasonal confound showing up as a false positive in the two naive methods, not a real cross-city relationship.
+
+:::
+
+:::
+
+## Downsampled (k = 2)
+
+::: {.panel-tabset}
+
+### Plot
+
+```{R fig-air-pollution-series-ds2}
+#| echo: false
+#| fig-cap: "Daily ozone AQI, k = 2, faceted by city. Blue = rolling mean."
+#| fig-height: 7
+
+X_long_ds2 <- X_data_ds2 |>
+  bind_cols(as.data.frame(X_roll_ds2) |> rename_with(~ paste0(.x, "_roll"), everything())) |>
+  pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
+  mutate(
+    type = if_else(str_ends(series, "_roll"), "Rolling Mean", "Raw"),
+    city = str_remove(series, "_roll$")
+  )
+
+ggplot(X_long_ds2, aes(x = date, y = value)) +
+  geom_line(data = ~ filter(.x, type == "Raw"), color = "gray50", alpha = 0.5, linewidth = 0.3) +
+  geom_line(data = ~ filter(.x, type == "Rolling Mean"), color = "steelblue", linewidth = 0.7) +
+  facet_wrap(~city, ncol = 1) +
+  labs(title = "Ozone AQI by City, k = 2", x = NULL, y = "AQI",
+       caption = "Source: EPA AQS, daily AQI by CBSA") +
+  theme_minimal()
+```
+
+### Residuals
+
+```{R fig-air-pollution-residual-ds2}
+#| echo: false
+
+X_data_ds2 |>
+  select(date) |>
+  bind_cols(as.data.frame(X_resid_ds2)) |>
+  pivot_longer(-date, names_to = "city", values_to = "value") |>
+  ggplot(aes(date, value, color = city)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  labs(title = "Rolling-Mean Residuals, k = 2", x = NULL, y = "AQI anomaly", color = NULL) +
+  theme_minimal()
+```
+
+### ACF
+
+::: {.panel-tabset}
+
+#### Naive
+
+```{R acf-air-pollution-naive-ds2}
+#| echo: false
+
+par(mfrow = c(1, 3), mar = c(2, 3, 2, 1), oma = c(2, 0, 0, 0), mgp = c(1.8, 1, 0))
+acf(X_resid_ds2[, "Payson"], main = "Payson", na.action = na.pass)
+acf(X_resid_ds2[, "Prescott"], main = "Prescott", na.action = na.pass)
+acf(X_resid_ds2[, "Flagstaff"], main = "Flagstaff", na.action = na.pass)
+mtext("Lag (every 2nd day)", side = 1, outer = TRUE, line = 0.5)
+```
+
+Lag-1 drops to 0.17–0.30, roughly half the full-record value and now close to the `SIP.acf` value on the same data (0.14–0.22) — unlike the old segmentation-based naive baseline, which stayed put under downsampling, this one moves the way a genuine decaying dependence should.
+
+#### Mean-Shift-Invariant
+
+```{R acf-air-pollution-invariant-ds2}
+#| echo: false
+
+plot_sip_acf(X_mat_ds2)
+```
+
+:::
+
+### Trend
+
+::: {.panel-tabset}
+
+#### Naive
+
+```{R trend-air-pollution-naive-ds2}
+#| echo: false
+
+plot_naive_terms(X_mat_ds2, window = win)
+```
+
+#### Mean-Shift-Invariant
+
+```{R trend-air-pollution-invariant-ds2}
+#| echo: false
+
+plot_ece_terms(X_mat_ds2, window = win)
+```
+
+:::
+
+### Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(tab_ds2$ece_cor,     caption = "ECE Correlation")
+knitr::kable(tab_ds2$rolling_cor, caption = "Rolling Correlation")
+knitr::kable(tab_ds2$pearson_cor, caption = "Pearson Correlation")
+```
+
+ECE's Payson–Prescott correlation jumps from 0.05 (full record) to 0.34 here — the biggest move of any pair under downsampling. Prescott–Flagstaff also rises, from 0.37 to 0.54. Pearson and Rolling barely move at all by comparison (Pearson stays within 0.71–0.78, Rolling within 0.47–0.73) — ECE's estimate is considerably more sensitive to the sampling rate than either naive method, which is worth keeping in mind when picking a single "answer" from this chapter.
+
+### P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(tab_ds2$ece_pmat,     caption = "ECE P-Values")
+knitr::kable(tab_ds2$rolling_pmat, caption = "Rolling P-Values")
+knitr::kable(tab_ds2$pearson_pmat, caption = "Pearson P-Values")
+```
+
+:::
+
+:::
+
+## Downsampled (k = 3)
+
+::: {.panel-tabset}
+
+### Plot
+
+```{R fig-air-pollution-series-ds3}
+#| echo: false
+#| fig-cap: "Daily ozone AQI, k = 3, faceted by city. Blue = rolling mean."
+#| fig-height: 7
+
+X_long_ds3 <- X_data_ds3 |>
+  bind_cols(as.data.frame(X_roll_ds3) |> rename_with(~ paste0(.x, "_roll"), everything())) |>
+  pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
+  mutate(
+    type = if_else(str_ends(series, "_roll"), "Rolling Mean", "Raw"),
+    city = str_remove(series, "_roll$")
+  )
+
+ggplot(X_long_ds3, aes(x = date, y = value)) +
+  geom_line(data = ~ filter(.x, type == "Raw"), color = "gray50", alpha = 0.5, linewidth = 0.3) +
+  geom_line(data = ~ filter(.x, type == "Rolling Mean"), color = "steelblue", linewidth = 0.7) +
+  facet_wrap(~city, ncol = 1) +
+  labs(title = "Ozone AQI by City, k = 3", x = NULL, y = "AQI",
+       caption = "Source: EPA AQS, daily AQI by CBSA") +
+  theme_minimal()
+```
+
+### Residuals
+
+```{R fig-air-pollution-residual-ds3}
+#| echo: false
+
+X_data_ds3 |>
+  select(date) |>
+  bind_cols(as.data.frame(X_resid_ds3)) |>
+  pivot_longer(-date, names_to = "city", values_to = "value") |>
+  ggplot(aes(date, value, color = city)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  labs(title = "Rolling-Mean Residuals, k = 3", x = NULL, y = "AQI anomaly", color = NULL) +
+  theme_minimal()
+```
+
+### ACF
+
+::: {.panel-tabset}
+
+#### Naive
+
+```{R acf-air-pollution-naive-ds3}
+#| echo: false
+
+par(mfrow = c(1, 3), mar = c(2, 3, 2, 1), oma = c(2, 0, 0, 0), mgp = c(1.8, 1, 0))
+acf(X_resid_ds3[, "Payson"], main = "Payson", na.action = na.pass)
+acf(X_resid_ds3[, "Prescott"], main = "Prescott", na.action = na.pass)
+acf(X_resid_ds3[, "Flagstaff"], main = "Flagstaff", na.action = na.pass)
+mtext("Lag (every 3rd day)", side = 1, outer = TRUE, line = 0.5)
+```
+
+Lag-1 sits around 0.20–0.30, similar to `k = 2` rather than continuing to shrink — with only ~600 points and a 25-sample window now spanning 75 raw days, the window itself is starting to distort the comparison, so this isn't strong evidence of a further decay in dependence.
+
+#### Mean-Shift-Invariant
+
+```{R acf-air-pollution-invariant-ds3}
+#| echo: false
+
+plot_sip_acf(X_mat_ds3)
+```
+
+Mixed: Prescott (0.20) and Flagstaff (0.13) stay positive, but Payson flips to **-0.25** — the one case so far where the mean-shift-invariant estimate disagrees with itself across downsampling levels. With only 621 points at k = 3, this is plausibly just estimation noise rather than a real change in dependence structure.
+
+:::
+
+### Trend
+
+::: {.panel-tabset}
+
+#### Naive
+
+```{R trend-air-pollution-naive-ds3}
+#| echo: false
+
+plot_naive_terms(X_mat_ds3, window = win)
+```
+
+#### Mean-Shift-Invariant
+
+```{R trend-air-pollution-invariant-ds3}
+#| echo: false
+
+plot_ece_terms(X_mat_ds3, window = win)
+```
+
+:::
+
+### Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(tab_ds3$ece_cor,     caption = "ECE Correlation")
+knitr::kable(tab_ds3$rolling_cor, caption = "Rolling Correlation")
+knitr::kable(tab_ds3$pearson_cor, caption = "Pearson Correlation")
+```
+
+Similar to `k = 2`: ECE's Payson–Prescott (0.30) and Prescott–Flagstaff (0.56) correlations stay well above their full-record values, while Pearson and Rolling barely move. Payson–Flagstaff is the one pair that stays low and stable across every lag (0.09, 0.12, 0.11) for ECE — the most consistent "no relationship" reading in this whole comparison.
+
+### P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(tab_ds3$ece_pmat,     caption = "ECE P-Values")
+knitr::kable(tab_ds3$rolling_pmat, caption = "Rolling P-Values")
+knitr::kable(tab_ds3$pearson_pmat, caption = "Pearson P-Values")
+```
+
+:::
+
+:::
+
+:::
+
+---
+
+## Bootstrap Methods
+
+```{R}
+#| echo: false
+ece.test(X_mat, type = "bs.multiplier")
+ece.test(X_mat, type = "bs.parametric")
+```
