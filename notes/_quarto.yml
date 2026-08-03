@@ -29,7 +29,7 @@ book:
         - type-i-error.qmd
         - power.qmd
         - diagnostics.qmd
-    - part: "Real Data"
+    - part: real-data.qmd
       chapters:
         - co2-inhalation.qmd
         - copy-number-variation.qmd

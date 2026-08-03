@@ -1,0 +1,13 @@
+---
+title: "Real Data"
+---
+
+The chapters in this part apply ECE to real datasets where the mean shifts — a regime change, an instrument swap, a discrete event with a known or discoverable date — while the underlying covariance structure is plausibly unchanged. The throughline: **ECE estimates correlation correctly despite mean shifts, without needing to know where they are.**
+
+Three datasets tell complementary versions of this story:
+
+- **`co2-inhalation.qmd`**: change points are experimentally induced and known exactly (baseline → CO2 inhalation → recovery). This makes it possible to compare ECE, which only implicitly adjusts for the mean shifts, against oracle segmentation, which is told the true phase boundaries. The two largely agree — same block structure (`Ti`/`Te`/`Tt` mutually correlated, `HR`/`RR` inversely correlated), same significance pattern — showing ECE recovers what explicit segmentation recovers, without the change-point labels.
+- **`copy-number-variation.qmd`**: the opposite test — theory says the covariance matrix *should* be diagonal (no individual's copy-number variation should correlate with another's), so this is a null case. Classical tests that ignore the mean shifts along the genome (Bartlett, naive parametric bootstrap) strongly reject that null — a false positive induced by the mean structure. ECE-based tests (bootstrap multiplier, PSD-corrected parametric bootstrap) fail to reject, correctly recovering the expected independence once mean shifts are accounted for.
+- **`labor-productivity.qmd`**: quarterly sector productivity growth, subject to structural breaks from recessions and policy shifts. ECE and oracle segmentation again produce similar correlation and significance patterns, reinforcing the same conclusion in a macroeconomic setting.
+
+Together: naive correlation is vulnerable to mean shifts — sometimes finding significance that isn't there (copy number variation), sometimes just biased in magnitude (labor productivity, GPS antenna offset, Glen Canyon Dam). ECE, using only a minimum segment length and no change-point date, consistently tracks the oracle/segmented answer instead.
