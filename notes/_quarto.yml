@@ -37,6 +37,7 @@ book:
         - mental-load.qmd
         - elnino.qmd
         - glen-canyon-dam.qmd
+        - gps-antenna-offset.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd

@@ -1,0 +1,288 @@
+---
+title: "GPS Antenna Offset"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+```
+
+Daily GPS station position time series, Nevada Geodetic Laboratory (`geodesy.unr.edu`), NA plate-fixed reference frame, north component:
+
+- `IACB` (target): eastern Nebraska. Station log records one event in its entire history: an `Antenna_Type_Changed` on **2018-10-09**.
+- `NEB2` (reference): ~25 km away, same craton. No logged equipment events over its whole record.
+
+Why correlation is expected: both stations sit on the same stable continental interior, ~25 km apart, so they track the same secular motion and common-mode regional loading — genuinely the same underlying signal, not two unrelated series. Why only the mean should jump, not the covariance: an antenna-model swap changes the geometric phase-center offset GPS processing subtracts to get "the station's position" — a bookkeeping change in the reference point, not a change in the physical process generating the noise. Unlike a dam closure or a climate regime shift, there's no mechanism here for the *noise* to change alongside the mean. This is the cleanest match yet to ECE's actual model: piecewise-constant mean, fixed $\Sigma$.
+
+```{R}
+#| echo: false
+#| message: false
+#| label: gps-load
+
+read_tenv3 <- function(f) {
+  read.table(f, header = FALSE, skip = 1,
+    col.names = c("site", "yymmmdd", "decyear", "mjd", "week", "dow", "reflon",
+                  "e0", "east", "n0", "north", "u0", "up", "ant",
+                  "sig_e", "sig_n", "sig_u", "corr_en", "corr_eu", "corr_nu",
+                  "lat", "lon", "height")) |>
+    transmute(date = as.Date(mjd, origin = "1858-11-17"), north)
+}
+
+iacb <- read_tenv3("../data/real-data/gps-antenna-offset/iacb.tenv3")
+neb2 <- read_tenv3("../data/real-data/gps-antenna-offset/neb2.tenv3")
+
+break_date <- as.Date("2018-10-09")
+
+X <- inner_join(iacb, neb2, by = "date", suffix = c("_iacb", "_neb2")) |>
+  arrange(date) |>
+  mutate(regime = if_else(date < break_date, "pre", "post"))
+```
+
+Raw north-component means jump only at IACB (149.1mm → 192.8mm, +43.7mm, ~11 pre-break SDs) across the antenna-change date; NEB2's own pre/post means barely move (93.6mm → 103.4mm, consistent with its ~1.3mm/yr secular drift, not a discrete step). Pre/post variance at IACB is stable (SD ratio ≈ 1), unlike the mean.
+
+```{R}
+#| echo: false
+#| label: gps-detrend
+
+X_mat <- as.matrix(X[, c("north_iacb", "north_neb2")])
+win <- 25
+roll_mat <- apply(X_mat, 2, function(col) rolling_mean(col, win))
+colnames(roll_mat) <- colnames(X_mat)
+```
+
+## Full Record
+
+::: {.panel-tabset}
+
+## Residuals
+
+```{R plot-gps-full}
+#| echo: false
+
+par(mfrow = c(2, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:2) {
+  plot(X_mat[, i], type = "l", xaxt = "n", yaxt = "n",
+        ylab = colnames(X_mat)[i], cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+  lines(roll_mat[, i], col = "steelblue", lwd = 2)
+}
+axis(1)
+mtext("Day index (2009-2026)", side = 1, outer = TRUE, line = 2.5)
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R acf-gps-naive}
+#| echo: false
+
+par(mfrow = c(2, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:2) {
+  resid_i <- na.omit(X_mat[, i] - roll_mat[, i])
+  acf(resid_i, main = "", xlab = "", ylab = colnames(X_mat)[i])
+}
+mtext("Lag (days)", side = 1, outer = TRUE, line = 0.5)
+```
+
+### Mean-Shift-Invariant
+
+```{R acf-gps-invariant}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R trend-gps-naive}
+#| echo: false
+
+plot_naive_terms(X_mat, window = win)
+```
+
+### Mean-Shift-Invariant
+
+```{R trend-gps-invariant}
+#| echo: false
+
+plot_ece_terms(X_mat, window = win)
+```
+
+:::
+
+## Variance
+
+```{R variance-gps}
+#| echo: false
+
+plot_ece_variance(X_mat, window = win)
+```
+
+:::
+
+Rolling-mean residual lag-1 ACF is much lower here than in prior real-data chapters: 0.37 (`IACB`) and 0.23 (`NEB2`) — real but modest short-lag persistence, not the 0.7-0.9 seen in streamflow or SST/PDO. Downsampling should clear it easily.
+
+## Downsampled (k = 3)
+
+```{R downsample-gps-3}
+#| echo: false
+
+k_ds <- 3
+idx <- seq(1, nrow(X_mat), by = k_ds)
+X_ds3 <- X_mat[idx, ]
+roll_ds3 <- apply(X_ds3, 2, function(col) rolling_mean(col, win))
+colnames(roll_ds3) <- colnames(X_ds3)
+```
+
+::: {.panel-tabset}
+
+## Residuals
+
+```{R plot-gps-ds3}
+#| echo: false
+
+par(mfrow = c(2, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+for (i in 1:2) {
+  plot(X_ds3[, i], type = "l", xaxt = "n", yaxt = "n",
+        ylab = colnames(X_ds3)[i], cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+  lines(roll_ds3[, i], col = "steelblue", lwd = 2)
+}
+axis(1)
+mtext("Index (every 3rd day)", side = 1, outer = TRUE, line = 2.5)
+```
+
+## ACF
+
+```{R acf-gps-ds3}
+#| echo: false
+
+par(mfrow = c(2, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
+for (i in 1:2) {
+  resid_i <- na.omit(X_ds3[, i] - roll_ds3[, i])
+  acf(resid_i, main = "", xlab = "", ylab = colnames(X_ds3)[i])
+}
+mtext("Lag (every 3rd day)", side = 1, outer = TRUE, line = 0.5)
+```
+
+## Trend
+
+```{R trend-gps-ds3}
+#| echo: false
+
+plot_ece_terms(X_ds3, window = win)
+```
+
+:::
+
+Lag-1 drops to 0.12 / 0.01.
+
+## Downsampled (k = 5)
+
+```{R downsample-gps-5}
+#| echo: false
+
+k_ds5 <- 5
+idx5 <- seq(1, nrow(X_mat), by = k_ds5)
+X_ds5 <- X_mat[idx5, ]
+roll_ds5 <- apply(X_ds5, 2, function(col) rolling_mean(col, win))
+colnames(roll_ds5) <- colnames(X_ds5)
+```
+
+::: {.panel-tabset}
+
+## Residuals
+
+```{R plot-gps-ds5}
+#| echo: false
+
+par(mfrow = c(2, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+for (i in 1:2) {
+  plot(X_ds5[, i], type = "l", xaxt = "n", yaxt = "n",
+        ylab = colnames(X_ds5)[i], cex.lab = 0.8)
+  axis(2, labels = FALSE, tck = -0.02)
+  lines(roll_ds5[, i], col = "steelblue", lwd = 2)
+}
+axis(1)
+mtext("Index (every 5th day)", side = 1, outer = TRUE, line = 2.5)
+```
+
+## ACF
+
+```{R acf-gps-ds5}
+#| echo: false
+
+par(mfrow = c(2, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
+for (i in 1:2) {
+  resid_i <- na.omit(X_ds5[, i] - roll_ds5[, i])
+  acf(resid_i, main = "", xlab = "", ylab = colnames(X_ds5)[i])
+}
+mtext("Lag (every 5th day)", side = 1, outer = TRUE, line = 0.5)
+```
+
+## Trend
+
+```{R trend-gps-ds5}
+#| echo: false
+
+plot_ece_terms(X_ds5, window = win)
+```
+
+:::
+
+Lag-1 drops to essentially zero (-0.06 / -0.04) — the residual noise is white at this stride.
+
+## Naive vs. Oracle vs. ECE
+
+- **Naive**: Pearson correlation, full residual series, ignoring the change point.
+- **Oracle**: Pearson correlation within each known regime (uses the change-point date).
+- **ECE**: `ece.cor()`, blind to the change-point date, given only a minimum segment length `L`.
+
+```{R gps-naive-oracle-ece}
+#| echo: false
+
+X_resid <- X |>
+  mutate(resid_iacb = north_iacb - rolling_mean(north_iacb, win),
+         resid_neb2 = north_neb2 - rolling_mean(north_neb2, win)) |>
+  filter(!is.na(resid_iacb), !is.na(resid_neb2))
+
+downsample <- function(df, k) df[seq(1, nrow(df), by = k), ]
+X_resid_ds3 <- downsample(X_resid, 3)
+X_resid_ds5 <- downsample(X_resid, 5)
+
+report <- function(df, L = 4) {
+  pre <- filter(df, regime == "pre")
+  post <- filter(df, regime == "post")
+  tibble(
+    n = nrow(df),
+    naive = cor(df$resid_iacb, df$resid_neb2),
+    oracle_pre = cor(pre$resid_iacb, pre$resid_neb2),
+    oracle_post = cor(post$resid_iacb, post$resid_neb2),
+    ece = ece.cor(df$resid_iacb, df$resid_neb2, L = L)
+  )
+}
+
+bind_rows(
+  Full = report(X_resid),
+  `k = 3` = report(X_resid_ds3),
+  `k = 5` = report(X_resid_ds5),
+  .id = "transform"
+) |>
+  knitr::kable(digits = 3)
+```
+
+Unlike the streamflow chapter, all four numbers cluster tightly (≈0.31-0.41) across every transform and stay stable as `k` grows. That's the expected signature of a dataset that actually satisfies ECE's model: `oracle_pre` and `oracle_post` are close to each other (the true correlation didn't change — only one series' recorded mean jumped), so naive Pearson is only mildly biased to begin with, and ECE recovers essentially the same number as Oracle without ever being told the 2018-10-09 date. The earlier dam and ENSO/PDO chapters showed what happens when autocorrelation or a genuine regime change in $\Sigma$ contaminates the picture; this one shows the base case working as designed.
