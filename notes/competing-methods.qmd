@@ -15,8 +15,8 @@ library(tidyverse)
 ECE avoids modeling the mean shift $h(t)$ directly. The competing methods in this
 chapter take the opposite approach: estimate $h(t)$ (or remove it) first, then test
 correlation on what's left. This chapter documents each method and how it's called;
-head-to-head power/size comparisons against ECE live in [type-i-error.qmd] and
-[power.qmd].
+head-to-head power/size comparisons against ECE live in
+[Type I Error](type-i-error.qmd) and [Power](power.qmd).
 
 ## Segmentation
 
@@ -44,8 +44,87 @@ segment_test(X, params, penalty = "AIC")
 
 ## First Differencing
 
-TODO — not yet implemented in `R/`. Sketch: difference each column
-($\Delta X_t = X_t - X_{t-1}$) to remove a piecewise-constant or slowly-varying
-mean, then test correlation on the differenced series. Differencing trades mean-shift
-robustness for a variance penalty (doubles the noise variance) and induces MA(1)
-autocorrelation in the differenced errors, which a naive correlation test ignores.
+First differencing estimates correlation from $\Delta X_t = X_t - X_{t-1}$ directly,
+without ECE's two-lag bias correction. In the notation of
+[Lagged Differences](lagged-differences.qmd), this is just the raw $k=1$ estimator:
+
+$$
+\hat\rho_1 = \frac{T_1(X,Y)}{\sqrt{T_1(X,X)\,T_1(Y,Y)}},
+$$
+
+which is exactly the Pearson correlation of the differenced series $(\Delta X_t,
+\Delta Y_t)$. ECE is built from the *same* $T_1$, plus a $T_2$ term whose only job is
+to cancel the bias that $\hat\rho_1$ carries whenever the mean shifts (see
+[Lagged Differences](lagged-differences.qmd): $\mathbb{E}[T_k(X,Y)] = 2n\sigma_{xy} +
+k\,\omega_{xy}$, so $\hat\rho_1$'s numerator and denominator each carry a $k=1$ bias
+term that does not vanish as $n \to \infty$ unless $\omega_x, \omega_y, \omega_{xy}
+\to 0$, i.e. unless the mean-shift energy is asymptotically negligible). Skipping
+the correction isn't free, though — it changes the variance too.
+
+::: {.callout-note collapse="true"}
+## Asymptotic variance of $\hat\rho_1$
+
+$\hat\rho_1 = g_1(Z_1, Z_3, Z_5)$ for $g_1(u_1, u_3, u_5) = u_5 / \sqrt{u_1 u_3}$,
+using the same $Z = (T_1(X,X), T_2(X,X), T_1(Y,Y), T_2(Y,Y), T_1(X,Y), T_2(X,Y))$
+from the [Z-Test](z-test.qmd) chapter — just the three $k=1$ components, with the
+$k=2$ terms dropped entirely rather than used for bias correction. The same
+multivariate CLT for $Z$ applies (it doesn't assume anything about which linear
+combination we take), so the delta method gives
+
+$$
+\sqrt{n}(\hat\rho_1 - \bar\rho_1) \xrightarrow{d} N(0,\, v_1^2), \qquad
+v_1^2 = \nabla g_1(\mu_Z)^\top \Sigma_Z^{(1,3,5)} \nabla g_1(\mu_Z),
+$$
+
+where $\bar\rho_1 = g_1(\mu_Z)$ is the (possibly biased) asymptotic target and
+$\Sigma_Z^{(1,3,5)}$ is the $(1,3,5)$ principal submatrix of $\Sigma_Z$ — i.e. the
+same variance/covariance table already derived for ECE, restricted to the $k=1$
+entries. No separate accounting for the induced serial dependence in $\Delta X_t$
+is needed: it's already inside $\Sigma_Z$, since $T_1(X,X) = \sum_i(X_i - X_{i+1})^2$
+is itself a sum of the (2-dependent) sequence $\{(\Delta X_i)^2\}$, and the CLT
+behind $\Sigma_Z$ was derived for exactly this kind of dependence.
+
+Taking $\sigma_x = \sigma_y = 1$ WLOG and assuming *no* mean shift ($\omega_x =
+\omega_y = \omega_{xy} = 0$, so $\bar\rho_1 = \rho$), the gradient simplifies to
+$\nabla g_1 = (-\rho/4n,\, -\rho/4n,\, 1/2n)$, and expanding the quadratic form gives
+
+$$
+v_1^2 = \frac{1}{n}\left[\frac{\rho^2}{4}(\kappa_{40} + 2\kappa_{22} + \kappa_{04})
+- \rho(\kappa_{31} + \kappa_{13}) + \kappa_{22} + \frac{1}{2}(1-\rho^2)^2\right].
+$$
+
+This is identical to the [Z-Test](z-test.qmd) theorem's own no-mean-shift variance
+except for the last term: $\tfrac12(1-\rho^2)^2$ here versus $\tfrac52(1-\rho^2)^2$
+for ECE. So absent a mean shift, first-differencing is strictly more efficient (5x
+smaller contribution from that term) — ECE's $T_2$ correction buys bias robustness
+it doesn't need in that regime, at a real variance cost.
+:::
+
+```{R first-diff-var-check}
+#| message: false
+#| warning: false
+set.seed(1)
+n <- 2000
+rho <- 0.4
+params <- scenario(1, n = n, r = rho) # flat: no mean shift, so rho1_hat is unbiased
+
+rho1_hat <- replicate(4000, {
+  X <- generate_data(params)
+  lag_diff(X[, 1], X[, 2]) / sqrt(lag_diff(X[, 1]) * lag_diff(X[, 2]))
+})
+
+k <- params$kappa
+v1_sq <- (rho^2 / 4) * (k$k40 + 2 * k$k22 + k$k04) - rho * (k$k31 + k$k13) +
+  k$k22 + 0.5 * (1 - rho^2)^2
+
+test_that("v1^2 matches simulated variance of rho1_hat under no mean shift", {
+  expect_equal(n * var(rho1_hat), v1_sq, tolerance = 0.1)
+})
+test_that("first-differencing is more efficient than ECE absent a mean shift", {
+  expect_lt(v1_sq, n * ece.cor.se.formula(params)^2)
+})
+```
+
+Because the bias doesn't vanish with $n$, first differencing is only appropriate
+when the mean is believed to be flat or the shift negligible — exactly the setting
+where its variance advantage over ECE also happens to matter most.
