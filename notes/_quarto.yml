@@ -36,11 +36,13 @@ book:
         - labor-productivity.qmd
         - mental-load.qmd
         - elnino.qmd
+        - glen-canyon-dam.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd
         - model-misspecification.qmd
         - smooth-mean.qmd
+        - piecewise-linear.qmd
         - package.qmd
         - partial-correlation.qmd
         - pca.qmd
