@@ -28,6 +28,45 @@ exact, for constants $c_1,c_2$ depending on $b_x,b_y,n$ — no residual, at any 
 - The slope is a single global constant, not segment-dependent, so its contribution to $T_k$ — even wrapped circularly — reduces to a fixed combination of $k$ and $k^2$ for every window, regardless of where the jumps fall.
 - Its interaction with the jump component is itself a fixed $k$-linear term (it mixes into $\omega_{xy}^{(1)}$; nothing is left unmodeled).
 
+::: {.callout-note collapse="true"}
+## Closed form for $c_1, c_2$: pure global slope, no jumps
+
+Take $\theta_{x,i} = b_xi$, $\theta_{y,i}=b_yi$ for $i=1,\ldots,n$ (no jump component), under $T_k$'s circular indexing. Split $\{1,\ldots,n\}$ by whether the lag wraps:
+
+- **Interior** ($n-k$ points, $i+k\le n$): $\theta_{x,i}-\theta_{x,i+k} = -b_xk$, exactly.
+- **Wrap** ($k$ points, $i+k>n$): $\theta_{x,i}-\theta_{x,(i+k-n)} = b_x(n-k)$, exactly — this is $-b_xk + b_xn$, i.e. the ordinary slope term plus a discontinuity of size $b_xn$. That discontinuity is an artifact of embedding a non-periodic ramp on a circle: a linearly-extended ramp would put $\theta_{x,n+1}=b_x(n+1)$, but the wrap snaps it back to $\theta_{x,1}=b_x$, a jump of $b_xn$ at the seam.
+
+Summing the cross-product over both sets:
+$$
+T_k(\theta_x,\theta_y) = (n-k)(-b_xk)(-b_yk) + k\bigl(b_x(n-k)\bigr)\bigl(b_y(n-k)\bigr) = b_xb_y\,k(n-k)\bigl[k+(n-k)\bigr] = n\,b_xb_y\,k(n-k),
+$$
+so
+$$
+T_k(\theta_x,\theta_y) = n^2b_xb_y\,k \;-\; n\,b_xb_y\,k^2, \qquad c_1 = n^2b_xb_y,\quad c_2=-n\,b_xb_y.
+$$
+Matches $\omega_{xy}^{(2)}=b_xb_y$ from the table below via $c_2=-n\,\omega_{xy}^{(2)}$. Exact — no residual — because the circular wrap keeps the sum to a fixed $n$ terms per lag; without it (ordinary, non-circular $T_k$, only $n-k$ interior terms) the result would be $(n-k)b_xb_yk^2$, cubic in $k$.
+
+```{r pwlin-slope-closed-form}
+#| message: false
+devtools::load_all("..")
+library(testthat)
+
+n <- 200
+bx <- 0.7
+by <- -0.4
+theta_x <- bx * (1:n)
+theta_y <- by * (1:n)
+
+test_that("T_k(theta_x, theta_y) matches the closed form c1 k + c2 k^2 for a pure global slope", {
+  for (k in 1:5) {
+    Tk <- lag_diff(theta_x, theta_y, k = k)
+    pred <- n^2 * bx * by * k - n * bx * by * k^2
+    expect_equal(Tk, pred, tolerance = 1e-8)
+  }
+})
+```
+:::
+
 **Segment-varying slope.** If the slope instead differs from segment to segment — genuine piecewise linearity, no single global value — the identity above no longer holds: windows straddling a segment boundary see an unpredictable slope pair, contributing a residual proportional to neither $k$ nor $k^2$. Small when segments are long relative to $L$ ("Piecewise-Linear (random slopes)" below); large once slope and jump both vary per segment at spacing $\approx L$ ("Piecewise-Linear, Discontinuous, L = 4" below). The sawtooth below is the degenerate case where the slope *is* constant and the "jump" is a fixed, exactly-repeating reset — it falls under the first bullet, not this one.
 
 **Two distinct mechanisms.** Jumps load onto $k$; a global slope loads onto $k^2$ plus a $k$-linear cross term — unrelated identities, not orders of one expansion. What breaks the shared regression isn't the jump and slope occurring near each other — it's the slope varying unpredictably from segment to segment.
@@ -497,6 +536,108 @@ knitr::kable(estimate_table(jump16_sc), digits = 3)
 Same construction as the $L=4$ case — i.i.d. random slope and level per segment, no continuity constraint at boundaries — but segments are now four times as long as the lag window ($16$ vs. $L=4$), giving each $T_k$ window, $k=1,\ldots,4$, room to stay inside a single segment far more often than it straddles a boundary. This is the same slack that made "Piecewise-Linear (random slopes)" (segment length $20$) tractable for the quadratic fit above, just less generous. Quadrupling the segment length recovers most of the quadratic fit's accuracy ($\hat\sigma_{xy}\approx0.45$ against true $0.5$, up from $\approx0.15$ at $L=4$) without eliminating the effect entirely — confirming the entanglement is about spacing relative to the lag window, not randomness per se.
 
 ::::
+
+## Sample-Size Sweep: Correlation Across All Scenarios
+
+The Sawtooth scenario's Quadratic $\hat\sigma_{xy}$ is essentially unbiased ($0.502$ against true $0.5$ at $n=200$), yet its correlation estimate — the mean of the per-replicate ratio $\hat r = \hat\sigma_{xy}/\sqrt{\hat\sigma_x^2\hat\sigma_y^2}$, same quantity as the Histograms tab's dashed line — lands at $0.40$, well short of the true $r=0.5$. Since $\hat r$ is a nonlinear function of noisy per-replicate variance estimates, its mean can be biased away from the true correlation even when the underlying variance/covariance estimates themselves are unbiased — a finite-sample effect expected to shrink as $n$ grows. Here every scenario above (lag window $L=4$ fixed, $1000$ replicates) is rerun across a grid of sample sizes, for both Linear and Quadratic, to check whether the gap closes generally.
+
+```{r scenario-n-sweep}
+#| echo: false
+#| cache: true
+#| dependson: ["smooth-fit-comparison"]
+n_grid <- c(100, 200, 500, 1000, 2000, 3000)
+
+build_theta <- function(scenario_name, n_val) {
+  switch(scenario_name,
+    square = NULL,
+    sine = NULL,
+    pwlin = {
+      L_seg <- 20
+      set.seed(2)
+      slopes <- rep(rnorm(n_val / L_seg, sd = 0.2), each = L_seg)
+      cumsum(slopes)
+    },
+    saw = 3 * rep(0:(L - 1), n_val / L),
+    jump = {
+      set.seed(4)
+      a <- rnorm(n_val / L, sd = 3)
+      b <- rnorm(n_val / L, sd = 1)
+      rep(a, each = L) + rep(b, each = L) * rep(0:(L - 1), n_val / L)
+    },
+    jump16 = {
+      seg <- 16
+      nseg <- ceiling(n_val / seg)
+      set.seed(5)
+      a <- rnorm(nseg, sd = 3)
+      b <- rnorm(nseg, sd = 1)
+      (rep(a, each = seg) + rep(b, each = seg) * rep(0:(seg - 1), nseg))[1:n_val]
+    }
+  )
+}
+
+build_params <- function(scenario_name, n_val) {
+  params <- switch(scenario_name,
+    square = scenario(scenario_num = 2, n = n_val, L = L, amp = 3, r = 0.5, err_type = "normal"),
+    sine   = scenario(scenario_num = 3, n = n_val, period = 25, amp = 3, r = 0.5, err_type = "normal"),
+    scenario(scenario_num = 1, n = n_val, amp = 3, r = 0.5, err_type = "normal")
+  )
+  theta <- build_theta(scenario_name, n_val)
+  if (!is.null(theta)) params$h <- matrix(rep(theta, 2), n_val, 2)
+  params
+}
+
+sweep_one <- function(scenario_name, n_val) {
+  params <- build_params(scenario_name, n_val)
+  K1inv <- solve(t(K1) %*% K1) %*% t(K1)
+  K2inv <- solve(t(K2) %*% K2) %*% t(K2)
+  set.seed(1)
+  ests <- lapply(1:reps, function(i) {
+    X <- generate_data(params)
+    Txx <- sapply(1:L, function(k) lag_diff(X[, 1], X[, 1], k = k))
+    Tyy <- sapply(1:L, function(k) lag_diff(X[, 2], X[, 2], k = k))
+    Txy <- sapply(1:L, function(k) lag_diff(X[, 1], X[, 2], k = k))
+    c(
+      xx_lin = (K1inv %*% Txx)[1] / (2 * n_val), yy_lin = (K1inv %*% Tyy)[1] / (2 * n_val), xy_lin = (K1inv %*% Txy)[1] / (2 * n_val),
+      xx_quad = (K2inv %*% Txx)[1] / (2 * n_val), yy_quad = (K2inv %*% Tyy)[1] / (2 * n_val), xy_quad = (K2inv %*% Txy)[1] / (2 * n_val)
+    )
+  })
+  est <- do.call(rbind, ests)
+  r_lin <- suppressWarnings(est[, "xy_lin"] / sqrt(est[, "xx_lin"] * est[, "yy_lin"]))
+  r_quad <- suppressWarnings(est[, "xy_quad"] / sqrt(est[, "xx_quad"] * est[, "yy_quad"]))
+  tibble::tibble(
+    scenario = scenario_name, n = n_val,
+    fit = c("Linear (M=1)", "Quadratic (M=2)"),
+    r = c(mean(r_lin, na.rm = TRUE), mean(r_quad, na.rm = TRUE))
+  )
+}
+
+scenario_names <- c("square", "pwlin", "sine", "saw", "jump", "jump16")
+scenario_labels <- c(
+  square = "Square Wave", pwlin = "PW-Linear (random slopes)", sine = "Fast Sine",
+  saw = "Sawtooth", jump = "PW-Linear Discontinuous, L=4", jump16 = "PW-Linear Discontinuous, L=16"
+)
+
+sweep_df <- purrr::map_dfr(scenario_names, function(sn) {
+  purrr::map_dfr(n_grid, function(nv) sweep_one(sn, nv))
+})
+sweep_df$scenario_label <- factor(scenario_labels[sweep_df$scenario], levels = scenario_labels)
+```
+
+```{r scenario-n-sweep-plot}
+#| echo: false
+ggplot2::ggplot(sweep_df, ggplot2::aes(x = n, y = r, color = fit)) +
+  ggplot2::geom_hline(yintercept = 0.5, color = "red", linetype = "dashed") +
+  ggplot2::geom_line() +
+  ggplot2::geom_point(size = 2) +
+  ggplot2::scale_x_continuous(trans = "log10", breaks = n_grid) +
+  ggplot2::scale_color_manual(values = c("Linear (M=1)" = "black", "Quadratic (M=2)" = "firebrick"), name = NULL) +
+  ggplot2::facet_wrap(~scenario_label, scales = "free_y") +
+  ggplot2::labs(x = "Sample size n", y = expression(hat(r))) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+The sweep splits the scenarios into two groups. **Square Wave, PW-Linear (random slopes), and Sawtooth** — cases where the underlying $\hat\sigma_{xy}$ is already close to unbiased at $n=200$ — show the Quadratic estimate's $\hat r$ climbing steadily toward the true $0.5$ as $n$ grows (Sawtooth: $0.26\to0.50$; Square Wave: $0.09\to0.49$), confirming the original gap was finite-sample ratio instability, not a real bias. **Fast Sine and both PW-Linear Discontinuous scenarios** don't show this convergence: Sine's Linear estimate gets *worse* with $n$ (it's a real, growing bias from model misspecification, not noise), and the Discontinuous $L=4$ scenario's Quadratic estimate stays wildly unstable at every $n$ tested (from $-0.77$ to $0.02$) — consistent with the earlier finding that jump-and-slope entanglement at spacing $\approx L$ breaks the estimator outright, a problem more sample size alone can't fix.
 
 ## Generalized Regression Estimator (Sketch)
 
