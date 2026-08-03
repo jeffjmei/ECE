@@ -41,6 +41,7 @@ book:
         - air-pollution.qmd
         - secom.qmd
         - steel-industry.qmd
+        - interest-rates.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd
