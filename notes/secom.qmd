@@ -18,8 +18,8 @@ This is a different kind of candidate than the other real-data chapters: there's
 #| echo: false
 #| message: false
 
-X_raw <- read.table("../data/secom/secom.data", header = FALSE, sep = " ", na.strings = "NA")
-labels <- read.table("../data/secom/secom_labels.data", header = FALSE, sep = " ")
+X_raw <- read.table("../data/real-data/secom/secom.data", header = FALSE, sep = " ", na.strings = "NA")
+labels <- read.table("../data/real-data/secom/secom_labels.data", header = FALSE, sep = " ")
 names(labels) <- c("label", "time")
 labels$time <- as.POSIXct(gsub("\"", "", labels$time), format = "%d/%m/%Y %H:%M:%S")
 

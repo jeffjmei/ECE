@@ -27,7 +27,7 @@ Screening all variable pairs by how much their correlation shifts across `Load_T
 #| message: false
 #| label: steel-load
 
-raw_df <- read_csv("../data/steel-energy/Steel_industry_data.csv", show_col_types = FALSE) |>
+raw_df <- read_csv("../data/real-data/steel-energy/Steel_industry_data.csv", show_col_types = FALSE) |>
   janitor::clean_names()
 
 X_data <- raw_df |>
