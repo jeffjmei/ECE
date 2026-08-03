@@ -13,6 +13,22 @@ well when $\rho$ is near $0$, but degrades near the boundary $\rho \to \pm 1$:
 the sampling distribution of $\hat\rho$ becomes skewed, and the naive interval
 can overshoot $[-1, 1]$ or have poor coverage.
 
+::: {.callout-note collapse="true"}
+## Remark: Classical Asymptotic Variance of $r$
+
+For the ordinary (i.i.d., no change points) sample correlation $r$,
+$$
+\sqrt{n}(r-\rho) \xrightarrow{d} N(0,\, (1-\rho^2)^2).
+$$
+This variance already shrinks to $0$ as $\rho \to \pm1$, so the naive interval's
+failure there isn't that the variance blows up — it's that $r$'s finite-sample
+distribution grows markedly skewed near the boundary, and the normal
+approximation breaks down well before $n$ is large enough to trust it. The
+Fisher transform doesn't just shrink the variance further; it removes the
+$\rho$-dependence entirely, making the normal approximation uniformly good
+across $\rho$ rather than only where $|\rho|$ is already small.
+:::
+
 The classical fix is the **Fisher $z$-transform**,
 
 $$\operatorname{arctanh}(\hat\rho) = \frac{1}{2}\ln\left(\frac{1+\hat\rho}{1-\hat\rho}\right),$$
@@ -196,7 +212,8 @@ variance_plot <- function(vc_subset, title) {
     facet_wrap(~scenario) +
     scale_color_manual(values = c(naive = "black", transformed = "firebrick"),
                         breaks = c("naive", "transformed"),
-                        labels = c(expression(v^2), expression(tau^2))) +
+                        labels = c(expression(paste("naive (", v^2, ")")),
+                                   expression(paste("z-transformed (", tau^2, ")")))) +
     labs(x = expression(rho), y = "Asymptotic variance", color = NULL, title = title) +
     theme_minimal() +
     theme(legend.position = "bottom")
