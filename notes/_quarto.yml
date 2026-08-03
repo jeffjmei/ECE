@@ -40,6 +40,7 @@ book:
         - gps-antenna-offset.qmd
         - air-pollution.qmd
         - secom.qmd
+        - steel-industry.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd

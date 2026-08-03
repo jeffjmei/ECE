@@ -1,0 +1,405 @@
+---
+title: "Steel Industry Energy Consumption"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+```
+
+UCI Steel Industry Energy Consumption dataset (`archive.ics.uci.edu/dataset/851`): 15-minute electrical meter readings from a steel plant, full year 2018 (35,040 rows, no missing values). Unlike SECOM, this comes with a **known regime label** — `Load_Type` (`Light_Load` / `Medium_Load` / `Maximum_Load`), tied to the plant's actual operating schedule (light overnight and on weekends, medium/maximum during weekday work hours) — so the mean shift here is documented, not something we have to discover.
+
+We compare three variables:
+
+- `Usage_kWh`: total energy draw
+- `Lagging_Current_Power_Factor` (`PowerFactor`): ratio of real to apparent power — an efficiency metric
+- `Lagging_Current_Reactive_Power_kVarh` (`LagReactive`): reactive power drawn behind the voltage waveform — the inductive counterpart to `PowerFactor`
+
+(We initially tried `Leading_Current_Reactive_Power_kVarh` here, but it's exactly zero in 67% of all readings — leading/capacitive reactive power only shows up when power-factor-correction capacitors switch in, so it's a mass-at-zero mixture rather than a continuously-varying quantity, and correlations against it are unstable. `Lagging_Current_Reactive_Power_kVarh` is only 21% zero and behaves much better.)
+
+Screening all variable pairs by how much their correlation shifts across `Load_Type` regimes turned up a Simpson's-paradox pattern in `Usage_kWh` vs. `PowerFactor`: naive full-record correlation is **0.386** — looks like a real relationship — but within every individual regime it's near zero (Light: 0.21, Medium: -0.03, Maximum: -0.04). The regime drives both variables' *means* up together; naive correlation mistakes that shared drift for a real relationship. Because `Load_Type` is a real, known label (not an estimated segmentation), we get a genuine **oracle**: residuals after subtracting each observation's own regime mean.
+
+```{R steel-load}
+#| echo: false
+#| message: false
+#| label: steel-load
+
+raw_df <- read_csv("../data/steel-energy/Steel_industry_data.csv", show_col_types = FALSE) |>
+  janitor::clean_names()
+
+X_data <- raw_df |>
+  mutate(date = as.POSIXct(date, format = "%d/%m/%Y %H:%M")) |>
+  arrange(date) |>
+  select(date, load_type,
+         Usage_kWh = usage_k_wh,
+         PowerFactor = lagging_current_power_factor,
+         LagReactive = lagging_current_reactive_power_k_varh)
+
+X_mat <- as.matrix(X_data[, c("Usage_kWh", "PowerFactor", "LagReactive")])
+win   <- 25
+```
+
+At native 15-minute resolution, residual autocorrelation is severe (lag-1 around 0.85–0.92 even after removing the known regime mean) — electrical load simply doesn't change much sample-to-sample. Just like the raw ozone series, this breaks ECE outright at short minimum-segment lengths. A fixed-step downsample doesn't fix this cleanly either: `Load_Type` follows a rigid daily schedule, so any fixed spacing that divides evenly into 24 hours (e.g. every 6 hours) *aliases* against that cycle — the ACF stops decaying smoothly and instead shows periodic bumps where the downsampled lag folds back onto the same time-of-day one or more days later.
+
+Instead, below we resample **once per day**: the timestamp of that day's peak `Usage_kWh`, with `PowerFactor` and `LagReactive` read off at the same moment. This isn't a fixed-step subsample, so it can't alias against the daily cycle, and it still lands in a genuinely varying regime — the day's peak falls in `Maximum_Load` on 170 days, `Medium_Load` on 133, and `Light_Load` on 63 (days where the plant never ramped up).
+
+```{R steel-oracle}
+#| echo: false
+#| label: steel-oracle
+
+oracle_resid <- function(X, grp) {
+  R <- sapply(colnames(X), function(cn) X[, cn] - ave(X[, cn], grp))
+  colnames(R) <- colnames(X)
+  R
+}
+
+X_oracle <- oracle_resid(X_mat, X_data$load_type)
+```
+
+```{R steel-daily-peak}
+#| echo: false
+#| label: steel-daily-peak
+
+X_data_peak <- X_data |>
+  mutate(day = as.Date(date)) |>
+  group_by(day) |>
+  slice_max(Usage_kWh, n = 1, with_ties = FALSE) |>
+  ungroup()
+
+X_mat_peak    <- as.matrix(X_data_peak[, c("Usage_kWh", "PowerFactor", "LagReactive")])
+X_oracle_peak <- oracle_resid(X_mat_peak, X_data_peak$load_type)
+win_peak      <- 14
+```
+
+```{R steel-tables}
+#| echo: false
+#| label: steel-tables
+
+cor_tables <- function(X_mat, X_oracle, L) {
+  ece_cor <- ece.cor(X_mat, L = L) |> round(3)
+  rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_mat)
+
+  oracle_cor  <- cor(X_oracle) |> round(3)
+  pearson_cor <- cor(X_mat) |> round(3)
+
+  ece_pmat     <- tryCatch(ece_pval(X_mat) |> round(3), error = function(e) NA)
+  oracle_pmat  <- cor_pval(X_oracle) |> round(3)
+  pearson_pmat <- cor_pval(X_mat) |> round(3)
+
+  list(ece_cor = ece_cor, oracle_cor = oracle_cor, pearson_cor = pearson_cor,
+       ece_pmat = ece_pmat, oracle_pmat = oracle_pmat, pearson_pmat = pearson_pmat)
+}
+
+tab_full <- cor_tables(X_mat, X_oracle, L = 100)
+tab_peak <- cor_tables(X_mat_peak, X_oracle_peak, L = 4)
+```
+
+::: {.panel-tabset}
+
+## Full Record
+
+::: {.panel-tabset}
+
+### Plot
+
+```{R fig-steel-series-full}
+#| echo: false
+#| fig-cap: "Usage_kWh, PowerFactor, LagReactive over 2018, faceted. Colored bands show Load_Type."
+#| fig-height: 7
+
+X_long <- X_data |>
+  select(date, load_type, Usage_kWh, PowerFactor, LagReactive) |>
+  pivot_longer(cols = c(Usage_kWh, PowerFactor, LagReactive), names_to = "series", values_to = "value")
+
+ggplot(X_long, aes(x = date, y = value)) +
+  geom_line(linewidth = 0.15, color = "gray30") +
+  facet_wrap(~series, ncol = 1, scales = "free_y") +
+  labs(title = "Steel Plant Electrical Series, 2018", x = NULL, y = NULL) +
+  theme_minimal()
+```
+
+A year of 15-minute readings compresses into a dense band — the diurnal Light/Medium/Maximum cycle is far too fast to resolve at this timescale. The Residuals tab below, zoomed to one week, makes the cycle visible.
+
+### Residuals
+
+```{R fig-steel-residual-full}
+#| echo: false
+
+X_data |>
+  filter(date < as.POSIXct("2018-01-08")) |>
+  select(date) |>
+  bind_cols(as.data.frame(X_oracle[X_data$date < as.POSIXct("2018-01-08"), ])) |>
+  pivot_longer(-date, names_to = "series", values_to = "value") |>
+  ggplot(aes(date, value, color = series)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  labs(title = "Oracle Residuals (Load_Type mean removed), first week",
+       x = NULL, y = "Anomaly", color = NULL) +
+  theme_minimal()
+```
+
+Even after subtracting the known regime mean, residuals still track a visible daily pattern — the transitions between `Load_Type` blocks are ramps, not instantaneous jumps, so the "oracle" mean removal is a real but imperfect adjustment.
+
+### ACF
+
+::: {.panel-tabset}
+
+#### Oracle
+
+```{R acf-steel-oracle-full}
+#| echo: false
+
+par(mfrow = c(1, 3), mar = c(2, 3, 2, 1), oma = c(2, 0, 0, 0), mgp = c(1.8, 1, 0))
+acf(X_oracle[, "Usage_kWh"], main = "Usage_kWh")
+acf(X_oracle[, "PowerFactor"], main = "PowerFactor")
+acf(X_oracle[, "LagReactive"], main = "LagReactive")
+mtext("Lag (15-min steps)", side = 1, outer = TRUE, line = 0.5)
+```
+
+Lag-1 autocorrelation of 0.85–0.92 even with the true regime mean removed — at 15-minute resolution, electrical load barely moves between consecutive readings. This is real physical persistence, not a mean-removal artifact.
+
+#### Mean-Shift-Invariant
+
+```{R acf-steel-invariant-full}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+`SIP::SIP.acf` agrees in sign and magnitude with the oracle-residual ACF — with dependence this strong, there isn't much for a mean-shift-invariant estimator to disagree with a correct mean-removal on.
+
+:::
+
+### Trend
+
+::: {.panel-tabset}
+
+#### Oracle
+
+```{R trend-steel-oracle-full}
+#| echo: false
+
+pair_idx <- combn(ncol(X_oracle), 2)
+pair_labels <- paste(colnames(X_oracle)[pair_idx[1, ]], colnames(X_oracle)[pair_idx[2, ]], sep = "-")
+S_oracle <- do.call(cbind, purrr::map2(pair_idx[1, ], pair_idx[2, ], \(i, j)
+  X_oracle[, i] * X_oracle[, j]))
+
+k <- win
+S_smooth <- stats::filter(S_oracle, rep(1 / k, k), sides = 2)
+
+par(mfrow = c(ncol(S_oracle), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+for (i in seq_len(ncol(S_oracle))) {
+  ylim <- quantile(S_oracle[, i], probs = c(0.01, 0.99), na.rm = TRUE)
+  plot(S_oracle[, i], type = "l", col = "lightgray", xaxt = "n", yaxt = "n",
+       ylab = pair_labels[i], cex.lab = 0.8, ylim = ylim)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = mean(S_oracle[, i]), col = "blue")
+  lines(S_smooth[, i])
+  legend("topright", legend = sprintf("%.3f", mean(S_oracle[, i])), text.col = "blue", bty = "n", cex = 0.8)
+}
+axis(1)
+mtext("Index (15-min steps)", side = 1, outer = TRUE, line = 2.5)
+```
+
+#### Mean-Shift-Invariant
+
+```{R trend-steel-invariant-full}
+#| echo: false
+
+plot_ece_terms(X_mat, window = win)
+```
+
+:::
+
+### Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(tab_full$ece_cor,     caption = "ECE Correlation")
+knitr::kable(tab_full$oracle_cor,  caption = "Oracle Correlation")
+knitr::kable(tab_full$pearson_cor, caption = "Pearson Correlation")
+```
+
+Naive Pearson finds `Usage_kWh`–`PowerFactor` moderately correlated (0.39) — an artifact of the shared regime-driven mean shift, since the oracle answer (using the true `Load_Type` labels) is essentially zero (0.08). ECE, at `L = 100` (needed to avoid breaking on the severe residual autocorrelation), lands at 0.49 — closer to naive than to oracle. This is the same honest limitation `co2-inhalation.qmd` ran into: knowing the true regime labels doesn't fully solve the problem when the underlying mean shift is a ramp rather than a sharp step, and ECE's own answer is sensitive to the large `L` forced on it by the residual autocorrelation, not just to the mean-shift structure. `Usage_kWh`–`LagReactive` is high and stable across all three methods (0.88–0.90, unsurprising — both track apparent power draw). `PowerFactor`–`LagReactive` shows the same naive-vs-oracle pattern as `Usage_kWh`–`PowerFactor`, just smaller: naive 0.15, oracle -0.10, ECE 0.24 — sign disagreement, not just magnitude.
+
+### P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(tab_full$ece_pmat,     caption = "ECE P-Values")
+knitr::kable(tab_full$oracle_pmat,  caption = "Oracle P-Values")
+knitr::kable(tab_full$pearson_pmat, caption = "Pearson P-Values")
+```
+
+ECE's p-values come back `NaN` at full resolution — same failure mode as GCD's `L = 2` case: residual autocorrelation this strong breaks the z-test's variance estimate outright, not just its power. Oracle and Pearson both reject independence everywhere (p ≈ 0), including `Usage_kWh`–`PowerFactor`, where the oracle *correlation* itself was already near zero — with 35,040 points, even a true correlation of 0.08 is easily "significant."
+
+:::
+
+:::
+
+## Daily Peak
+
+::: {.panel-tabset}
+
+### Plot
+
+```{R fig-steel-series-peak}
+#| echo: false
+#| fig-cap: "Usage_kWh, PowerFactor, LagReactive at each day's peak Usage_kWh, colored by that day's Load_Type."
+#| fig-height: 7
+
+X_long_peak <- X_data_peak |>
+  select(day, load_type, Usage_kWh, PowerFactor, LagReactive) |>
+  pivot_longer(cols = c(Usage_kWh, PowerFactor, LagReactive), names_to = "series", values_to = "value")
+
+ggplot(X_long_peak, aes(x = day, y = value, color = load_type)) +
+  geom_point(size = 0.7) +
+  facet_wrap(~series, ncol = 1, scales = "free_y") +
+  labs(title = "Daily Peak-Usage Reading, 2018", x = NULL, y = NULL, color = "Load_Type at peak") +
+  theme_minimal()
+```
+
+Most days peak during `Maximum_Load` (170 of 366), but a substantial minority peak during `Medium_Load` (133) or never ramp up past `Light_Load` (63) — real day-to-day variation in whether the plant reached full production, not a fixed schedule.
+
+### Residuals
+
+```{R fig-steel-residual-peak}
+#| echo: false
+
+X_data_peak |>
+  select(day) |>
+  bind_cols(as.data.frame(X_oracle_peak)) |>
+  pivot_longer(-day, names_to = "series", values_to = "value") |>
+  ggplot(aes(day, value, color = series)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  labs(title = "Oracle Residuals (Load_Type mean removed), daily peak series",
+       x = NULL, y = "Anomaly", color = NULL) +
+  theme_minimal()
+```
+
+### ACF
+
+::: {.panel-tabset}
+
+#### Oracle
+
+```{R acf-steel-oracle-peak}
+#| echo: false
+
+par(mfrow = c(1, 3), mar = c(2, 3, 2, 1), oma = c(2, 0, 0, 0), mgp = c(1.8, 1, 0))
+acf(X_oracle_peak[, "Usage_kWh"], main = "Usage_kWh")
+acf(X_oracle_peak[, "PowerFactor"], main = "PowerFactor")
+acf(X_oracle_peak[, "LagReactive"], main = "LagReactive")
+mtext("Lag (days)", side = 1, outer = TRUE, line = 0.5)
+```
+
+Lag-1 drops to 0.27 for `Usage_kWh` and near-zero for the other two — resampling to "one observation per day, at that day's peak" removes the daily cycle entirely instead of aliasing against it, and what's left looks close to independent.
+
+#### Mean-Shift-Invariant
+
+```{R acf-steel-invariant-peak}
+#| echo: false
+
+plot_sip_acf(X_mat_peak)
+```
+
+:::
+
+### Trend
+
+::: {.panel-tabset}
+
+#### Oracle
+
+```{R trend-steel-oracle-peak}
+#| echo: false
+
+pair_idx <- combn(ncol(X_oracle_peak), 2)
+pair_labels <- paste(colnames(X_oracle_peak)[pair_idx[1, ]], colnames(X_oracle_peak)[pair_idx[2, ]], sep = "-")
+S_oracle_peak <- do.call(cbind, purrr::map2(pair_idx[1, ], pair_idx[2, ], \(i, j)
+  X_oracle_peak[, i] * X_oracle_peak[, j]))
+
+k <- win_peak
+S_peak_smooth <- stats::filter(S_oracle_peak, rep(1 / k, k), sides = 2)
+
+par(mfrow = c(ncol(S_oracle_peak), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+for (i in seq_len(ncol(S_oracle_peak))) {
+  ylim <- quantile(S_oracle_peak[, i], probs = c(0.01, 0.99), na.rm = TRUE)
+  plot(S_oracle_peak[, i], type = "l", col = "lightgray", xaxt = "n", yaxt = "n",
+       ylab = pair_labels[i], cex.lab = 0.8, ylim = ylim)
+  axis(2, labels = FALSE, tck = -0.02)
+  abline(h = mean(S_oracle_peak[, i]), col = "blue")
+  lines(S_peak_smooth[, i])
+  legend("topright", legend = sprintf("%.3f", mean(S_oracle_peak[, i])), text.col = "blue", bty = "n", cex = 0.8)
+}
+axis(1)
+mtext("Day index", side = 1, outer = TRUE, line = 2.5)
+```
+
+#### Mean-Shift-Invariant
+
+```{R trend-steel-invariant-peak}
+#| echo: false
+
+plot_ece_terms(X_mat_peak, window = win_peak)
+```
+
+:::
+
+### Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(tab_peak$ece_cor,     caption = "ECE Correlation")
+knitr::kable(tab_peak$oracle_cor,  caption = "Oracle Correlation")
+knitr::kable(tab_peak$pearson_cor, caption = "Pearson Correlation")
+```
+
+All three methods now agree closely, and — notably — the sign flips relative to the Full Record tab. `Usage_kWh`–`PowerFactor` is **-0.36** (Pearson), **-0.38** (Oracle), **-0.40** (ECE, `L = 4`, no breakdown needed) — versus **+0.39** at full 15-minute resolution. Conditioning on "the day's peak moment" removes the light/medium/maximum confound that inflated the naive full-record number; what's left looks like a genuine negative relationship (higher draw associated with a *lower* power factor at peak, plausibly heavier inductive loads running harder). `Usage_kWh`–`LagReactive` (0.86–0.90) and `PowerFactor`–`LagReactive` (-0.65 to -0.69) are also consistent across all three methods — unlike the Full Record tab, there's no naive-vs-oracle sign disagreement left anywhere in this table.
+
+### P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(tab_peak$ece_pmat,     caption = "ECE P-Values")
+knitr::kable(tab_peak$oracle_pmat,  caption = "Oracle P-Values")
+knitr::kable(tab_peak$pearson_pmat, caption = "Pearson P-Values")
+```
+
+All three reject independence everywhere (p ≈ 0) — no surprise given the correlation magnitudes above.
+
+:::
+
+:::
+
+:::
+
+## Where this leaves us
+
+The Full Record tab shows why this dataset is hard: severe native-resolution autocorrelation breaks ECE outright, and `Load_Type`'s rigid daily schedule means fixed-step downsampling aliases rather than helps. Resampling to one observation per day — the moment of that day's peak `Usage_kWh` — sidesteps both problems on the surface: mild lag-1 autocorrelation, a real (non-aliased) day-to-day regime split, and all three methods (Naive, Oracle, ECE) landing in close agreement, with a sign flip on `Usage_kWh`–`PowerFactor` relative to the full-record naive answer.
+
+But checking further lags in that same daily-peak series (ACF tab above only shows lag 1–4) turns up lag-7, lag-14, and lag-21 autocorrelation nearly as strong as the removed daily cycle (`Usage_kWh`: 0.41, 0.34, 0.36; `PowerFactor`: 0.33, 0.28, 0.25) — a **weekly** production routine sitting directly under the daily one. `Load_Type` varies by day of week in a real pattern (Monday/Tuesday lean `Maximum_Load`, Friday/Sunday lean `Medium_Load`/`Light_Load`), not a simple weekday/weekend split. This is the same structural problem as the daily cycle, one level up: resampling to a smarter event removes whichever periodicity it was tied to, but if the next-coarser cycle is itself periodic, the dependence just resurfaces there. Neither the Correlation nor P-Values numbers above account for this — the daily-peak table's ECE used `L = 4`, well short of the 7-day period, and Pearson's p-values assume i.i.d. sampling that the weekly rhythm violates.
+
+Between SECOM's redundant/undefined sensors and this dataset's nested daily+weekly periodicity, neither manufacturing dataset found so far gives ECE a fair, clean test. Both chapters stay as documented negative results rather than continued open threads.
+
+---
+
+## Bootstrap Methods
+
+```{R}
+#| echo: false
+ece.test(X_mat_peak, type = "bs.multiplier")
+ece.test(X_mat_peak, type = "bs.parametric")
+```
