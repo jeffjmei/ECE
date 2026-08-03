@@ -10,12 +10,12 @@ devtools::load_all()
 library(tidyverse)
 ```
 
-Two daily discharge series on the Colorado River, from USGS NWIS (`dataRetrieval::readNWISdv`, parameter `00060`, 1950–2025):
+Daily discharge, Colorado River, USGS NWIS (`dataRetrieval::readNWISdv`, parameter `00060`, 1950–2025):
 
-- `cisco_cfs`: Colorado River near Cisco, UT (site `09180500`) — ~280 river miles upstream of Glen Canyon Dam, above Lake Powell. Flow here is essentially natural: snowmelt-driven, with a strong spring pulse and low winter baseflow.
-- `leesferry_cfs`: Colorado River at Lees Ferry, AZ (site `09380000`) — immediately downstream of Glen Canyon Dam, the standard compliance point for Colorado River Compact accounting.
+- `cisco_cfs`: near Cisco, UT (`09180500`) — upstream of Glen Canyon Dam, natural flow.
+- `leesferry_cfs`: at Lees Ferry, AZ (`09380000`) — immediately downstream of the dam.
 
-Glen Canyon Dam closed on **1963-03-13**, and Lake Powell filled gradually until reaching first full pool in **1980**. Before closure, Lees Ferry flow is essentially a translated, lightly attenuated copy of Cisco flow (plus minor ungauged tributary inflow over the intervening reach) — the two should be strongly correlated. After closure, Lake Powell decouples the two: releases at Lees Ferry are set by hydropower demand and Bureau of Reclamation operating rules (historically a smoothed, sometimes sub-daily "hydropeaking" pattern), not by the timing of upstream inflow. The correlation between the series is expected to drop sharply at the closure date, with a possible further shift as the reservoir's buffering capacity grew through 1980. This gives a real change point with a known date and mechanism, rather than one inferred after the fact — the case this project's tests want most.
+Dam closure: **1963-03-13**. Before: Lees Ferry ≈ translated copy of Cisco. After: Lake Powell decouples the two — releases follow hydropower demand, not upstream timing. Known date, known mechanism, known direction of effect.
 
 ```{R}
 #| echo: false
@@ -24,264 +24,206 @@ Glen Canyon Dam closed on **1963-03-13**, and Lake Powell filled gradually until
 
 cisco <- read_csv("../data/real-data/glen-canyon-dam/cisco-daily.csv", show_col_types = FALSE) |>
   mutate(Date = as.Date(Date))
-
 leesferry <- read_csv("../data/real-data/glen-canyon-dam/leesferry-daily.csv", show_col_types = FALSE) |>
   mutate(Date = as.Date(Date))
 
-X <- inner_join(cisco, leesferry, by = "Date") |>
-  arrange(Date)
-
 dam_closure <- as.Date("1963-03-13")
-full_pool   <- as.Date("1980-06-30")
-```
 
-```{R}
-#| echo: false
-#| label: fig-gcd-raw
-#| fig-cap: "Daily discharge, Colorado River near Cisco, UT vs. at Lees Ferry, AZ. Vertical line marks Glen Canyon Dam closure (1963-03-13)."
-
-X |>
-  select(Date, cisco_cfs, leesferry_cfs) |>
-  pivot_longer(-Date, names_to = "series", values_to = "value") |>
-  ggplot(aes(Date, value, color = series)) +
-  geom_line(linewidth = 0.2) +
-  geom_vline(xintercept = dam_closure, linetype = "dashed") +
-  labs(title = "Cisco (upstream) vs. Lees Ferry (downstream of Glen Canyon Dam)",
-       x = NULL, y = "Discharge (cfs)", color = NULL) +
-  theme_minimal()
-```
-
-Daily discharge is heavily autocorrelated (multi-day travel time, multi-week snowmelt recession) and the raw series span 5+ orders of magnitude of hydropeaking noise post-dam, so we aggregate to monthly means before any ECE diagnostics, mirroring `elnino.qmd`.
-
-```{R}
-#| echo: false
-#| label: gcd-monthly
-
-X_monthly <- X |>
+X_monthly <- inner_join(cisco, leesferry, by = "Date") |>
   mutate(year = year(Date), month = month(Date)) |>
   group_by(year, month) |>
   summarize(cisco_cfs = mean(cisco_cfs), leesferry_cfs = mean(leesferry_cfs), .groups = "drop") |>
-  mutate(date = as.Date(sprintf("%d-%02d-01", year, month))) |>
+  mutate(date = as.Date(sprintf("%d-%02d-01", year, month)),
+         regime = if_else(date < dam_closure, "pre", "post")) |>
   arrange(date)
-
-X_mat <- as.matrix(X_monthly[, c("cisco_cfs", "leesferry_cfs")])
 ```
+
+## Deseasonalizing
+
+Raw series carry a strong annual cycle (snowmelt pulse). The cycle's *shape* changes at the dam — sharp pre-dam, damped post-dam — so one climatology for the whole record is wrong. Fit calendar-month means separately within each regime, subtract.
 
 ```{R}
 #| echo: false
-#| label: fig-gcd-monthly
-#| fig-cap: "Monthly mean discharge. Vertical line marks Glen Canyon Dam closure."
+#| label: gcd-deseasonalize
 
-X_monthly |>
-  select(date, cisco_cfs, leesferry_cfs) |>
+clim <- X_monthly |>
+  group_by(regime, month) |>
+  summarize(cisco_clim = mean(cisco_cfs), lf_clim = mean(leesferry_cfs), .groups = "drop")
+
+X_resid <- X_monthly |>
+  left_join(clim, by = c("regime", "month")) |>
+  mutate(cisco_resid = cisco_cfs - cisco_clim,
+         lf_resid = leesferry_cfs - lf_clim)
+
+downsample <- function(df, k) df[seq(1, nrow(df), by = k), ]
+X_ds3 <- downsample(X_resid, 3)
+X_ds6 <- downsample(X_resid, 6)
+
+win <- 25
+```
+
+## Full Record
+
+::: {.panel-tabset}
+
+## Residuals
+
+```{R fig-gcd-residual}
+#| echo: false
+
+X_resid |>
+  select(date, cisco_resid, lf_resid) |>
   pivot_longer(-date, names_to = "series", values_to = "value") |>
   ggplot(aes(date, value, color = series)) +
   geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
   geom_vline(xintercept = dam_closure, linetype = "dashed") +
-  labs(title = "Monthly Mean Discharge", x = NULL, y = "Discharge (cfs)", color = NULL) +
+  labs(title = "Deseasonalized Residuals", x = NULL, y = "Discharge anomaly (cfs)", color = NULL) +
   theme_minimal()
 ```
 
-```{R}
-#| echo: false
-#| label: gcd-rolling
-
-win <- 25 # matches elnino.qmd / mental-load.qmd
-roll_mat <- apply(X_mat, 2, function(col) rolling_mean(col, win))
-colnames(roll_mat) <- colnames(X_mat)
-```
-
-::: {.panel-tabset}
-
-## Plot
-
-```{R plot-gcd}
-#| echo: false
-
-par(mfrow = c(2, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
-
-for (i in 1:2) {
-  plot(X_mat[, i], type = "l", xaxt = "n", yaxt = "n",
-        ylab = colnames(X_mat)[i], cex.lab = 0.8)
-  axis(2, labels = FALSE, tck = -0.02)
-  lines(roll_mat[, i], col = "steelblue", lwd = 2)
-}
-axis(1)
-mtext("Month index (1950–2025)", side = 1, outer = TRUE, line = 2.5)
-```
+Change point is obvious: Lees Ferry residual amplitude collapses after 1963 — the dam damps variance, not just level.
 
 ## ACF
 
-::: {.panel-tabset}
-
-### Naive
-
-```{R acf-gcd-naive}
+```{R acf-gcd-full}
 #| echo: false
 
 par(mfrow = c(2, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
-
-for (i in 1:2) {
-  resid_i <- na.omit(X_mat[, i] - roll_mat[, i])
-  acf(resid_i, main = "", xlab = "", ylab = colnames(X_mat)[i])
-}
+acf(X_resid$cisco_resid, main = "", xlab = "", ylab = "cisco_resid")
+acf(X_resid$lf_resid, main = "", xlab = "", ylab = "lf_resid")
 mtext("Lag (months)", side = 1, outer = TRUE, line = 0.5)
 ```
 
-### Mean-Shift-Invariant
-
-```{R acf-gcd-invariant}
-#| echo: false
-
-plot_sip_acf(X_mat)
-```
-
-:::
+Not handled. Lag-1: 0.71 (`cisco_resid`), 0.75 (`lf_resid`) — real hydrologic memory, not a seasonality artifact.
 
 ## Trend
 
-::: {.panel-tabset}
-
-### Naive
-
-```{R trend-gcd-naive}
+```{R trend-gcd-full}
 #| echo: false
 
-plot_naive_terms(X_mat, window = win)
-```
-
-### Mean-Shift-Invariant
-
-```{R trend-gcd-invariant}
-#| echo: false
-
+X_mat <- as.matrix(X_resid[, c("cisco_resid", "lf_resid")])
 plot_ece_terms(X_mat, window = win)
 ```
 
 :::
 
-## Variance
-
-```{R variance-gcd}
-#| echo: false
-
-plot_ece_variance(X_mat, window = win)
-```
-
-:::
-
-## Downsampling
-
-Keep every 3rd observation (`k = 3`), matching `elnino.qmd`.
-
-```{R downsample-gcd}
-#| echo: false
-
-k_ds <- 3
-idx  <- seq(1, nrow(X_mat), by = k_ds)
-X_ds <- X_mat[idx, ]
-
-win_ds <- 25 # same fixed window as the full-sample case
-roll_mat_ds <- apply(X_ds, 2, function(col) rolling_mean(col, win_ds))
-colnames(roll_mat_ds) <- colnames(X_ds)
-```
+## Downsampled (k = 3)
 
 ::: {.panel-tabset}
 
-## Plot
+## Residuals
 
-```{R plot-gcd-downsampled}
+```{R fig-gcd-residual-ds3}
 #| echo: false
 
-par(mfrow = c(2, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
-
-for (i in 1:2) {
-  plot(X_ds[, i], type = "l", xaxt = "n", yaxt = "n",
-        ylab = colnames(X_ds)[i], cex.lab = 0.8)
-  axis(2, labels = FALSE, tck = -0.02)
-  lines(roll_mat_ds[, i], col = "steelblue", lwd = 2)
-}
-axis(1)
-mtext("Index (every 3rd month)", side = 1, outer = TRUE, line = 2.5)
+X_ds3 |>
+  select(date, cisco_resid, lf_resid) |>
+  pivot_longer(-date, names_to = "series", values_to = "value") |>
+  ggplot(aes(date, value, color = series)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  geom_vline(xintercept = dam_closure, linetype = "dashed") +
+  labs(title = "Residuals, k = 3", x = NULL, y = "Discharge anomaly (cfs)", color = NULL) +
+  theme_minimal()
 ```
 
 ## ACF
 
-::: {.panel-tabset}
-
-### Naive
-
-```{R acf-gcd-downsampled-naive}
+```{R acf-gcd-ds3}
 #| echo: false
 
 par(mfrow = c(2, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
-
-for (i in 1:2) {
-  resid_i <- na.omit(X_ds[, i] - roll_mat_ds[, i])
-  acf(resid_i, main = "", xlab = "", ylab = colnames(X_ds)[i])
-}
+acf(X_ds3$cisco_resid, main = "", xlab = "", ylab = "cisco_resid")
+acf(X_ds3$lf_resid, main = "", xlab = "", ylab = "lf_resid")
 mtext("Lag (every 3rd month)", side = 1, outer = TRUE, line = 0.5)
 ```
 
-### Mean-Shift-Invariant
-
-```{R acf-gcd-downsampled-invariant}
-#| echo: false
-
-plot_sip_acf(X_ds)
-```
-
-:::
+Lag-1 drops to 0.30 / 0.36. Improved, not gone.
 
 ## Trend
 
+```{R trend-gcd-ds3}
+#| echo: false
+
+X_mat_ds3 <- as.matrix(X_ds3[, c("cisco_resid", "lf_resid")])
+plot_ece_terms(X_mat_ds3, window = win)
+```
+
+:::
+
+## Downsampled (k = 6)
+
 ::: {.panel-tabset}
 
-### Naive
+## Residuals
 
-```{R trend-gcd-downsampled-naive}
+```{R fig-gcd-residual-ds6}
 #| echo: false
 
-plot_naive_terms(X_ds, window = win_ds)
+X_ds6 |>
+  select(date, cisco_resid, lf_resid) |>
+  pivot_longer(-date, names_to = "series", values_to = "value") |>
+  ggplot(aes(date, value, color = series)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  geom_vline(xintercept = dam_closure, linetype = "dashed") +
+  labs(title = "Residuals, k = 6", x = NULL, y = "Discharge anomaly (cfs)", color = NULL) +
+  theme_minimal()
 ```
 
-### Mean-Shift-Invariant
+## ACF
 
-```{R trend-gcd-downsampled-invariant}
+```{R acf-gcd-ds6}
 #| echo: false
 
-plot_ece_terms(X_ds, window = win_ds)
+par(mfrow = c(2, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
+acf(X_ds6$cisco_resid, main = "", xlab = "", ylab = "cisco_resid")
+acf(X_ds6$lf_resid, main = "", xlab = "", ylab = "lf_resid")
+mtext("Lag (every 6th month)", side = 1, outer = TRUE, line = 0.5)
+```
+
+Lag-1 drops to 0.11 / 0.27. Cisco effectively white; Lees Ferry keeps some dependence (deliberate flow-smoothing at the dam). `k = 12` was tried and reverses this (lag-1 back to 0.64 / 0.50 — annual drought/wet-cycle persistence, a different dependence structure downsampling-by-calendar-position can't fix). `k = 6` is the working choice.
+
+## Trend
+
+```{R trend-gcd-ds6}
+#| echo: false
+
+X_mat_ds6 <- as.matrix(X_ds6[, c("cisco_resid", "lf_resid")])
+plot_ece_terms(X_mat_ds6, window = win)
 ```
 
 :::
 
-## Variance
+## Naive vs. Oracle vs. ECE
 
-```{R variance-gcd-downsampled}
+- **Naive**: Pearson correlation, full residual series, ignoring the change point.
+- **Oracle**: Pearson correlation within each known regime (uses the change-point date).
+- **ECE**: `ece.cor()`, blind to the change-point date, given only a minimum segment length `L = 4`.
+
+```{R gcd-naive-oracle-ece}
 #| echo: false
 
-plot_ece_variance(X_ds, window = win_ds)
-```
+report <- function(df, L = 4) {
+  pre <- filter(df, regime == "pre")
+  post <- filter(df, regime == "post")
+  tibble(
+    n = nrow(df),
+    naive = cor(df$cisco_resid, df$lf_resid),
+    oracle_pre = cor(pre$cisco_resid, pre$lf_resid),
+    oracle_post = cor(post$cisco_resid, post$lf_resid),
+    ece = ece.cor(df$cisco_resid, df$lf_resid, L = L)
+  )
+}
 
-:::
-
-## Pre/Post-Dam Correlation
-
-A direct check of the mechanistic story: raw Pearson correlation of monthly means, split at dam closure.
-
-```{R gcd-split-cor}
-#| echo: false
-
-pre  <- X_monthly |> filter(date < dam_closure)
-post_filling <- X_monthly |> filter(date >= dam_closure, date < full_pool)
-post <- X_monthly |> filter(date >= full_pool)
-
-tibble(
-  period = c("Pre-dam (< 1963-03)", "Filling Lake Powell (1963-03 to 1980-06)", "Post-full-pool (>= 1980-06)"),
-  n_months = c(nrow(pre), nrow(post_filling), nrow(post)),
-  cor = c(cor(pre$cisco_cfs, pre$leesferry_cfs),
-          cor(post_filling$cisco_cfs, post_filling$leesferry_cfs),
-          cor(post$cisco_cfs, post$leesferry_cfs))
+bind_rows(
+  Full = report(X_resid),
+  `k = 3` = report(X_ds3),
+  `k = 6` = report(X_ds6),
+  .id = "transform"
 ) |>
   knitr::kable(digits = 3)
 ```
+
+At `L = 2` (not shown), ECE on the full (undownsampled) residual series returns a correlation estimate outside $[-1,1]$ — the uncorrected residual autocorrelation breaks the estimator outright, not just its efficiency. At `L = 4` it stays in range but far from both Naive and Oracle. As `k` grows and residual autocorrelation drops, ECE's estimate rises toward Naive's. Neither Naive nor ECE recovers Oracle's two different regime correlations (0.99 pre, ~0.59 post) — both assume one shared correlation, which the data doesn't actually have. That's a real limitation, not downsampling's fault: it needs a model with a change point in $\Sigma$, not just $\theta$.
