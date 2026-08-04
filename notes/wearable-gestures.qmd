@@ -44,28 +44,44 @@ oracle_resid <- function(X, grp) {
 X_oracle <- oracle_resid(X_mat, wear_data$Activity)
 ```
 
-Residual autocorrelation after removing the activity mean is still severe at native resolution (lag-1 above 0.9 for most channels): wrist orientation barely changes sample-to-sample within an activity block, aside from occasional gesture spikes. `ece.cor()` needs a large minimum segment length, `L = 1000`, to produce a stable, in-range result here; smaller `L` returns `NaN` or values outside \[-1, 1\].
+Residual autocorrelation after removing the activity mean is still severe at native resolution (lag-1 above 0.9 for most channels): wrist orientation barely changes sample-to-sample within an activity block, aside from occasional gesture spikes. `ece.cor()` needs a large minimum segment length, `L = 1000`, to produce a stable, in-range result here; smaller `L` returns `NaN` or values outside \[-1, 1\]. And `ece_pval()`, which has no `L` argument to raise, returns `NaN` everywhere at native resolution: there's no p-value to report from the raw series, oracle-labeled or not.
+
+As an alternative to the true `Activity` oracle, we also try `segment_mean()` (PELT change-point detection) as an estimated regime label, the same way `co2-inhalation.qmd` does, and run ECE on the resulting residual instead of the raw series.
+
+```{R}
+#| echo: false
+#| label: wearable-segment
+
+X_segment <- segment_mean(X_mat)
+X_seg_resid <- X_mat - X_segment
+```
+
+PELT finds far more segments than the five true activities (`Ax`: 103, `Ay`: 140, `Az`: 84, `Mx`: 328, `My`: 839, `Mz`: 386) — it's chasing the gesture spikes and local noise wiggles inside each block, not just the five real transitions. `ece.cov()` on this residual is well-behaved at the default `L = 2` for `Ax`, `Mx`, `My`, `Mz`, but comes back with a negative implied variance (hence `NaN` after `cov2cor()`) for `Ay` and `Az` — those two channels' over-segmented residuals are apparently too choppy for the default lag to handle.
 
 ```{R}
 #| echo: false
 #| label: wearable-tables
 
-cor_tables <- function(X_mat, X_oracle, L) {
+cor_tables <- function(X_mat, X_oracle, X_seg_resid, L) {
   ece_cor <- ece.cor(X_mat, L = L) |> round(3)
   rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_mat)
+
+  segment_ece_cor <- suppressWarnings(cov2cor(ece.cov(X_seg_resid)) |> round(3))
+  rownames(segment_ece_cor) <- colnames(segment_ece_cor) <- colnames(X_mat)
 
   oracle_cor  <- cor(X_oracle) |> round(3)
   pearson_cor <- cor(X_mat) |> round(3)
 
-  ece_pmat     <- suppressWarnings(ece_pval(X_mat) |> round(3))
-  oracle_pmat  <- cor_pval(X_oracle) |> round(3)
-  pearson_pmat <- cor_pval(X_mat) |> round(3)
+  ece_pmat         <- suppressWarnings(ece_pval(X_mat) |> round(3))
+  segment_ece_pmat <- suppressWarnings(ece_pval(X_seg_resid) |> round(3))
+  oracle_pmat      <- cor_pval(X_oracle) |> round(3)
+  pearson_pmat     <- cor_pval(X_mat) |> round(3)
 
-  list(ece_cor = ece_cor, oracle_cor = oracle_cor, pearson_cor = pearson_cor,
-       ece_pmat = ece_pmat, oracle_pmat = oracle_pmat, pearson_pmat = pearson_pmat)
+  list(ece_cor = ece_cor, segment_ece_cor = segment_ece_cor, oracle_cor = oracle_cor, pearson_cor = pearson_cor,
+       ece_pmat = ece_pmat, segment_ece_pmat = segment_ece_pmat, oracle_pmat = oracle_pmat, pearson_pmat = pearson_pmat)
 }
 
-tab_full <- cor_tables(X_mat, X_oracle, L = 1000)
+tab_full <- cor_tables(X_mat, X_oracle, X_seg_resid, L = 1000)
 win <- 200
 ```
 
@@ -190,28 +206,32 @@ plot_ece_terms(X_mat, window = win)
 ## Correlation
 
 ```{R}
-#| layout-ncol: 3
+#| layout-ncol: 2
 #| echo: false
 
-knitr::kable(tab_full$ece_cor,     caption = "ECE Correlation")
-knitr::kable(tab_full$oracle_cor,  caption = "Oracle Correlation")
-knitr::kable(tab_full$pearson_cor, caption = "Pearson Correlation")
+knitr::kable(tab_full$ece_cor,         caption = "ECE Correlation")
+knitr::kable(tab_full$segment_ece_cor, caption = "Segment-ECE Correlation")
+knitr::kable(tab_full$oracle_cor,      caption = "Oracle Correlation")
+knitr::kable(tab_full$pearson_cor,     caption = "Pearson Correlation")
 ```
 
-`Ax`-`Mx` stays strongly negative under all three methods (naive -0.81, oracle -0.66, ECE -0.65): the tilt that raises `Ax` genuinely lowers `Mx`, activity mean shift or not. `Ay`-`My` is the interesting pair: naive is mildly positive (0.15), but the oracle answer, using the true `Activity` labels, is -0.57. ECE, without seeing those labels, lands at -0.55 — recovering the oracle's answer, sign flip included, almost exactly. This isn't specific to this one subject: the same naive-positive/oracle-and-ECE-negative pattern for `Ay`-`My` shows up for users 1, 10, and 20 as well.
+`Ax`-`Mx` stays strongly negative under naive, oracle, and ECE (-0.81, -0.66, -0.65): the tilt that raises `Ax` genuinely lowers `Mx`, activity mean shift or not. `Ay`-`My` is the interesting pair: naive is mildly positive (0.15), but the oracle answer, using the true `Activity` labels, is -0.57. ECE, without seeing those labels, lands at -0.55 — recovering the oracle's answer, sign flip included, almost exactly. This isn't specific to this one subject: the same naive-positive/oracle-and-ECE-negative pattern for `Ay`-`My` shows up for users 1, 10, and 20 as well.
+
+Segment-ECE tells a different story. Where it's defined at all (`Ay` and `Az` come back `NaN`, see below), every cross-channel accelerometer-magnetometer correlation collapses to near zero: `Ax`-`Mx` is 0.08, not -0.65 to -0.81. PELT's ~100-800 estimated segments per channel are chasing gesture-level noise, not the five real activity blocks, and removing that much "mean" removes the real accelerometer-magnetometer relationship along with it, not just the activity confound. This is the same over-segmentation trap `air-pollution.qmd` flags: knowing the true regime label (Oracle) beats discovering one (Segment-ECE), and ECE run directly on the raw series, without any explicit segmentation, does the best job of the three at recovering what the oracle finds.
 
 ## P-Values
 
 ```{R}
-#| layout-ncol: 3
+#| layout-ncol: 2
 #| echo: false
 
-knitr::kable(tab_full$ece_pmat,     caption = "ECE P-Values")
-knitr::kable(tab_full$oracle_pmat,  caption = "Oracle P-Values")
-knitr::kable(tab_full$pearson_pmat, caption = "Pearson P-Values")
+knitr::kable(tab_full$ece_pmat,         caption = "ECE P-Values")
+knitr::kable(tab_full$segment_ece_pmat, caption = "Segment-ECE P-Values")
+knitr::kable(tab_full$oracle_pmat,      caption = "Oracle P-Values")
+knitr::kable(tab_full$pearson_pmat,     caption = "Pearson P-Values")
 ```
 
-`ece_pval()` runs at its default `L = 2` and comes back `NaN` almost everywhere — the same failure mode as Steel Industry's Full Record tab: residual autocorrelation this strong breaks the z-test's variance estimate, even though `ece.cor()` itself is stable at a larger `L`. Oracle and Pearson both reject independence for every pair (p < 0.001), including `Ay`-`My`, where oracle and naive don't even agree on the sign.
+`ece_pval()`, which has no `L` argument, runs at its fixed default and comes back `NaN` everywhere on the raw series — the same failure mode as Steel Industry's Full Record tab: residual autocorrelation this strong breaks the z-test's variance estimate outright. Running it on the segmentation residual instead partially fixes this: `Ax`, `Mx`, `My`, `Mz` now get real p-values (e.g. `Ax`-`Mx` p = 0.010, `Mx`-`My` p < 0.001), while `Ay` and `Az` are still `NaN`, the same two channels where Segment-ECE correlation broke down above. Oracle and Pearson both reject independence for every pair (p < 0.001), including `Ay`-`My`, where oracle and naive don't even agree on the sign.
 
 :::
 
@@ -227,4 +247,4 @@ ece.test(X_mat, type = "bs.parametric")
 
 ## Where this leaves us
 
-Activity gives a cleaner oracle than most real-data chapters get: a real step function tied to the physical quantity being measured, not a ramped external schedule. ECE tracks that oracle well on correlation (`Ay`-`My`'s sign flip recovered without seeing the labels), which is the strongest evidence in this book that ECE can substitute for a true regime label when the mean shift is sharp. The gap is inference: `ece_pval()`'s fixed `L = 2` can't handle the residual autocorrelation here, so we have correlation estimates but not p-values from the same method. Whether a per-gesture or per-cycle resampling (as opposed to the fixed-window one used for `plot_ece_terms()`'s Trend tab) could bring `L` down far enough for `ece_pval()` to work is worth checking, along the lines of Steel Industry's daily-peak tier.
+Activity gives a cleaner oracle than most real-data chapters get: a real step function tied to the physical quantity being measured, not a ramped external schedule. ECE tracks that oracle well on correlation (`Ay`-`My`'s sign flip recovered without seeing the labels), which is the strongest evidence in this book that ECE can substitute for a true regime label when the mean shift is sharp. Trying `segment_mean()` as a stand-in for that label, the way `co2-inhalation.qmd` does, backfires here: PELT finds 100+ segments per channel where there are really only five activities, and mean-removing that many estimated breakpoints erases the real accelerometer-magnetometer relationship along with the activity confound, flattening every cross-channel correlation to near zero. Direct ECE on the raw series does better than segmentation at recovering the oracle, exactly backwards from the usual expectation that adding a segmentation step should help. The remaining gap is inference: `ece_pval()`'s fixed `L = 2` still can't handle two of the six channels (`Ay`, `Az`), oracle-labeled, segmented, or raw. Whether a per-gesture or per-cycle resampling could bring the residual autocorrelation down far enough for `ece_pval()` to work on those channels is worth checking, along the lines of Steel Industry's daily-peak tier.
