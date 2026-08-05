@@ -205,36 +205,29 @@ vc <- bind_rows(
 
 ```{r}
 #| echo: false
-variance_plot <- function(vc_subset, title) {
+variance_plot <- function(vc_subset) {
   vc_subset |>
+    mutate(scale = recode(scale, naive = "Naive", transformed = "Z-Transformed")) |>
     ggplot(aes(x = rho, y = variance, color = scale)) +
     geom_line(linewidth = 1) +
-    facet_wrap(~scenario) +
-    scale_color_manual(values = c(naive = "black", transformed = "firebrick"),
-                        breaks = c("naive", "transformed"),
-                        labels = c(expression(paste("naive (", v^2, ")")),
-                                   expression(paste("z-transformed (", tau^2, ")")))) +
-    labs(x = expression(rho), y = "Asymptotic variance", color = NULL, title = title) +
+    scale_color_manual(values = c(Naive = "black", "Z-Transformed" = "firebrick")) +
+    labs(x = expression(rho), y = "Asymptotic variance", color = NULL) +
     theme_minimal() +
     theme(legend.position = "bottom")
 }
 ```
 
-::: {.panel-tabset}
-## $\rho > 0$
-
 ```{r}
 #| echo: false
-vc |> filter(rho >= 0) |> variance_plot("Naive vs. Fisher-transformed variance across ρ (ρ ≥ 0)")
+#| layout-ncol: 2
+#| fig-cap:
+#|   - "Scenario 1 (no change points), n = 200."
+#|   - "Scenario 2 (L = 4 change points), n = 200."
+vc |> filter(scenario == "Scenario 1") |> variance_plot()
+vc |> filter(scenario == "Scenario 2 (L=4)") |> variance_plot()
 ```
 
-## $\rho < 0$
-
-```{r}
-#| echo: false
-vc |> filter(rho <= 0) |> variance_plot("Naive vs. Fisher-transformed variance across ρ (ρ ≤ 0)")
-```
-:::
+Naive vs. Z-transformed asymptotic variance across $\rho$.
 
 ## Coverage Simulation
 
@@ -283,7 +276,7 @@ coverage_grid <- function(rho_grid, scenario_num, L = NULL, n = 200,
           z_test(X, conf.level = conf.level, kappa = "gaussian", ztransform = zt),
           warning = function(w) { n_warn <<- n_warn + 1; invokeRestart("muffleWarning") }
         )
-        tibble(method  = if (zt) "Fisher" else "Naive",
+        tibble(method  = if (zt) "Z-Transformed" else "Naive",
                covered = fit$conf.int[1] < rho & rho < fit$conf.int[2],
                width   = diff(fit$conf.int))
       })
@@ -305,57 +298,71 @@ cov_s1 <- coverage_grid(rho_grid, 1, nsim = 2000) |> mutate(scenario = "Scenario
 cov_s2 <- coverage_grid(rho_grid, 2, L = 4, nsim = 2000) |> mutate(scenario = "Scenario 2 (L=4)")
 cov <- bind_rows(cov_s1, cov_s2) |>
   pivot_longer(c(coverage, width), names_to = "metric", values_to = "value") |>
-  mutate(method = factor(method, levels = c("Naive", "Fisher")))
+  mutate(method = factor(method, levels = c("Naive", "Z-Transformed")))
 ```
 
 ```{r}
 #| echo: false
-coverage_plot <- function(cov_subset, title) {
-  cov_subset |>
-    ggplot(aes(x = rho, y = value, color = method)) +
-    geom_ribbon(data = ~filter(.x, metric == "coverage"),
-                aes(ymin = value - 1.96 * se, ymax = value + 1.96 * se, fill = method),
-                alpha = 0.15, color = NA) +
-    geom_hline(data = tibble(metric = "coverage", value = 0.90),
-               aes(yintercept = value), linetype = "dashed", color = "gray50") +
+ci_plot <- function(cov_subset, metric_name) {
+  p <- cov_subset |>
+    filter(metric == metric_name) |>
+    ggplot(aes(x = rho, y = value, color = method))
+  if (metric_name == "coverage") {
+    p <- p +
+      geom_ribbon(aes(ymin = value - 1.96 * se, ymax = value + 1.96 * se, fill = method),
+                  alpha = 0.15, color = NA) +
+      geom_hline(yintercept = 0.90, linetype = "dashed", color = "gray50")
+  }
+  p +
     geom_line(linewidth = 1) +
     geom_point(size = 1.5) +
-    facet_grid(metric ~ scenario, scales = "free_y") +
-    scale_color_manual(values = c(Naive = "black", Fisher = "firebrick")) +
-    scale_fill_manual(values = c(Naive = "black", Fisher = "firebrick"), guide = "none") +
-    labs(x = expression(rho), y = NULL, color = NULL, title = title) +
+    scale_color_manual(values = c(Naive = "black", "Z-Transformed" = "firebrick")) +
+    scale_fill_manual(values = c(Naive = "black", "Z-Transformed" = "firebrick"), guide = "none") +
+    labs(x = expression(rho), y = if (metric_name == "coverage") "Coverage" else "Width", color = NULL) +
     theme_minimal() +
     theme(legend.position = "bottom")
 }
 
-n_warnings_in <- function(cov_long, rho_filter) {
+n_warnings_in <- function(cov_long, scenario_name) {
   cov_long |>
-    filter(rho_filter(rho)) |>
-    distinct(scenario, rho, n_warnings) |>
+    filter(scenario == scenario_name) |>
+    distinct(rho, n_warnings) |>
     pull(n_warnings) |>
     sum()
 }
 ```
 
-::: {.panel-tabset}
-## $\rho > 0$
+```{r}
+#| echo: false
+#| layout-ncol: 2
+#| fig-cap:
+#|   - "Scenario 1 (no change points)."
+#|   - "Scenario 2 (L = 4 change points)."
+ci_plot(filter(cov, scenario == "Scenario 1"), "coverage")
+ci_plot(filter(cov, scenario == "Scenario 2 (L=4)"), "coverage")
+```
+
+Empirical coverage of naive vs. Z-transformed CIs, nominal level 0.90, n = 200,
+nsim = 2000.
 
 ```{r}
 #| echo: false
-coverage_plot(filter(cov, rho >= 0),
-              "Coverage and width of naive vs. Fisher-transformed CIs (n = 200, nsim = 2000)")
-cat(n_warnings_in(cov, \(r) r >= 0), "warnings suppressed during this simulation (rho >= 0).\n")
+cat(n_warnings_in(cov, "Scenario 1"), "warnings suppressed during the Scenario 1 simulation.\n")
+cat(n_warnings_in(cov, "Scenario 2 (L=4)"), "warnings suppressed during the Scenario 2 simulation.\n")
 ```
-
-## $\rho < 0$
 
 ```{r}
 #| echo: false
-coverage_plot(filter(cov, rho <= 0),
-              "Coverage and width of naive vs. Fisher-transformed CIs (n = 200, nsim = 2000)")
-cat(n_warnings_in(cov, \(r) r <= 0), "warnings suppressed during this simulation (rho <= 0).\n")
+#| layout-ncol: 2
+#| fig-cap:
+#|   - "Scenario 1 (no change points)."
+#|   - "Scenario 2 (L = 4 change points)."
+ci_plot(filter(cov, scenario == "Scenario 1"), "width")
+ci_plot(filter(cov, scenario == "Scenario 2 (L=4)"), "width")
 ```
-:::
+
+Average width of naive vs. Z-transformed CIs, nominal level 0.90, n = 200,
+nsim = 2000.
 
 ### Classical Pearson Correlation, for Comparison
 
@@ -379,8 +386,8 @@ pearson_coverage_grid <- function(rho_grid, n = 200, nsim = 2000, conf.level = 0
         ci_naive  <- r + c(-1, 1) * z_crit * (1 - r^2) / sqrt(n)
         ci_fisher <- tanh(atanh(r) + c(-1, 1) * z_crit / sqrt(n - 3))
         bind_rows(
-          tibble(method = "Naive",  covered = ci_naive[1] < rho & rho < ci_naive[2],  width = diff(ci_naive)),
-          tibble(method = "Fisher", covered = ci_fisher[1] < rho & rho < ci_fisher[2], width = diff(ci_fisher))
+          tibble(method = "Naive",         covered = ci_naive[1] < rho & rho < ci_naive[2],  width = diff(ci_naive)),
+          tibble(method = "Z-Transformed", covered = ci_fisher[1] < rho & rho < ci_fisher[2], width = diff(ci_fisher))
         )
       }, warning = function(w) { n_warn <<- n_warn + 1; invokeRestart("muffleWarning") })
     })
@@ -398,64 +405,38 @@ pearson_coverage_grid <- function(rho_grid, n = 200, nsim = 2000, conf.level = 0
 set.seed(123)
 cov_pearson <- pearson_coverage_grid(rho_grid, n = 200, nsim = 2000) |>
   pivot_longer(c(coverage, width), names_to = "metric", values_to = "value") |>
-  mutate(method = factor(method, levels = c("Naive", "Fisher")))
+  mutate(method = factor(method, levels = c("Naive", "Z-Transformed")))
 ```
 
 ```{r}
 #| echo: false
-pearson_coverage_plot <- function(cov_subset, title) {
-  cov_subset |>
-    ggplot(aes(x = rho, y = value, color = method)) +
-    geom_ribbon(data = ~filter(.x, metric == "coverage"),
-                aes(ymin = value - 1.96 * se, ymax = value + 1.96 * se, fill = method),
-                alpha = 0.15, color = NA) +
-    geom_hline(data = tibble(metric = "coverage", value = 0.90),
-               aes(yintercept = value), linetype = "dashed", color = "gray50") +
-    geom_line(linewidth = 1) +
-    geom_point(size = 1.5) +
-    facet_grid(metric ~ ., scales = "free_y") +
-    scale_color_manual(values = c(Naive = "black", Fisher = "firebrick")) +
-    scale_fill_manual(values = c(Naive = "black", Fisher = "firebrick"), guide = "none") +
-    labs(x = expression(rho), y = NULL, color = NULL, title = title) +
-    theme_minimal() +
-    theme(legend.position = "bottom")
-}
-
-n_warnings_in_pearson <- function(cov_long, rho_filter) {
+n_warnings_in_pearson <- function(cov_long) {
   cov_long |>
-    filter(rho_filter(rho)) |>
     distinct(rho, n_warnings) |>
     pull(n_warnings) |>
     sum()
 }
 ```
 
-::: {.panel-tabset}
-## $\rho > 0$
+```{r}
+#| echo: false
+#| fig-cap: "Classical Pearson correlation: empirical coverage of naive vs. Z-transformed CIs, nominal level 0.90, n = 200, nsim = 2000."
+ci_plot(cov_pearson, "coverage")
+cat(n_warnings_in_pearson(cov_pearson), "warnings suppressed during this simulation.\n")
+```
 
 ```{r}
 #| echo: false
-pearson_coverage_plot(filter(cov_pearson, rho >= 0),
-                       "Classical Pearson correlation: naive vs. Fisher-transformed CIs (n = 200, nsim = 2000)")
-cat(n_warnings_in_pearson(cov_pearson, \(r) r >= 0), "warnings suppressed during this simulation (rho >= 0).\n")
+#| fig-cap: "Classical Pearson correlation: average width of naive vs. Z-transformed CIs, nominal level 0.90, n = 200, nsim = 2000."
+ci_plot(cov_pearson, "width")
 ```
-
-## $\rho < 0$
-
-```{r}
-#| echo: false
-pearson_coverage_plot(filter(cov_pearson, rho <= 0),
-                       "Classical Pearson correlation: naive vs. Fisher-transformed CIs (n = 200, nsim = 2000)")
-cat(n_warnings_in_pearson(cov_pearson, \(r) r <= 0), "warnings suppressed during this simulation (rho <= 0).\n")
-```
-:::
 
 ::: {.callout-note collapse="true"}
-## Remark: Why Scenario 2 Doesn't Show a Larger Naive/Fisher Gap
+## Remark: Why Scenario 2 Doesn't Show a Larger Naive/Z-Transformed Gap
 
 One might expect Scenario 2 (change points present) to show *more* naive
 undercoverage near the boundary than Scenario 1, since $\omega_x, \omega_y,
-\omega_{xy} \neq 0$ there. The plot above shows the opposite: both scenarios
+\omega_{xy} \neq 0$ there. The plots above show the opposite: both scenarios
 look qualitatively similar for the naive method.
 
 The reason is specific to how `mean_square_wave()` builds the mean shift
