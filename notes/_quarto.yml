@@ -43,6 +43,7 @@ book:
         - steel-industry.qmd
         - interest-rates.qmd
         - wearable-gestures.qmd
+        - sleep-polysomnography.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd

@@ -1,0 +1,218 @@
+---
+title: "Sleep Polysomnography"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+```
+
+MIT-BIH Polysomnographic Database (`physionet.org/content/slpdb`): overnight recordings from Boston's Beth Israel Hospital Sleep Laboratory, collected for obstructive sleep apnea and CPAP evaluation. Subject `slp48`, 6.3 hours (760 epochs), four channels sampled at 250 Hz: ECG (with beat-by-beat annotations), intra-arterial blood pressure, EEG, and respiration. Every 30-second epoch also carries a **sleep-stage label** (Wake, Stage 1/2/3, REM) assigned by a human sleep technologist reading the EEG/EOG/EMG — a real, documented regime, not something we have to discover.
+
+We compare two variables, both derived from the raw signal at 30-second-epoch resolution:
+
+- `HR`: instantaneous heart rate, `60 / mean(R-R interval)`, from the database's own annotated beats
+- `BP`: mean of the continuous intra-arterial blood pressure channel over the same window
+
+(Feature extraction from the raw WFDB record — reading beat annotations and the BP channel, aggregating to 30-second epochs — was done with Python's `wfdb` library, since no R WFDB reader is available; the derived `slp48_epochs.csv` is what the chunks below read.)
+
+Heart rate and blood pressure are coupled by the baroreflex: a real physiological relationship, not two unrelated series. Sleep stage is exactly the kind of nuisance ECE is built for — autonomic tone shifts abruptly at Wake/N1/N2/N3/REM transitions, dragging the *mean* of both `HR` and `BP` along with it, while the question of interest is whether their *coupling* survives once that shared drift is accounted for.
+
+```{R sleep-load}
+#| echo: false
+#| message: false
+#| label: sleep-load
+
+X_data <- read_csv("../data/real-data/sleep-polysomnography/slp48_epochs.csv", show_col_types = FALSE) |>
+  filter(!is.na(hr), !is.na(bp_mean))
+
+X_mat <- as.matrix(X_data[, c("hr", "bp_mean")])
+colnames(X_mat) <- c("HR", "BP")
+win <- 8
+```
+
+```{R sleep-oracle}
+#| echo: false
+#| label: sleep-oracle
+
+oracle_resid <- function(X, grp) {
+  R <- sapply(colnames(X), function(cn) X[, cn] - ave(X[, cn], grp))
+  colnames(R) <- colnames(X)
+  R
+}
+
+X_oracle <- oracle_resid(X_mat, X_data$stage)
+```
+
+```{R sleep-tables}
+#| echo: false
+#| label: sleep-tables
+
+L_ece <- 50
+
+ece_cor <- ece.cor(X_mat, L = L_ece) |> round(3)
+rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_mat)
+
+oracle_cor  <- cor(X_oracle) |> round(3)
+pearson_cor <- cor(X_mat) |> round(3)
+
+ece_pmat     <- tryCatch(ece_pval(X_mat) |> round(3), error = function(e) NA)
+oracle_pmat  <- cor_pval(X_oracle) |> round(3)
+pearson_pmat <- cor_pval(X_mat) |> round(3)
+```
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R fig-sleep-series}
+#| echo: false
+#| fig-cap: "HR and BP over the night, colored by sleep stage."
+#| fig-height: 6
+
+stage_levels <- c("W", "1", "2", "3", "4", "R", "MT")
+X_long <- X_data |>
+  mutate(stage = factor(stage, levels = stage_levels)) |>
+  select(epoch, stage, HR = hr, BP = bp_mean) |>
+  pivot_longer(cols = c(HR, BP), names_to = "series", values_to = "value")
+
+ggplot(X_long, aes(x = epoch, y = value, color = stage)) +
+  geom_point(size = 0.8) +
+  facet_wrap(~series, ncol = 1, scales = "free_y") +
+  labs(title = "slp48: HR and BP, 30-second epochs", x = "Epoch", y = NULL, color = "Stage") +
+  theme_minimal()
+```
+
+Both series visibly track stage transitions — REM (`R`) epochs run hotter and more variable in `HR`, Wake (`W`) epochs show elevated `BP`.
+
+## Residuals
+
+```{R fig-sleep-residual}
+#| echo: false
+
+X_data |>
+  select(epoch) |>
+  bind_cols(as.data.frame(X_oracle)) |>
+  pivot_longer(-epoch, names_to = "series", values_to = "value") |>
+  ggplot(aes(epoch, value, color = series)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  labs(title = "Oracle Residuals (stage mean removed)", x = "Epoch", y = "Anomaly", color = NULL) +
+  theme_minimal()
+```
+
+Even after subtracting each epoch's own stage mean, both residual series still wander slowly rather than looking like noise — a hint that the ACF check below will not be kind.
+
+## ACF
+
+::: {.panel-tabset}
+
+### Oracle
+
+```{R acf-sleep-oracle}
+#| echo: false
+
+par(mfrow = c(1, 2), mar = c(2, 3, 2, 1), oma = c(2, 0, 0, 0), mgp = c(1.8, 1, 0))
+acf(X_oracle[, "HR"], main = "HR")
+acf(X_oracle[, "BP"], main = "BP")
+mtext("Lag (30s epochs)", side = 1, outer = TRUE, line = 0.5)
+```
+
+Lag-1 autocorrelation of 0.74 (`HR`) and 0.55 (`BP`) survives stage-mean removal — heart rate and blood pressure both have real physiological momentum from one epoch to the next, on top of whatever the stage label explains.
+
+### Mean-Shift-Invariant
+
+```{R acf-sleep-invariant}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+`SIP::SIP.acf` agrees with the oracle-residual ACF in sign and magnitude.
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Oracle
+
+```{R trend-sleep-oracle}
+#| echo: false
+
+S_oracle <- X_oracle[, "HR"] * X_oracle[, "BP"]
+S_smooth <- stats::filter(S_oracle, rep(1 / win, win), sides = 2)
+
+par(mar = c(3, 3, 1, 1), mgp = c(1.8, 1, 0))
+ylim <- quantile(S_oracle, probs = c(0.01, 0.99), na.rm = TRUE)
+plot(S_oracle, type = "l", col = "lightgray", ylab = "HR x BP (oracle residuals)", xlab = "Epoch", ylim = ylim)
+abline(h = mean(S_oracle), col = "blue")
+lines(S_smooth)
+legend("topright", legend = sprintf("%.3f", mean(S_oracle)), text.col = "blue", bty = "n", cex = 0.8)
+```
+
+### Mean-Shift-Invariant
+
+```{R trend-sleep-invariant}
+#| echo: false
+
+plot_ece_terms(X_mat, window = win)
+```
+
+:::
+
+## Variance
+
+```{R variance-sleep}
+#| echo: false
+
+plot_ece_variance(X_mat, window = win)
+```
+
+## Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(ece_cor,     caption = "ECE Correlation")
+knitr::kable(oracle_cor,  caption = "Oracle Correlation")
+knitr::kable(pearson_cor, caption = "Pearson Correlation")
+```
+
+Naive Pearson finds `HR`-`BP` weakly correlated (0.117). Using the true sleep-stage labels as an oracle, that correlation actually gets a little *stronger* (0.162) once the shared stage-driven mean shift is removed — the opposite direction from most chapters in this book, where naive correlation is inflated by an unaccounted-for mean shift. Here the stage-driven mean shift was mildly *masking* the coupling, not manufacturing it. ECE (`L = 50`, needed to avoid the breakdown flagged in the ACF tab) lands well above both, at 0.60 — and stays in the 0.5-0.63 range across `L = 20` to `L = 100`, never converging toward either naive or oracle. With residual autocorrelation this strong, ECE's own moment-based correction is picking up more than the stage-driven mean shift alone; it isn't a reliable arbiter here.
+
+## P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(ece_pmat,     caption = "ECE P-Values")
+knitr::kable(oracle_pmat,  caption = "Oracle P-Values")
+knitr::kable(pearson_pmat, caption = "Pearson P-Values")
+```
+
+Unlike the steel-industry chapter, ECE's p-value doesn't break down to `NaN` here — with 760 points and a moderate-to-large estimated correlation, all three methods reject independence outright.
+
+:::
+
+## Where this leaves us
+
+`slp48` gives ECE a genuine oracle (technologist-assigned sleep stage) and a physiologically real coupling (HR-BP via the baroreflex) to recover — the right ingredients, on paper. But native 30-second-epoch resolution carries severe residual autocorrelation (lag-1 ≈ 0.74 for HR) that survives even oracle mean-removal, because heart rate and blood pressure simply don't reset between consecutive half-minute windows. The usual fix in this book — resample to a real event rather than a fixed clock step — doesn't work here: sleep-stage bouts are short and frequent (median bout length is a single 30-second epoch), so resampling one point per bout barely downsamples the series at all, and it flattens the naive-vs-oracle gap to near zero (0.042 vs 0.035) without touching the autocorrelation.
+
+Stuck at native resolution, ECE's own answer (0.5-0.63 depending on `L`) sits well outside the naive-oracle range (0.12-0.16) instead of bridging it — a different failure mode than the steel-industry or CO2-inhalation chapters, where ECE landed *between* naive and oracle. This joins those as a documented case where real autocorrelation, not just a mean shift, defeats the model ECE assumes.
+
+---
+
+## Bootstrap Methods
+
+```{R}
+#| echo: false
+ece.test(X_mat, type = "bs.multiplier")
+ece.test(X_mat, type = "bs.parametric")
+```
