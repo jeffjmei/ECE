@@ -39,10 +39,11 @@ X_data <- X_raw |>
   mutate(
     Durables    = c(NA, diff(log(PCDGx))),
     Nondurables = c(NA, diff(log(PCNDx))),
-    Services    = c(NA, diff(log(PCESVx)))
+    Services    = c(NA, diff(log(PCESVx))),
+    Total       = c(NA, diff(log(PCECC96)))
   ) |>
   filter(!is.na(Durables)) |>
-  select(sasdate, Durables, Nondurables, Services)
+  select(sasdate, Durables, Nondurables, Services, Total)
 
 X_mat     <- as.matrix(X_data[, c("Durables", "Nondurables", "Services")])
 X_segment <- segment_mean(X_mat, penalty = "Manual", pen.value = 0.005)
@@ -260,6 +261,43 @@ kable(results, align = c("l", "c")) |>
 
 The tests split along the same line as the fixed-investment chapter. Bartlett and the naive parametric bootstrap both reject the diagonal null overwhelmingly — expected, since all three components share the same consumer spending cycle. But the two tests built on ECE's default lag-1 block difference (`bs.multiplier`, `bs.parametric.lag1.diag.psd`) don't reject at conventional levels. With near-zero autocorrelation in every series (see the ACF tab), there's no leftover momentum to blame this time. The disagreement looks structural to the block-difference construction itself, not a byproduct of unmodeled serial dependence — the same pattern the fixed-investment chapter found, now showing up on a dataset diagnostically clean enough to rule out autocorrelation as the cause.
 
+## Adding the Aggregate
+
+The three components above sum to total PCE (`PCECC96`), so adding it back in as a fourth series gives the joint test a variable that is, by construction, strongly linked to all three others.
+
+```{R pce-add-total}
+#| echo: false
+#| label: pce-add-total
+
+X_mat4 <- as.matrix(X_data[, c("Durables", "Nondurables", "Services", "Total")])
+```
+
+```{R pce-diagonal-tests-4}
+#| echo: false
+set.seed(123)
+
+results4 <- data.frame(
+  Method = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(ece.test(X_mat4, type = "bs.multiplier")$p.value, 3),
+    round(ece.test(X_mat4, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+    round(ece.test(X_mat4, type = "bs.parametric.naive")$p.value, 3),
+    round(cortest.bartlett(cor(X_mat4), nrow(X_mat4))$p.value, 3)
+  ),
+  check.names = FALSE
+)
+
+kable(results4, align = c("l", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+Adding `Total` flips both ECE bootstrap tests to reject: `bs.multiplier` goes from p = 0.281 (3-series) to p = `r results4[1, "p-value"]`, and `bs.parametric.lag1.diag.psd` goes from p = 0.401 to p = `r results4[2, "p-value"]`, right at the conventional boundary. Naive Pearson correlation with `Total` is 0.671-0.874 for every component — well above any of the three components' correlations with each other — so the joint null has a much easier target once a variable this strongly tied to the others is in the matrix. The 3-series result wasn't a false negative from ECE's block-difference construction; it was a genuinely harder test, three components correlated with each other only in the 0.26-0.75 range. Handing the same test a built-in near-linear dependency is enough to tip both bootstrap variants over the line.
+
 ---
 
-Where this leaves us: naive Pearson correlation finds all three PCE components significantly related, unsurprising since they're accounting components of the same aggregate. Removing the mean shift changes the story more for some pairs than others — Durables-Nondurables weakens under both segmentation and ECE, while Nondurables-Services strengthens sharply under ECE specifically (0.539 naive to 0.745), driven by Nondurables carrying no detected mean shift into the comparison at all. Every pairwise test agrees the correlations are real, but the joint-diagonal tests split exactly as they did in the fixed-investment chapter: Bartlett and the naive bootstrap reject, ECE's own lag-1-block-based bootstraps don't. That split recurring on a dataset with essentially no autocorrelation to explain it away suggests the two ECE bootstrap variants are conservative by construction here, not by accident of this particular series' dynamics.
+Where this leaves us: naive Pearson correlation finds all three PCE components significantly related, unsurprising since they're accounting components of the same aggregate. Removing the mean shift changes the story more for some pairs than others — Durables-Nondurables weakens under both segmentation and ECE, while Nondurables-Services strengthens sharply under ECE specifically (0.539 naive to 0.745), driven by Nondurables carrying no detected mean shift into the comparison at all. Every pairwise test agrees the correlations are real, but the joint-diagonal tests split exactly as they did in the fixed-investment chapter: Bartlett and the naive bootstrap reject, ECE's own lag-1-block-based bootstraps don't — until `Total` is added back into the matrix, at which point both flip to reject too. That split recurring on a dataset with essentially no autocorrelation to explain it away, and then resolving once a variable near-linearly dependent on the others joins the test, suggests the two ECE bootstrap variants were conservative for the 3-series case specifically because the underlying correlations were genuinely weaker there, not because of some flaw in the block-difference construction itself.
