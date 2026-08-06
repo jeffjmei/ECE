@@ -1,0 +1,249 @@
+---
+title: "Battery Aging"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+library(R.matlab)
+```
+
+NASA Prognostics Center of Excellence Li-ion Battery Aging dataset (`phm-datasets.s3.amazonaws.com/NASA/5.+Battery+Data+Set.zip`): battery `B0005`, run through repeated charge/discharge/impedance cycles at room temperature until it reached end-of-life (30% capacity fade, from 2.0 Ahr to 1.4 Ahr). Each discharge cycle records `Capacity` (Ahr); interleaved electrochemical-impedance-spectroscopy (EIS) sweeps estimate two resistance components: `Re` (electrolyte resistance) and `Rct` (charge-transfer resistance).
+
+As a battery ages, capacity fades and internal resistance rises — a well-known physical relationship. But unlike every other real-data chapter in this book, there is no discrete regime here: no logged event, no known-in-advance change point, just one continuous monotonic degradation trend across ~150 cycles. That makes this a genuinely different kind of test for ECE, whose model is piecewise-constant mean. We try it anyway, using a **rolling-mean baseline** instead of any hard segmentation, the same approach used for Interest Rates' Fed-policy-driven drift.
+
+```{R battery-load}
+#| echo: false
+#| message: false
+#| label: battery-load
+
+extract_battery <- function(path, varname) {
+  m <- readMat(path)
+  cyc <- m[[varname]][[1]]
+  n <- dim(cyc)[3]
+  types <- sapply(1:n, function(i) unlist(cyc[, 1, i][1]))
+  to_posix <- function(t) ISOdate(t[1], t[2], t[3], t[4], t[5], t[6], tz = "UTC")
+
+  discharge <- list()
+  impedance <- list()
+  for (i in 1:n) {
+    t <- to_posix(unlist(cyc[, 1, i][3]))
+    if (types[i] == "discharge") {
+      cap <- tryCatch(cyc[, 1, i][4][[1]][7][[1]], error = function(e) NA)
+      if (length(cap) == 1) discharge[[length(discharge) + 1]] <- data.frame(time = t, capacity = cap)
+    } else if (types[i] == "impedance") {
+      d <- cyc[, 1, i][4][[1]]
+      re  <- tryCatch(d[6][[1]], error = function(e) NA)
+      rct <- tryCatch(d[7][[1]], error = function(e) NA)
+      if (length(re) == 1 && length(rct) == 1) impedance[[length(impedance) + 1]] <- data.frame(time = t, re = re, rct = rct)
+    }
+  }
+  list(discharge = do.call(rbind, discharge), impedance = do.call(rbind, impedance))
+}
+
+raw <- extract_battery("../data/real-data/battery/B0005.mat", "B0005")
+dis <- raw$discharge[order(raw$discharge$time), ]
+imp <- raw$impedance[order(raw$impedance$time), ]
+
+nearest_idx <- sapply(dis$time, function(t) which.min(abs(as.numeric(imp$time) - as.numeric(t))))
+gap_hours   <- abs(as.numeric(imp$time[nearest_idx]) - as.numeric(dis$time)) / 3600
+
+X_data <- tibble(
+  cycle     = seq_len(nrow(dis)),
+  time      = dis$time,
+  Capacity  = dis$capacity,
+  Re        = imp$re[nearest_idx],
+  Rct       = imp$rct[nearest_idx],
+  gap_hours = gap_hours
+) |>
+  filter(gap_hours < 2) |>
+  mutate(cycle = row_number())
+
+n_gap_filtered <- nrow(X_data)
+
+# Drop the terminal cycle: the very last discharge cycle ever recorded for
+# this battery, with a larger impedance-pairing gap than any other retained
+# point (0.81h vs. a typical 0.54h) and a simultaneous reversal in all three
+# variables (Capacity jumps up, Re and Rct both drop) that breaks from the
+# preceding trend. Consistent with an extended rest before the equipment was
+# shut off letting the cell partially relax/recover -- a known end-of-test
+# effect, not part of the aging process this chapter is about.
+X_data <- X_data |> filter(cycle < max(cycle))
+
+X_mat <- as.matrix(X_data[, c("Capacity", "Re", "Rct")])
+win <- 5
+```
+
+Impedance sweeps weren't run after every single discharge, especially early on — some discharge cycles are hours or days away from the nearest EIS measurement, which would pair a stale resistance value against a fresher capacity reading. We keep only discharge cycles whose nearest EIS measurement is within 2 hours (`r n_gap_filtered` of the original 168 survive), which drops most of the first two weeks of testing but keeps every well-matched pair.
+
+The very last of those `r n_gap_filtered` cycles is itself an outlier: `Capacity` jumps from 1.29 back up to 1.33 Ahr while `Re` and `Rct` both drop sharply, reversing the trend all three variables had been following for the preceding ~15 cycles. It's also the single terminal discharge cycle of the entire recorded experiment, and its impedance pairing gap (0.81h) is the largest of any retained point (the typical gap elsewhere is 0.54h) — consistent with an extended rest before testing was stopped, which lets a Li-ion cell's voltage (and so its apparent capacity and resistance) partially recover. That's a real but different phenomenon from the steady capacity fade under test, so we drop this one terminal cycle, leaving `r nrow(X_data)` cycles.
+
+```{R battery-resid}
+#| echo: false
+#| label: battery-resid
+
+X_roll  <- apply(X_mat, 2, rolling_mean, window = win)
+colnames(X_roll) <- colnames(X_mat)
+X_resid <- X_mat - X_roll
+```
+
+```{R battery-tables}
+#| echo: false
+#| label: battery-tables
+
+ece_cor <- ece.cor(X_mat) |> round(3)
+rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_mat)
+
+X_resid_complete <- X_resid[complete.cases(X_resid), ]
+rolling_cor <- cor(X_resid_complete) |> round(3)
+pearson_cor <- cor(X_mat) |> round(3)
+
+ece_pmat     <- tryCatch(ece_pval(X_mat) |> round(3), error = function(e) NA)
+rolling_pmat <- cor_pval(X_resid_complete) |> round(3)
+pearson_pmat <- cor_pval(X_mat) |> round(3)
+```
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R fig-battery-series}
+#| echo: false
+#| fig-cap: "Capacity, Re, Rct across cycles. Blue = 5-cycle rolling mean."
+#| fig-height: 7
+
+X_long <- X_data |>
+  select(cycle, Capacity, Re, Rct) |>
+  bind_cols(as.data.frame(X_roll) |> rename_with(~ paste0(.x, "_roll"), everything())) |>
+  pivot_longer(-cycle, names_to = "series", values_to = "value") |>
+  mutate(
+    type = if_else(str_ends(series, "_roll"), "Rolling Mean", "Raw"),
+    var  = str_remove(series, "_roll$")
+  )
+
+ggplot(X_long, aes(x = cycle, y = value)) +
+  geom_line(data = ~ filter(.x, type == "Raw"), color = "gray50", alpha = 0.6, linewidth = 0.3) +
+  geom_line(data = ~ filter(.x, type == "Rolling Mean"), color = "steelblue", linewidth = 0.7) +
+  facet_wrap(~var, ncol = 1, scales = "free_y") +
+  labs(title = "B0005: Capacity Fade and Rising Internal Resistance", x = "Cycle", y = NULL) +
+  theme_minimal()
+```
+
+`Capacity` declines steadily from 1.85 to 1.29 Ahr; `Re` and `Rct` both climb, with visible cycle-to-cycle noise riding on top of the trend.
+
+## Residuals
+
+```{R fig-battery-residual}
+#| echo: false
+
+X_data |>
+  select(cycle) |>
+  bind_cols(as.data.frame(X_resid)) |>
+  pivot_longer(-cycle, names_to = "series", values_to = "value") |>
+  ggplot(aes(cycle, value, color = series)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  labs(title = "Rolling-Mean Residuals", x = "Cycle", y = "Anomaly", color = NULL) +
+  theme_minimal()
+```
+
+With the trend removed, what's left looks close to noise for all three series — no obvious leftover structure.
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R acf-battery-naive}
+#| echo: false
+
+par(mfrow = c(1, 3), mar = c(2, 3, 2, 1), oma = c(2, 0, 0, 0), mgp = c(1.8, 1, 0))
+acf(X_resid[, "Capacity"], main = "Capacity", na.action = na.pass)
+acf(X_resid[, "Re"], main = "Re", na.action = na.pass)
+acf(X_resid[, "Rct"], main = "Rct", na.action = na.pass)
+mtext("Lag (cycles)", side = 1, outer = TRUE, line = 0.5)
+```
+
+On the raw series, lag-1 autocorrelation is severe (0.92-0.98) — unsurprising for a monotonic trend. A 5-cycle rolling mean is enough to bring residual lag-1 autocorrelation down near zero for `Capacity` and `Re`, and to a modest -0.28 for `Rct`.
+
+### Mean-Shift-Invariant
+
+```{R acf-battery-invariant}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+Applied directly to the raw (undetrended) series, `SIP::SIP.acf` shows the same severe persistence as the naive ACF on raw data — it has no way to know this is a trend rather than a mean shift.
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R trend-battery-naive}
+#| echo: false
+
+plot_naive_terms(X_mat, window = win)
+```
+
+### Mean-Shift-Invariant
+
+```{R trend-battery-invariant}
+#| echo: false
+
+plot_ece_terms(X_mat, window = win)
+```
+
+:::
+
+## Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(ece_cor,     caption = "ECE Correlation")
+knitr::kable(rolling_cor, caption = "Rolling Correlation")
+knitr::kable(pearson_cor, caption = "Pearson Correlation")
+```
+
+Naive Pearson finds everything strongly related — `Capacity`-`Re` at -0.88, `Capacity`-`Rct` at -0.93, `Re`-`Rct` at 0.94 — because all three variables track the same aging arc. Once the shared trend is removed (5-cycle rolling mean), most of that collapses: `Capacity`-`Re` drops to 0.08 and `Re`-`Rct` to -0.09, both essentially noise. `Capacity`-`Rct` is the exception, holding at -0.28 — cycle-to-cycle wiggles in charge-transfer resistance still track cycle-to-cycle wiggles in capacity beyond the shared trend, plausibly because `Rct` reflects the same electrode kinetics driving capacity loss, while `Re` (bulk electrolyte resistance) does not. ECE, given the raw untrended series and blind to any of this, gets confidently the wrong answer in two different ways: it puts `Capacity`-`Re` at **+0.91** — a sign flip from Pearson's -0.88, not a partial correction toward the rolling-mean answer — and it puts `Capacity`-`Rct` at essentially zero (0.15), completely missing the one relationship that both Pearson and the rolling baseline agree is real.
+
+## P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(ece_pmat,     caption = "ECE P-Values")
+knitr::kable(rolling_pmat, caption = "Rolling P-Values")
+knitr::kable(pearson_pmat, caption = "Pearson P-Values")
+```
+
+Pearson rejects independence everywhere (p far below 0.001), simply because everything trends together. Rolling p-values agree with the Rolling Correlation table: `Capacity`-`Rct` is significant (p = 0.001), `Capacity`-`Re` and `Re`-`Rct` are not (p = 0.33, p = 0.29). ECE gets this backwards: it's borderline for `Capacity`-`Re` (p = 0.055, the pair whose sign it also flipped) and firmly not significant for `Capacity`-`Rct` (p = 0.89) — the one pair every other method agrees is real.
+
+:::
+
+---
+
+## Bootstrap Methods
+
+```{R}
+#| echo: false
+ece.test(X_mat, type = "bs.multiplier")
+ece.test(X_mat, type = "bs.parametric")
+```
+
+## Where this leaves us
+
+Battery aging is a poor match for ECE's model on its own terms: there is no discrete regime here, just one smooth monotonic trend, and ECE's block-difference estimator — built to be invariant to piecewise-*constant* means — has no mechanism for that. Applied directly to the raw series it doesn't degrade gracefully or fail loudly; it returns confident, plausible-looking numbers that are simply wrong. It flips the sign on `Capacity`-`Re` relative to every other method, and it completely misses `Capacity`-`Rct`, the one relationship that Pearson, the rolling-mean baseline, and basic battery electrochemistry all agree is real. A plain 5-cycle rolling mean, with no claim to being mean-shift-invariant at all, is what actually recovers a sensible answer here: most of the naive correlation between capacity and resistance is just parallel trending, except for `Capacity`-`Rct`, which holds up beyond the shared trend.
+
+The lesson isn't about batteries specifically — it's a boundary condition on ECE itself. This book's other real-data chapters work because their nonstationarity is a genuine discrete regime (an antenna swap, a dam closure, a sleep-stage transition) that a piecewise-constant mean model can represent, even approximately. A continuous degradation trend isn't that, and forcing ECE onto one produces a wrong answer with high confidence rather than a graceful failure. See `smooth-mean.qmd` and `piecewise-linear.qmd` for the unresolved question of what a genuinely trend-aware version of ECE would look like.

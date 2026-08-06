@@ -46,6 +46,7 @@ book:
         - sleep-polysomnography.qmd
         - detroit-lake-algal-bloom.qmd
         - phillips-curve.qmd
+        - battery-aging.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd
