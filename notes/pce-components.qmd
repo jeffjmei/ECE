@@ -168,7 +168,117 @@ window <- max(10, floor(nrow(X_mat) / 5))
 plot_ece_terms(X_mat, window = window)
 ```
 
+Every panel's largest single term value falls at the same quarter: 2020-06-01, the COVID lockdown shock. The histogram below shows the full term distribution on the same 3x3 layout (diagonal = variance term, upper triangle = covariance term), so that single quarter's weight is visible directly.
+
+```{R pce-trend-ece-data}
+#| echo: false
+
+cn  <- colnames(X_mat)
+idx <- combn(ncol(X_mat), 2)
+n   <- nrow(X_mat)
+
+ece_cov_dat <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
+  i <- idx[1, k]
+  j <- idx[2, k]
+  s <- lag_term(X_mat[, i], X_mat[, j])
+  tibble(t = seq_len(n), row = cn[i], col = cn[j], raw = s)
+})
+ece_var_dat <- purrr::map_dfr(seq_len(ncol(X_mat)), function(i) {
+  s <- lag_term(X_mat[, i], X_mat[, i])
+  tibble(t = seq_len(n), row = cn[i], col = cn[i], raw = s)
+})
+ece_terms_dat <- bind_rows(ece_cov_dat, ece_var_dat) |>
+  mutate(row = factor(row, levels = cn), col = factor(col, levels = cn))
+```
+
+```{R pce-trend-hist}
+#| echo: false
+
+ece_terms_summary <- ece_terms_dat |>
+  group_by(row, col) |>
+  summarize(mean = mean(raw), median = median(raw), .groups = "drop")
+
+ece_terms_trimmed <- ece_terms_dat |>
+  group_by(row, col) |>
+  filter(raw > quantile(raw, 0.005), raw < quantile(raw, 0.995)) |>
+  ungroup()
+
+ggplot(ece_terms_trimmed, aes(x = raw)) +
+  geom_histogram(bins = 40, fill = "steelblue", color = "white") +
+  geom_vline(data = ece_terms_summary, aes(xintercept = mean), color = "firebrick", linetype = "dashed") +
+  geom_vline(data = ece_terms_summary, aes(xintercept = median), color = "darkorange", linetype = "dashed") +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free") +
+  labs(x = "ECE term value (middle 99%)", y = "Count") +
+  theme_minimal()
+```
+
+Almost every observation sits in a single bar near zero. The mean (dashed red) sits visibly to the right of the median (dashed orange) in every panel — the 2020-06-01 term alone is large enough to pull the mean well off the bulk of the distribution, even trimmed to the middle 99%. That single quarter is exactly what the Kappa tab below flags as driving excess kurtosis in every pair, especially those involving `Services`.
+
 :::
+
+## Kappa
+
+The default pairwise z-test (`ece.test(..., type = "z.test")`) uses `kappa = "gaussian"`: a delta-method standard error that assumes the fourth-moment terms take their Gaussian values (`k40 = k04 = 3`, `k22 = 1 + 2ρ²`, `k31 = k13 = 3ρ`). We check that assumption directly, estimating these terms from the segmented residuals (`ece.kappa(..., method = "mom")`):
+
+```{R pce-kappa-check}
+#| echo: false
+
+cn  <- colnames(X_mat)
+idx <- combn(ncol(X_mat), 2)
+
+kappa_tbl <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
+  i <- idx[1, k]
+  j <- idx[2, k]
+  kap <- ece.kappa(X_resid[, i], X_resid[, j], method = "mom")
+  tibble(
+    Pair = paste(cn[i], "/", cn[j]),
+    k40  = round(kap$k40, 2),
+    k31  = round(kap$k31, 2),
+    k22  = round(kap$k22, 2),
+    k13  = round(kap$k13, 2),
+    k04  = round(kap$k04, 2)
+  )
+})
+
+kable(kappa_tbl, align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+Every estimate here runs well above the Gaussian reference (`k40`, `k04` near 3; `k22` near 1). `Nondurables/Services` is the most extreme, with `k40` = 31.69, `k22` = 44.61, `k04` = 83.11. `Services`' own marginal term (`k04`, last two rows) reaches 83.11 — consistent with the Trend tab's histogram, where a single quarter (2020-06-01) sits far outside the bulk of every distribution `Services` participates in. The `kappa = "gaussian"` z-test understates the true standard error for these pairs.
+
+**Fix: test under the null instead of estimating all five kappas.** `ece.cor.se()` forces `ρ = 0` when `rho = 0` is passed. Every kappa term with a nonzero coefficient in the SE formula — `k40`, `k04`, `k31`, `k13` — carries a factor of `ρ` or `ρ²`, so at `ρ = 0` they all drop out algebraically. Only `k22` remains, and under true independence it collapses to exactly 1 for any marginal distribution, not just Gaussian. The Correlation section below uses this null-restricted z-test — `kappa = ece.kappa(X, rho = 0, method = "mom")`, `rho = 0` — for both `ECE` and `Segment-ECE`, instead of the full Gaussian one.
+
+## Omega
+
+This chapter residualizes with `segment_mean(penalty = "Manual", pen.value = 0.005)`, a penalty chosen by eye to recover economically sensible breakpoints — not a principled fit like CPI Components' BIC penalty. We check it against ECE's own segmentation-free estimate of $\omega$, the mean-heterogeneity parameter from `omega-estimation.qmd`. `ece.complexity()` estimates $\omega$ directly from the raw data via lagged differences. If the hand-tuned segmentation describes the data well, the same $\omega$ quantity computed from the fitted segmented mean should closely match it.
+
+```{R pce-omega-check}
+#| echo: false
+
+n  <- nrow(X_mat)
+cn <- colnames(X_mat)
+
+ece_omega <- ece.complexity(X_mat) |> round(6)
+rownames(ece_omega) <- colnames(ece_omega) <- cn
+
+seg_omega <- matrix(0, ncol(X_mat), ncol(X_mat), dimnames = list(cn, cn))
+for (i in seq_len(ncol(X_mat))) {
+  for (j in seq_len(ncol(X_mat))) {
+    seg_omega[i, j] <- lag_diff(X_segment[, i], X_segment[, j], k = 1) / n
+  }
+}
+seg_omega <- round(seg_omega, 6)
+```
+
+```{R pce-omega-check-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(ece_omega, caption = "ECE (raw data, no segmentation)")
+knitr::kable(seg_omega, caption = "Segmentation-implied")
+```
+
+Unlike CPI Components, where the two estimates agreed to within 2%, they disagree here — in sign as well as magnitude. ECE's own estimate is negative everywhere, including on the diagonal; the segmentation-implied version is positive wherever it found a break (`Durables`, `Services`) and exactly zero wherever it didn't (`Nondurables`, which found no segments at all — see the Plot tab). Both sets of numbers are small: on the order of 1e-4 to 1e-6, next to values in the tens for CPI's raw price-index levels. That scale difference is the more informative signal. CPI's raw levels carry six decades of compounding inflation, a mean-heterogeneity signal orders of magnitude larger than anything in this chapter's already-differenced growth rates. There simply isn't much mean-shift structure left to detect here, which is consistent with this chapter's near-zero ACF (see the ACF tab) and casts the hand-picked `pen.value = 0.005` breakpoints as a reasonable read of a mostly-flat mean process, not a confirmed one.
 
 :::
 
@@ -177,15 +287,36 @@ plot_ece_terms(X_mat, window = window)
 ```{R pce-calc-cor}
 #| echo: false
 
-ece_cor         <- ece.cor(X_mat) |> round(3)
-rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_mat)
+ece_cor               <- ece.cor(X_mat) |> round(3)
+rownames(ece_cor)     <- colnames(ece_cor) <- colnames(X_mat)
+seg_ece_cor           <- ece.cor(X_resid) |> round(3)
+rownames(seg_ece_cor) <- colnames(seg_ece_cor) <- colnames(X_mat)
 
-segment_cor     <- cor(X_resid) |> round(3)
-pearson_cor     <- cor(X_mat) |> round(3)
+resid_cor   <- cor(X_resid) |> round(3)
+pearson_cor <- cor(X_mat) |> round(3)
 
-ece_pmat        <- ece_pval(X_mat) |> round(3)
-segment_pmat    <- cor_pval(X_resid) |> round(3)
-pearson_pmat    <- cor_pval(X_mat) |> round(3)
+# Null-restricted z-test (rho = 0): avoids assuming Gaussian k40/k04/k31/k13,
+# which the Kappa diagnostic tab shows are badly misspecified for this data.
+ece_pval_null <- function(X) {
+  p <- ncol(X)
+  pval_mat <- matrix(NA, p, p)
+  colnames(pval_mat) <- rownames(pval_mat) <- colnames(X)
+  for (i in 1:(p - 1)) {
+    for (j in (i + 1):p) {
+      pair <- cbind(X[, i], X[, j])
+      pval <- ece.test(pair, type = "z.test", kappa = ece.kappa(pair, rho = 0, method = "mom"), rho = 0)$p.value
+      pval_mat[i, j] <- pval
+      pval_mat[j, i] <- pval
+    }
+  }
+  diag(pval_mat) <- 0
+  pval_mat
+}
+
+ece_pmat     <- ece_pval_null(X_mat) |> round(3)
+seg_ece_pmat <- ece_pval_null(X_resid) |> round(3)
+resid_pmat   <- cor_pval(X_resid) |> round(3)
+pearson_pmat <- cor_pval(X_mat) |> round(3)
 
 # Bold any off-diagonal cell whose corresponding p-value is < 0.05.
 bold_sig <- function(display_mat, pval_mat) {
@@ -206,34 +337,38 @@ bold_sig <- function(display_mat, pval_mat) {
 ## Correlation
 
 ```{R pce-output-cor}
-#| layout-ncol: 3
+#| layout-ncol: 2
 #| echo: false
 
-knitr::kable(bold_sig(ece_cor, ece_pmat),         caption = "ECE Correlation",     escape = FALSE, format = "html")
-knitr::kable(bold_sig(segment_cor, segment_pmat), caption = "Segment Correlation", escape = FALSE, format = "html")
-knitr::kable(bold_sig(pearson_cor, pearson_pmat), caption = "Pearson Correlation", escape = FALSE, format = "html")
+knitr::kable(bold_sig(ece_cor, ece_pmat),         caption = "ECE Correlation", escape = FALSE, format = "html")
+knitr::kable(bold_sig(seg_ece_cor, seg_ece_pmat), caption = "Segment-ECE Correlation", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pearson_cor, pearson_pmat), caption = "Naive Pearson Correlation", escape = FALSE, format = "html")
+knitr::kable(bold_sig(resid_cor, resid_pmat),     caption = "Residual Pearson Correlation", escape = FALSE, format = "html")
 ```
 
 ## P-Values
 
 ```{R pce-output-pval}
-#| layout-ncol: 3
+#| layout-ncol: 2
 #| echo: false
 
-knitr::kable(bold_sig(ece_pmat, ece_pmat),         caption = "ECE P-Values",     escape = FALSE, format = "html")
-knitr::kable(bold_sig(segment_pmat, segment_pmat), caption = "Segment P-Values", escape = FALSE, format = "html")
-knitr::kable(bold_sig(pearson_pmat, pearson_pmat), caption = "Pearson P-Values", escape = FALSE, format = "html")
+knitr::kable(bold_sig(ece_pmat, ece_pmat),         caption = "ECE P-Values (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(seg_ece_pmat, seg_ece_pmat), caption = "Segment-ECE P-Values (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pearson_pmat, pearson_pmat), caption = "Naive Pearson P-Values", escape = FALSE, format = "html")
+knitr::kable(bold_sig(resid_pmat, resid_pmat),     caption = "Residual Pearson P-Values", escape = FALSE, format = "html")
 ```
 
 :::
 
 Bold marks pairs significant at p < 0.05: correlation cells bold when the matching p-value clears it, p-value cells bold when they clear it themselves.
 
-Every pair is significant under all three methods, but the point estimates disagree on how strong. Naive Pearson puts Durables-Nondurables at 0.478 and Nondurables-Services at 0.539 — the two roughly comparable. Removing the segmented mean pulls Durables-Nondurables down to 0.310, while Nondurables-Services barely moves (0.579). ECE goes further still on that same pair, to 0.745 — well above both naive and segmented Pearson. As in the fixed-investment chapter, the gap traces back to an asymmetry in what got segmented: Nondurables has no detected breaks at all, so its full autocorrelation-free residual carries into every comparison unchanged, while its partners (Durables, Services) each had a real segment removed. ECE's block-difference construction and an oracle-residual Pearson correlation handle that asymmetry differently, and here they disagree by more than in any book pairing that segments cleanly on both sides.
+Naive Pearson puts Durables-Nondurables at 0.478 and Nondurables-Services at 0.539, both significant. Residualizing pulls Durables-Nondurables down to 0.310 (still significant, p = 0.022) and Nondurables-Services to 0.579 (still significant). ECE (raw) and Segment-ECE go further on that same pair — 0.745 and 0.720 — well above either Pearson version, for the reason the Omega tab traces to `Nondurables` carrying no detected mean shift into every comparison it's part of, unlike its partners.
+
+But under the null-restricted z-test (Kappa tab), only Durables-Nondurables clears p < 0.05 for both ECE (p = 0.043) and Segment-ECE (p = 0.038). Durables-Services and Nondurables-Services — the two pairs involving `Services`, whose residuals carry the heaviest excess kurtosis in the Kappa table — don't reject under either ECE variant (p = 0.127-0.183), despite Pearson finding both significant on the same data. The two families of test agree on which pair is strongest and disagree on whether the other two are distinguishable from noise, and the disagreement traces directly to the kappa misspecification diagnosed above, not to a different point estimate.
 
 ## Results
 
-Beyond the pairwise correlations above, we can test the joint null hypothesis that the full 3x3 correlation matrix is diagonal — i.e. that none of the three PCE components are contemporaneously correlated.
+Beyond the pairwise correlations above, we can test the joint null hypothesis that the full 3x3 correlation matrix is diagonal — i.e. that none of the three PCE components are contemporaneously correlated. We run all four tests on the raw growth rates, then again on `X_resid` — the same segmented residuals used for Segment-ECE above — as a check.
 
 ```{R pce-diagonal-tests}
 #| echo: false
@@ -255,11 +390,35 @@ results <- data.frame(
   check.names = FALSE
 )
 
-kable(results, align = c("l", "c")) |>
-  kable_styling(full_width = FALSE)
+set.seed(123)
+results_seg <- data.frame(
+  Method = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(ece.test(X_resid, type = "bs.multiplier")$p.value, 3),
+    round(ece.test(X_resid, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+    round(ece.test(X_resid, type = "bs.parametric.naive")$p.value, 3),
+    round(cortest.bartlett(cor(X_resid), nrow(X_resid))$p.value, 3)
+  ),
+  check.names = FALSE
+)
 ```
 
-The tests split along the same line as the fixed-investment chapter. Bartlett and the naive parametric bootstrap both reject the diagonal null overwhelmingly — expected, since all three components share the same consumer spending cycle. But the two tests built on ECE's default lag-1 block difference (`bs.multiplier`, `bs.parametric.lag1.diag.psd`) don't reject at conventional levels. With near-zero autocorrelation in every series (see the ACF tab), there's no leftover momentum to blame this time. The disagreement looks structural to the block-difference construction itself, not a byproduct of unmodeled serial dependence — the same pattern the fixed-investment chapter found, now showing up on a dataset diagnostically clean enough to rule out autocorrelation as the cause.
+```{R pce-diagonal-tests-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(results,     caption = "Raw Growth Rates")
+knitr::kable(results_seg, caption = "Segmented Residuals")
+```
+
+On the raw growth rates (left), the tests split. Bartlett and the naive parametric bootstrap both reject the diagonal null outright — expected, since all three components share the same consumer spending cycle. But the two tests built on ECE's default lag-1 block difference (`bs.multiplier`, `bs.parametric.lag1.diag.psd`) don't reject at conventional levels. With near-zero autocorrelation in every series (see the ACF tab), there's no leftover momentum to blame this time, unlike the CPI Components chapter's raw-level rejections, which turned out to be an artifact of unremoved trend.
+
+Removing the segmented mean (right) barely moves any of the four p-values: 0.281 to 0.261, 0.401 to 0.264, 0.004 to 0.008, and Bartlett stays at essentially 0. That's a different outcome than CPI Components, where residualizing flipped Bartlett and the naive bootstrap from reject to fail-to-reject. Here Bartlett keeps rejecting even after the mean shift is removed by hand — consistent with the Omega tab's finding that this data doesn't carry much mean-heterogeneity to begin with, and with the pairwise correlations above, where two of three pairs stay significant under residualized Pearson. The split between the two ECE bootstrap variants and everything else isn't a mean-shift artifact here; it's a genuine disagreement in how the four tests treat the same, already fairly stationary data.
 
 ## Adding the Aggregate
 
@@ -300,4 +459,8 @@ Adding `Total` flips both ECE bootstrap tests to reject: `bs.multiplier` goes fr
 
 ---
 
-Where this leaves us: naive Pearson correlation finds all three PCE components significantly related, unsurprising since they're accounting components of the same aggregate. Removing the mean shift changes the story more for some pairs than others — Durables-Nondurables weakens under both segmentation and ECE, while Nondurables-Services strengthens sharply under ECE specifically (0.539 naive to 0.745), driven by Nondurables carrying no detected mean shift into the comparison at all. Every pairwise test agrees the correlations are real, but the joint-diagonal tests split exactly as they did in the fixed-investment chapter: Bartlett and the naive bootstrap reject, ECE's own lag-1-block-based bootstraps don't — until `Total` is added back into the matrix, at which point both flip to reject too. That split recurring on a dataset with essentially no autocorrelation to explain it away, and then resolving once a variable near-linearly dependent on the others joins the test, suggests the two ECE bootstrap variants were conservative for the 3-series case specifically because the underlying correlations were genuinely weaker there, not because of some flaw in the block-difference construction itself.
+Where this leaves us: naive Pearson correlation finds all three PCE components significantly related, unsurprising since they're accounting components of the same aggregate. Removing the mean shift changes the story more for some pairs than others — Durables-Nondurables weakens under both residualized Pearson and ECE, while Nondurables-Services strengthens sharply under ECE specifically (0.539 naive to 0.745), driven by Nondurables carrying no detected mean shift into the comparison at all — a finding the Omega tab independently corroborates, since this dataset's mean-heterogeneity is small enough that ECE's own segmentation-free estimate and the hand-tuned `segment_mean()` fit disagree even in sign.
+
+Whether that gap counts as "real" depends on which z-test you trust. The Kappa tab shows the default Gaussian z-test is badly misspecified here — every pair's fourth-moment terms run 2x to 30x their Gaussian reference, traceable to the single 2020-06-01 COVID quarter dominating the term distribution (Trend tab). Under the null-restricted z-test built to route around that misspecification, only Durables-Nondurables survives at p < 0.05 for both ECE and Segment-ECE; the two pairs touching `Services` don't, despite both being significant under either Pearson variant. Naive Pearson and Bartlett can't see this distinction at all — a reminder that "significant under Pearson" and "significant under a z-test calibrated to this data's actual moments" are different claims, not just different point estimates.
+
+The joint-diagonal tests split along a different line: Bartlett and the naive bootstrap reject on both raw and residualized data, ECE's own lag-1-block-based bootstraps don't reject either version — until `Total` is added back into the matrix, at which point both flip to reject too. Unlike CPI Components, residualizing doesn't resolve this split here, because there was little mean shift for it to remove in the first place. What resolves it is a variable built to be strongly, near-linearly dependent on the other three joining the test — evidence the ECE bootstrap non-rejection reflects the three components' genuinely modest mutual correlation (0.26-0.75), not a flaw in the block-difference construction.
