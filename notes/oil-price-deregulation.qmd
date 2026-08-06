@@ -1,0 +1,229 @@
+---
+title: "Oil Price Deregulation"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+```
+
+FRED-MD, the McCracken-Ng monthly macroeconomic database, monthly 1959-2026. Two series:
+
+- `OilGrowth`: monthly log growth of `OILPRICEx`, the spot price of West Texas Intermediate crude oil
+- `CPITransGrowth`: monthly log growth of `CPITRNSL`, the CPI for Transportation (the basket of consumer costs most directly exposed to gasoline and fuel prices)
+
+The documented event here isn't a shock, it's a regulatory switch: from 1971 to 1981, US domestic crude oil prices were under a patchwork of federal price controls, starting with Nixon's 1971 wage-price freeze and continuing, with modifications, straight through the 1973 OPEC embargo and the 1979 energy crisis. Those controls ended on **1981-01-28**, when Reagan's Executive Order 12287 fully deregulated domestic crude oil prices. Before that date, `OilGrowth` is visibly, almost eerily flat — administratively set prices simply can't move the way a free market does, even during a global supply shock. After it, both series look like ordinary macro data.
+
+```{R oil-load}
+#| echo: false
+#| message: false
+#| label: oil-load
+
+X_data <- read_csv("../data/real-data/oil-price-deregulation/oil_cpi_transport_fredmd.csv", show_col_types = FALSE) |>
+  arrange(sasdate) |>
+  mutate(
+    doil = c(NA, diff(log(OILPRICEx))),
+    dcpi = c(NA, diff(log(CPITRNSL)))
+  ) |>
+  filter(!is.na(doil)) |>
+  mutate(post = sasdate >= as.Date("1981-01-28"))
+
+X_mat <- as.matrix(X_data[, c("doil", "dcpi")])
+colnames(X_mat) <- c("OilGrowth", "CPITransGrowth")
+win <- 24
+```
+
+`r nrow(X_data)` monthly points, 1959-02 to 2026-04; `r sum(!X_data$post)` pre-deregulation, `r sum(X_data$post)` post-deregulation.
+
+```{R oil-oracle}
+#| echo: false
+#| label: oil-oracle
+
+oracle_resid <- function(X, grp) {
+  R <- sapply(colnames(X), function(cn) X[, cn] - ave(X[, cn], grp))
+  colnames(R) <- colnames(X)
+  R
+}
+
+X_oracle <- oracle_resid(X_mat, X_data$post)
+```
+
+```{R oil-tables}
+#| echo: false
+#| label: oil-tables
+
+L_ece <- 24
+
+ece_cor <- ece.cor(X_mat, L = L_ece) |> round(3)
+rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_mat)
+
+oracle_cor  <- cor(X_oracle) |> round(3)
+pearson_cor <- cor(X_mat) |> round(3)
+
+oracle_pmat  <- cor_pval(X_oracle) |> round(3)
+pearson_pmat <- cor_pval(X_mat) |> round(3)
+
+oracle_p_raw  <- cor.test(X_oracle[, "OilGrowth"], X_oracle[, "CPITransGrowth"])$p.value
+pearson_p_raw <- cor.test(X_mat[, "OilGrowth"], X_mat[, "CPITransGrowth"])$p.value
+
+# As in the Phillips Curve chapter, ece.test()'s z-test hardcodes L = 2
+# internally. Compute the z-test by hand at the L = 24 used for the point
+# estimate above.
+ece_se_L24  <- ece.cor.se(X_mat[, "OilGrowth"], X_mat[, "CPITransGrowth"], L = L_ece, kappa = "gaussian")
+ece_z_pval  <- 2 * pnorm(abs(ece_cor[1, 2] / ece_se_L24), lower.tail = FALSE)
+```
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R fig-oil-series}
+#| echo: false
+#| fig-cap: "Oil price growth and CPI-Transportation growth, monthly 1959-2026. Red = 1981-01-28 crude oil price deregulation."
+#| fig-height: 6
+
+X_data |>
+  select(sasdate, post, OilGrowth = doil, CPITransGrowth = dcpi) |>
+  pivot_longer(c(OilGrowth, CPITransGrowth), names_to = "series", values_to = "value") |>
+  ggplot(aes(sasdate, value)) +
+  geom_line() +
+  geom_vline(xintercept = as.Date("1981-01-28"), color = "red", linetype = "dashed") +
+  facet_wrap(~series, ncol = 1, scales = "free_y") +
+  labs(title = "Oil price growth vs. CPI-Transportation growth, 1959-2026", x = NULL, y = NULL) +
+  theme_minimal()
+```
+
+`OilGrowth` is nearly a flat line through the 1970s, including through the 1973 embargo, which barely registers — the controlled price simply wasn't allowed to reflect the shock. After 1981 both series show ordinary market volatility, and visibly move together far more often.
+
+## Residuals
+
+```{R fig-oil-residual}
+#| echo: false
+
+X_data |>
+  select(sasdate) |>
+  bind_cols(as.data.frame(X_oracle)) |>
+  pivot_longer(-sasdate, names_to = "series", values_to = "value") |>
+  ggplot(aes(sasdate, value, color = series)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  labs(title = "Oracle Residuals (pre/post-1981 mean removed)", x = NULL, y = "Anomaly", color = NULL) +
+  theme_minimal()
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Oracle
+
+```{R acf-oil-oracle}
+#| echo: false
+
+par(mfrow = c(1, 2), mar = c(2, 3, 2, 1), oma = c(2, 0, 0, 0), mgp = c(1.8, 1, 0))
+acf(X_oracle[, "OilGrowth"], main = "OilGrowth")
+acf(X_oracle[, "CPITransGrowth"], main = "CPITransGrowth")
+mtext("Lag (months)", side = 1, outer = TRUE, line = 0.5)
+```
+
+Lag-1 autocorrelation of 0.24 (`OilGrowth`) and 0.43 (`CPITransGrowth`) — moderate, and well below the 0.7-0.98 range that broke the hourly-sensor chapters, but not as clean as Phillips Curve's `UnempChange` (0.10). Monthly consumer price indices are constructed with some built-in smoothing, which likely explains why `CPITransGrowth` carries more residual momentum than a raw market price series would.
+
+### Mean-Shift-Invariant
+
+```{R acf-oil-invariant}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Oracle
+
+```{R trend-oil-oracle}
+#| echo: false
+
+S_oracle <- X_oracle[, "OilGrowth"] * X_oracle[, "CPITransGrowth"]
+S_smooth <- stats::filter(S_oracle, rep(1 / win, win), sides = 2)
+
+par(mar = c(3, 3, 1, 1), mgp = c(1.8, 1, 0))
+ylim <- quantile(S_oracle, probs = c(0.01, 0.99), na.rm = TRUE)
+plot(S_oracle, type = "l", col = "lightgray", ylab = "OilGrowth x CPITransGrowth (oracle residuals)", xlab = "Index (months)", ylim = ylim)
+abline(h = mean(S_oracle), col = "blue")
+lines(S_smooth)
+legend("topright", legend = sprintf("%.4f", mean(S_oracle)), text.col = "blue", bty = "n", cex = 0.8)
+```
+
+### Mean-Shift-Invariant
+
+```{R trend-oil-invariant}
+#| echo: false
+
+plot_ece_terms(X_mat, window = win)
+```
+
+:::
+
+## Variance
+
+```{R variance-oil}
+#| echo: false
+
+plot_ece_variance(X_mat, window = win)
+```
+
+## Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(ece_cor,     caption = "ECE Correlation")
+knitr::kable(oracle_cor,  caption = "Oracle Correlation")
+knitr::kable(pearson_cor, caption = "Pearson Correlation")
+```
+
+Naive Pearson correlation is 0.486 — one of the strongest relationships in this book, and about as expected: oil is a direct input to transportation costs. Removing the pre/post-1981 mean shift barely moves it, to 0.485. That's not a typo or a coincidence of this particular split: we checked several other ways of drawing a regime here (the 1973 embargo alone, a set of six documented oil-shock windows spanning 1973-2022, the entire 1973-82 "energy crisis" decade) and every one of them left the pooled correlation essentially unchanged. As in the Phillips Curve chapter, the real story here isn't a mean shift at all — deregulation changed the *variance* of `OilGrowth` (monthly sd roughly doubles, 0.059 to 0.093) and the *strength* of the correlation (0.23 pre-1981, 0.52 post-1981), not the average level of either series. There is no mean shift for the Oracle trick to remove, which is itself informative: it means this chapter can isolate a question the other regime-shift chapters can't, namely what ECE does when there's nothing to correct for.
+
+ECE (`L = 24`) lands at 0.450, close to both Naive and Oracle. But that number is the end of a much more interesting sweep. At the package's hardcoded default (`L = 2`), `ece.cor` returns **-0.013** — not close to 0.486, not even the right sign consistently across resampling, effectively noise. Raising `L` produces a smooth, monotonic climb: 0.215 at `L = 4`, 0.357 at `L = 8`, 0.404 at `L = 12`, 0.450 at `L = 24`, 0.473 at `L = 48` — converging toward the naive/oracle number as `L` grows, without ever overshooting it or oscillating the way the Phillips Curve estimate did at small `L`. With `n = 806` there's enough data for ECE's own asymptotics to actually kick in; Phillips Curve's instability at small `L` looks, in retrospect, more like a small-sample problem than a property of block-differencing itself.
+
+## P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(oracle_pmat,  caption = "Oracle P-Values")
+knitr::kable(pearson_pmat, caption = "Pearson P-Values")
+```
+
+Naive and Oracle both reject independence overwhelmingly (p = `r format(pearson_p_raw, scientific=TRUE, digits=3)`, p = `r format(oracle_p_raw, scientific=TRUE, digits=3)`), unsurprising with n = 806 and a correlation this size.
+
+We again compute ECE's z-test by hand rather than through `ece.test(type = "z.test")`, for the same reason as the Phillips Curve chapter: that wrapper is hardcoded to `L = 2`. At `L = 2` here it doesn't produce an out-of-range correlation the way it did on the smaller Phillips Curve series, but it does produce a badly wrong one: estimate = -0.013, p = 0.905 — a confident failure to reject independence on what is, by every other measure in this chapter, one of the strongest and most significant relationships in the book. At `L = 24`, matching the point estimate above, the hand-computed z-test gives estimate = `r round(ece_cor[1,2], 3)`, se = `r round(ece_se_L24, 4)`, p = `r format(ece_z_pval, scientific=TRUE, digits=3)` — decisively significant, in line with Naive and Oracle. The bootstrap methods below share the `L = 2` wrapper's default lag-1 construction and inherit the same problem.
+
+:::
+
+---
+
+## Bootstrap Methods
+
+```{R}
+#| echo: false
+ece.test(X_mat, type = "bs.multiplier")
+ece.test(X_mat, type = "bs.parametric")
+```
+
+Both bootstrap variants, built on the same fixed lag-1 terms as the default z-test, fail to reject independence (multiplier p ≈ 0.25, parametric p ≈ 0.93) — consistent with the `L = 2` point estimate near zero, and consistent with neither bootstrap method exposing an `L` argument to fix it the way we could for the z-test.
+
+## Where this leaves us
+
+This chapter is best read as a companion to Phillips Curve, using the same underlying finding — `ece.test`'s hardcoded `L = 2` badly understates a real relationship — on a dataset built to isolate it. With `n = 806` monthly points and moderate autocorrelation, there's no ambiguity about what a better `L` should recover: correlation climbs smoothly and monotonically from -0.013 at `L = 2` to 0.473 at `L = 48`, tracking naive Pearson (0.486) the whole way, with no overshoot and no unstable region. Phillips Curve's instability at small `L` — a correlation estimate that swung from -1.74 (`L = 2`, invalid) to -0.57 (`L = 3`) to -0.20 (`L = 15`) with no plateau in sight — reads less like a property of block-differencing and more like what happens when you ask it to do that with 131 points instead of 806.
+
+The other half of the story is what this dataset does *not* have: a mean shift. Every regime definition we tried (the exact deregulation date, the 1973 embargo alone, a set of six documented oil-shock windows, the whole 1973-82 energy-crisis decade) left naive and oracle correlation essentially identical, because none of them shift the *average* monthly growth rate of either series by very much — what changes is variance and correlation strength, and the block-mean-removal that powers the Oracle comparison throughout this book has nothing to grab onto. That makes this chapter a kind of placebo test: with no real mean shift to correct for, ECE's own estimate should track naive Pearson once `L` is large enough for its asymptotics to apply, and, given enough data, it does.
