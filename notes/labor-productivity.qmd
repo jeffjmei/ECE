@@ -9,6 +9,8 @@ title: "Labor Productivity"
 devtools::load_all()
 library(tidyverse)
 library(zoo)
+library(psych)
+library(kableExtra)
 ```
 
 The Bureau of Labor Statistics (BLS) publishes quarterly labor productivity growth rates (% change from previous quarter) for major US economic sectors. We analyze five sectors:
@@ -19,9 +21,9 @@ The Bureau of Labor Statistics (BLS) publishes quarterly labor productivity grow
 - `NFBUS`: Nonfarm business
 - `BUS`: Business
 
-Productivity growth is subject to structural breaks driven by recessions, policy changes, and technological shifts — making this a natural setting for ECE. We compare ECE against oracle segmentation, where change points are estimated from the data using `segment_mean()`.
+Productivity growth is subject to structural breaks driven by recessions, policy changes, and technological shifts — making this a natural setting for ECE. We compare ECE against oracle segmentation, where change points are estimated from the data using `segment_mean()`. `NFBUS` and `BUS` are both broad aggregates covering most of the economy, so we expect them to move together; the other three sectors are more loosely related components of the same business cycle.
 
-```{R}
+```{R labor-load-data}
 #| echo: false
 #| message: false
 
@@ -34,14 +36,23 @@ X_data <- read_csv(
 n <- nrow(X_data)
 dates <- as.yearqtr("1987 Q2") + (0:(n - 1)) / 4
 
-X_segment <- segment_mean(as.matrix(X_data), penalty = "Manual", pen.value = 0) |>
+X_mat     <- as.matrix(X_data)
+X_segment <- segment_mean(X_mat, penalty = "Manual", pen.value = 0) |>
   as.data.frame() |>
   rename_with(~ paste0(.x, "_segment"))
+X_seg_mat <- as.matrix(X_segment)
+X_resid   <- X_mat - X_seg_mat
 
 X <- bind_cols(date = dates, X_data, X_segment)
 ```
 
-```{R}
+## Diagnostics
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R labor-plot-raw}
 #| echo: false
 #| label: fig-bls-productivity
 #| fig-cap: "Quarterly labor productivity growth by sector. Thick lines show segmented means."
@@ -65,20 +76,122 @@ X |>
   theme_minimal()
 ```
 
-```{R}
+## Residuals
+
+```{R labor-plot-residuals}
+#| echo: false
+#| label: fig-bls-residuals
+#| fig-cap: "Residuals after removing the segmented mean from each sector."
+
+X_resid |>
+  as_tibble() |>
+  bind_cols(date = dates) |>
+  pivot_longer(cols = -date, names_to = "sector", values_to = "value") |>
+  ggplot(aes(x = date, y = value, color = sector)) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_line(linewidth = 0.5) +
+  facet_wrap(~sector, scales = "free_y") +
+  labs(
+    title = "Residuals after Segmentation",
+    x = "Date",
+    y = "Residual",
+    color = "Sector"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R labor-acf-naive}
 #| echo: false
 
-X_mat      <- as.matrix(X_data)
-X_seg_mat  <- as.matrix(X_segment)
+par(mfrow = c(ncol(X_resid), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in seq_len(ncol(X_resid))) {
+  acf(X_resid[, i], main = "", xaxt = "n", ylab = colnames(X_resid)[i])
+}
+axis(1)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+### Mean-Shift-Invariant
+
+```{R labor-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R labor-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat)
+```
+
+### Mean-Shift-Invariant
+
+Same ECE-term grammar as `plot_ece_terms()` (raw pairwise term in gray, rolling mean in blue, dashed global mean), but laid out as the upper triangle of a pxp matrix so each panel's row/column position matches its place in the correlation matrix above.
+
+```{R labor-trend-ece}
+#| echo: false
+
+window <- max(10, floor(nrow(X_mat) / 5))
+cn     <- colnames(X_mat)
+idx    <- combn(ncol(X_mat), 2)
+
+ece_terms_tri <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
+  i <- idx[1, k]
+  j <- idx[2, k]
+  s <- lag_term(X_mat[, i], X_mat[, j])
+  tibble(
+    t = seq_len(nrow(X_mat)), row = cn[i], col = cn[j],
+    raw = s, run = rolling_mean(s, window), global = mean(s)
+  )
+}) |>
+  mutate(
+    row = factor(row, levels = cn[1:(ncol(X_mat) - 1)]),
+    col = factor(col, levels = cn[2:ncol(X_mat)])
+  )
+
+ggplot(ece_terms_tri, aes(x = t)) +
+  geom_line(aes(y = raw), color = "gray80") +
+  geom_hline(aes(yintercept = global), linetype = "dashed", color = "firebrick") +
+  geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
+  labs(x = "time", y = "ECE term (covariance scale)") +
+  theme_minimal()
+```
+
+:::
+
+:::
+
+## Correlation
+
+```{R labor-calc-cor}
+#| echo: false
 
 ece_cor         <- ece.cor(X_mat) |> round(3)
 rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_data)
 
-segment_cor     <- cor(X_mat - X_seg_mat) |> round(3)
+segment_cor     <- cor(X_resid) |> round(3)
 pearson_cor     <- cor(X_mat) |> round(3)
 
 ece_pmat        <- ece_pval(X_mat) |> round(3)
-segment_pmat    <- cor_pval(X_mat - X_seg_mat) |> round(3)
+segment_pmat    <- cor_pval(X_resid) |> round(3)
 pearson_pmat    <- cor_pval(X_mat) |> round(3)
 ```
 
@@ -86,7 +199,7 @@ pearson_pmat    <- cor_pval(X_mat) |> round(3)
 
 ## Correlation
 
-```{R}
+```{R labor-output-cor}
 #| layout-ncol: 3
 #| echo: false
 
@@ -97,7 +210,7 @@ knitr::kable(pearson_cor, caption = "Pearson Correlation")
 
 ## P-Values
 
-```{R}
+```{R labor-output-pval}
 #| layout-ncol: 3
 #| echo: false
 
@@ -108,27 +221,36 @@ knitr::kable(pearson_pmat, caption = "Pearson P-Values")
 
 :::
 
---- 
+## Results
 
-## Bootstrap Methods
+Beyond the pairwise correlations above, we can test the joint null hypothesis that the full 5x5 correlation matrix is diagonal — i.e. that none of the five sectors are contemporaneously correlated.
 
-```{R}
-bartlett_diag_test <- function(X) {
-  n <- nrow(X)
-  R <- cor(X)
-  p <- ncol(X)
-  q <- p * (p - 1) / 2
+```{R labor-diagonal-tests}
+#| echo: false
+set.seed(123)
 
-  # Chi-squared statistic: -(n-1) * log(det(R))
-  chi2 <- -(n - 1) * log(det(R))
-  p_val <- pchisq(chi2, df = q, lower.tail = FALSE)
+results <- data.frame(
+  Method = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(ece.test(X_mat, type = "bs.multiplier")$p.value, 3),
+    round(ece.test(X_mat, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+    round(ece.test(X_mat, type = "bs.parametric.naive")$p.value, 3),
+    round(cortest.bartlett(cor(X_mat), nrow(X_mat))$p.value, 3)
+  ),
+  check.names = FALSE
+)
 
-  list(statistic = chi2, df = q, p.value = p_val)
-}
+kable(results, align = c("l", "c")) |>
+  kable_styling(full_width = FALSE)
 ```
 
-```{R}
-ece.test(X_mat, type="bs.multiplier")
-ece.test(X_mat, type="bs.parametric")
-bartlett_diag_test(X_mat)
-```
+All four tests reject the diagonal null at any conventional level. This is expected: these sectors share the same business cycle, and `NFBUS`/`BUS` in particular are near-duplicate aggregates. The Bartlett test, which does not account for the mean shifts, rejects most strongly of all — consistent with naive Pearson correlation overstating the strength of evidence when the mean is non-stationary.
+
+---
+
+Where this leaves us: naive Pearson correlation finds every pair significant except `NDUR`-`NFC`. ECE and oracle segmentation agree with each other almost exactly, and both find only three pairs significant: `NFBUS`-`BUS` (expected, they're near-duplicate aggregates), and `NDUR` with each of `NFBUS` and `BUS`. Every other pair — including `DUR` with anything — loses significance once the mean shift is removed. This is the mean-shift-induced spurious correlation the ECE test is designed to guard against: naive Pearson correlation on non-stationary series overstates how many sectors move together, and the diagonal tests above confirm classical methods reject the "no correlation" null much more confidently than the mean-shift-aware ones.
