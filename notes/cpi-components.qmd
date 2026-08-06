@@ -1,0 +1,600 @@
+---
+title: "CPI Components"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+library(fbi)
+library(psych)
+library(kableExtra)
+```
+
+FRED-MD (McCracken and Ng) publishes three Consumer Price Index subcomponents we look at here:
+
+- `CPIAPPSL`: Apparel
+- `CPITRNSL`: Transportation
+- `CPIMEDSL`: Medical care
+
+These are different market baskets with different price drivers: apparel tracks import costs and retail markdowns, transportation is dominated by energy prices, medical care is shaped by insurance and health policy. There is no direct mechanism linking them month to month. But all three are nominal price indices, so all three trend upward for the same reason: aggregate inflation. That shared trend is exactly the kind of confound ECE is built to strip out, which makes this a good complement to `copy-number-variation.qmd`: instead of physically unrelated genomic probes sharing an instrument-calibration drift, these are economically unrelated goods sharing a decades-long inflation drift. We test the joint null that the 3x3 correlation matrix is diagonal.
+
+```{R cpi-load-data}
+#| echo: false
+#| message: false
+
+fred_data <- fredmd(
+  "../data/real-data/FRED-2026-05.csv",
+  date_start = NULL, date_end = NULL, transform = FALSE
+) |> as_tibble()
+
+X_data <- fred_data |>
+  select(date, CPIAPPSL, CPITRNSL, CPIMEDSL) |>
+  drop_na()
+
+X_mat   <- as.matrix(X_data[, -1])
+X_seg   <- segment_mean(X_mat, penalty = "BIC")
+X_resid <- X_mat - X_seg
+```
+
+## Diagnostics
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R cpi-plot-raw}
+#| echo: false
+#| label: fig-cpi-components
+#| fig-cap: "CPI subcomponents, monthly levels, 1959-2026. Thick lines show the segmented mean."
+#| fig-height: 7
+
+X <- bind_cols(
+  date = X_data$date, X_data[, -1],
+  as.data.frame(X_seg) |> rename_with(~ paste0(.x, "_segment"))
+)
+
+X |>
+  pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
+  mutate(
+    type     = if_else(str_ends(series, "_segment"), "Segmented", "Raw"),
+    category = str_remove(series, "_segment$")
+  ) |>
+  ggplot(aes(x = date, y = value, color = category, group = series)) +
+  geom_line(aes(linewidth = type)) +
+  scale_linewidth_manual(values = c(Raw = 0.4, Segmented = 1.0), guide = "none") +
+  facet_wrap(~category, scales = "free_y", ncol = 1) +
+  labs(
+    title = "CPI Subcomponents", x = NULL, y = "Index level", color = "Category",
+    caption = "Source: FRED-MD"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+All three climb steadily for six decades. `CPITRNSL` is the most volatile, tracking energy price shocks (2008, 2021-2022); `CPIMEDSL` is the smoothest, climbing almost without pause.
+
+## Residuals
+
+```{R cpi-plot-residuals}
+#| echo: false
+#| label: fig-cpi-residuals
+#| fig-cap: "Residuals after removing the segmented mean from each category."
+#| fig-height: 7
+
+X_resid |>
+  as_tibble() |>
+  bind_cols(date = X_data$date) |>
+  pivot_longer(cols = -date, names_to = "category", values_to = "value") |>
+  ggplot(aes(x = date, y = value, color = category)) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_line(linewidth = 0.4) +
+  facet_wrap(~category, scales = "free_y", ncol = 1) +
+  labs(title = "Residuals after Segmentation", x = NULL, y = "Residual") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R cpi-acf-naive}
+#| echo: false
+
+par(mfrow = c(ncol(X_resid), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in seq_len(ncol(X_resid))) {
+  acf(X_resid[, i], main = "", xaxt = "n", ylab = colnames(X_resid)[i])
+}
+axis(1)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+### Mean-Shift-Invariant
+
+```{R cpi-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+Same 3x3 matrix layout as the Mean-Shift-Invariant tab: diagonal is each series' own rolling-mean-removed variance, upper triangle is the naive pairwise covariance term, lower triangle blank.
+
+```{R cpi-trend-naive}
+#| echo: false
+
+window <- max(10, floor(nrow(X_mat) / 5))
+cn     <- colnames(X_mat)
+n      <- nrow(X_mat)
+
+R <- apply(X_mat, 2, function(col) col - rolling_mean(col, window))
+idx_p <- combn(ncol(X_mat), 2)
+
+naive_cov_dat <- purrr::map_dfr(seq_len(ncol(idx_p)), function(k) {
+  i <- idx_p[1, k]
+  j <- idx_p[2, k]
+  s <- R[, i] * R[, j]
+  tibble(t = seq_len(n), row = cn[i], col = cn[j], raw = s)
+})
+naive_var_dat <- purrr::map_dfr(seq_len(ncol(X_mat)), function(i) {
+  s <- R[, i] * R[, i]
+  tibble(t = seq_len(n), row = cn[i], col = cn[i], raw = s)
+})
+naive_terms_dat <- bind_rows(naive_cov_dat, naive_var_dat) |>
+  mutate(row = factor(row, levels = cn), col = factor(col, levels = cn)) |>
+  group_by(row, col) |>
+  mutate(run = rolling_mean(raw, window), global = mean(raw, na.rm = TRUE)) |>
+  ungroup()
+
+ggplot(naive_terms_dat, aes(x = t)) +
+  geom_line(aes(y = raw), color = "gray80", na.rm = TRUE) +
+  geom_hline(aes(yintercept = global), linetype = "dashed", color = "firebrick") +
+  geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
+  labs(x = "time", y = "naive term (covariance / variance scale)") +
+  theme_minimal()
+```
+
+### Mean-Shift-Invariant
+
+`plot_ece_terms()`'s underlying term, `lag_term()`, compares each point against its two predecessors using a circular shift (`rotate()`). On a series that trends for 60+ years without ever cycling back, the last couple of points wrap around and get compared against the 1959 starting level, producing a huge artificial spike that swamps every other point on the y-axis. Laid out as a 3x3 matrix, same row/column convention as the Correlation tables below: the diagonal is each series' own variance term (`lag_term(X[,i], X[,i])`), the upper triangle is the pairwise covariance term, and the lower triangle is left blank since it's redundant with the upper triangle.
+
+```{R cpi-trend-ece-data}
+#| echo: false
+
+window <- max(10, floor(nrow(X_mat) / 5))
+cn     <- colnames(X_mat)
+idx    <- combn(ncol(X_mat), 2)
+n      <- nrow(X_mat)
+
+ece_cov_dat <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
+  i <- idx[1, k]
+  j <- idx[2, k]
+  s <- lag_term(X_mat[, i], X_mat[, j])
+  tibble(t = seq_len(n), row = cn[i], col = cn[j], raw = s)
+})
+ece_var_dat <- purrr::map_dfr(seq_len(ncol(X_mat)), function(i) {
+  s <- lag_term(X_mat[, i], X_mat[, i])
+  tibble(t = seq_len(n), row = cn[i], col = cn[i], raw = s)
+})
+ece_terms_dat <- bind_rows(ece_cov_dat, ece_var_dat) |>
+  mutate(row = factor(row, levels = cn), col = factor(col, levels = cn))
+```
+
+```{R cpi-trend-ece}
+#| echo: false
+
+ece_terms_trend <- ece_terms_dat |>
+  filter(t > 2, t < n - 1) |>
+  group_by(row, col) |>
+  mutate(run = rolling_mean(raw, window), global = mean(raw)) |>
+  ungroup()
+
+ggplot(ece_terms_trend, aes(x = t)) +
+  geom_line(aes(y = raw), color = "gray80") +
+  geom_hline(aes(yintercept = global), linetype = "dashed", color = "firebrick") +
+  geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
+  labs(x = "time", y = "ECE term (covariance / variance scale)") +
+  theme_minimal()
+```
+
+The large excursion around 2021 in all three panels is the COVID-era inflation shock, not an artifact. The boundary artifact is a separate, smaller-in-count but larger-in-magnitude problem, and the plot above still excludes it (it excludes the display only — every `ece.test()` p-value elsewhere in this chapter is computed on the full, untrimmed series). The histogram below shows the *full*, untrimmed term distribution, including those boundary points, on the same 3x3 row/column layout (diagonal = variance term, upper triangle = covariance term), so its impact is visible directly instead of trimmed away.
+
+```{R cpi-trend-hist}
+#| echo: false
+
+ece_terms_summary <- ece_terms_dat |>
+  group_by(row, col) |>
+  summarize(mean = mean(raw), median = median(raw), .groups = "drop")
+
+ece_terms_trimmed <- ece_terms_dat |>
+  group_by(row, col) |>
+  filter(raw > quantile(raw, 0.005), raw < quantile(raw, 0.995)) |>
+  ungroup()
+
+ggplot(ece_terms_trimmed, aes(x = raw)) +
+  geom_histogram(bins = 40, fill = "steelblue", color = "white") +
+  geom_vline(data = ece_terms_summary, aes(xintercept = mean), color = "firebrick", linetype = "dashed") +
+  geom_vline(data = ece_terms_summary, aes(xintercept = median), color = "darkorange", linetype = "dashed") +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free") +
+  labs(x = "ECE term value (middle 99%)", y = "Count") +
+  theme_minimal()
+```
+
+Almost every observation sits in a single bar near zero; the x-axis has to stretch out to several hundred to fit one or two boundary points per panel, and those same one or two points are what `bs_multiplier_test` and `bs_parametric_test` build their statistics from internally (both call `ece_terms(X)` on this exact, untrimmed data). The mean (dashed red) and median (dashed orange) both sit essentially on top of zero in every panel — the boundary points don't move the center of the distribution much, but they do move `sum(s_t^2)`, which is what the bootstrap null variance is built from. A handful of points out of 807 are enough to move that by an order of magnitude even though they barely move the mean.
+
+### Mean-Shift-Invariant (Segment)
+
+Same terms as the Mean-Shift-Invariant tab (`lag_term()`, same 3x3 layout), but computed on `X_resid` (the `segment_mean()` residuals) instead of the raw levels. This is the diagnostic behind the Segment-ECE row in the Results table below: with the trend already removed, `lag_term()` no longer sees a 60-year monotonic climb, so the `rotate()` boundary wraparound doesn't produce the huge artificial spike seen in the raw-level tab. The remaining large excursions (`CPITRNSL` around t=600 and t=750, `CPIMEDSL` near t=800) line up with the 2008 and 2021-2022 energy/inflation shocks, not an artifact.
+
+```{R cpi-trend-segment-ece}
+#| echo: false
+
+window <- max(10, floor(nrow(X_mat) / 5))
+cn     <- colnames(X_mat)
+idx    <- combn(ncol(X_mat), 2)
+n      <- nrow(X_mat)
+
+seg_ece_cov_dat <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
+  i <- idx[1, k]
+  j <- idx[2, k]
+  s <- lag_term(X_resid[, i], X_resid[, j])
+  tibble(t = seq_len(n), row = cn[i], col = cn[j], raw = s)
+})
+seg_ece_var_dat <- purrr::map_dfr(seq_len(ncol(X_mat)), function(i) {
+  s <- lag_term(X_resid[, i], X_resid[, i])
+  tibble(t = seq_len(n), row = cn[i], col = cn[i], raw = s)
+})
+seg_ece_terms_dat <- bind_rows(seg_ece_cov_dat, seg_ece_var_dat) |>
+  mutate(row = factor(row, levels = cn), col = factor(col, levels = cn)) |>
+  group_by(row, col) |>
+  mutate(run = rolling_mean(raw, window), global = mean(raw)) |>
+  ungroup()
+
+ggplot(seg_ece_terms_dat, aes(x = t)) +
+  geom_line(aes(y = raw), color = "gray80") +
+  geom_hline(aes(yintercept = global), linetype = "dashed", color = "firebrick") +
+  geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
+  labs(x = "time", y = "Segment-ECE term (covariance / variance scale)") +
+  theme_minimal()
+```
+
+:::
+
+:::
+
+## Results
+
+We start with pairwise comparisons: ECE and Segment-ECE (ECE applied to the raw levels and to the `segment_mean()` residuals), and naive and residual Pearson correlation (Pearson applied to the same two versions of the data).
+
+```{R cpi-pairwise-cor}
+#| echo: false
+
+ece_cor               <- ece.cor(X_mat) |> round(3)
+rownames(ece_cor)     <- colnames(ece_cor) <- colnames(X_mat)
+seg_ece_cor           <- ece.cor(X_resid) |> round(3)
+rownames(seg_ece_cor) <- colnames(seg_ece_cor) <- colnames(X_mat)
+
+resid_cor   <- cor(X_resid) |> round(3)
+pearson_cor <- cor(X_mat) |> round(3)
+
+ece_pmat     <- suppressWarnings(ece_pval(X_mat)) |> round(3)
+seg_ece_pmat <- ece_pval(X_resid) |> round(3)
+resid_pmat   <- cor_pval(X_resid) |> round(3)
+pearson_pmat <- cor_pval(X_mat) |> round(3)
+```
+
+::: {.panel-tabset}
+
+## Correlation
+
+```{R cpi-pairwise-cor-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(ece_cor,     caption = "ECE Correlation")
+knitr::kable(seg_ece_cor, caption = "Segment-ECE Correlation")
+knitr::kable(pearson_cor, caption = "Naive Pearson Correlation")
+knitr::kable(resid_cor,   caption = "Residual Pearson Correlation")
+```
+
+## P-Values
+
+```{R cpi-pairwise-pval-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(ece_pmat,     caption = "ECE P-Values")
+knitr::kable(seg_ece_pmat, caption = "Segment-ECE P-Values")
+knitr::kable(pearson_pmat, caption = "Naive Pearson P-Values")
+knitr::kable(resid_pmat,   caption = "Residual Pearson P-Values")
+```
+
+:::
+
+Naive Pearson correlation on the raw levels is 0.77-0.98 across all three pairs (p < 0.001 for every pair). Residualizing against the segmented mean collapses that almost entirely: 0.04-0.07, with p-values of 0.05-0.26. The pairwise ECE correlation on the raw levels is `NaN` for every pair: `ece.cov()`'s diagonal entries come out negative on these smooth, slow-moving levels, so `cov2cor()` has no valid variance to divide by. This is the same boundary artifact from the Trend diagnostic above (`rotate()`'s circular wraparound), now showing up directly in the pairwise estimator rather than just the histogram. Applying ECE to the segmented residuals instead (Segment-ECE) sidesteps that: 0.13-0.22, closer to naive Pearson than to residual Pearson, and it rejects independence for `CPIAPPSL`-`CPITRNSL` and `CPIAPPSL`-`CPIMEDSL` (p = 0.005, 0.047) but not `CPITRNSL`-`CPIMEDSL` (p = 0.073). We still don't have a usable pairwise ECE correlation on the raw levels for this dataset — the joint diagonal tests below don't share that instability and are the reliable read.
+
+```{R cpi-diagonal-tests}
+#| echo: false
+set.seed(123)
+
+results <- data.frame(
+  Method = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(ece.test(X_mat, type = "bs.multiplier")$p.value, 3),
+    round(ece.test(X_mat, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+    round(ece.test(X_mat, type = "bs.parametric.naive")$p.value, 3),
+    round(cortest.bartlett(cor(X_mat), nrow(X_mat))$p.value, 3)
+  ),
+  check.names = FALSE
+)
+
+kable(results, align = c("l", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+The Bartlett test and the naive parametric bootstrap, neither of which account for the mean shift, reject the diagonal null outright. The bootstrap multiplier and the mean-shift-aware parametric bootstrap both fail to reject: p = 0.18 and p = 0.41.
+
+## Downsampling
+
+At monthly resolution, `CPIAPPSL`'s residual lag-1 ACF is 0.44 — high enough to be worth checking whether coarser sampling improves things, and whether the diagonal-test conclusions hold up if it does. We compare monthly against striding every 2nd month (bi-monthly, n=404) and every 3rd month (quarterly, n=269), using the same `segment_mean(penalty = "BIC")` residualization at each resolution.
+
+```{R cpi-downsample}
+#| echo: false
+
+X_bimonthly <- X_mat[seq(1, nrow(X_mat), by = 2), ]
+X_quarterly <- X_mat[seq(1, nrow(X_mat), by = 3), ]
+dates_bi    <- X_data$date[seq(1, nrow(X_mat), by = 2)]
+dates_q     <- X_data$date[seq(1, nrow(X_mat), by = 3)]
+
+X_bimonthly_seg   <- segment_mean(X_bimonthly, penalty = "BIC")
+X_quarterly_seg   <- segment_mean(X_quarterly, penalty = "BIC")
+X_bimonthly_resid <- X_bimonthly - X_bimonthly_seg
+X_quarterly_resid <- X_quarterly - X_quarterly_seg
+
+acf1 <- function(X) {
+  X_resid <- X - segment_mean(X, penalty = "BIC")
+  round(apply(X_resid, 2, function(v) acf(v, plot = FALSE)$acf[2]), 2)
+}
+
+downsample_row <- function(X, label) {
+  a <- acf1(X)
+  set.seed(123)
+  data.frame(
+    Resolution = label, n = nrow(X),
+    `ACF (APPSL/TRNSL/MEDSL)` = paste(a, collapse = " / "),
+    `Bootstrap Multiplier` = round(ece.test(X, type = "bs.multiplier")$p.value, 3),
+    `Parametric Bootstrap` = round(ece.test(X, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+    `Parametric Bootstrap (Naive)` = round(ece.test(X, type = "bs.parametric.naive")$p.value, 3),
+    `Bartlett Test` = signif(cortest.bartlett(cor(X), nrow(X))$p.value, 3),
+    check.names = FALSE
+  )
+}
+
+downsample_results <- bind_rows(
+  downsample_row(X_mat, "Monthly"),
+  downsample_row(X_bimonthly, "Bi-monthly"),
+  downsample_row(X_quarterly, "Quarterly")
+)
+
+kable(downsample_results, align = c("l", "c", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+Coarser sampling does bring `CPIAPPSL`'s ACF down (0.44 to 0.29 to 0.14), but it does not move monotonically toward zero for the other two: `CPITRNSL` goes from -0.09 to -0.26 to -0.33, and `CPIMEDSL` from 0.00 to -0.38 to -0.64. Downsampling trades a moderate positive autocorrelation for a larger negative one.
+
+### Diagnostics
+
+Same Plot / Residuals / ACF / Trend structure as the main Diagnostics section above, applied to the two downsampled resolutions.
+
+```{R cpi-downsample-helpers}
+#| echo: false
+
+plot_downsample_raw <- function(X, X_seg, dates, title) {
+  X_df <- bind_cols(date = dates, as.data.frame(X), as.data.frame(X_seg) |> rename_with(~ paste0(.x, "_segment")))
+  X_df |>
+    pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
+    mutate(
+      type     = if_else(str_ends(series, "_segment"), "Segmented", "Raw"),
+      category = str_remove(series, "_segment$")
+    ) |>
+    ggplot(aes(x = date, y = value, color = category, group = series)) +
+    geom_line(aes(linewidth = type)) +
+    scale_linewidth_manual(values = c(Raw = 0.4, Segmented = 1.0), guide = "none") +
+    facet_wrap(~category, scales = "free_y", ncol = 1) +
+    labs(title = title, x = NULL, y = "Index level", color = "Category") +
+    theme_minimal() +
+    theme(legend.position = "none")
+}
+
+plot_downsample_resid <- function(X_resid, dates, title) {
+  X_resid |>
+    as_tibble() |>
+    bind_cols(date = dates) |>
+    pivot_longer(cols = -date, names_to = "category", values_to = "value") |>
+    ggplot(aes(x = date, y = value, color = category)) +
+    geom_hline(yintercept = 0, color = "gray") +
+    geom_line(linewidth = 0.4) +
+    facet_wrap(~category, scales = "free_y", ncol = 1) +
+    labs(title = title, x = NULL, y = "Residual") +
+    theme_minimal() +
+    theme(legend.position = "none")
+}
+
+acf_naive_plot <- function(X_resid) {
+  par(mfrow = c(ncol(X_resid), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+  for (i in seq_len(ncol(X_resid))) {
+    acf(X_resid[, i], main = "", xaxt = "n", ylab = colnames(X_resid)[i])
+  }
+  axis(1)
+  mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+}
+```
+
+::: {.panel-tabset}
+
+## Bi-monthly
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R cpi-downsample-bi-plot}
+#| echo: false
+#| fig-height: 7
+
+plot_downsample_raw(X_bimonthly, X_bimonthly_seg, dates_bi, "Bi-monthly")
+```
+
+## Residuals
+
+```{R cpi-downsample-bi-resid}
+#| echo: false
+#| fig-height: 7
+
+plot_downsample_resid(X_bimonthly_resid, dates_bi, "Bi-monthly Residuals")
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R cpi-downsample-bi-acf-naive}
+#| echo: false
+
+acf_naive_plot(X_bimonthly_resid)
+```
+
+### Mean-Shift-Invariant
+
+```{R cpi-downsample-bi-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_bimonthly)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R cpi-downsample-bi-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_bimonthly)
+```
+
+### Mean-Shift-Invariant
+
+```{R cpi-downsample-bi-trend-ece}
+#| echo: false
+
+plot_ece_terms(X_bimonthly)
+```
+
+:::
+
+:::
+
+## Quarterly
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R cpi-downsample-q-plot}
+#| echo: false
+#| fig-height: 7
+
+plot_downsample_raw(X_quarterly, X_quarterly_seg, dates_q, "Quarterly")
+```
+
+## Residuals
+
+```{R cpi-downsample-q-resid}
+#| echo: false
+#| fig-height: 7
+
+plot_downsample_resid(X_quarterly_resid, dates_q, "Quarterly Residuals")
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R cpi-downsample-q-acf-naive}
+#| echo: false
+
+acf_naive_plot(X_quarterly_resid)
+```
+
+### Mean-Shift-Invariant
+
+```{R cpi-downsample-q-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_quarterly)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R cpi-downsample-q-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_quarterly)
+```
+
+### Mean-Shift-Invariant
+
+```{R cpi-downsample-q-trend-ece}
+#| echo: false
+
+plot_ece_terms(X_quarterly)
+```
+
+:::
+
+:::
+
+:::
+
+More importantly, the two mean-shift-aware tests stop agreeing once we downsample. `Parametric Bootstrap` (`lag1.diag.psd`) fails to reject at every resolution (0.41, 0.39, 0.48) — stable regardless of n or stride. `Bootstrap Multiplier` fails to reject at monthly resolution (p = 0.18) but rejects at both bi-monthly and quarterly, and does so at p-values on the order of 1e-3 to 1e-17 depending on the bootstrap seed. Both of those are "reject" at any conventional level; the seed-to-seed spread between them is not the interesting part. The interesting part is that this rejection appears exactly when we downsample and is absent at monthly resolution, while `lag1.diag.psd`'s answer doesn't move. We have not identified why `bs.multiplier` behaves this way under downsampling — it could be an artifact of how it re-splits a shorter series internally, a real sensitivity to something downsampling changes about the data (beyond just the ACF, since fixing ACF didn't fix it), or something else. We report it rather than pick a resolution that hides it.
+
+---
+
+Where this leaves us: apparel, transportation, and medical care prices have no known mechanism linking their month-to-month movements. At monthly resolution, every mean-shift-aware test agrees with that: both the bootstrap multiplier and the mean-shift-aware parametric bootstrap fail to reject the diagonal null, while Bartlett and the naive parametric bootstrap reject confidently, at essentially the same significance level as the two mean-shift-related sector correlations in `labor-productivity.qmd` that *are* real. That's the headline result: naive Pearson and Bartlett can't tell a shared secular trend apart from real contemporaneous correlation, and here we know from domain knowledge which one it is.
+
+The downsampling check complicates that picture rather than confirming it. The parametric bootstrap's conclusion is robust to resolution; the bootstrap multiplier's is not, and we don't yet know why. Take the monthly result as the primary finding of this chapter, and the resolution-dependence of `bs.multiplier` as an open question about the method rather than about this dataset.

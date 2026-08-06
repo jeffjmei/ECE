@@ -49,6 +49,7 @@ book:
         - oil-price-deregulation.qmd
         - battery-aging.qmd
         - hurricane-michael-buoy.qmd
+        - cpi-components.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd
