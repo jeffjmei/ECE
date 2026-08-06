@@ -7,14 +7,13 @@ Pipeline: source data, screen for a viable story, write the chapter, register it
 
 ## 1. Source a dataset
 
-Prefer real measured data over simulated/synthetic benchmarks. Prefer datasets with:
-- A documented mean-shift mechanism: a known event date/log (GPS antenna swap, dam closure), an experimentally induced phase (CO2 inhalation), or a real categorical regime label recorded alongside the data (steel plant `Load_Type`). This gives a genuine oracle, far stronger than discovering shifts yourself.
+**Data Preference**.
+- Prefer real data over simulated/benchmark data.
+- Data should have a mean non-stationarity (mean shifts are preferred).
+- Data must be multivariate time series with known expected behavior. For example, `MANEMP` (manufacturing employment) is known to be the sum of two other variables `DMANEMP` (durable manufacturing employment) and `NDMANEMP` (non-durable manufacturing employment), therefore, we expect the correlation between `MANEMP-DMANEMP` and `MANEMP-NDMANEMP` to be positive.
 - Static, scriptable bulk downloads (a CSV/zip you can `curl`), not interactive report tools.
-- Multiple genuinely related but distinct variables/series, not just one series.
 
-Download into `data/<name>/` (the whole `data/` dir is gitignored). Verify the download (row counts, column names, date range) before proceeding.
-
-If no documented mechanism exists (e.g. anonymized sensors), you can still screen blindly, but say so upfront in the chapter.
+Download into `data/real-data/<name>/` (the whole `data/` directory is gitignored). Verify the download (row counts, column names, date range) before proceeding.
 
 ## 2. Screen before writing anything
 
@@ -28,26 +27,47 @@ Compute, for every candidate variable: a shift score (e.g. `|mean(first third) -
 
 Show the user a plot of the best 1-3 candidates before writing the chapter. Use `AskUserQuestion` at real branch points (which candidate, which downsample/resample strategy) rather than silently picking.
 
-## 3. Write the chapter
+## 3. Data analysis
 
-Match the structure of recent chapters (`notes/air-pollution.qmd`, `notes/steel-industry.qmd`, `notes/gps-antenna-offset.qmd`) as templates:
+**Residuals after modeling should be stationary**. In most of these data applications, model the mean using rolling means or segmentation. The purpose is to isolate the error terms. Once the data is sufficiently residualized, Pearson correlation can be appropriately run.
 
-- Frontmatter `title:`, then a `devtools::load_all()` / `library(tidyverse)` setup chunk.
-- Intro prose: data source and access method, variables and their physical meaning, why a real relationship is plausible, what the mean-shift mechanism is (documented or discovered).
-- Load chunk(s), clearly labeled (`#| label: ...`). Cache-relevant labeling rules from `notes/CLAUDE.md` apply.
-- If native resolution breaks ECE, add a Full Record tier (document the breakdown honestly, including `NaN`/out-of-range results) plus a resampled tier.
-- Per tier, nested `::: {.panel-tabset}`: Plot / Residuals / ACF / Trend / Correlation / P-Values. ACF and Trend each split into Naive-or-Oracle vs. Mean-Shift-Invariant sub-tabs (`plot_sip_acf()`, `plot_ece_terms()`, `plot_naive_terms()` from the package; hand-roll an "Oracle" version with `ave(x, grp)` when a real regime label exists).
-- Correlation/P-Values tabs: three-way table (ECE via `ece.cor()`/`ece_pval()`, Oracle-or-Rolling via `cor()`/`cor_pval()` on residuals, Naive Pearson via `cor()`/`cor_pval()` on raw data), `knitr::kable(..., caption = ...)` with `#| layout-ncol: 3`.
-- Closing "Bootstrap Methods" section: `ece.test(X_mat, type = "bs.multiplier")` and `"bs.parametric"`.
-- A closing "Where this leaves us" paragraph with the honest conclusion, including "this is a dead end" if that's what the diagnostics show. Don't smooth over messy or negative results. Some chapters in this book (SECOM, Steel Industry) exist specifically to document why a dataset didn't work.
+**ACF should be minimal**. One of the requirements of both ECE and Pearson correlation is that there should be no autocorrelation. In reality, this is hard to accomplish. One technique to try is down-sampling.
 
-**Writing style**: concise and simple. Say less rather than more. No em-dashes. No AI-tics ("it's worth noting," "dive into," "unlock," etc.). Plain declarative sentences.
+## 4. Write the chapter
+
+Match the structure of chapters `notes/co2-inhalation.qmd` and `notes/copy-number-variation.qmd` as templates:
+
+- Explain why we expect two time series to be correlated or not. Explain the variables and what might cause the mean non-stationarity.
+- Note where the data can be downloaded.
+- Add a frontmatter `title:`.
+- Open the document with a `devtools::load_all()` and `library(tidyverse)` setup chunk.
+- Load chunks are clearly labeled (`#| label: ...`). Cache-relevant labeling rules from `notes/CLAUDE.md` apply.
+
+**Diagnostics**. In one `::: {.panel-tabset}` block, show all the diagnostics: Plot, Residuals, ACF, Trend.
+
+- In `Plot`, show relevant covariates, with the smoothed mean / segmentation in blue, and the noisy raw data in gray.
+- In `Residuals`, take the residuals and plot them. The original data should display some non-stationarity, and the residuals should be roughly stationary.
+- In `ACF`, split into `Naive` and `Mean-Shift-Invariant` sub-tabs. In `Naive`, take the residuals and apply ACF. In `Mean-Shift-Invariant`, apply `plot_sip_acf()`.
+- In `Trend`, split into `Naive` and `Mean-Shift-Invariant` sub-tabs. In `Naive`, use `plot_naive_terms()`. In `Mean-Shift-Invariant`, use `plot_ece_terms()`.
+
+**Results**. Apply these methods and functions:
+- Pearson (Naive): `cor()` and `cor_pval()` naive.
+- Pearson (Residualized): `cor()` and `cor_pval()` on residuals.
+- ECE: `ece.cor()` and `ece_pval()`.
+- Bootstrap Multiplier: `ece.test(X_mat, type = "bs.multiplier")`.
+- Parametric Bootstrap: `ece.test(X_mat, type = "bs.parametric.lag1.diag.psd")`.
+- Parametric Bootstrap (naive): `ece.test(X_mat, type = "bs.parametric.naive")`.
+- Bartlett Test: `cortest.bartlett()`.
+
+**Conclusion**. Provide an honest conclusion, evaluating the diagnostics. Don't smooth over negative results.
+
+**Writing style**: concise and plain. Say less rather than more. No em-dashes. No AI-tics ("it's worth noting," "dive into," "unlock," etc.). Plain declarative sentences.
 
 **Before writing any chunk into the `.qmd`, verify it runs via a standalone `Rscript -e '...'` call** (`devtools::load_all(quiet=TRUE)` first). This has caught every real bug in this workflow. Don't skip it.
 
 Never run `quarto render`. The user runs `quarto preview` live (`notes/CLAUDE.md`).
 
-## 4. Register and commit
+## 5. Register and commit
 
 Add `- <name>.qmd` to `notes/_quarto.yml` under `part: real-data.qmd`, after the existing chapters.
 
