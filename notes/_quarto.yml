@@ -47,6 +47,7 @@ book:
         - detroit-lake-algal-bloom.qmd
         - phillips-curve.qmd
         - oil-price-deregulation.qmd
+        - covid-vaccine-decoupling.qmd
         - battery-aging.qmd
     - part: "In Progress"
       chapters:
