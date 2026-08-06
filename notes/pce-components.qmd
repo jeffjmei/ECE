@@ -1,0 +1,265 @@
+---
+title: "PCE Components"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+library(zoo)
+library(psych)
+library(kableExtra)
+```
+
+FRED-QD, the McCracken-Ng quarterly companion to FRED-MD, includes national-accounts series that only exist at quarterly resolution. We use three components of real personal consumption expenditures (PCE):
+
+- `PCDGx`: durable goods (autos, appliances, furniture)
+- `PCNDx`: nondurable goods (food, energy, clothing)
+- `PCESVx`: services (healthcare, housing, recreation)
+
+These three sum to total PCE (`PCECC96`), so some correlation is built in by construction. But they behave very differently. Durables are big-ticket, credit-sensitive purchases people postpone in a downturn and catch up on later — the most cyclical of the three. Nondurables are closer to necessities, smoother but not immune to recessions. Services are the smoothest of all in normal times — healthcare and rent don't swing with the business cycle — except in 2020, when lockdowns hit services spending directly and produced the sharpest quarterly move in this entire dataset.
+
+We work with quarterly log growth rates of each series, `r format(as.Date("1959-06-01"))` through `r format(as.Date("2026-06-01"))`.
+
+```{R pce-load-data}
+#| echo: false
+#| message: false
+#| label: pce-load-data
+
+X_raw <- read_csv(
+  "~/Documents/Research/Code/ECE/data/real-data/pce-components/pce_components_fredqd.csv",
+  show_col_types = FALSE
+) |>
+  mutate(sasdate = as.Date(sasdate, format = "%m/%d/%Y")) |>
+  arrange(sasdate)
+
+X_data <- X_raw |>
+  mutate(
+    Durables    = c(NA, diff(log(PCDGx))),
+    Nondurables = c(NA, diff(log(PCNDx))),
+    Services    = c(NA, diff(log(PCESVx)))
+  ) |>
+  filter(!is.na(Durables)) |>
+  select(sasdate, Durables, Nondurables, Services)
+
+X_mat     <- as.matrix(X_data[, c("Durables", "Nondurables", "Services")])
+X_segment <- segment_mean(X_mat, penalty = "Manual", pen.value = 0.005)
+colnames(X_segment) <- colnames(X_mat)
+X_resid   <- X_mat - X_segment
+
+X <- bind_cols(date = X_data$sasdate, as.data.frame(X_mat), as.data.frame(X_segment) |> rename_with(~ paste0(.x, "_segment")))
+```
+
+`r nrow(X_data)` quarterly growth-rate observations.
+
+## Diagnostics
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R pce-plot-raw}
+#| echo: false
+#| label: fig-pce-growth
+#| fig-cap: "Quarterly log growth rates by PCE component. Thick lines show segmented means."
+
+X |>
+  pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
+  mutate(
+    type   = if_else(str_ends(series, "_segment"), "Segmented", "Raw"),
+    sector = str_remove(series, "_segment$")
+  ) |>
+  ggplot(aes(x = date, y = value, color = sector, group = series)) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_line(aes(linewidth = type)) +
+  scale_linewidth_manual(values = c(Raw = 0.4, Segmented = 1.0), guide = "none") +
+  facet_wrap(~sector, ncol = 1, scales = "free_y") +
+  labs(
+    title = "PCE Growth by Component",
+    x = "Date",
+    y = "Log Growth Rate",
+    color = "Component",
+    caption = "Source: FRED-QD (McCracken-Ng)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+Durables is the most volatile series and picks up the most breakpoints — recessions in 1971, 1973-75, 1980, and 2008-09 each register as a distinct segment, on top of the 2020 spike. Nondurables finds no breaks at all at this penalty. Services stays essentially flat except for a single, massive segment around the 2020 lockdowns.
+
+## Residuals
+
+```{R pce-plot-residuals}
+#| echo: false
+#| label: fig-pce-residuals
+#| fig-cap: "Residuals after removing the segmented mean from each component."
+
+X_resid |>
+  as_tibble() |>
+  bind_cols(date = X_data$sasdate) |>
+  pivot_longer(cols = -date, names_to = "sector", values_to = "value") |>
+  ggplot(aes(x = date, y = value, color = sector)) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_line(linewidth = 0.5) +
+  facet_wrap(~sector, ncol = 1, scales = "free_y") +
+  labs(
+    title = "Residuals after Segmentation",
+    x = "Date",
+    y = "Residual",
+    color = "Component"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+Nondurables' "residual" is just its mean-centered raw series, since no segments were found. The 2020 spike dominates Services even after segmentation removes its own dedicated segment mean — the shock itself was more of an outlier than a shift in level.
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R pce-acf-naive}
+#| echo: false
+
+par(mfrow = c(ncol(X_resid), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in seq_len(ncol(X_resid))) {
+  acf(X_resid[, i], main = "", xaxt = "n", ylab = colnames(X_resid)[i])
+}
+axis(1)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+All three residual series sit close to zero autocorrelation at every lag — the cleanest ACF diagnostic of any real-data chapter in this book. Quarterly consumption growth just doesn't carry much quarter-to-quarter momentum once its own mean is accounted for.
+
+### Mean-Shift-Invariant
+
+```{R pce-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R pce-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat)
+```
+
+### Mean-Shift-Invariant
+
+```{R pce-trend-ece}
+#| echo: false
+
+window <- max(10, floor(nrow(X_mat) / 5))
+plot_ece_terms(X_mat, window = window)
+```
+
+:::
+
+:::
+
+## Correlation
+
+```{R pce-calc-cor}
+#| echo: false
+
+ece_cor         <- ece.cor(X_mat) |> round(3)
+rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_mat)
+
+segment_cor     <- cor(X_resid) |> round(3)
+pearson_cor     <- cor(X_mat) |> round(3)
+
+ece_pmat        <- ece_pval(X_mat) |> round(3)
+segment_pmat    <- cor_pval(X_resid) |> round(3)
+pearson_pmat    <- cor_pval(X_mat) |> round(3)
+
+# Bold any off-diagonal cell whose corresponding p-value is < 0.05.
+bold_sig <- function(display_mat, pval_mat) {
+  m   <- nrow(display_mat)
+  out <- matrix("", m, m, dimnames = dimnames(display_mat))
+  for (i in seq_len(m)) {
+    for (j in seq_len(m)) {
+      sig <- i != j && !is.na(pval_mat[i, j]) && pval_mat[i, j] < 0.05
+      out[i, j] <- kableExtra::cell_spec(sprintf("%.3f", display_mat[i, j]), "html", bold = sig)
+    }
+  }
+  out
+}
+```
+
+::: {.panel-tabset}
+
+## Correlation
+
+```{R pce-output-cor}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(bold_sig(ece_cor, ece_pmat),         caption = "ECE Correlation",     escape = FALSE, format = "html")
+knitr::kable(bold_sig(segment_cor, segment_pmat), caption = "Segment Correlation", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pearson_cor, pearson_pmat), caption = "Pearson Correlation", escape = FALSE, format = "html")
+```
+
+## P-Values
+
+```{R pce-output-pval}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(bold_sig(ece_pmat, ece_pmat),         caption = "ECE P-Values",     escape = FALSE, format = "html")
+knitr::kable(bold_sig(segment_pmat, segment_pmat), caption = "Segment P-Values", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pearson_pmat, pearson_pmat), caption = "Pearson P-Values", escape = FALSE, format = "html")
+```
+
+:::
+
+Bold marks pairs significant at p < 0.05: correlation cells bold when the matching p-value clears it, p-value cells bold when they clear it themselves.
+
+Every pair is significant under all three methods, but the point estimates disagree on how strong. Naive Pearson puts Durables-Nondurables at 0.478 and Nondurables-Services at 0.539 — the two roughly comparable. Removing the segmented mean pulls Durables-Nondurables down to 0.310, while Nondurables-Services barely moves (0.579). ECE goes further still on that same pair, to 0.745 — well above both naive and segmented Pearson. As in the fixed-investment chapter, the gap traces back to an asymmetry in what got segmented: Nondurables has no detected breaks at all, so its full autocorrelation-free residual carries into every comparison unchanged, while its partners (Durables, Services) each had a real segment removed. ECE's block-difference construction and an oracle-residual Pearson correlation handle that asymmetry differently, and here they disagree by more than in any book pairing that segments cleanly on both sides.
+
+## Results
+
+Beyond the pairwise correlations above, we can test the joint null hypothesis that the full 3x3 correlation matrix is diagonal — i.e. that none of the three PCE components are contemporaneously correlated.
+
+```{R pce-diagonal-tests}
+#| echo: false
+set.seed(123)
+
+results <- data.frame(
+  Method = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(ece.test(X_mat, type = "bs.multiplier")$p.value, 3),
+    round(ece.test(X_mat, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+    round(ece.test(X_mat, type = "bs.parametric.naive")$p.value, 3),
+    round(cortest.bartlett(cor(X_mat), nrow(X_mat))$p.value, 3)
+  ),
+  check.names = FALSE
+)
+
+kable(results, align = c("l", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+The tests split along the same line as the fixed-investment chapter. Bartlett and the naive parametric bootstrap both reject the diagonal null overwhelmingly — expected, since all three components share the same consumer spending cycle. But the two tests built on ECE's default lag-1 block difference (`bs.multiplier`, `bs.parametric.lag1.diag.psd`) don't reject at conventional levels. With near-zero autocorrelation in every series (see the ACF tab), there's no leftover momentum to blame this time. The disagreement looks structural to the block-difference construction itself, not a byproduct of unmodeled serial dependence — the same pattern the fixed-investment chapter found, now showing up on a dataset diagnostically clean enough to rule out autocorrelation as the cause.
+
+---
+
+Where this leaves us: naive Pearson correlation finds all three PCE components significantly related, unsurprising since they're accounting components of the same aggregate. Removing the mean shift changes the story more for some pairs than others — Durables-Nondurables weakens under both segmentation and ECE, while Nondurables-Services strengthens sharply under ECE specifically (0.539 naive to 0.745), driven by Nondurables carrying no detected mean shift into the comparison at all. Every pairwise test agrees the correlations are real, but the joint-diagonal tests split exactly as they did in the fixed-investment chapter: Bartlett and the naive bootstrap reject, ECE's own lag-1-block-based bootstraps don't. That split recurring on a dataset with essentially no autocorrelation to explain it away suggests the two ECE bootstrap variants are conservative by construction here, not by accident of this particular series' dynamics.

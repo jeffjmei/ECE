@@ -50,6 +50,7 @@ book:
         - battery-aging.qmd
         - hurricane-michael-buoy.qmd
         - cpi-components.qmd
+        - pce-components.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd
