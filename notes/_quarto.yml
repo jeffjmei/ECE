@@ -48,6 +48,7 @@ book:
         - phillips-curve.qmd
         - oil-price-deregulation.qmd
         - battery-aging.qmd
+        - hurricane-michael-buoy.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd

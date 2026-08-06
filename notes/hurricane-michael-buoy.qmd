@@ -1,0 +1,238 @@
+---
+title: "Hurricane Michael: Wind Speed vs. Wave Height"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+```
+
+NOAA's National Data Buoy Center operates moored buoy **42039**, in the eastern Gulf of Mexico (28.97N, 86.01W), reporting hourly standard meteorological observations. We use two channels:
+
+- `WSPD`: wind speed (m/s), 8-minute average
+- `WVHT`: significant wave height (m), average of the highest one-third of waves in a 20-minute sampling window
+
+**Hurricane Michael** formed in the southwestern Caribbean on 2018-10-07, became a hurricane at 2018-10-08 00:00 UTC, and rapidly intensified into a Category 5 system before making landfall near Mexico Beach, Florida on 2018-10-10. Buoy 42039 sat close enough to the track to record the approach in real time — and stopped transmitting at 2018-10-10 08:50 UTC, with pressure down to 985.8 hPa and wind speed up to 24.0 m/s, as the storm's core closed in. We treat 2018-10-08 00:00 UTC (when Michael became a hurricane) through the last observation as the storm regime, and the five preceding weeks (2018-09-01 onward) as baseline.
+
+Wind speed and wave height are mechanistically linked — local wind stress is what builds a sea state — so some correlation is expected in any weather regime. The interesting question is whether a storm of this intensity changes that relationship, or just scales it up.
+
+```{R buoy-load}
+#| echo: false
+#| message: false
+#| label: buoy-load
+
+X_raw <- read_table(
+  "../data/real-data/hurricane-michael-buoy/42039h2018_raw.txt",
+  comment = "#",
+  col_names = c("YY", "MM", "DD", "hh", "mm", "WDIR", "WSPD", "GST", "WVHT",
+                "DPD", "APD", "MWD", "PRES", "ATMP", "WTMP", "DEWP", "VIS", "TIDE"),
+  na = c("99", "99.0", "999", "9999.0", "99.00", "MM"),
+  show_col_types = FALSE
+) |>
+  mutate(across(c(YY, MM, DD, hh, mm), as.integer)) |>
+  mutate(datetime = as.POSIXct(sprintf("%04d-%02d-%02d %02d:%02d:00", YY, MM, DD, hh, mm), tz = "UTC"))
+
+X_data <- X_raw |>
+  filter(datetime >= as.POSIXct("2018-09-01 00:00", tz = "UTC"),
+         datetime <= as.POSIXct("2018-10-10 08:50", tz = "UTC")) |>
+  filter(!is.na(WSPD), !is.na(WVHT)) |>
+  mutate(storm = datetime >= as.POSIXct("2018-10-08 00:00", tz = "UTC"))
+
+X_mat <- as.matrix(X_data[, c("WSPD", "WVHT")])
+colnames(X_mat) <- c("WindSpeed", "WaveHeight")
+win <- 12
+```
+
+`r nrow(X_data)` hourly observations, 2018-09-01 through 2018-10-10 08:50 UTC (the buoy's last transmission), of which `r sum(X_data$storm)` fall in the storm window.
+
+```{R buoy-oracle}
+#| echo: false
+#| label: buoy-oracle
+
+oracle_resid <- function(X, grp) {
+  R <- sapply(colnames(X), function(cn) X[, cn] - ave(X[, cn], grp))
+  colnames(R) <- colnames(X)
+  R
+}
+
+X_oracle <- oracle_resid(X_mat, X_data$storm)
+```
+
+```{R buoy-tables}
+#| echo: false
+#| label: buoy-tables
+
+L_ece <- 150
+
+ece_cor <- ece.cor(X_mat, L = L_ece) |> round(3)
+rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_mat)
+
+oracle_cor  <- cor(X_oracle) |> round(3)
+pearson_cor <- cor(X_mat) |> round(3)
+
+ece_pmat     <- ece_pval(X_mat) |> round(3)
+oracle_pmat  <- cor_pval(X_oracle) |> round(3)
+pearson_pmat <- cor_pval(X_mat) |> round(3)
+
+# ece.test()'s z-test hardcodes its internal block length (L = 2), which sits
+# in this series' unstable small-L region -- compute the z-test by hand at
+# the same L_ece used for the point estimate above.
+ece_se_Lece  <- ece.cor.se(X_mat[, "WindSpeed"], X_mat[, "WaveHeight"], L = L_ece, kappa = "gaussian")
+ece_z_pval   <- 2 * pnorm(abs(ece_cor[1, 2] / ece_se_Lece), lower.tail = FALSE)
+```
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R fig-buoy-series}
+#| echo: false
+#| fig-cap: "Wind speed and significant wave height, buoy 42039, 2018-09-01 through the buoy's last transmission on 2018-10-10. Teal = storm regime (Michael a hurricane or stronger)."
+#| fig-height: 6
+
+X_data |>
+  select(datetime, storm, WindSpeed = WSPD, WaveHeight = WVHT) |>
+  pivot_longer(c(WindSpeed, WaveHeight), names_to = "series", values_to = "value") |>
+  ggplot(aes(datetime, value, color = storm)) +
+  geom_line(color = "gray70", linewidth = 0.2) +
+  geom_point(size = 0.4) +
+  facet_wrap(~series, ncol = 1, scales = "free_y") +
+  labs(title = "Buoy 42039: Wind Speed and Wave Height, Hurricane Michael Approach", x = NULL, y = NULL, color = "Storm") +
+  theme_minimal()
+```
+
+Both series climb together as Michael approaches, but the record ends mid-ramp — the buoy went dark at 08:50 UTC on 2018-10-10, roughly 33 hours before landfall, still recording rising wind and seas.
+
+## Residuals
+
+```{R fig-buoy-residual}
+#| echo: false
+
+X_data |>
+  select(datetime) |>
+  bind_cols(as.data.frame(X_oracle)) |>
+  pivot_longer(-datetime, names_to = "series", values_to = "value") |>
+  ggplot(aes(datetime, value, color = series)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  labs(title = "Oracle Residuals (storm/baseline mean removed)", x = NULL, y = "Anomaly", color = NULL) +
+  theme_minimal()
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Oracle
+
+```{R acf-buoy-oracle}
+#| echo: false
+
+par(mfrow = c(1, 2), mar = c(2, 3, 2, 1), oma = c(2, 0, 0, 0), mgp = c(1.8, 1, 0))
+acf(X_oracle[, "WindSpeed"], main = "Wind Speed")
+acf(X_oracle[, "WaveHeight"], main = "Wave Height")
+mtext("Lag (hours)", side = 1, outer = TRUE, line = 0.5)
+```
+
+Lag-1 autocorrelation of roughly 0.91-0.94 survives storm-mean removal — sea state and wind both have real hour-to-hour momentum, more persistent than any other sensor chapter in this book (Detroit Lake's algal pigments sit around 0.72-0.73 by comparison).
+
+### Mean-Shift-Invariant
+
+```{R acf-buoy-invariant}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Oracle
+
+```{R trend-buoy-oracle}
+#| echo: false
+
+S_oracle <- X_oracle[, "WindSpeed"] * X_oracle[, "WaveHeight"]
+S_smooth <- stats::filter(S_oracle, rep(1 / win, win), sides = 2)
+
+par(mar = c(3, 3, 1, 1), mgp = c(1.8, 1, 0))
+ylim <- quantile(S_oracle, probs = c(0.01, 0.99), na.rm = TRUE)
+plot(S_oracle, type = "l", col = "lightgray", ylab = "WindSpeed x WaveHeight (oracle residuals)", xlab = "Index (hourly)", ylim = ylim)
+abline(h = mean(S_oracle), col = "blue")
+lines(S_smooth)
+legend("topright", legend = sprintf("%.3f", mean(S_oracle)), text.col = "blue", bty = "n", cex = 0.8)
+```
+
+### Mean-Shift-Invariant
+
+```{R trend-buoy-invariant}
+#| echo: false
+
+plot_ece_terms(X_mat, window = win)
+```
+
+:::
+
+## Variance
+
+```{R variance-buoy}
+#| echo: false
+
+plot_ece_variance(X_mat, window = win)
+```
+
+## Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(ece_cor,     caption = "ECE Correlation")
+knitr::kable(oracle_cor,  caption = "Oracle Correlation")
+knitr::kable(pearson_cor, caption = "Pearson Correlation")
+```
+
+Naive Pearson (0.888) and Oracle (0.823) agree that wind and waves are already tightly coupled — this is the Gulf of Mexico, not the open ocean, so local wind seas dominate even outside the storm (mean dominant wave period stays under 6 seconds at baseline, consistent with locally wind-driven chop rather than distant swell). Splitting by regime directly, Pearson correlation is 0.855 at baseline and 0.923 during the storm approach: real, but a modest tightening next to the roughly 4x jump in both series' means (wind 4.8 to 13.0 m/s, waves 0.73 to 3.74 m).
+
+ECE at the usual block lengths (`L` = 2-50) is unstable and badly understates the relationship (0.21-0.47) — the near-unity autocorrelation above means a short block difference doesn't fully cancel each series' own momentum before correlating the two. Pushing `L` out to 125-200 (`L_ece` = `r L_ece` used above) recovers a real plateau around 0.72-0.73, in the same neighborhood as Oracle and Pearson but still visibly short of them. This series needs an order of magnitude more smoothing than Detroit Lake's `L = 50` to converge — a direct consequence of its much higher persistence, not a sign of a wrong point estimate.
+
+## P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(ece_pmat,     caption = "ECE P-Values (package default, L = 2)")
+knitr::kable(oracle_pmat,  caption = "Oracle P-Values")
+knitr::kable(pearson_pmat, caption = "Pearson P-Values")
+```
+
+Naive and Oracle both reject independence outright (p < 0.001). `ece_pval()` — which, like `ece.test(type = "z.test")`, hardcodes its internal block length to the package default `L = 2` — actually does reject here too (p = `r ece_pmat[1,2]`), but that's testing the badly biased `L = 2` point estimate (0.208, from the Correlation tab's sweep), not the `L_ece` = `r L_ece` estimate the plateau above settled on. Computing the z-test by hand at `L_ece` instead (`ece.cor.se(..., L = L_ece)`) gives se = `r round(ece_se_Lece, 4)`, p = `r format(ece_z_pval, scientific = TRUE, digits = 3)` — a decisive rejection, this time backed by the converged point estimate rather than the unstable one. Both land on "reject," but for different, and not equally trustworthy, reasons.
+
+:::
+
+---
+
+## Bootstrap Methods
+
+```{R}
+#| echo: false
+ece.test(X_mat, type = "bs.multiplier")
+ece.test(X_mat, type = "bs.parametric")
+```
+
+Both bootstrap variants use a fixed lag-1 difference internally (independent of `L_ece`), so they inherit the small-block instability rather than the large-`L` plateau. Across repeated runs, the multiplier bootstrap gives p ≈ 0.08-0.12 — hovering right at the α = 0.10 boundary, sometimes rejecting, sometimes not — while the parametric bootstrap gives p ≈ 0.58-0.61, clearly failing to reject. Neither is as decisive as the hand-computed `L_ece` z-test above.
+
+## Where this leaves us
+
+Hurricane Michael gives ECE a real, sharply dated mechanism — the buoy's own last transmission marks the moment the storm made the observation impossible — and a textbook mechanistically-linked pair (wind stress builds a sea state). Unlike the mean-shift chapters elsewhere in this book, the correlation itself barely moves (0.855 to 0.923): the storm's signature here is almost entirely a change in scale, wind and waves both roughly quadrupling, with the underlying coupling staying strong throughout.
+
+That scale change is exactly what ECE is built to see past, and at large enough `L` it does — the estimate converges to 0.72-0.73, in the right neighborhood as Oracle (0.823) and Pearson (0.888). But it needs `L` in the hundreds to get there, far past what any other chapter in this book requires, because this series' hour-to-hour persistence (lag-1 autocorrelation above 0.9) is the strongest of any sensor data used so far.
+
+Inference tells a more tangled story than the point estimate does. The package's default z-test (`L = 2`) rejects independence, but off a point estimate (0.208) the Correlation tab already showed is badly biased — the right answer for the wrong reason. Hand-computing the z-test at the converged `L_ece` rejects too, this time credibly. The two bootstrap methods, built on a fixed lag-1 difference neither exposes for adjustment, land closer to the `L = 2` regime than the plateau — one borderline, one a clear non-rejection. Four tests, three different levels of trustworthiness, all nominally answering the same question. The result is a clean illustration of a tradeoff that's easy to state and easy to miss: block-differencing needs `L` large relative to the autocorrelation's decay time, not just larger than some fixed default, and a persistent enough series can make the "obvious" choice of `L` — including the one built into the package's own hardcoded test — badly wrong without any diagnostic screaming about it until you check.
