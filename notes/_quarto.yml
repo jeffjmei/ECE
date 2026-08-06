@@ -45,6 +45,7 @@ book:
         - wearable-gestures.qmd
         - sleep-polysomnography.qmd
         - detroit-lake-algal-bloom.qmd
+        - phillips-curve.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd

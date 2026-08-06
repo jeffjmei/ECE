@@ -1,0 +1,226 @@
+---
+title: "Phillips Curve Breakdown"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+```
+
+UK macroeconomic data, 1857-1987 (`strucchange::PhillipsCurve`, itself one of that package's textbook examples for structural-break detection). We use two annual series:
+
+- `UnempChange`: year-over-year change in the unemployment rate
+- `Inflation`: year-over-year change in the log price level (price inflation)
+
+The **Phillips curve** is the classic macroeconomic claim that these two move together: falling unemployment should coincide with rising inflation, and vice versa. Through the mid-1960s that trade-off held up reasonably well in UK data. It then broke down — the "stagflation" episodes of the late 1960s through the 1970s produced years with both rising unemployment *and* rising inflation, something the simple trade-off couldn't accommodate. Milton Friedman's 1968 AEA address predicted exactly this breakdown on theoretical grounds (the "natural rate" / expectations-augmented Phillips curve) before it was fully visible in the data. We date the regime split at **1967**, the conventional start of this breakdown in the applied literature; economists don't agree on an exact year, and the transition was gradual rather than a hard switch, which we treat as an honest limitation of the oracle below rather than paper over it.
+
+Two features make this series different from every other real-data chapter here. First, at annual resolution the differenced series have genuinely low autocorrelation — nothing like the hour-to-hour momentum in the sensor chapters. Second, and more interesting: the correlation itself, not just the mean, looks like it changes sign across the 1967 split (checked below). ECE assumes a fixed covariance $\Sigma$ with a piecewise-constant *mean* — it has no way to represent a correlation that flips sign. This chapter is as much about that assumption failing as it is about a mean shift.
+
+One honesty note on the raw series: `Inflation` (`dp`) carries two enormous spikes, 1917 and 1940 — wartime price shocks, unrelated to the Phillips-curve mechanism. We leave them in the data (the full un-edited series is more useful for the diagnostics below than a manually trimmed one), but they visibly dominate the raw plot below.
+
+```{R phillips-load}
+#| echo: false
+#| message: false
+#| label: phillips-load
+
+X_data <- read_csv("../data/real-data/phillips-curve/phillips_curve_uk.csv", show_col_types = FALSE) |>
+  mutate(post = year >= 1967)
+
+X_mat <- as.matrix(X_data[, c("du", "dp")])
+colnames(X_mat) <- c("UnempChange", "Inflation")
+win <- 10
+```
+
+`r nrow(X_data)` annual points, 1857-1987; `r sum(!X_data$post)` pre-1967, `r sum(X_data$post)` post-1967 — a deliberately unbalanced split, since the whole point is that the post-1967 era is short.
+
+```{R phillips-oracle}
+#| echo: false
+#| label: phillips-oracle
+
+oracle_resid <- function(X, grp) {
+  R <- sapply(colnames(X), function(cn) X[, cn] - ave(X[, cn], grp))
+  colnames(R) <- colnames(X)
+  R
+}
+
+X_oracle <- oracle_resid(X_mat, X_data$post)
+```
+
+```{R phillips-tables}
+#| echo: false
+#| label: phillips-tables
+
+L_ece <- 4
+
+ece_cor <- ece.cor(X_mat, L = L_ece) |> round(3)
+rownames(ece_cor) <- colnames(ece_cor) <- colnames(X_mat)
+
+oracle_cor  <- cor(X_oracle) |> round(3)
+pearson_cor <- cor(X_mat) |> round(3)
+
+oracle_pmat  <- cor_pval(X_oracle) |> round(3)
+pearson_pmat <- cor_pval(X_mat) |> round(3)
+
+# ece.test()'s z-test hardcodes its internal block length (L = 2), which is
+# degenerate for this dataset (see prose below) -- compute the z-test by hand
+# at the same L = 4 used for the point estimate above.
+ece_se_L4   <- ece.cor.se(X_mat[, "UnempChange"], X_mat[, "Inflation"], L = L_ece, kappa = "gaussian")
+ece_z_pval  <- 2 * pnorm(abs(ece_cor[1, 2] / ece_se_L4), lower.tail = FALSE)
+```
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R fig-phillips-series}
+#| echo: false
+#| fig-cap: "Unemployment change and inflation, UK 1857-1987. Red = post-1967 (Phillips-curve breakdown era)."
+#| fig-height: 6
+
+X_data |>
+  select(year, post, UnempChange = du, Inflation = dp) |>
+  pivot_longer(c(UnempChange, Inflation), names_to = "series", values_to = "value") |>
+  ggplot(aes(year, value, color = post)) +
+  geom_line(color = "gray70", linewidth = 0.2) +
+  geom_point(size = 0.8) +
+  facet_wrap(~series, ncol = 1, scales = "free_y") +
+  labs(title = "UK Phillips Curve variables, 1857-1987", x = NULL, y = NULL, color = "Post-1967") +
+  theme_minimal()
+```
+
+The two wartime inflation spikes (1917, 1940) dwarf everything else in `Inflation`; the post-1967 window sits near the flat right edge of the series, easy to miss visually despite carrying the chapter's whole story.
+
+## Residuals
+
+```{R fig-phillips-residual}
+#| echo: false
+
+X_data |>
+  select(year) |>
+  bind_cols(as.data.frame(X_oracle)) |>
+  pivot_longer(-year, names_to = "series", values_to = "value") |>
+  ggplot(aes(year, value, color = series)) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  labs(title = "Oracle Residuals (pre/post-1967 mean removed)", x = NULL, y = "Anomaly", color = NULL) +
+  theme_minimal()
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Oracle
+
+```{R acf-phillips-oracle}
+#| echo: false
+
+par(mfrow = c(1, 2), mar = c(2, 3, 2, 1), oma = c(2, 0, 0, 0), mgp = c(1.8, 1, 0))
+acf(X_oracle[, "UnempChange"], main = "UnempChange")
+acf(X_oracle[, "Inflation"], main = "Inflation")
+mtext("Lag (years)", side = 1, outer = TRUE, line = 0.5)
+```
+
+Lag-1 autocorrelation of 0.10 (`UnempChange`) and 0.68 (`Inflation`) after regime-mean removal — a sharp contrast within the same chapter: unemployment *changes* are close to white noise year-to-year, while inflation still carries real momentum (the wartime spikes each span two to three consecutive years). Nothing here approaches the 0.9+ autocorrelation that broke the trending-level series (temperature, `GermanM1`'s money/price/income levels) we ruled out while sourcing this chapter.
+
+### Mean-Shift-Invariant
+
+```{R acf-phillips-invariant}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Oracle
+
+```{R trend-phillips-oracle}
+#| echo: false
+
+S_oracle <- X_oracle[, "UnempChange"] * X_oracle[, "Inflation"]
+S_smooth <- stats::filter(S_oracle, rep(1 / win, win), sides = 2)
+
+par(mar = c(3, 3, 1, 1), mgp = c(1.8, 1, 0))
+ylim <- quantile(S_oracle, probs = c(0.01, 0.99), na.rm = TRUE)
+plot(S_oracle, type = "l", col = "lightgray", ylab = "UnempChange x Inflation (oracle residuals)", xlab = "Index (years)", ylim = ylim)
+abline(h = mean(S_oracle), col = "blue")
+lines(S_smooth)
+legend("topright", legend = sprintf("%.3f", mean(S_oracle)), text.col = "blue", bty = "n", cex = 0.8)
+```
+
+### Mean-Shift-Invariant
+
+```{R trend-phillips-invariant}
+#| echo: false
+
+plot_ece_terms(X_mat, window = win)
+```
+
+:::
+
+## Variance
+
+```{R variance-phillips}
+#| echo: false
+
+plot_ece_variance(X_mat, window = win)
+```
+
+## Correlation
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(ece_cor,     caption = "ECE Correlation")
+knitr::kable(oracle_cor,  caption = "Oracle Correlation")
+knitr::kable(pearson_cor, caption = "Pearson Correlation")
+```
+
+Pooled Pearson correlation is a weak -0.122. Removing the pre/post-1967 mean shift (the standard "Oracle" comparison used throughout this book) moves it to -0.185 — still negative, still weak. ECE (`L = 4`) lands at -0.405, past both of those in magnitude.
+
+`L = 4` is not a comfortable choice, and we don't want to hide that: at annual resolution the point estimate is genuinely sensitive to it. `L = 2` is degenerate (see the P-Values section below). `L = 3` gives -0.574; `L = 5` gives -0.377; by `L = 10` it has settled to -0.285, closer to the Oracle number. There is no plateau near `L = 4` the way there was in the sensor chapters' `L = 20`-`L = 100` sweeps — small-`L` block-differencing on 131 annual points just doesn't have much data to average over, and every unit change in `L` visibly moves the estimate. We report `L = 4` because it's the smallest block length that gives both a valid in-range correlation and a well-defined standard error, not because it's a stable plateau.
+
+All of these pooled numbers miss the real story regardless of which one you trust. Computing the correlation *separately within each regime*, rather than mean-centering and pooling, gives **-0.238 pre-1967** and **+0.375 post-1967** — the sign flips. ECE, Oracle, and Pearson all report a single pooled number because they all assume one fixed covariance structure; none of them can express "the relationship reversed." The Oracle comparison used elsewhere in this book removes a mean shift and implicitly assumes $\Sigma$ itself is constant across the regime split — an assumption this chapter breaks. ECE inherits the same assumption by construction, and at `L = 4` its estimate (-0.405) actually overshoots both regime-specific numbers, which is a symptom of the same small-`L` instability rather than evidence it has found the "true" relationship.
+
+## P-Values
+
+```{R}
+#| layout-ncol: 3
+#| echo: false
+
+knitr::kable(oracle_pmat,  caption = "Oracle P-Values")
+knitr::kable(pearson_pmat, caption = "Pearson P-Values")
+```
+
+Pooled Pearson does not reject independence (p = 0.167). The Oracle test does (p = 0.034). The regime-specific correlations tell a sharper version of the same story: pre-1967 alone rejects independence (p = 0.012, n = 110); post-1967 alone is borderline (p = 0.094, n = 21) — a small sample, but pointing the opposite direction.
+
+ECE's own z-test at `L = 4` gives estimate = `r round(ece_cor[1,2], 3)`, se = `r round(ece_se_L4, 3)`, p = `r round(ece_z_pval, 3)` — borderline, on the edge of rejecting independence. We compute this by hand rather than via `ece.test(type = "z.test")`, because that wrapper hardcodes its internal block length to a fixed default (`L = 2`) instead of accepting the `L = 4` used for the point estimate above. At `L = 2`, `ece.cor(X)` returns a raw correlation of -1.74 — outside `[-1, 1]`, not a valid estimate — and the wrapper's standard error comes out `NaN`. That's a package limitation (`ece.test` doesn't expose `L`) rather than a property of this data, but it means the number quoted here required bypassing the standard entry point.
+
+:::
+
+---
+
+## Bootstrap Methods
+
+```{R}
+#| echo: false
+ece.test(X_mat, type = "bs.multiplier")
+ece.test(X_mat, type = "bs.parametric")
+```
+
+Across repeated runs, the multiplier bootstrap gives p ≈ 0.65-0.72 and the parametric bootstrap gives p ≈ 0.21-0.26 — both use fixed lag-1 terms internally and don't depend on the `L` choice above. Neither rejects independence at conventional levels, unlike the hand-computed `L = 4` z-test (p ≈ 0.05). The three tests disagree here more than in any other chapter in this book, which is itself informative: with a covariance that isn't actually fixed across the regime split, "the" p-value depends heavily on which variance estimator you trust.
+
+## Where this leaves us
+
+The Phillips Curve chapter earns its place in this book for a reason none of the others do: it's the first real dataset here where the *covariance*, not just the mean, plausibly changes across the regime split. Every earlier chapter's "Oracle" comparison — and by construction, ECE itself — assumes a fixed $\Sigma$ with only the mean shifting between segments. That assumption is testable here in a way it usually isn't, because the domain knowledge is specific enough to check it directly: unemployment-change and inflation correlate at -0.238 before 1967 and +0.375 after. A single pooled number, whether Pearson's -0.122, Oracle's -0.185, or ECE's -0.405, cannot represent a sign flip; each collapses the regime split down to one number, and none of them agree with each other about what that number should be.
+
+This chapter doesn't flatter ECE the way the differenced-series, low-autocorrelation setup initially promised to. At `L = 20` and above, ECE's estimate tracked the Oracle number closely and stayed on a real plateau, the way it does in the book's better-behaved chapters. But `L = 20` for a 131-point annual series means fewer than seven non-overlapping blocks, and the more defensible small-`L` choices are anything but stable: `L = 2` is degenerate, and `L = 3` through `L = 10` sweep from -0.574 to -0.285 with no plateau at all. At `L = 4`, ECE's -0.405 overshoots both regime-specific correlations in magnitude — not because it found something naive and Oracle missed, but because small-`L` block-differencing on this little data is simply noisy. The honest reading is that annual resolution, whatever it buys in low autocorrelation, may not hand ECE enough points for its own asymptotics to kick in — a limitation distinct from, and possibly more basic than, the sign-flipping covariance this chapter set out to illustrate.
