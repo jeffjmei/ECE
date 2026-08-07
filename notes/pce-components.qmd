@@ -21,12 +21,16 @@ FRED-QD, the McCracken-Ng quarterly companion to FRED-MD, includes national-acco
 
 These three sum to total PCE (`PCECC96`), so some correlation is built in by construction. But they behave very differently. Durables are big-ticket, credit-sensitive purchases people postpone in a downturn and catch up on later — the most cyclical of the three. Nondurables are closer to necessities, smoother but not immune to recessions. Services are the smoothest of all in normal times — healthcare and rent don't swing with the business cycle — except in 2020, when lockdowns hit services spending directly and produced the sharpest quarterly move in this entire dataset.
 
-We work with quarterly log growth rates of each series, `r format(as.Date("1959-06-01"))` through `r format(as.Date("2026-06-01"))`.
+Dates run `r format(as.Date("1959-06-01"))` through `r format(as.Date("2026-06-01"))`.
 
-```{R pce-load-data}
+## Raw Levels: An Initial Attempt
+
+We start with the raw dollar levels, the same approach CPI Components uses successfully on price index levels.
+
+```{R pce-load-data-levels}
 #| echo: false
 #| message: false
-#| label: pce-load-data
+#| label: pce-load-data-levels
 
 X_raw <- read_csv(
   "~/Documents/Research/Code/ECE/data/real-data/pce-components/pce_components_fredqd.csv",
@@ -34,6 +38,270 @@ X_raw <- read_csv(
 ) |>
   mutate(sasdate = as.Date(sasdate, format = "%m/%d/%Y")) |>
   arrange(sasdate)
+
+X_mat_levels    <- as.matrix(X_raw[, c("PCDGx", "PCNDx", "PCESVx")])
+colnames(X_mat_levels) <- c("Durables", "Nondurables", "Services")
+X_seg_levels    <- segment_mean(X_mat_levels, penalty = "Manual", pen.value = 0.005)
+colnames(X_seg_levels) <- colnames(X_mat_levels)
+X_resid_levels  <- X_mat_levels - X_seg_levels
+```
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R pce-levels-plot}
+#| echo: false
+#| label: fig-pce-levels
+#| fig-cap: "Raw PCE component levels. Thick lines show the segmented mean at the same pen.value used throughout this chapter."
+
+bind_cols(
+  date = X_raw$sasdate,
+  as.data.frame(X_mat_levels),
+  as.data.frame(X_seg_levels) |> rename_with(~ paste0(.x, "_segment"))
+) |>
+  pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
+  mutate(
+    type   = if_else(str_ends(series, "_segment"), "Segmented", "Raw"),
+    sector = str_remove(series, "_segment$")
+  ) |>
+  ggplot(aes(x = date, y = value, color = sector, group = series)) +
+  geom_line(aes(linewidth = type)) +
+  scale_linewidth_manual(values = c(Raw = 0.4, Segmented = 1.0), guide = "none") +
+  facet_wrap(~sector, ncol = 1, scales = "free_y") +
+  labs(title = "PCE Component Levels", x = "Date", y = "Billions, chained dollars", color = "Component") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+A `pen.value` of 0.005 was tuned for growth-rate scale. On dollar-level scale it's far too small: the segmented mean tracks almost every wiggle rather than genuine level shifts.
+
+## Residuals
+
+```{R pce-levels-plot-residuals}
+#| echo: false
+#| label: fig-pce-levels-residuals
+#| fig-cap: "Residuals after removing the segmented mean from each raw-level component."
+
+X_resid_levels |>
+  as_tibble() |>
+  bind_cols(date = X_raw$sasdate) |>
+  pivot_longer(cols = -date, names_to = "sector", values_to = "value") |>
+  ggplot(aes(x = date, y = value, color = sector)) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_line(linewidth = 0.5) +
+  facet_wrap(~sector, ncol = 1, scales = "free_y") +
+  labs(title = "Residuals after Segmenting Raw Levels", x = "Date", y = "Residual", color = "Component") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+Compare to the Diagnostics tab's Residuals below: these are noticeably choppier, sawtoothing around zero rather than settling into flat stretches. That's the over-segmentation showing up directly in the residual, not just in the ACF.
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R pce-levels-acf}
+#| echo: false
+#| label: fig-pce-levels-acf
+#| fig-cap: "ACF of residuals after segmenting the raw levels."
+
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+for (i in 1:3) {
+  acf(X_resid_levels[, i], main = "", xaxt = "n", ylab = colnames(X_resid_levels)[i])
+}
+axis(1)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+Sharp negative spikes at lag 1 for every pair — the over-segmentation artifact. Compare to the near-zero ACF in the Diagnostics tab below, on the same data after log-differencing.
+
+### Mean-Shift-Invariant
+
+```{R pce-levels-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_levels)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R pce-levels-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_levels)
+```
+
+### Mean-Shift-Invariant
+
+```{R pce-levels-trend-ece-data}
+#| echo: false
+
+window_levels <- max(10, floor(nrow(X_mat_levels) / 5))
+cn_trend  <- colnames(X_mat_levels)
+idx_trend <- combn(ncol(X_mat_levels), 2)
+n_trend   <- nrow(X_mat_levels)
+
+trend_cov_levels <- purrr::map_dfr(seq_len(ncol(idx_trend)), function(k) {
+  i <- idx_trend[1, k]
+  j <- idx_trend[2, k]
+  s <- lag_term(X_mat_levels[, i], X_mat_levels[, j])
+  tibble(t = seq_len(n_trend), row = cn_trend[i], col = cn_trend[j], raw = s)
+})
+trend_var_levels <- purrr::map_dfr(seq_len(ncol(X_mat_levels)), function(i) {
+  s <- lag_term(X_mat_levels[, i], X_mat_levels[, i])
+  tibble(t = seq_len(n_trend), row = cn_trend[i], col = cn_trend[i], raw = s)
+})
+trend_dat_levels <- bind_rows(trend_cov_levels, trend_var_levels) |>
+  mutate(row = factor(row, levels = cn_trend), col = factor(col, levels = cn_trend)) |>
+  group_by(row, col) |>
+  mutate(run = rolling_mean(raw, window_levels), mean = mean(raw), median = median(raw)) |>
+  ungroup()
+
+trend_labels_levels <- trend_dat_levels |> distinct(row, col, mean, median)
+```
+
+```{R pce-levels-trend-ece}
+#| echo: false
+
+ggplot(trend_dat_levels, aes(x = t)) +
+  geom_line(aes(y = raw), color = "gray80") +
+  geom_hline(aes(yintercept = mean), linetype = "dashed", color = "firebrick") +
+  geom_hline(aes(yintercept = median), linetype = "dashed", color = "darkorange") +
+  geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
+  geom_text(
+    data = trend_labels_levels, aes(x = 5, y = mean, label = sprintf("mean = %.2g", mean)),
+    color = "firebrick", hjust = 0, vjust = -0.6, size = 2.8, inherit.aes = FALSE
+  ) +
+  geom_text(
+    data = trend_labels_levels, aes(x = 5, y = median, label = sprintf("median = %.2g", median)),
+    color = "darkorange", hjust = 0, vjust = 1.4, size = 2.8, inherit.aes = FALSE
+  ) +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
+  labs(
+    x = "time", y = "ECE term (covariance scale)",
+    subtitle = sprintf("gray = raw term, blue = %d-window mean, red = mean (ECE estimate), orange = median", window_levels)
+  ) +
+  theme_minimal()
+```
+
+Mean and median disagree in sign in every panel, diagonal included: Durables-Nondurables mean is `r round(trend_labels_levels |> filter(row == "Durables", col == "Nondurables") |> pull(mean))`, median is `r round(trend_labels_levels |> filter(row == "Durables", col == "Nondurables") |> pull(median))`; even Durables' own variance term (top-left panel) has mean `r round(trend_labels_levels |> filter(row == "Durables", col == "Durables") |> pull(mean))` against a median of `r round(trend_labels_levels |> filter(row == "Durables", col == "Durables") |> pull(median))`. A few extreme terms — spikes from the over-segmented residual's sharp jumps — pull the mean far from where most of the term distribution actually sits, on the diagonal as well as off it. That's the direct mechanism behind the broken correlation estimate on the Correlation tab below: the ACF (previous tab) looks reasonable because it only sees lag-1 linear dependence, but ECE's covariance and variance estimates are both raw means of these terms, and a mean is exactly the summary statistic that a handful of outliers can drag outside a sane range.
+
+```{R pce-levels-trend-hist}
+#| echo: false
+
+trend_trimmed_levels <- trend_dat_levels |>
+  group_by(row, col) |>
+  filter(raw > quantile(raw, 0.005), raw < quantile(raw, 0.995)) |>
+  ungroup()
+
+ggplot(trend_trimmed_levels, aes(x = raw)) +
+  geom_histogram(bins = 40, fill = "steelblue", color = "white") +
+  geom_vline(data = trend_labels_levels, aes(xintercept = mean), color = "firebrick", linetype = "dashed") +
+  geom_vline(data = trend_labels_levels, aes(xintercept = median), color = "darkorange", linetype = "dashed") +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free") +
+  labs(x = "ECE term value (middle 99%)", y = "Count") +
+  theme_minimal()
+```
+
+Same story as the histogram in the Diagnostics tab below: almost every observation sits in a single bar near zero, and the mean (dashed red) sits well off the median (dashed orange) even after trimming to the middle 99%. A handful of extreme terms from the over-segmented residual are enough to pull the mean off the bulk of the distribution — this is what actually breaks `ece.cor()`, not anything visible in the ACF.
+
+:::
+
+## Kappa
+
+```{R pce-levels-kappa-check}
+#| echo: false
+
+cn_levels  <- colnames(X_mat_levels)
+idx_levels <- combn(ncol(X_mat_levels), 2)
+
+kappa_tbl_levels <- purrr::map_dfr(seq_len(ncol(idx_levels)), function(k) {
+  i <- idx_levels[1, k]
+  j <- idx_levels[2, k]
+  kap <- ece.kappa(X_resid_levels[, i], X_resid_levels[, j], method = "mom")
+  tibble(
+    Pair = paste(cn_levels[i], "/", cn_levels[j]),
+    k40  = round(kap$k40, 2),
+    k31  = round(kap$k31, 2),
+    k22  = round(kap$k22, 2),
+    k13  = round(kap$k13, 2),
+    k04  = round(kap$k04, 2)
+  )
+})
+
+kable(kappa_tbl_levels, align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+Same story as the Gaussian reference check in the Diagnostics tab below: every term runs well past its Gaussian value (`k40`, `k04` near 3; `k22` near 1). The over-segmented residuals here even push some `k31`/`k13` terms negative, which a well-behaved mean-zero residual shouldn't do. This table isn't the chapter's real kappa diagnostic — it's evidence the raw-level residuals are too corrupted by over-segmentation to trust any downstream inference, kappa included.
+
+## Omega
+
+```{R pce-levels-omega-check}
+#| echo: false
+
+n_levels <- nrow(X_mat_levels)
+
+ece_omega_levels <- ece.complexity(X_mat_levels) |> round(6)
+rownames(ece_omega_levels) <- colnames(ece_omega_levels) <- cn_levels
+
+seg_omega_levels <- matrix(0, ncol(X_mat_levels), ncol(X_mat_levels), dimnames = list(cn_levels, cn_levels))
+for (i in seq_len(ncol(X_mat_levels))) {
+  for (j in seq_len(ncol(X_mat_levels))) {
+    seg_omega_levels[i, j] <- lag_diff(X_seg_levels[, i], X_seg_levels[, j], k = 1) / n_levels
+  }
+}
+seg_omega_levels <- round(seg_omega_levels, 6)
+```
+
+```{R pce-levels-omega-check-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(ece_omega_levels, caption = "ECE (raw levels, no segmentation)")
+knitr::kable(seg_omega_levels, caption = "Segmentation-implied (raw levels)")
+```
+
+These two agree to within 1.3% on every entry, both positive throughout — closer agreement than the log-diff version of this check in the Diagnostics tab below, where the two estimates disagree even in sign. That's expected: raw dollar levels carry six decades of compounding growth, a mean-heterogeneity signal so large that almost any segmentation, however badly overfit, captures its broad shape. Omega agreement isn't evidence the raw-level approach works. It confirms the two methods are measuring the same large trend, while the ACF and Correlation checks above show the *residual* left behind is still unusable.
+
+:::
+
+```{R pce-levels-cor}
+#| echo: false
+
+n_segs_levels <- apply(X_seg_levels, 2, function(c) length(unique(c)))
+
+ece_cor_levels <- ece.cor(X_mat_levels) |> round(3)
+rownames(ece_cor_levels) <- colnames(ece_cor_levels) <- colnames(X_mat_levels)
+pearson_cor_levels <- cor(X_mat_levels) |> round(3)
+```
+
+```{R pce-levels-cor-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(ece_cor_levels,     caption = "ECE Correlation (raw levels)")
+knitr::kable(pearson_cor_levels, caption = "Naive Pearson Correlation (raw levels)")
+```
+
+This doesn't work. `segment_mean()` finds `r n_segs_levels[["Durables"]]`, `r n_segs_levels[["Nondurables"]]`, and `r n_segs_levels[["Services"]]` segments respectively — one every couple of quarters, not the handful of genuine recessions and shocks we'd expect. Over-segmenting like this fits local noise as if it were a mean shift, which shows up as strong *negative* autocorrelation in the residuals (ACF(1) around -0.5 to -0.6 above) instead of the near-zero we want. That over-fit residual structure breaks `ece.cor()` outright: the Durables-Services entry comes out to `r ece_cor_levels["Durables", "Services"]`, outside the valid [-1, 1] range.
+
+We instead work with quarterly log growth rates. First-differencing each series fixes the segmentation, since a `pen.value` of 0.005 is the right order of magnitude for quarter-over-quarter growth rates rather than dollar levels. Taking logs before differencing is standard economic convention on top of that (growth *rates* are the meaningful unit for spending, not dollar levels) and doesn't change which pairs come out significant.
+
+```{R pce-load-data}
+#| echo: false
+#| message: false
+#| label: pce-load-data
 
 X_data <- X_raw |>
   mutate(
@@ -161,21 +429,13 @@ plot_naive_terms(X_mat)
 
 ### Mean-Shift-Invariant
 
-```{R pce-trend-ece}
-#| echo: false
-
-window <- max(10, floor(nrow(X_mat) / 5))
-plot_ece_terms(X_mat, window = window)
-```
-
-Every panel's largest single term value falls at the same quarter: 2020-06-01, the COVID lockdown shock. The histogram below shows the full term distribution on the same 3x3 layout (diagonal = variance term, upper triangle = covariance term), so that single quarter's weight is visible directly.
-
 ```{R pce-trend-ece-data}
 #| echo: false
 
-cn  <- colnames(X_mat)
-idx <- combn(ncol(X_mat), 2)
-n   <- nrow(X_mat)
+cn     <- colnames(X_mat)
+idx    <- combn(ncol(X_mat), 2)
+n      <- nrow(X_mat)
+window <- max(10, floor(n / 5))
 
 ece_cov_dat <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
   i <- idx[1, k]
@@ -188,8 +448,39 @@ ece_var_dat <- purrr::map_dfr(seq_len(ncol(X_mat)), function(i) {
   tibble(t = seq_len(n), row = cn[i], col = cn[i], raw = s)
 })
 ece_terms_dat <- bind_rows(ece_cov_dat, ece_var_dat) |>
-  mutate(row = factor(row, levels = cn), col = factor(col, levels = cn))
+  mutate(row = factor(row, levels = cn), col = factor(col, levels = cn)) |>
+  group_by(row, col) |>
+  mutate(run = rolling_mean(raw, window), mean = mean(raw), median = median(raw)) |>
+  ungroup()
+
+ece_terms_labels <- ece_terms_dat |> distinct(row, col, mean, median)
 ```
+
+```{R pce-trend-ece}
+#| echo: false
+
+ggplot(ece_terms_dat, aes(x = t)) +
+  geom_line(aes(y = raw), color = "gray80") +
+  geom_hline(aes(yintercept = mean), linetype = "dashed", color = "firebrick") +
+  geom_hline(aes(yintercept = median), linetype = "dashed", color = "darkorange") +
+  geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
+  geom_text(
+    data = ece_terms_labels, aes(x = 5, y = mean, label = sprintf("mean = %.2g", mean)),
+    color = "firebrick", hjust = 0, vjust = -0.6, size = 2.8, inherit.aes = FALSE
+  ) +
+  geom_text(
+    data = ece_terms_labels, aes(x = 5, y = median, label = sprintf("median = %.2g", median)),
+    color = "darkorange", hjust = 0, vjust = 1.4, size = 2.8, inherit.aes = FALSE
+  ) +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
+  labs(
+    x = "time", y = "ECE term (covariance scale)",
+    subtitle = sprintf("gray = raw term, blue = %d-window mean, red = mean, orange = median", window)
+  ) +
+  theme_minimal()
+```
+
+Every panel's largest single term value falls at the same quarter: 2020-06-01, the COVID lockdown shock. Same 3x3 layout as the histogram below (diagonal = variance term, upper triangle = covariance term), so both diagnose the same panels directly against each other.
 
 ```{R pce-trend-hist}
 #| echo: false
