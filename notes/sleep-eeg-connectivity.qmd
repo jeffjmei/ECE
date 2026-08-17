@@ -1,0 +1,262 @@
+---
+title: "Sleep EEG Connectivity"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+library(edfReader)
+library(psych)
+library(kableExtra)
+```
+
+Sleep neuroscience studies **dynamic functional connectivity**: how the correlation between brain regions changes as the brain moves through different states. During deep, slow-wave sleep, cortical neurons synchronize into large, high-amplitude oscillations that appear together across the scalp. During wakefulness and REM sleep, cortical activity desynchronizes into smaller, faster, less spatially coherent signals. Two EEG electrodes over different parts of the head should therefore track each other more closely, in raw signal power, when the brain is in deep sleep than when it is awake or dreaming.
+
+We use one whole-night polysomnography recording from the PhysioNet Sleep-EDF Database Expanded (`sleep-cassette` series, subject SC4001), a public dataset of healthy-subject sleep recordings scored by trained technicians into standard sleep stages (Wake, REM, and NREM stages 1-4). The recording provides two EEG derivations, `Fpz-Cz` (frontal-central) and `Pz-Oz` (parietal-occipital), sampled at 100 Hz, alongside a hypnogram: an expert-assigned sleep stage for every 30-second epoch of the night. This gives us **known, externally-determined change points** — the same role the experimental phase markers play in `co2-inhalation.qmd` — without any change-point model of our own.
+
+We summarize each 30-second epoch by its RMS amplitude, one number per channel per epoch. This is a standard EEG preprocessing step: raw voltage at 100 Hz oscillates too fast to treat as a slowly-drifting mean process, but the power envelope over each scored epoch is exactly the quantity sleep stages are defined against. We trim the recording to the sleep period itself (first to last non-Wake epoch, plus a 30-minute buffer on each side) to drop the many hours of pre- and post-sleep wakefulness the recording also contains.
+
+**Data**: downloaded from `https://physionet.org/files/sleep-edfx/1.0.0/sleep-cassette/` (`SC4001E0-PSG.edf`, the recording, and `SC4001EC-Hypnogram.edf`, the stage scoring).
+
+```{R sleep-load-data}
+#| echo: false
+#| message: false
+#| cache: true
+
+psg_file <- "../data/real-data/sleep-edf/SC4001E0-PSG.edf"
+hyp_file <- "../data/real-data/sleep-edf/SC4001EC-Hypnogram.edf"
+
+h   <- readEdfHeader(psg_file)
+sig <- readEdfSignals(h, signals = c("EEG Fpz-Cz", "EEG Pz-Oz"))
+
+sr        <- 100  # Hz
+epoch_sec <- 30    # matches hypnogram scoring resolution
+n_epoch   <- floor(length(sig[["EEG Fpz-Cz"]]$signal) / (sr * epoch_sec))
+
+rms_by_epoch <- function(x, sr, epoch_sec, n_epoch) {
+  m <- matrix(x[1:(n_epoch * sr * epoch_sec)], nrow = sr * epoch_sec, ncol = n_epoch)
+  sqrt(colMeans(m^2))
+}
+p_fpzcz <- rms_by_epoch(sig[["EEG Fpz-Cz"]]$signal, sr, epoch_sec, n_epoch)
+p_pzoz  <- rms_by_epoch(sig[["EEG Pz-Oz"]]$signal, sr, epoch_sec, n_epoch)
+
+hh  <- readEdfHeader(hyp_file)
+ann <- readEdfSignals(hh)$annotations
+
+epoch_time <- (0:(n_epoch - 1)) * epoch_sec
+stage_vec  <- rep(NA_character_, n_epoch)
+for (i in seq_len(nrow(ann))) {
+  idx <- which(epoch_time >= ann$onset[i] & epoch_time < ann$end[i])
+  stage_vec[idx] <- ann$annotation[i]
+}
+
+sleep_df <- tibble(
+  epoch = seq_len(n_epoch), time = epoch_time, stage = stage_vec,
+  Fpz_Cz = p_fpzcz, Pz_Oz = p_pzoz
+)
+
+# Trim to the sleep period (first to last non-Wake epoch), plus a 30-minute buffer
+sleep_idx <- which(sleep_df$stage != "Sleep stage W")
+buf <- 60  # 60 epochs * 30s = 30 minutes
+lo  <- max(1, min(sleep_idx) - buf)
+hi  <- min(n_epoch, max(sleep_idx) + buf)
+
+sleep_df <- sleep_df[lo:hi, ] |>
+  mutate(epoch = row_number(), stage = str_remove(stage, "Sleep stage "))
+
+X <- as.matrix(sleep_df[, c("Fpz_Cz", "Pz_Oz")])
+cp <- find_cp(sleep_df$stage)
+X_segment <- segmented_mean(X, cp)
+X_resid   <- X - X_segment
+```
+
+The trimmed recording has `r nrow(sleep_df)` epochs (about `r round(nrow(sleep_df) * 30 / 3600, 1)` hours) and `r length(cp)` sleep-stage transitions, which serve as the known change points.
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R sleep-plot-raw}
+#| echo: false
+#| label: fig-sleep-power
+#| fig-cap: "Epoch-level RMS power for both EEG derivations. Thick lines show the sleep-stage segmented mean."
+#| fig-height: 6
+
+plot_df <- bind_cols(epoch = sleep_df$epoch, as.data.frame(X)) |>
+  rename(Fpz_Cz_raw = Fpz_Cz, Pz_Oz_raw = Pz_Oz) |>
+  bind_cols(as.data.frame(X_segment) |> rename(Fpz_Cz_seg = Fpz_Cz, Pz_Oz_seg = Pz_Oz))
+
+plot_df |>
+  pivot_longer(-epoch, names_to = "name", values_to = "value") |>
+  mutate(
+    type   = if_else(str_ends(name, "_seg"), "segment", "raw"),
+    series = str_remove(name, "_(raw|seg)$")
+  ) |>
+  ggplot(aes(x = epoch, y = value)) +
+  geom_line(aes(linewidth = type, alpha = type), color = "steelblue") +
+  scale_linewidth_manual(values = c(raw = 0.4, segment = 1), guide = "none") +
+  scale_alpha_manual(values = c(raw = 0.5, segment = 1), guide = "none") +
+  facet_wrap(~series, ncol = 1, scales = "free_y") +
+  labs(
+    title = "EEG Epoch Power", x = "30s epoch", y = "RMS amplitude (uV)",
+    caption = "Source: PhysioNet Sleep-EDF (subject SC4001)"
+  ) +
+  theme_minimal()
+```
+
+Both channels trace out the same ultradian sleep-cycle structure: power rises during each descent into slow-wave sleep and falls during the lighter, more wake-like stretches between cycles. The gray-to-blue segmented mean follows this shape closely, since the sleep-stage labels driving it were assigned from the EEG itself.
+
+## Residuals
+
+```{R sleep-plot-residuals}
+#| echo: false
+#| label: fig-sleep-residuals
+#| fig-cap: "Residuals after removing the sleep-stage segmented mean."
+#| fig-height: 6
+
+X_resid |>
+  as_tibble() |>
+  bind_cols(epoch = sleep_df$epoch) |>
+  pivot_longer(-epoch, names_to = "series", values_to = "value") |>
+  ggplot(aes(x = epoch, y = value)) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_line(linewidth = 0.4, color = "steelblue") +
+  facet_wrap(~series, ncol = 1, scales = "free_y") +
+  labs(title = "Residuals after Sleep-Stage Segmentation", x = "30s epoch", y = "Residual") +
+  theme_minimal()
+```
+
+The residuals look much flatter than the raw series, though epoch-to-epoch noise within each stage is still substantial and occasionally spiky (movement artifacts, arousals).
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R sleep-acf-naive}
+#| echo: false
+
+par(mfrow = c(ncol(X_resid), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in seq_len(ncol(X_resid))) {
+  acf(X_resid[, i], main = "", xaxt = "n", ylab = colnames(X_resid)[i])
+}
+axis(1)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+### Mean-Shift-Invariant
+
+```{R sleep-acf-sip}
+#| echo: false
+
+plot_sip_acf(X)
+```
+
+:::
+
+The naive ACF of the segmented residuals still shows a moderate lag-1 correlation (around 0.3-0.4) — sleep depth does not reset instantly at a scored stage boundary, so some short-range dependence survives explicit segmentation. The mean-shift-invariant ACF, which never assumes a segmentation in the first place, comes out much smaller and mostly inside the confidence band, at every lag up to 4.
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R sleep-trend-naive}
+#| echo: false
+
+plot_naive_terms(X)
+```
+
+### Mean-Shift-Invariant
+
+```{R sleep-trend-ece}
+#| echo: false
+
+plot_ece_terms(X)
+```
+
+:::
+
+Both the naive and ECE running covariance terms sit above their global-mean reference line for most of the recording, with occasional large spikes from single noisy epochs. Neither shows a sustained sign flip, consistent with a single, stable positive relationship rather than a connectivity pattern that reverses across sleep stages.
+
+:::
+
+## Results
+
+```{R sleep-results-cor}
+#| echo: false
+#| warning: false
+
+ece_cor            <- ece.cor(X) |> round(3)
+rownames(ece_cor)  <- colnames(ece_cor) <- colnames(X)
+resid_cor          <- cor(X_resid) |> round(3)
+pearson_cor        <- cor(X) |> round(3)
+
+ece_pmat     <- ece_pval(X) |> round(3)
+resid_pmat   <- cor_pval(X_resid) |> round(3)
+pearson_pmat <- cor_pval(X) |> round(3)
+```
+
+::: {.panel-tabset}
+
+## Correlation
+
+```{R sleep-results-cor-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(pearson_cor, caption = "Pearson (Naive) Correlation")
+knitr::kable(resid_cor,   caption = "Pearson (Residualized) Correlation")
+knitr::kable(ece_cor,     caption = "ECE Correlation")
+```
+
+## P-Values
+
+```{R sleep-results-pval-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(pearson_pmat, caption = "Pearson (Naive) P-Values")
+knitr::kable(resid_pmat,   caption = "Pearson (Residualized) P-Values")
+knitr::kable(ece_pmat,     caption = "ECE P-Values")
+```
+
+:::
+
+```{R sleep-diagonal-tests}
+#| echo: false
+set.seed(123)
+
+results <- data.frame(
+  Method = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap (lag1, PSD)",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(ece.test(X, type = "bs.multiplier")$p.value, 3),
+    round(ece.test(X, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+    round(ece.test(X, type = "bs.parametric.naive")$p.value, 3),
+    round(cortest.bartlett(cor(X), nrow(X))$p.value, 3)
+  ),
+  check.names = FALSE
+)
+
+kable(results, align = c("l", "c"), na = "—") |>
+  kable_styling(full_width = FALSE)
+```
+
+Naive Pearson correlation between the two channels' raw power series is `r pearson_cor[1,2]`. Removing the sleep-stage mean shifts brings it down to `r resid_cor[1,2]`, and ECE's mean-shift-invariant estimate lands at `r ece_cor[1,2]` — between the two, as expected, since ECE implicitly adjusts for mean shifts without assuming a particular segmentation. All three joint tests (Bootstrap Multiplier, Parametric Bootstrap, Bartlett) reject independence, and every pairwise p-value above rounds to 0 or near it.
+
+## Conclusion
+
+The two EEG channels are correlated well beyond what the sleep-stage mean shifts alone would produce. Naive Pearson correlation is inflated by the shared sleep-cycle trend (`r pearson_cor[1,2]` vs. `r resid_cor[1,2]` after residualizing), but it does not vanish — the two derivations track each other epoch-to-epoch even within a single stage, which is the genuine "dynamic connectivity" signal the diagnostic and mean-shift-invariant methods are built to recover. ECE's estimate sits between the naive and fully residualized numbers, consistent with adjusting for the mean-shift component while retaining real within-stage covariation, without needing the explicit hypnogram segmentation to do so.
+
+Two limitations are worth stating plainly. First, the residual ACF (lag-1 around 0.3-0.4) shows real short-range dependence the segmentation does not fully remove — 30-second epochs are not long enough to make consecutive sleep-depth states independent, and none of the tests here model that dependence directly beyond the lag-1/lag-2 correction built into the parametric bootstrap. Second, this is a single subject's single night: the effect size and even the qualitative story (does connectivity track sleep depth this way in every subject?) would need replication across the dataset's other recordings before treating it as more than one worked example.

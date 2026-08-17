@@ -51,6 +51,7 @@ book:
         - hurricane-michael-buoy.qmd
         - cpi-components.qmd
         - pce-components.qmd
+        - sleep-eeg-connectivity.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd
