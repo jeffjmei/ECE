@@ -755,3 +755,339 @@ Where this leaves us: naive Pearson correlation finds all three PCE components s
 Whether that gap counts as "real" depends on which z-test you trust. The Kappa tab shows the default Gaussian z-test is badly misspecified here — every pair's fourth-moment terms run 2x to 30x their Gaussian reference, traceable to the single 2020-06-01 COVID quarter dominating the term distribution (Trend tab). Under the null-restricted z-test built to route around that misspecification, only Durables-Nondurables survives at p < 0.05 for both ECE and Segment-ECE; the two pairs touching `Services` don't, despite both being significant under either Pearson variant. Naive Pearson and Bartlett can't see this distinction at all — a reminder that "significant under Pearson" and "significant under a z-test calibrated to this data's actual moments" are different claims, not just different point estimates.
 
 The joint-diagonal tests split along a different line: Bartlett and the naive bootstrap reject on both raw and residualized data, ECE's own lag-1-block-based bootstraps don't reject either version — until `Total` is added back into the matrix, at which point both flip to reject too. Unlike CPI Components, residualizing doesn't resolve this split here, because there was little mean shift for it to remove in the first place. What resolves it is a variable built to be strongly, near-linearly dependent on the other three joining the test — evidence the ECE bootstrap non-rejection reflects the three components' genuinely modest mutual correlation (0.26-0.75), not a flaw in the block-difference construction.
+
+## Raw Levels, Revisited
+
+The "Raw Levels: An Initial Attempt" section above abandons raw dollar levels for a specific, fixable reason: `pen.value = 0.005` is tuned for growth-rate scale, and on dollar-level scale it over-segments so badly that `ece.cor()` produces an out-of-range entry. That's a penalty-tuning failure, not a proof that raw levels can't work at all — `cpi-components.qmd` runs its entire main analysis on raw price-index levels successfully, using `segment_mean(penalty = "BIC")` rather than a hand-picked `pen.value`. This section reruns the raw-level diagnostics and Results tables with that same automatic BIC penalty, to see whether a properly-tuned segmentation salvages the raw-level approach here too.
+
+```{R pce-raw-load-data}
+#| echo: false
+#| message: false
+
+X_mat_raw   <- X_mat_levels
+X_seg_raw   <- segment_mean(X_mat_raw, penalty = "BIC")
+X_resid_raw <- X_mat_raw - X_seg_raw
+
+n_segs_raw <- apply(X_seg_raw, 2, function(c) length(unique(c)))
+```
+
+BIC finds `r n_segs_raw[["Durables"]]`, `r n_segs_raw[["Nondurables"]]`, and `r n_segs_raw[["Services"]]` segments for Durables, Nondurables, and Services respectively — compare to the `r n_segs_levels[["Durables"]]`, `r n_segs_levels[["Nondurables"]]`, `r n_segs_levels[["Services"]]` the hand-picked `pen.value = 0.005` found in the "Raw Levels: An Initial Attempt" section above.
+
+### Diagnostics
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R pce-raw-plot}
+#| echo: false
+#| label: fig-pce-raw-bic
+#| fig-cap: "Raw PCE component levels. Thick lines show the BIC-penalized segmented mean."
+
+bind_cols(
+  date = X_raw$sasdate,
+  as.data.frame(X_mat_raw),
+  as.data.frame(X_seg_raw) |> rename_with(~ paste0(.x, "_segment"))
+) |>
+  pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
+  mutate(
+    type   = if_else(str_ends(series, "_segment"), "Segmented", "Raw"),
+    sector = str_remove(series, "_segment$")
+  ) |>
+  ggplot(aes(x = date, y = value, color = sector, group = series)) +
+  geom_line(aes(linewidth = type)) +
+  scale_linewidth_manual(values = c(Raw = 0.4, Segmented = 1.0), guide = "none") +
+  facet_wrap(~sector, ncol = 1, scales = "free_y") +
+  labs(title = "PCE Component Levels (BIC Segmentation)", x = "Date", y = "Billions, chained dollars", color = "Component") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+Compare to the Plot tab in "Raw Levels: An Initial Attempt" above, where the segmented mean tracks almost every wiggle. BIC's automatic penalty finds far fewer, coarser segments — closer to genuine level shifts than to noise-fitting.
+
+## Residuals
+
+```{R pce-raw-residuals}
+#| echo: false
+#| label: fig-pce-raw-bic-residuals
+#| fig-cap: "Residuals after removing the BIC-segmented mean from each raw-level component."
+
+X_resid_raw |>
+  as_tibble() |>
+  bind_cols(date = X_raw$sasdate) |>
+  pivot_longer(cols = -date, names_to = "sector", values_to = "value") |>
+  ggplot(aes(x = date, y = value, color = sector)) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_line(linewidth = 0.5) +
+  facet_wrap(~sector, ncol = 1, scales = "free_y") +
+  labs(title = "Residuals after BIC Segmentation (Raw Levels)", x = "Date", y = "Residual", color = "Component") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R pce-raw-acf-naive}
+#| echo: false
+
+par(mfrow = c(3, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+for (i in 1:3) {
+  acf(X_resid_raw[, i], main = "", xaxt = "n", ylab = colnames(X_resid_raw)[i])
+}
+axis(1)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+Compare to the sharp negative lag-1 spikes in "Raw Levels: An Initial Attempt" above — the signature of over-segmentation fitting noise as mean shifts. If BIC's coarser segmentation is well-tuned, that spike should be smaller here.
+
+### Mean-Shift-Invariant
+
+```{R pce-raw-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_raw)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R pce-raw-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_raw)
+```
+
+### Mean-Shift-Invariant
+
+```{R pce-raw-trend-ece-data}
+#| echo: false
+
+window_raw <- max(10, floor(nrow(X_mat_raw) / 5))
+cn_raw     <- colnames(X_mat_raw)
+idx_raw    <- combn(ncol(X_mat_raw), 2)
+n_raw      <- nrow(X_mat_raw)
+
+ece_cov_raw <- purrr::map_dfr(seq_len(ncol(idx_raw)), function(k) {
+  i <- idx_raw[1, k]
+  j <- idx_raw[2, k]
+  s <- lag_term(X_mat_raw[, i], X_mat_raw[, j])
+  tibble(t = seq_len(n_raw), row = cn_raw[i], col = cn_raw[j], raw = s)
+})
+ece_var_raw <- purrr::map_dfr(seq_len(ncol(X_mat_raw)), function(i) {
+  s <- lag_term(X_mat_raw[, i], X_mat_raw[, i])
+  tibble(t = seq_len(n_raw), row = cn_raw[i], col = cn_raw[i], raw = s)
+})
+ece_terms_raw <- bind_rows(ece_cov_raw, ece_var_raw) |>
+  mutate(row = factor(row, levels = cn_raw), col = factor(col, levels = cn_raw)) |>
+  group_by(row, col) |>
+  mutate(run = rolling_mean(raw, window_raw), mean = mean(raw), median = median(raw)) |>
+  ungroup()
+
+ece_terms_raw_labels <- ece_terms_raw |> distinct(row, col, mean, median)
+```
+
+```{R pce-raw-trend-ece}
+#| echo: false
+
+ggplot(ece_terms_raw, aes(x = t)) +
+  geom_line(aes(y = raw), color = "gray80") +
+  geom_hline(aes(yintercept = mean), linetype = "dashed", color = "firebrick") +
+  geom_hline(aes(yintercept = median), linetype = "dashed", color = "darkorange") +
+  geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
+  labs(
+    x = "time", y = "ECE term (covariance / variance scale)",
+    subtitle = sprintf("gray = raw term, blue = %d-window mean, red = mean, orange = median", window_raw)
+  ) +
+  theme_minimal()
+```
+
+```{R pce-raw-trend-hist}
+#| echo: false
+
+ece_terms_raw_trimmed <- ece_terms_raw |>
+  group_by(row, col) |>
+  filter(raw > quantile(raw, 0.005), raw < quantile(raw, 0.995)) |>
+  ungroup()
+
+ggplot(ece_terms_raw_trimmed, aes(x = raw)) +
+  geom_histogram(bins = 40, fill = "steelblue", color = "white") +
+  geom_vline(data = ece_terms_raw_labels, aes(xintercept = mean), color = "firebrick", linetype = "dashed") +
+  geom_vline(data = ece_terms_raw_labels, aes(xintercept = median), color = "darkorange", linetype = "dashed") +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free") +
+  labs(x = "ECE term value (middle 99%)", y = "Count") +
+  theme_minimal()
+```
+
+Compare mean vs. median agreement here against the "Raw Levels: An Initial Attempt" Trend tab above, where the two disagreed in sign in every panel. That disagreement was the direct mechanism behind the broken, out-of-range `ece.cor()` entry under `pen.value = 0.005` — a handful of over-segmentation-driven outlier terms dragging the mean off the bulk of the distribution. Whether that mechanism is resolved here is visible directly in whether mean and median now agree.
+
+:::
+
+## Kappa
+
+```{R pce-raw-kappa-check}
+#| echo: false
+
+cn_raw_k  <- colnames(X_mat_raw)
+idx_raw_k <- combn(ncol(X_mat_raw), 2)
+
+kappa_tbl_raw <- purrr::map_dfr(seq_len(ncol(idx_raw_k)), function(k) {
+  i <- idx_raw_k[1, k]
+  j <- idx_raw_k[2, k]
+  kap <- ece.kappa(X_resid_raw[, i], X_resid_raw[, j], method = "mom")
+  tibble(
+    Pair = paste(cn_raw_k[i], "/", cn_raw_k[j]),
+    k40  = round(kap$k40, 2),
+    k31  = round(kap$k31, 2),
+    k22  = round(kap$k22, 2),
+    k13  = round(kap$k13, 2),
+    k04  = round(kap$k04, 2)
+  )
+})
+
+kable(kappa_tbl_raw, align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+Compare against the raw-level Kappa table in "Raw Levels: An Initial Attempt" above, computed on the same over-segmented residuals. As with the log-growth chapter, the Results section below uses the null-restricted z-test (`rho = 0`) rather than assume the Gaussian reference values hold.
+
+## Omega
+
+```{R pce-raw-omega-check}
+#| echo: false
+
+n_raw_o  <- nrow(X_mat_raw)
+cn_raw_o <- colnames(X_mat_raw)
+
+ece_omega_raw <- ece.complexity(X_mat_raw) |> round(6)
+rownames(ece_omega_raw) <- colnames(ece_omega_raw) <- cn_raw_o
+
+seg_omega_raw <- matrix(0, ncol(X_mat_raw), ncol(X_mat_raw), dimnames = list(cn_raw_o, cn_raw_o))
+for (i in seq_len(ncol(X_mat_raw))) {
+  for (j in seq_len(ncol(X_mat_raw))) {
+    seg_omega_raw[i, j] <- lag_diff(X_seg_raw[, i], X_seg_raw[, j], k = 1) / n_raw_o
+  }
+}
+seg_omega_raw <- round(seg_omega_raw, 6)
+```
+
+```{R pce-raw-omega-check-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(ece_omega_raw, caption = "ECE (raw levels, BIC segmentation)")
+knitr::kable(seg_omega_raw, caption = "Segmentation-implied (raw levels, BIC)")
+```
+
+Compare against the Omega tab in "Raw Levels: An Initial Attempt" above, where the two estimates agreed to within 1.3% under the mis-scaled `pen.value = 0.005` fit. That agreement was expected there regardless of segmentation quality — raw dollar levels carry six decades of compounding growth, a signal large enough that almost any segmentation captures its broad shape. The comparison here is the same caveat: agreement confirms the two methods see the same large trend, not that this particular BIC fit is uniquely correct.
+
+:::
+
+### Results
+
+```{R pce-raw-pairwise-cor}
+#| echo: false
+#| warning: false
+
+ece_cor_raw               <- ece.cor(X_mat_raw) |> round(3)
+rownames(ece_cor_raw)     <- colnames(ece_cor_raw) <- colnames(X_mat_raw)
+seg_ece_cor_raw           <- ece.cor(X_resid_raw) |> round(3)
+rownames(seg_ece_cor_raw) <- colnames(seg_ece_cor_raw) <- colnames(X_mat_raw)
+
+resid_cor_raw   <- cor(X_resid_raw) |> round(3)
+pearson_cor_raw <- cor(X_mat_raw) |> round(3)
+
+ece_pmat_raw     <- ece_pval_null(X_mat_raw) |> round(3)
+seg_ece_pmat_raw <- ece_pval_null(X_resid_raw) |> round(3)
+resid_pmat_raw   <- cor_pval(X_resid_raw) |> round(3)
+pearson_pmat_raw <- cor_pval(X_mat_raw) |> round(3)
+```
+
+::: {.panel-tabset}
+
+## Correlation
+
+```{R pce-raw-pairwise-cor-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(ece_cor_raw, ece_pmat_raw),         caption = "ECE Correlation (Raw Levels, BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(seg_ece_cor_raw, seg_ece_pmat_raw), caption = "Segment-ECE Correlation (Raw Levels, BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pearson_cor_raw, pearson_pmat_raw), caption = "Naive Pearson Correlation (Raw Levels)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(resid_cor_raw, resid_pmat_raw),     caption = "Residual Pearson Correlation (Raw Levels, BIC)", escape = FALSE, format = "html")
+```
+
+Bold marks pairs significant at p < 0.05, using the same null-restricted z-test (`ece_pval_null()`) as the log-growth Correlation section above. Compare `ece_cor_raw` against the "Raw Levels: An Initial Attempt" table above, where the Durables-Services entry fell outside the valid [-1, 1] range.
+
+## P-Values
+
+```{R pce-raw-pairwise-pval-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(ece_pmat_raw, ece_pmat_raw),         caption = "ECE P-Values, Raw Levels BIC (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(seg_ece_pmat_raw, seg_ece_pmat_raw), caption = "Segment-ECE P-Values, Raw Levels BIC (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pearson_pmat_raw, pearson_pmat_raw), caption = "Naive Pearson P-Values, Raw Levels", escape = FALSE, format = "html")
+knitr::kable(bold_sig(resid_pmat_raw, resid_pmat_raw),     caption = "Residual Pearson P-Values, Raw Levels BIC", escape = FALSE, format = "html")
+```
+
+:::
+
+```{R pce-raw-diagonal-tests}
+#| echo: false
+set.seed(123)
+
+results_raw <- data.frame(
+  Method = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(ece.test(X_mat_raw, type = "bs.multiplier")$p.value, 3),
+    round(ece.test(X_mat_raw, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+    round(ece.test(X_mat_raw, type = "bs.parametric.naive")$p.value, 3),
+    round(cortest.bartlett(cor(X_mat_raw), nrow(X_mat_raw))$p.value, 3)
+  ),
+  check.names = FALSE
+)
+
+set.seed(123)
+results_seg_raw <- data.frame(
+  Method = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(ece.test(X_resid_raw, type = "bs.multiplier")$p.value, 3),
+    round(ece.test(X_resid_raw, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+    round(ece.test(X_resid_raw, type = "bs.parametric.naive")$p.value, 3),
+    round(cortest.bartlett(cor(X_resid_raw), nrow(X_resid_raw))$p.value, 3)
+  ),
+  check.names = FALSE
+)
+```
+
+```{R pce-raw-diagonal-tests-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(results_raw,     caption = "Raw Levels (BIC), Unsegmented")
+knitr::kable(results_seg_raw, caption = "Raw Levels (BIC), Segmented Residuals")
+```
+
+---
+
+Where this leaves the comparison: the log-growth analysis above is this chapter's primary result because differencing was the fix that made raw dollar levels usable at all under a hand-picked `pen.value`. This section checks whether that conclusion was really about the *transformation* or just about the *penalty* — BIC's automatic, data-driven segmentation gives raw levels a fairer test than a `pen.value` tuned for a different scale. If the raw-level BIC results above agree with the log-growth results, the log transform wasn't load-bearing for this dataset's conclusions, only the segmentation penalty was. If they still diverge, raw levels carry a genuine complication — the six-decade compounding trend visible in the Omega tab — that log-differencing resolves and BIC-on-levels does not.
