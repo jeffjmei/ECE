@@ -737,3 +737,391 @@ We haven't identified why `bs.multiplier` behaves this way under downsampling. I
 Where this leaves us: apparel, transportation, and medical care prices have no known mechanism linking their month-to-month movements. At monthly resolution, every mean-shift-aware test agrees. Both the bootstrap multiplier and the mean-shift-aware parametric bootstrap fail to reject the diagonal null, while Bartlett and the naive parametric bootstrap reject confidently — at essentially the same significance level as the two mean-shift-related sector correlations in `labor-productivity.qmd` that *are* real. That's the headline result: naive Pearson and Bartlett can't tell a shared secular trend from real contemporaneous correlation, and here domain knowledge tells us which one this is.
 
 The downsampling check complicates this picture rather than confirming it: the parametric bootstrap's conclusion holds up across resolution, the bootstrap multiplier's does not, and we don't yet know why. Take the monthly result as this chapter's primary finding, and the resolution-dependence of `bs.multiplier` as an open question about the method, not about this dataset.
+
+## Log-Transformed
+
+Everything above runs on raw index levels — the same approach `pce-components.qmd` tries first and abandons, because dollar levels over-segment and break `ece.cor()` outright (see that chapter's "Raw Levels: An Initial Attempt"). CPI's raw-level analysis doesn't hit that failure mode: `segment_mean(penalty = "BIC")` finds a handful of genuine trend breaks rather than fitting local noise, and the pairwise/joint results above are usable. Still, log-differencing is standard economic convention — growth *rates*, not index levels, are the meaningful unit for prices — and it's the transformation used throughout `pce-components.qmd`. This section repeats the diagnostics and Results tables on log-differenced CPI data, to see whether the transformation changes either the diagnostics or the conclusions. On this transformed scale, `penalty = "BIC"` finds no change points at all — too conservative for growth-rate-sized shifts — and a single blanket `penalty = "AIC"` would still just be a guess at the right sensitivity. Instead, segmentation below picks a separate `pen.value` for each series, chosen so that series' segmentation-implied $\omega$ (the diagonal Omega-tab quantity, `lag_diff(seg, seg, k = 1) / n`) matches ECE's own segmentation-free estimate, `ece.complexity(x, x)`, as closely as possible — grid-searched over `10^seq(-8, 0, length.out = 100)`. Because `ece.complexity(x, x)` depends only on series `x` itself, this search is independent across the three series: each gets its own `pen.value`, chosen without reference to the other two.
+
+```{R cpi-log-load-data}
+#| echo: false
+#| message: false
+
+X_data_log <- fred_data |>
+  select(date, CPIAPPSL, CPITRNSL, CPIMEDSL) |>
+  drop_na() |>
+  mutate(
+    Apparel        = c(NA, diff(log(CPIAPPSL))),
+    Transportation = c(NA, diff(log(CPITRNSL))),
+    `Medical Care` = c(NA, diff(log(CPIMEDSL)))
+  ) |>
+  filter(!is.na(Apparel)) |>
+  select(date, Apparel, Transportation, `Medical Care`)
+
+X_mat_log <- as.matrix(X_data_log[, -1])
+
+# Per-series penalty search: choose pen.value so the segmentation-implied
+# omega (diagonal, variance scale) matches ECE's own segmentation-free
+# estimate as closely as possible. ece.complexity(x, x) depends only on
+# column x, so each series is optimized independently of the other two.
+pen_grid_log <- 10^seq(-8, 0, length.out = 100)
+
+omega_match_penalty <- function(x, grid) {
+  target <- ece.complexity(x, x)
+  errs <- sapply(grid, function(pv) {
+    seg       <- segment_mean_vec(x, penalty = "Manual", pen.value = pv)
+    seg_omega <- lag_diff(seg, seg, k = 1) / length(x)
+    abs(seg_omega - target) / abs(target)
+  })
+  grid[which.min(errs)]
+}
+
+pen_log <- apply(X_mat_log, 2, omega_match_penalty, grid = pen_grid_log)
+
+X_seg_log <- sapply(colnames(X_mat_log), function(cn) {
+  segment_mean_vec(X_mat_log[, cn], penalty = "Manual", pen.value = pen_log[cn])
+})
+colnames(X_seg_log) <- colnames(X_mat_log)
+X_resid_log <- X_mat_log - X_seg_log
+```
+
+```{R cpi-log-penalty-table}
+#| echo: false
+
+n_segs_log <- apply(X_seg_log, 2, function(c) length(unique(c)))
+
+penalty_tbl_log <- tibble(
+  Series      = colnames(X_mat_log),
+  `pen.value` = signif(pen_log, 3),
+  Segments    = n_segs_log
+)
+
+kable(penalty_tbl_log, align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+`r nrow(X_data_log)` monthly log growth-rate observations (one fewer than the raw-level series, lost to differencing).
+
+### Diagnostics
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R cpi-log-plot-raw}
+#| echo: false
+#| label: fig-cpi-log-components
+#| fig-cap: "CPI subcomponents, monthly log growth rates. Thick lines show the segmented mean."
+#| fig-height: 7
+
+X_log <- bind_cols(
+  date = X_data_log$date, X_data_log[, -1],
+  as.data.frame(X_seg_log) |> rename_with(~ paste0(.x, "_segment"))
+)
+
+X_log |>
+  pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
+  mutate(
+    type     = if_else(str_ends(series, "_segment"), "Segmented", "Raw"),
+    category = str_remove(series, "_segment$")
+  ) |>
+  ggplot(aes(x = date, y = value, color = category, group = series)) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_line(aes(linewidth = type)) +
+  scale_linewidth_manual(values = c(Raw = 0.4, Segmented = 1.0), guide = "none") +
+  facet_wrap(~category, scales = "free_y", ncol = 1) +
+  labs(
+    title = "CPI Subcomponents, Log Growth", x = NULL, y = "Log growth rate", color = "Category",
+    caption = "Source: FRED-MD"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+Log-differencing converts each series from a monotonic 60-year climb into a stationary-looking growth rate oscillating around zero. `segment_mean()` still finds breaks — most visibly around the 2021-2022 inflation shock — but nothing like the near-every-point over-segmentation `pce-components.qmd` hits on raw dollar levels.
+
+## Residuals
+
+```{R cpi-log-plot-residuals}
+#| echo: false
+#| label: fig-cpi-log-residuals
+#| fig-cap: "Residuals after removing the segmented mean from each log-growth category."
+#| fig-height: 7
+
+X_resid_log |>
+  as_tibble() |>
+  bind_cols(date = X_data_log$date) |>
+  pivot_longer(cols = -date, names_to = "category", values_to = "value") |>
+  ggplot(aes(x = date, y = value, color = category)) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_line(linewidth = 0.4) +
+  facet_wrap(~category, scales = "free_y", ncol = 1) +
+  labs(title = "Residuals after Segmentation (Log Growth)", x = NULL, y = "Residual") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R cpi-log-acf-naive}
+#| echo: false
+
+par(mfrow = c(ncol(X_resid_log), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in seq_len(ncol(X_resid_log))) {
+  acf(X_resid_log[, i], main = "", xaxt = "n", ylab = colnames(X_resid_log)[i])
+}
+axis(1)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+### Mean-Shift-Invariant
+
+```{R cpi-log-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_log)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R cpi-log-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_log)
+```
+
+### Mean-Shift-Invariant
+
+```{R cpi-log-trend-ece-data}
+#| echo: false
+
+window_log <- max(10, floor(nrow(X_mat_log) / 5))
+cn_log      <- colnames(X_mat_log)
+idx_log     <- combn(ncol(X_mat_log), 2)
+n_log       <- nrow(X_mat_log)
+
+ece_cov_log <- purrr::map_dfr(seq_len(ncol(idx_log)), function(k) {
+  i <- idx_log[1, k]
+  j <- idx_log[2, k]
+  s <- lag_term(X_mat_log[, i], X_mat_log[, j])
+  tibble(t = seq_len(n_log), row = cn_log[i], col = cn_log[j], raw = s)
+})
+ece_var_log <- purrr::map_dfr(seq_len(ncol(X_mat_log)), function(i) {
+  s <- lag_term(X_mat_log[, i], X_mat_log[, i])
+  tibble(t = seq_len(n_log), row = cn_log[i], col = cn_log[i], raw = s)
+})
+ece_terms_log <- bind_rows(ece_cov_log, ece_var_log) |>
+  mutate(row = factor(row, levels = cn_log), col = factor(col, levels = cn_log)) |>
+  group_by(row, col) |>
+  mutate(run = rolling_mean(raw, window_log), mean = mean(raw), median = median(raw)) |>
+  ungroup()
+
+ece_terms_log_labels <- ece_terms_log |> distinct(row, col, mean, median)
+```
+
+```{R cpi-log-trend-ece}
+#| echo: false
+
+ggplot(ece_terms_log, aes(x = t)) +
+  geom_line(aes(y = raw), color = "gray80") +
+  geom_hline(aes(yintercept = mean), linetype = "dashed", color = "firebrick") +
+  geom_hline(aes(yintercept = median), linetype = "dashed", color = "darkorange") +
+  geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
+  labs(
+    x = "time", y = "ECE term (covariance / variance scale)",
+    subtitle = sprintf("gray = raw term, blue = %d-window mean, red = mean, orange = median", window_log)
+  ) +
+  theme_minimal()
+```
+
+Unlike the raw-level Trend tab above, there's no 60-year monotonic climb for `rotate()`'s circular boundary wraparound to catch — mean and median track each other closely in every panel, with no single point dominating the way the raw-level boundary artifact did.
+
+```{R cpi-log-trend-hist}
+#| echo: false
+
+ece_terms_log_trimmed <- ece_terms_log |>
+  group_by(row, col) |>
+  filter(raw > quantile(raw, 0.005), raw < quantile(raw, 0.995)) |>
+  ungroup()
+
+ggplot(ece_terms_log_trimmed, aes(x = raw)) +
+  geom_histogram(bins = 40, fill = "steelblue", color = "white") +
+  geom_vline(data = ece_terms_log_labels, aes(xintercept = mean), color = "firebrick", linetype = "dashed") +
+  geom_vline(data = ece_terms_log_labels, aes(xintercept = median), color = "darkorange", linetype = "dashed") +
+  facet_grid(rows = vars(row), cols = vars(col), scales = "free") +
+  labs(x = "ECE term value (middle 99%)", y = "Count") +
+  theme_minimal()
+```
+
+:::
+
+## Kappa
+
+```{R cpi-log-kappa-check}
+#| echo: false
+
+cn_log_k  <- colnames(X_mat_log)
+idx_log_k <- combn(ncol(X_mat_log), 2)
+
+kappa_tbl_log <- purrr::map_dfr(seq_len(ncol(idx_log_k)), function(k) {
+  i <- idx_log_k[1, k]
+  j <- idx_log_k[2, k]
+  kap <- ece.kappa(X_resid_log[, i], X_resid_log[, j], method = "mom")
+  tibble(
+    Pair = paste(cn_log_k[i], "/", cn_log_k[j]),
+    k40  = round(kap$k40, 2),
+    k31  = round(kap$k31, 2),
+    k22  = round(kap$k22, 2),
+    k13  = round(kap$k13, 2),
+    k04  = round(kap$k04, 2)
+  )
+})
+
+kable(kappa_tbl_log, align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+Compare against the raw-level Kappa table above. As on the raw levels, we use the null-restricted z-test (`rho = 0`) for the Results tables below, rather than assume these Gaussian reference values hold.
+
+## Omega
+
+```{R cpi-log-omega-check}
+#| echo: false
+
+n_log_o  <- nrow(X_mat_log)
+cn_log_o <- colnames(X_mat_log)
+
+ece_omega_log <- ece.complexity(X_mat_log) |> round(6)
+rownames(ece_omega_log) <- colnames(ece_omega_log) <- cn_log_o
+
+seg_omega_log <- matrix(0, ncol(X_mat_log), ncol(X_mat_log), dimnames = list(cn_log_o, cn_log_o))
+for (i in seq_len(ncol(X_mat_log))) {
+  for (j in seq_len(ncol(X_mat_log))) {
+    seg_omega_log[i, j] <- lag_diff(X_seg_log[, i], X_seg_log[, j], k = 1) / n_log_o
+  }
+}
+seg_omega_log <- round(seg_omega_log, 6)
+```
+
+```{R cpi-log-omega-check-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(ece_omega_log, caption = "ECE (log growth, no segmentation)")
+knitr::kable(seg_omega_log, caption = "Segmentation-implied (log growth)")
+```
+
+Unlike the raw-level Omega check above, close agreement on the diagonal here isn't independent corroboration — the diagonal is exactly what the per-series `pen.value` search targeted, so `seg_omega_log`'s diagonal is expected to sit close to `ece_omega_log`'s by construction. The honest check is the off-diagonal (covariance-scale) entries: the search never had visibility into any pairwise term, only each series' own variance-scale $\omega$, so agreement there — or lack of it — is a genuine, uncontrived signal about whether a segmentation chosen purely from single-series information also happens to describe the joint mean-shift structure. Both estimates also run several orders of magnitude smaller than the raw-level Omega check above (that comparison was on the order of 1-100; this one is on the order of 1e-4 to 1e-6) — expected, since differencing removes the six-decade compounding trend that dominated the raw-level $\omega$.
+
+:::
+
+### Results
+
+```{R cpi-log-pairwise-cor}
+#| echo: false
+#| warning: false
+
+ece_cor_log               <- ece.cor(X_mat_log) |> round(3)
+rownames(ece_cor_log)     <- colnames(ece_cor_log) <- colnames(X_mat_log)
+seg_ece_cor_log           <- ece.cor(X_resid_log) |> round(3)
+rownames(seg_ece_cor_log) <- colnames(seg_ece_cor_log) <- colnames(X_mat_log)
+
+resid_cor_log   <- cor(X_resid_log) |> round(3)
+pearson_cor_log <- cor(X_mat_log) |> round(3)
+
+ece_pmat_log     <- ece_pval_null(X_mat_log) |> round(3)
+seg_ece_pmat_log <- ece_pval_null(X_resid_log) |> round(3)
+resid_pmat_log   <- cor_pval(X_resid_log) |> round(3)
+pearson_pmat_log <- cor_pval(X_mat_log) |> round(3)
+```
+
+::: {.panel-tabset}
+
+## Correlation
+
+```{R cpi-log-pairwise-cor-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(ece_cor_log, ece_pmat_log),         caption = "ECE Correlation (Log Growth)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(seg_ece_cor_log, seg_ece_pmat_log), caption = "Segment-ECE Correlation (Log Growth)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pearson_cor_log, pearson_pmat_log), caption = "Naive Pearson Correlation (Log Growth)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(resid_cor_log, resid_pmat_log),     caption = "Residual Pearson Correlation (Log Growth)", escape = FALSE, format = "html")
+```
+
+Bold marks pairs significant at p < 0.05, using the same null-restricted z-test (`ece_pval_null()`) as the raw-level Results section above.
+
+## P-Values
+
+```{R cpi-log-pairwise-pval-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(ece_pmat_log, ece_pmat_log),         caption = "ECE P-Values, Log Growth (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(seg_ece_pmat_log, seg_ece_pmat_log), caption = "Segment-ECE P-Values, Log Growth (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pearson_pmat_log, pearson_pmat_log), caption = "Naive Pearson P-Values, Log Growth", escape = FALSE, format = "html")
+knitr::kable(bold_sig(resid_pmat_log, resid_pmat_log),     caption = "Residual Pearson P-Values, Log Growth", escape = FALSE, format = "html")
+```
+
+:::
+
+```{R cpi-log-diagonal-tests}
+#| echo: false
+set.seed(123)
+
+results_log <- data.frame(
+  Method = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(ece.test(X_mat_log, type = "bs.multiplier")$p.value, 3),
+    round(ece.test(X_mat_log, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+    round(ece.test(X_mat_log, type = "bs.parametric.naive")$p.value, 3),
+    round(cortest.bartlett(cor(X_mat_log), nrow(X_mat_log))$p.value, 3)
+  ),
+  check.names = FALSE
+)
+
+set.seed(123)
+results_seg_log <- data.frame(
+  Method = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = c(
+    round(ece.test(X_resid_log, type = "bs.multiplier")$p.value, 3),
+    round(ece.test(X_resid_log, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+    round(ece.test(X_resid_log, type = "bs.parametric.naive")$p.value, 3),
+    round(cortest.bartlett(cor(X_resid_log), nrow(X_resid_log))$p.value, 3)
+  ),
+  check.names = FALSE
+)
+```
+
+```{R cpi-log-diagonal-tests-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(results_log,     caption = "Log Growth, Raw")
+knitr::kable(results_seg_log, caption = "Log Growth, Segmented Residuals")
+```
+
+---
+
+Where this leaves the comparison: the raw-level analysis above needed `segment_mean()` residualization as a check precisely because the shared inflation trend is large enough to make Bartlett and the naive parametric bootstrap reject on the untransformed levels, and to make pairwise ECE correlation come out `NaN` from the `rotate()` boundary artifact. Log-differencing removes that trend before any test runs, the same fix `pce-components.qmd` reaches for on raw dollar levels. If the conclusions above and here agree, that's independent confirmation the raw-level headline result isn't an artifact of how ECE handles a strong shared trend; if they diverge, the divergence is itself informative about which transformation the joint-diagonal test is more sensitive to for this dataset.
