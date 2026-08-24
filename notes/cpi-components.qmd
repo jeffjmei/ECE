@@ -39,337 +39,15 @@ X_data <- fred_data |>
     `Medical Care`   = CPIMEDSL
   )
 
-X_mat   <- as.matrix(X_data[, -1])
-X_seg   <- segment_mean(X_mat, penalty = "BIC")
-X_resid <- X_mat - X_seg
+X_mat <- as.matrix(X_data[, -1])
 ```
 
-::: {.panel-tabset}
-
-## Raw
-
-::: {.panel-tabset}
-
-### Diagnostics
-
-::: {.panel-tabset}
-
-#### Plot
-
-```{R cpi-plot-raw}
-#| echo: false
-#| label: fig-cpi-components
-#| fig-cap: "CPI subcomponents, monthly levels, 1959-2026. Thick lines show the segmented mean."
-#| fig-height: 7
-
-X <- bind_cols(
-  date = X_data$date, X_data[, -1],
-  as.data.frame(X_seg) |> rename_with(~ paste0(.x, "_segment"))
-)
-
-X |>
-  pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
-  mutate(
-    type     = if_else(str_ends(series, "_segment"), "Segmented", "Raw"),
-    category = str_remove(series, "_segment$")
-  ) |>
-  ggplot(aes(x = date, y = value, color = category, group = series)) +
-  geom_line(aes(linewidth = type)) +
-  scale_linewidth_manual(values = c(Raw = 0.4, Segmented = 1.0), guide = "none") +
-  facet_wrap(~category, scales = "free_y", ncol = 1) +
-  labs(
-    title = "CPI Subcomponents", x = NULL, y = "Index level", color = "Category",
-    caption = "Source: FRED-MD"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "none")
-```
-
-All three climb for six decades. Transportation is the most volatile, driven by energy shocks in 2008 and 2021-2022. Medical Care is the smoothest, climbing almost without pause.
-
-#### Residuals
-
-```{R cpi-plot-residuals}
-#| echo: false
-#| label: fig-cpi-residuals
-#| fig-cap: "Residuals after removing the segmented mean from each category."
-#| fig-height: 7
-
-X_resid |>
-  as_tibble() |>
-  bind_cols(date = X_data$date) |>
-  pivot_longer(cols = -date, names_to = "category", values_to = "value") |>
-  ggplot(aes(x = date, y = value, color = category)) +
-  geom_hline(yintercept = 0, color = "gray") +
-  geom_line(linewidth = 0.4) +
-  facet_wrap(~category, scales = "free_y", ncol = 1) +
-  labs(title = "Residuals after Segmentation", x = NULL, y = "Residual") +
-  theme_minimal() +
-  theme(legend.position = "none")
-```
-
-#### ACF
-
-::: {.panel-tabset}
-
-##### Naive
-
-```{R cpi-acf-naive}
+```{R cpi-helpers}
 #| echo: false
 
-par(mfrow = c(ncol(X_resid), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
-
-for (i in seq_len(ncol(X_resid))) {
-  acf(X_resid[, i], main = "", xaxt = "n", ylab = colnames(X_resid)[i])
-}
-axis(1)
-mtext("Lag", side = 1, outer = TRUE, line = 2.5)
-```
-
-##### Mean-Shift-Invariant
-
-```{R cpi-acf-sip}
-#| echo: false
-
-plot_sip_acf(X_mat)
-```
-
-:::
-
-#### Trend
-
-::: {.panel-tabset}
-
-##### Naive
-
-Same 3x3 layout as the Mean-Shift-Invariant tab: the diagonal holds each series' rolling-mean-removed variance, the upper triangle holds the naive pairwise covariance term, the lower triangle is blank.
-
-```{R cpi-trend-naive}
-#| echo: false
-
-window <- max(10, floor(nrow(X_mat) / 5))
-cn     <- colnames(X_mat)
-n      <- nrow(X_mat)
-
-R <- apply(X_mat, 2, function(col) col - rolling_mean(col, window))
-idx_p <- combn(ncol(X_mat), 2)
-
-naive_cov_dat <- purrr::map_dfr(seq_len(ncol(idx_p)), function(k) {
-  i <- idx_p[1, k]
-  j <- idx_p[2, k]
-  s <- R[, i] * R[, j]
-  tibble(t = seq_len(n), row = cn[i], col = cn[j], raw = s)
-})
-naive_var_dat <- purrr::map_dfr(seq_len(ncol(X_mat)), function(i) {
-  s <- R[, i] * R[, i]
-  tibble(t = seq_len(n), row = cn[i], col = cn[i], raw = s)
-})
-naive_terms_dat <- bind_rows(naive_cov_dat, naive_var_dat) |>
-  mutate(row = factor(row, levels = cn), col = factor(col, levels = cn)) |>
-  group_by(row, col) |>
-  mutate(run = rolling_mean(raw, window), global = mean(raw, na.rm = TRUE)) |>
-  ungroup()
-
-ggplot(naive_terms_dat, aes(x = t)) +
-  geom_line(aes(y = raw), color = "gray80", na.rm = TRUE) +
-  geom_hline(aes(yintercept = global), linetype = "dashed", color = "firebrick") +
-  geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
-  facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
-  labs(x = "time", y = "naive term (covariance / variance scale)") +
-  theme_minimal()
-```
-
-##### Mean-Shift-Invariant
-
-`plot_ece_terms()` builds on `lag_term()`, which compares each point against its two predecessors through a circular shift (`rotate()`). A series that trends for 60+ years without cycling back pays for that shift at the boundary: the last couple of points wrap around and land against the 1959 starting level, producing a spike that swamps the rest of the y-axis. The layout below follows the same row/column convention as the Correlation tables: the diagonal holds each series' own variance term (`lag_term(X[,i], X[,i])`), the upper triangle holds the pairwise covariance term, and the lower triangle stays blank — redundant with the upper triangle.
-
-```{R cpi-trend-ece-data}
-#| echo: false
-
-window <- max(10, floor(nrow(X_mat) / 5))
-cn     <- colnames(X_mat)
-idx    <- combn(ncol(X_mat), 2)
-n      <- nrow(X_mat)
-
-ece_cov_dat <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
-  i <- idx[1, k]
-  j <- idx[2, k]
-  s <- lag_term(X_mat[, i], X_mat[, j])
-  tibble(t = seq_len(n), row = cn[i], col = cn[j], raw = s)
-})
-ece_var_dat <- purrr::map_dfr(seq_len(ncol(X_mat)), function(i) {
-  s <- lag_term(X_mat[, i], X_mat[, i])
-  tibble(t = seq_len(n), row = cn[i], col = cn[i], raw = s)
-})
-ece_terms_dat <- bind_rows(ece_cov_dat, ece_var_dat) |>
-  mutate(row = factor(row, levels = cn), col = factor(col, levels = cn))
-```
-
-```{R cpi-trend-ece}
-#| echo: false
-
-ece_terms_trend <- ece_terms_dat |>
-  filter(t > 2, t < n - 1) |>
-  group_by(row, col) |>
-  mutate(run = rolling_mean(raw, window), global = mean(raw)) |>
-  ungroup()
-
-ggplot(ece_terms_trend, aes(x = t)) +
-  geom_line(aes(y = raw), color = "gray80") +
-  geom_hline(aes(yintercept = global), linetype = "dashed", color = "firebrick") +
-  geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
-  facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
-  labs(x = "time", y = "ECE term (covariance / variance scale)") +
-  theme_minimal()
-```
-
-The large excursion around 2021 in all three panels is the COVID-era inflation shock, not an artifact. The boundary artifact is a separate problem: fewer points, larger magnitude, and still excluded from the plot above — excluded from the display only, since every `ece.test()` p-value elsewhere in this chapter runs on the full, untrimmed series. The histogram below restores those boundary points, showing the full term distribution on the same 3x3 layout (diagonal = variance term, upper triangle = covariance term), so the impact is visible directly rather than trimmed away.
-
-```{R cpi-trend-hist}
-#| echo: false
-
-ece_terms_summary <- ece_terms_dat |>
-  group_by(row, col) |>
-  summarize(mean = mean(raw), median = median(raw), .groups = "drop")
-
-ece_terms_trimmed <- ece_terms_dat |>
-  group_by(row, col) |>
-  filter(raw > quantile(raw, 0.005), raw < quantile(raw, 0.995)) |>
-  ungroup()
-
-ggplot(ece_terms_trimmed, aes(x = raw)) +
-  geom_histogram(bins = 40, fill = "steelblue", color = "white") +
-  geom_vline(data = ece_terms_summary, aes(xintercept = mean), color = "firebrick", linetype = "dashed") +
-  geom_vline(data = ece_terms_summary, aes(xintercept = median), color = "darkorange", linetype = "dashed") +
-  facet_grid(rows = vars(row), cols = vars(col), scales = "free") +
-  labs(x = "ECE term value (middle 99%)", y = "Count") +
-  theme_minimal()
-```
-
-Almost every observation sits in a single bar near zero. The x-axis stretches to several hundred just to fit one or two boundary points per panel — the same points `bs_multiplier_test` and `bs_parametric_test` build their statistics from internally, since both call `ece_terms(X)` on this exact, untrimmed data. The mean (dashed red) and median (dashed orange) both sit near zero in every panel: the boundary points barely move the center of the distribution. They do move `sum(s_t^2)`, though, the quantity the bootstrap null variance is built from — a handful of points out of 807 is enough to shift that by an order of magnitude.
-
-##### Mean-Shift-Invariant (Segment)
-
-Same terms as the Mean-Shift-Invariant tab (`lag_term()`, same 3x3 layout), computed on `X_resid` (the `segment_mean()` residuals) instead of the raw levels. This is the diagnostic behind the Segment-ECE row in the Results table below. With the trend already removed, `lag_term()` no longer sees a 60-year monotonic climb, so the `rotate()` boundary wraparound never produces the spike seen in the raw-level tab. The remaining large excursions — Transportation near t=600 and t=750, Medical Care near t=800 — line up with the 2008 and 2021-2022 energy and inflation shocks, not an artifact.
-
-```{R cpi-trend-segment-ece}
-#| echo: false
-
-window <- max(10, floor(nrow(X_mat) / 5))
-cn     <- colnames(X_mat)
-idx    <- combn(ncol(X_mat), 2)
-n      <- nrow(X_mat)
-
-seg_ece_cov_dat <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
-  i <- idx[1, k]
-  j <- idx[2, k]
-  s <- lag_term(X_resid[, i], X_resid[, j])
-  tibble(t = seq_len(n), row = cn[i], col = cn[j], raw = s)
-})
-seg_ece_var_dat <- purrr::map_dfr(seq_len(ncol(X_mat)), function(i) {
-  s <- lag_term(X_resid[, i], X_resid[, i])
-  tibble(t = seq_len(n), row = cn[i], col = cn[i], raw = s)
-})
-seg_ece_terms_dat <- bind_rows(seg_ece_cov_dat, seg_ece_var_dat) |>
-  mutate(row = factor(row, levels = cn), col = factor(col, levels = cn)) |>
-  group_by(row, col) |>
-  mutate(run = rolling_mean(raw, window), global = mean(raw)) |>
-  ungroup()
-
-ggplot(seg_ece_terms_dat, aes(x = t)) +
-  geom_line(aes(y = raw), color = "gray80") +
-  geom_hline(aes(yintercept = global), linetype = "dashed", color = "firebrick") +
-  geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
-  facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
-  labs(x = "time", y = "Segment-ECE term (covariance / variance scale)") +
-  theme_minimal()
-```
-
-:::
-
-#### Kappa
-
-The default pairwise z-test (`ece.test(..., type = "z.test")`) uses `kappa = "gaussian"`: a delta-method standard error that assumes the fourth-moment terms take their Gaussian values (`k40 = k04 = 3`, `k22 = 1 + 2ρ²`, `k31 = k13 = 3ρ`), with the correlation `ρ` plugged in at its estimated value. We check that assumption directly, estimating these terms from the segmented residuals (`ece.kappa(..., method = "mom")`):
-
-```{R cpi-kappa-check}
-#| echo: false
-
-cn  <- colnames(X_mat)
-idx <- combn(ncol(X_mat), 2)
-
-kappa_tbl <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
-  i <- idx[1, k]
-  j <- idx[2, k]
-  kap <- ece.kappa(X_resid[, i], X_resid[, j], method = "mom")
-  tibble(
-    Pair = paste(cn[i], "/", cn[j]),
-    k40  = round(kap$k40, 2),
-    k31  = round(kap$k31, 2),
-    k22  = round(kap$k22, 2),
-    k13  = round(kap$k13, 2),
-    k04  = round(kap$k04, 2)
-  )
-})
-
-kable(kappa_tbl, align = c("l", "c", "c", "c", "c", "c")) |>
-  kable_styling(full_width = FALSE)
-```
-
-Under a Gaussian sampling check (iid `rnorm`, same n=807, 50 replicates), these estimators center near the Gaussian reference values with modest spread (`k40`, `k04`: mean 3.0, sd ~0.4; `k22`: mean 1.0, sd ~0.16). The estimates above sit far outside that range. For the two pairs involving `Apparel` and `Transportation`, `k40`/`k04` reach 15-20 against a reference of 3, and `k22` reaches 4.05 against a reference near 1. `Medical Care`'s own marginal term (`k04` in the last two rows) stays closer to Gaussian, at 1.78. The `kappa = "gaussian"` z-test understates the true standard error for these pairs — its p-values run lower than the bootstrap methods (`bs.multiplier`, `bs.parametric`) agree with.
-
-**Fix: test under the null instead of estimating all five kappas.** `ece.cor.se()` forces `ρ = 0` when `rho = 0` is passed. Every kappa term with a nonzero coefficient in the SE formula — `k40`, `k04`, `k31`, `k13` — carries a factor of `ρ` or `ρ²`, so at `ρ = 0` they all drop out algebraically. Only `k22` remains, and under true independence it collapses to exactly 1 for any marginal distribution, not just Gaussian. This is standard practice: a test of H0: ρ=0 should use the standard error *at* ρ=0, not one built from the plug-in estimate of ρ.
-
-The Results section below uses this null-restricted z-test — `kappa = ece.kappa(X, rho = 0, method = "mom")`, `rho = 0` — instead of the full Gaussian one, so it only has to estimate `k22` rather than assume all five kappas take their Gaussian values. Every pairwise p-value moves toward the bootstrap methods' answer, though not all the way there. `Apparel`'s residual autocorrelation (lag-1 ACF of 0.44) is a second factor no z-test variant addresses, since `ece.cor.se()` carries no lag terms at all. All three tests here — z-test, `bs.multiplier`, `bs.parametric` — assume the underlying series is independent over time. The bootstrap tests' lag-1/lag-2 correction is calibrated to the dependence `lag_term()`'s own construction mechanically induces, not to arbitrary leftover autocorrelation in the data.
-
-#### Omega
-
-This chapter residualizes the trend throughout with `segment_mean(penalty = "BIC")`, for Segment-ECE and the residualized joint tests in Results. It's one reasonable change-point fit, not a known-true segmentation. We check how well it describes the actual mean-shift structure using ECE itself. `ece.complexity()` estimates $\omega$ — the mean-heterogeneity parameter from `omega-estimation.qmd` — directly from the raw data via lagged differences, with no change-point model at all. If the segmentation fits well, the same $\omega$ quantity computed from the fitted segmented mean (`lag_diff(X_seg[,i], X_seg[,j]) / n`, the same construction `omega-estimation.qmd` uses for the true mean process) should closely match ECE's own estimate.
-
-```{R cpi-omega-check}
-#| echo: false
-
-n <- nrow(X_mat)
-cn <- colnames(X_mat)
-
-ece_omega <- ece.complexity(X_mat) |> round(1)
-rownames(ece_omega) <- colnames(ece_omega) <- cn
-
-seg_omega <- matrix(0, ncol(X_mat), ncol(X_mat), dimnames = list(cn, cn))
-for (i in seq_len(ncol(X_mat))) {
-  for (j in seq_len(ncol(X_mat))) {
-    seg_omega[i, j] <- lag_diff(X_seg[, i], X_seg[, j], k = 1) / n
-  }
-}
-seg_omega <- round(seg_omega, 1)
-```
-
-```{R cpi-omega-check-output}
-#| layout-ncol: 2
-#| echo: false
-
-knitr::kable(ece_omega, caption = "ECE (raw data, no segmentation)")
-knitr::kable(seg_omega, caption = "Segmentation-implied")
-```
-
-The two agree to within 0.1-2.2% on every entry — independent corroboration of the segmentation choice. `ece.complexity()` requires no change-point model at all, built the same way as the correlation and variance terms throughout this chapter, yet it recovers essentially the same mean-heterogeneity structure as the explicit `segment_mean(penalty = "BIC")` fit. That doesn't make the BIC segmentation the "right" one in any absolute sense. It does mean two independent descriptions of this data's mean-shift structure — ECE's differencing-based estimator and an explicit change-point model — aren't in tension.
-
-:::
-
-### Results
-
-We start with pairwise comparisons: ECE and Segment-ECE — ECE applied to the raw levels and to the `segment_mean()` residuals — alongside naive and residual Pearson correlation, the same two versions of the data run through Pearson.
-
-```{R cpi-pairwise-cor}
-#| echo: false
-#| warning: false
-
-ece_cor               <- ece.cor(X_mat) |> round(3)
-rownames(ece_cor)     <- colnames(ece_cor) <- colnames(X_mat)
-seg_ece_cor           <- ece.cor(X_resid) |> round(3)
-rownames(seg_ece_cor) <- colnames(seg_ece_cor) <- colnames(X_mat)
-
-resid_cor   <- cor(X_resid) |> round(3)
-pearson_cor <- cor(X_mat) |> round(3)
+# Shared across every Raw and Log-Transformed tab below: each tab picks its
+# own segmentation (omega-matched search, AIC, or BIC) and calls the same
+# parameterized diagnostics/results pipeline, rather than duplicating it.
 
 # Null-restricted z-test (rho = 0): avoids assuming Gaussian k40/k04/k31/k13,
 # which the Kappa diagnostic tab shows are badly misspecified for this data.
@@ -389,11 +67,6 @@ ece_pval_null <- function(X) {
   pval_mat
 }
 
-ece_pmat     <- ece_pval_null(X_mat) |> round(3)
-seg_ece_pmat <- ece_pval_null(X_resid) |> round(3)
-resid_pmat   <- cor_pval(X_resid) |> round(3)
-pearson_pmat <- cor_pval(X_mat) |> round(3)
-
 # Bold any off-diagonal cell whose corresponding p-value is < 0.05.
 bold_sig <- function(display_mat, pval_mat) {
   m   <- nrow(display_mat)
@@ -406,38 +79,945 @@ bold_sig <- function(display_mat, pval_mat) {
   }
   out
 }
+
+# Per-series penalty search: choose pen.value so the segmentation-implied
+# omega (diagonal, variance scale) matches ECE's own segmentation-free
+# estimate as closely as possible. ece.complexity(x, x) depends only on
+# column x, so each series is optimized independently of the other two.
+# Raw levels and log growth sit on very different scales, so each gets its
+# own search grid; raw's is wide because ece.complexity() on raw levels
+# stays flat across ~5 orders of magnitude of penalty before collapsing.
+pen_grid_log <- 10^seq(-8, 0, length.out = 100)
+pen_grid_raw <- 10^seq(-4, 10, length.out = 100)
+
+omega_match_penalty <- function(x, grid) {
+  target <- ece.complexity(x, x)
+  errs <- sapply(grid, function(pv) {
+    seg       <- segment_mean_vec(x, penalty = "Manual", pen.value = pv)
+    seg_omega <- lag_diff(seg, seg, k = 1) / length(x)
+    abs(seg_omega - target) / abs(target)
+  })
+  grid[which.min(errs)]
+}
+
+cpi_fit_segmentation <- function(X_mat, grid) {
+  pen <- apply(X_mat, 2, omega_match_penalty, grid = grid)
+  X_seg <- sapply(colnames(X_mat), function(cn) {
+    segment_mean_vec(X_mat[, cn], penalty = "Manual", pen.value = pen[cn])
+  })
+  colnames(X_seg) <- colnames(X_mat)
+  list(pen = pen, X_seg = X_seg)
+}
+
+cpi_penalty_table <- function(pen, X_seg) {
+  tibble(
+    Series      = colnames(X_seg),
+    `pen.value` = signif(pen, 3),
+    Segments    = apply(X_seg, 2, function(c) length(unique(c)))
+  )
+}
+
+# For the AIC/BIC tabs: no per-series pen.value search, just the segment
+# count segment_mean()'s built-in criterion happened to choose.
+cpi_segments_table <- function(X_seg, penalty_label) {
+  tibble(
+    Series   = colnames(X_seg),
+    Penalty  = penalty_label,
+    Segments = apply(X_seg, 2, function(c) length(unique(c)))
+  )
+}
+
+cpi_plot_series <- function(dates, X_mat, X_seg, title, ylab, zero_line = FALSE) {
+  X_df <- bind_cols(
+    date = dates, as.data.frame(X_mat),
+    as.data.frame(X_seg) |> rename_with(~ paste0(.x, "_segment"))
+  )
+  p <- X_df |>
+    pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
+    mutate(
+      type     = if_else(str_ends(series, "_segment"), "Segmented", "Raw"),
+      category = str_remove(series, "_segment$")
+    ) |>
+    ggplot(aes(x = date, y = value, color = category, group = series))
+  if (zero_line) p <- p + geom_hline(yintercept = 0, color = "gray")
+  p +
+    geom_line(aes(linewidth = type)) +
+    scale_linewidth_manual(values = c(Raw = 0.4, Segmented = 1.0), guide = "none") +
+    facet_wrap(~category, scales = "free_y", ncol = 1) +
+    labs(title = title, x = NULL, y = ylab, color = "Category", caption = "Source: FRED-MD") +
+    theme_minimal() +
+    theme(legend.position = "none")
+}
+
+cpi_plot_residuals <- function(dates, X_resid, title) {
+  X_resid |>
+    as_tibble() |>
+    bind_cols(date = dates) |>
+    pivot_longer(cols = -date, names_to = "category", values_to = "value") |>
+    ggplot(aes(x = date, y = value, color = category)) +
+    geom_hline(yintercept = 0, color = "gray") +
+    geom_line(linewidth = 0.4) +
+    facet_wrap(~category, scales = "free_y", ncol = 1) +
+    labs(title = title, x = NULL, y = "Residual") +
+    theme_minimal() +
+    theme(legend.position = "none")
+}
+
+cpi_acf_naive <- function(X_resid) {
+  par(mfrow = c(ncol(X_resid), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+  for (i in seq_len(ncol(X_resid))) {
+    acf(X_resid[, i], main = "", xaxt = "n", ylab = colnames(X_resid)[i])
+  }
+  axis(1)
+  mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+}
+
+cpi_ece_terms <- function(X_mat, window) {
+  cn  <- colnames(X_mat)
+  idx <- combn(ncol(X_mat), 2)
+  n   <- nrow(X_mat)
+
+  ece_cov <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
+    i <- idx[1, k]
+    j <- idx[2, k]
+    s <- lag_term(X_mat[, i], X_mat[, j])
+    tibble(t = seq_len(n), row = cn[i], col = cn[j], raw = s)
+  })
+  ece_var <- purrr::map_dfr(seq_len(ncol(X_mat)), function(i) {
+    s <- lag_term(X_mat[, i], X_mat[, i])
+    tibble(t = seq_len(n), row = cn[i], col = cn[i], raw = s)
+  })
+  bind_rows(ece_cov, ece_var) |>
+    mutate(row = factor(row, levels = cn), col = factor(col, levels = cn)) |>
+    group_by(row, col) |>
+    mutate(run = rolling_mean(raw, window), mean = mean(raw), median = median(raw)) |>
+    ungroup()
+}
+
+cpi_plot_ece_trend <- function(terms_df, window) {
+  ggplot(terms_df, aes(x = t)) +
+    geom_line(aes(y = raw), color = "gray80") +
+    geom_hline(aes(yintercept = mean), linetype = "dashed", color = "firebrick") +
+    geom_hline(aes(yintercept = median), linetype = "dashed", color = "darkorange") +
+    geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
+    facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
+    labs(
+      x = "time", y = "ECE term (covariance / variance scale)",
+      subtitle = sprintf("gray = raw term, blue = %d-window mean, red = mean, orange = median", window)
+    ) +
+    theme_minimal()
+}
+
+cpi_plot_ece_hist <- function(terms_df) {
+  labels <- terms_df |> distinct(row, col, mean, median)
+  trimmed <- terms_df |>
+    group_by(row, col) |>
+    filter(raw > quantile(raw, 0.005), raw < quantile(raw, 0.995)) |>
+    ungroup()
+
+  ggplot(trimmed, aes(x = raw)) +
+    geom_histogram(bins = 40, fill = "steelblue", color = "white") +
+    geom_vline(data = labels, aes(xintercept = mean), color = "firebrick", linetype = "dashed") +
+    geom_vline(data = labels, aes(xintercept = median), color = "darkorange", linetype = "dashed") +
+    facet_grid(rows = vars(row), cols = vars(col), scales = "free") +
+    labs(x = "ECE term value (middle 99%)", y = "Count") +
+    theme_minimal()
+}
+
+cpi_kappa_table <- function(X_resid) {
+  cn  <- colnames(X_resid)
+  idx <- combn(ncol(X_resid), 2)
+  purrr::map_dfr(seq_len(ncol(idx)), function(k) {
+    i <- idx[1, k]
+    j <- idx[2, k]
+    kap <- ece.kappa(X_resid[, i], X_resid[, j], method = "mom")
+    tibble(
+      Pair = paste(cn[i], "/", cn[j]),
+      k40  = round(kap$k40, 2),
+      k31  = round(kap$k31, 2),
+      k22  = round(kap$k22, 2),
+      k13  = round(kap$k13, 2),
+      k04  = round(kap$k04, 2)
+    )
+  })
+}
+
+cpi_omega_check <- function(X_mat, X_seg) {
+  n  <- nrow(X_mat)
+  cn <- colnames(X_mat)
+  ece_omega <- ece.complexity(X_mat) |> round(6)
+  rownames(ece_omega) <- colnames(ece_omega) <- cn
+
+  seg_omega <- matrix(0, ncol(X_mat), ncol(X_mat), dimnames = list(cn, cn))
+  for (i in seq_len(ncol(X_mat))) {
+    for (j in seq_len(ncol(X_mat))) {
+      seg_omega[i, j] <- lag_diff(X_seg[, i], X_seg[, j], k = 1) / n
+    }
+  }
+  list(ece = ece_omega, seg = round(seg_omega, 6))
+}
+
+cpi_pairwise_results <- function(X_mat, X_resid) {
+  ece_cor     <- ece.cor(X_mat) |> round(3)
+  seg_ece_cor <- ece.cor(X_resid) |> round(3)
+  dimnames(ece_cor) <- dimnames(seg_ece_cor) <- list(colnames(X_mat), colnames(X_mat))
+
+  list(
+    ece_cor      = ece_cor,
+    seg_ece_cor  = seg_ece_cor,
+    resid_cor    = cor(X_resid) |> round(3),
+    pearson_cor  = cor(X_mat) |> round(3),
+    ece_pmat     = ece_pval_null(X_mat) |> round(3),
+    seg_ece_pmat = ece_pval_null(X_resid) |> round(3),
+    resid_pmat   = cor_pval(X_resid) |> round(3),
+    pearson_pmat = cor_pval(X_mat) |> round(3)
+  )
+}
+
+cpi_diagonal_results <- function(X_mat, X_resid, seed = 123) {
+  run_row <- function(X) {
+    data.frame(
+      Method = c(
+        "Bootstrap Multiplier",
+        "Parametric Bootstrap",
+        "Parametric Bootstrap (Naive)",
+        "Bartlett Test"
+      ),
+      `p-value` = c(
+        round(ece.test(X, type = "bs.multiplier")$p.value, 3),
+        round(ece.test(X, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+        round(ece.test(X, type = "bs.parametric.naive")$p.value, 3),
+        round(cortest.bartlett(cor(X), nrow(X))$p.value, 3)
+      ),
+      check.names = FALSE
+    )
+  }
+  set.seed(seed)
+  raw <- run_row(X_mat)
+  set.seed(seed)
+  seg <- run_row(X_resid)
+  list(raw = raw, seg = seg)
+}
 ```
 
 ::: {.panel-tabset}
 
-#### Pairwise
+## Raw
+
+Same idea as the Log-Transformed section below: the tabs here are different ways of choosing the segmentation that everything else in this section is residualized against. `BIC` is the original, primary analysis for this chapter — `segment_mean(X_mat, penalty = "BIC")` — and its Diagnostics/Results below are the ones the rest of this chapter's discussion (Kappa, the Log-Transformed comparison, the final wrap-up) refers to as "the raw-level analysis." `AIC` swaps in `segment_mean()`'s AIC criterion instead. `ω fitted` and `ω fitted (1980+)` use the same per-series omega-matched penalty search as the Log-Transformed section, on the full sample and on the post-1980 window respectively. Unlike log growth, `ece.complexity()` on raw levels stays essentially flat across roughly five orders of magnitude of penalty before collapsing (checked directly against a `10^seq(-4, 10, length.out = 100)` grid) — so this search has much less to discriminate on here than it does for log growth, and may land close to whatever `BIC`/`AIC` already find. That flatness is itself the finding for this pair of tabs, not a sign the search is broken. All four tabs run the identical Diagnostics/Results pipeline via the same parameterized helper functions used in Log-Transformed.
 
 ::: {.panel-tabset}
 
-##### Correlation
+### ω fitted
 
-```{R cpi-pairwise-cor-output}
+Segmentation via the per-series omega-matched penalty search, grid-searched over `pen_grid_raw <- 10^seq(-4, 10, length.out = 100)`.
+
+```{R cpi-omegafit-fit}
+#| echo: false
+
+fit_raw          <- cpi_fit_segmentation(X_mat, pen_grid_raw)
+X_seg_omegafit   <- fit_raw$X_seg
+X_resid_omegafit <- X_mat - X_seg_omegafit
+```
+
+```{R cpi-omegafit-penalty-table}
+#| echo: false
+
+kable(cpi_penalty_table(fit_raw$pen, X_seg_omegafit), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R cpi-omegafit-plot-raw}
+#| echo: false
+#| fig-height: 7
+
+cpi_plot_series(X_data$date, X_mat, X_seg_omegafit, "CPI Subcomponents (ω fitted)", "Index level")
+```
+
+##### Residuals
+
+```{R cpi-omegafit-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+cpi_plot_residuals(X_data$date, X_resid_omegafit, "Residuals after Segmentation (ω fitted)")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-omegafit-acf-naive}
+#| echo: false
+
+cpi_acf_naive(X_resid_omegafit)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-omegafit-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-omegafit-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-omegafit-trend-ece}
+#| echo: false
+
+window_omegafit    <- max(10, floor(nrow(X_mat) / 5))
+ece_terms_omegafit <- cpi_ece_terms(X_mat, window_omegafit)
+cpi_plot_ece_trend(ece_terms_omegafit, window_omegafit)
+```
+
+```{R cpi-omegafit-trend-hist}
+#| echo: false
+
+cpi_plot_ece_hist(ece_terms_omegafit)
+```
+
+:::
+
+##### Kappa
+
+```{R cpi-omegafit-kappa-check}
+#| echo: false
+
+kable(cpi_kappa_table(X_resid_omegafit), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R cpi-omegafit-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_omegafit <- cpi_omega_check(X_mat, X_seg_omegafit)
+knitr::kable(omega_omegafit$ece, caption = "ECE (raw data, no segmentation)")
+knitr::kable(omega_omegafit$seg, caption = "Segmentation-implied (ω fitted)")
+```
+
+:::
+
+#### Results
+
+```{R cpi-omegafit-pairwise}
+#| echo: false
+#| warning: false
+
+pw_omegafit <- cpi_pairwise_results(X_mat, X_resid_omegafit)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R cpi-omegafit-pairwise-cor-output}
 #| layout-ncol: 2
 #| echo: false
 
-knitr::kable(bold_sig(ece_cor, ece_pmat),         caption = "ECE Correlation", escape = FALSE, format = "html")
-knitr::kable(bold_sig(seg_ece_cor, seg_ece_pmat), caption = "Segment-ECE Correlation", escape = FALSE, format = "html")
-knitr::kable(bold_sig(pearson_cor, pearson_pmat), caption = "Naive Pearson Correlation", escape = FALSE, format = "html")
-knitr::kable(bold_sig(resid_cor, resid_pmat),     caption = "Residual Pearson Correlation", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit$ece_cor, pw_omegafit$ece_pmat),         caption = "ECE Correlation (ω fitted)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit$seg_ece_cor, pw_omegafit$seg_ece_pmat), caption = "Segment-ECE Correlation (ω fitted)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit$pearson_cor, pw_omegafit$pearson_pmat), caption = "Naive Pearson Correlation (ω fitted)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit$resid_cor, pw_omegafit$resid_pmat),     caption = "Residual Pearson Correlation (ω fitted)", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R cpi-omegafit-pairwise-pval-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_omegafit$ece_pmat, pw_omegafit$ece_pmat),         caption = "ECE P-Values (ω fitted, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit$seg_ece_pmat, pw_omegafit$seg_ece_pmat), caption = "Segment-ECE P-Values (ω fitted, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit$pearson_pmat, pw_omegafit$pearson_pmat), caption = "Naive Pearson P-Values (ω fitted)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit$resid_pmat, pw_omegafit$resid_pmat),     caption = "Residual Pearson P-Values (ω fitted)", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+```{R cpi-omegafit-diagonal-tests-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_omegafit <- cpi_diagonal_results(X_mat, X_resid_omegafit)
+knitr::kable(diag_omegafit$raw, caption = "Raw Levels (ω fitted)")
+knitr::kable(diag_omegafit$seg, caption = "Segmented Residuals (ω fitted)")
+```
+
+:::
+
+:::
+
+### ω fitted (1980+)
+
+Same pipeline as `ω fitted`, restricted to `date >= 1980-01-01` — the same robustness check performed in Log-Transformed, applied here to raw levels.
+
+```{R cpi-omegafit-1980-fit}
+#| echo: false
+
+X_data_1980 <- X_data |> filter(date >= as.Date("1980-01-01"))
+X_mat_1980  <- as.matrix(X_data_1980[, -1])
+dates_1980  <- X_data_1980$date
+
+fit_raw_1980          <- cpi_fit_segmentation(X_mat_1980, pen_grid_raw)
+X_seg_omegafit_1980   <- fit_raw_1980$X_seg
+X_resid_omegafit_1980 <- X_mat_1980 - X_seg_omegafit_1980
+```
+
+`r nrow(X_data_1980)` monthly observations, 1980-01 onward.
+
+```{R cpi-omegafit-1980-penalty-table}
+#| echo: false
+
+kable(cpi_penalty_table(fit_raw_1980$pen, X_seg_omegafit_1980), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R cpi-omegafit-1980-plot-raw}
+#| echo: false
+#| fig-height: 7
+
+cpi_plot_series(dates_1980, X_mat_1980, X_seg_omegafit_1980, "CPI Subcomponents (ω fitted, 1980+)", "Index level")
+```
+
+##### Residuals
+
+```{R cpi-omegafit-1980-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+cpi_plot_residuals(dates_1980, X_resid_omegafit_1980, "Residuals after Segmentation (ω fitted, 1980+)")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-omegafit-1980-acf-naive}
+#| echo: false
+
+cpi_acf_naive(X_resid_omegafit_1980)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-omegafit-1980-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_1980)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-omegafit-1980-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_1980)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-omegafit-1980-trend-ece}
+#| echo: false
+
+window_omegafit_1980    <- max(10, floor(nrow(X_mat_1980) / 5))
+ece_terms_omegafit_1980 <- cpi_ece_terms(X_mat_1980, window_omegafit_1980)
+cpi_plot_ece_trend(ece_terms_omegafit_1980, window_omegafit_1980)
+```
+
+```{R cpi-omegafit-1980-trend-hist}
+#| echo: false
+
+cpi_plot_ece_hist(ece_terms_omegafit_1980)
+```
+
+:::
+
+##### Kappa
+
+```{R cpi-omegafit-1980-kappa-check}
+#| echo: false
+
+kable(cpi_kappa_table(X_resid_omegafit_1980), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R cpi-omegafit-1980-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_omegafit_1980 <- cpi_omega_check(X_mat_1980, X_seg_omegafit_1980)
+knitr::kable(omega_omegafit_1980$ece, caption = "ECE (raw data, 1980+, no segmentation)")
+knitr::kable(omega_omegafit_1980$seg, caption = "Segmentation-implied (ω fitted, 1980+)")
+```
+
+:::
+
+#### Results
+
+```{R cpi-omegafit-1980-pairwise}
+#| echo: false
+#| warning: false
+
+pw_omegafit_1980 <- cpi_pairwise_results(X_mat_1980, X_resid_omegafit_1980)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R cpi-omegafit-1980-pairwise-cor-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_omegafit_1980$ece_cor, pw_omegafit_1980$ece_pmat),         caption = "ECE Correlation (ω fitted, 1980+)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit_1980$seg_ece_cor, pw_omegafit_1980$seg_ece_pmat), caption = "Segment-ECE Correlation (ω fitted, 1980+)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit_1980$pearson_cor, pw_omegafit_1980$pearson_pmat), caption = "Naive Pearson Correlation (ω fitted, 1980+)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit_1980$resid_cor, pw_omegafit_1980$resid_pmat),     caption = "Residual Pearson Correlation (ω fitted, 1980+)", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R cpi-omegafit-1980-pairwise-pval-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_omegafit_1980$ece_pmat, pw_omegafit_1980$ece_pmat),         caption = "ECE P-Values (ω fitted, 1980+, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit_1980$seg_ece_pmat, pw_omegafit_1980$seg_ece_pmat), caption = "Segment-ECE P-Values (ω fitted, 1980+, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit_1980$pearson_pmat, pw_omegafit_1980$pearson_pmat), caption = "Naive Pearson P-Values (ω fitted, 1980+)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_omegafit_1980$resid_pmat, pw_omegafit_1980$resid_pmat),     caption = "Residual Pearson P-Values (ω fitted, 1980+)", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+```{R cpi-omegafit-1980-diagonal-tests-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_omegafit_1980 <- cpi_diagonal_results(X_mat_1980, X_resid_omegafit_1980)
+knitr::kable(diag_omegafit_1980$raw, caption = "Raw Levels (ω fitted, 1980+)")
+knitr::kable(diag_omegafit_1980$seg, caption = "Segmented Residuals (ω fitted, 1980+)")
+```
+
+:::
+
+:::
+
+### AIC
+
+Segmentation via `segment_mean(X_mat, penalty = "AIC")` on the full sample.
+
+```{R cpi-aic-fit}
+#| echo: false
+
+X_seg_aic   <- segment_mean(X_mat, penalty = "AIC")
+X_resid_aic <- X_mat - X_seg_aic
+```
+
+```{R cpi-aic-segments-table}
+#| echo: false
+
+kable(cpi_segments_table(X_seg_aic, "AIC"), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R cpi-aic-plot-raw}
+#| echo: false
+#| fig-height: 7
+
+cpi_plot_series(X_data$date, X_mat, X_seg_aic, "CPI Subcomponents (AIC)", "Index level")
+```
+
+##### Residuals
+
+```{R cpi-aic-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+cpi_plot_residuals(X_data$date, X_resid_aic, "Residuals after Segmentation (AIC)")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-aic-acf-naive}
+#| echo: false
+
+cpi_acf_naive(X_resid_aic)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-aic-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-aic-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-aic-trend-ece}
+#| echo: false
+
+window_aic    <- max(10, floor(nrow(X_mat) / 5))
+ece_terms_aic <- cpi_ece_terms(X_mat, window_aic)
+cpi_plot_ece_trend(ece_terms_aic, window_aic)
+```
+
+```{R cpi-aic-trend-hist}
+#| echo: false
+
+cpi_plot_ece_hist(ece_terms_aic)
+```
+
+:::
+
+##### Kappa
+
+```{R cpi-aic-kappa-check}
+#| echo: false
+
+kable(cpi_kappa_table(X_resid_aic), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R cpi-aic-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_aic <- cpi_omega_check(X_mat, X_seg_aic)
+knitr::kable(omega_aic$ece, caption = "ECE (raw data, no segmentation)")
+knitr::kable(omega_aic$seg, caption = "Segmentation-implied (AIC)")
+```
+
+:::
+
+#### Results
+
+```{R cpi-aic-pairwise}
+#| echo: false
+#| warning: false
+
+pw_aic <- cpi_pairwise_results(X_mat, X_resid_aic)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R cpi-aic-pairwise-cor-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_aic$ece_cor, pw_aic$ece_pmat),         caption = "ECE Correlation (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_aic$seg_ece_cor, pw_aic$seg_ece_pmat), caption = "Segment-ECE Correlation (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_aic$pearson_cor, pw_aic$pearson_pmat), caption = "Naive Pearson Correlation (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_aic$resid_cor, pw_aic$resid_pmat),     caption = "Residual Pearson Correlation (AIC)", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R cpi-aic-pairwise-pval-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_aic$ece_pmat, pw_aic$ece_pmat),         caption = "ECE P-Values (AIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_aic$seg_ece_pmat, pw_aic$seg_ece_pmat), caption = "Segment-ECE P-Values (AIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_aic$pearson_pmat, pw_aic$pearson_pmat), caption = "Naive Pearson P-Values (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_aic$resid_pmat, pw_aic$resid_pmat),     caption = "Residual Pearson P-Values (AIC)", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+```{R cpi-aic-diagonal-tests-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_aic <- cpi_diagonal_results(X_mat, X_resid_aic)
+knitr::kable(diag_aic$raw, caption = "Raw Levels (AIC)")
+knitr::kable(diag_aic$seg, caption = "Segmented Residuals (AIC)")
+```
+
+:::
+
+:::
+
+### BIC
+
+```{R cpi-bic-fit}
+#| echo: false
+
+X_seg_bic   <- segment_mean(X_mat, penalty = "BIC")
+X_resid_bic <- X_mat - X_seg_bic
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R cpi-bic-plot-raw}
+#| echo: false
+#| label: fig-cpi-components
+#| fig-cap: "CPI subcomponents, monthly levels, 1959-2026. Thick lines show the segmented mean."
+#| fig-height: 7
+
+cpi_plot_series(X_data$date, X_mat, X_seg_bic, "CPI Subcomponents", "Index level")
+```
+
+All three climb for six decades. Transportation is the most volatile, driven by energy shocks in 2008 and 2021-2022. Medical Care is the smoothest, climbing almost without pause.
+
+##### Residuals
+
+```{R cpi-bic-plot-residuals}
+#| echo: false
+#| label: fig-cpi-residuals
+#| fig-cap: "Residuals after removing the segmented mean from each category."
+#| fig-height: 7
+
+cpi_plot_residuals(X_data$date, X_resid_bic, "Residuals after Segmentation")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-bic-acf-naive}
+#| echo: false
+
+cpi_acf_naive(X_resid_bic)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-bic-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+Same 3x3 layout as the Mean-Shift-Invariant tab: the diagonal holds each series' rolling-mean-removed variance, the upper triangle holds the naive pairwise covariance term, the lower triangle is blank.
+
+```{R cpi-bic-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat)
+```
+
+###### Mean-Shift-Invariant
+
+`plot_ece_terms()` builds on `lag_term()`, which compares each point against its two predecessors through a circular shift (`rotate()`). A series that trends for 60+ years without cycling back pays for that shift at the boundary: the last couple of points wrap around and land against the 1959 starting level, producing a spike that swamps the rest of the y-axis. The layout below follows the same row/column convention as the Correlation tables: the diagonal holds each series' own variance term (`lag_term(X[,i], X[,i])`), the upper triangle holds the pairwise covariance term, and the lower triangle stays blank — redundant with the upper triangle.
+
+```{R cpi-bic-trend-ece}
+#| echo: false
+
+window_bic    <- max(10, floor(nrow(X_mat) / 5))
+ece_terms_bic <- cpi_ece_terms(X_mat, window_bic)
+cpi_plot_ece_trend(ece_terms_bic, window_bic)
+```
+
+The large excursion around 2021 in all three panels is the COVID-era inflation shock, not an artifact. The boundary artifact is a separate problem: fewer points, larger magnitude, and still excluded from the plot above — excluded from the display only, since every `ece.test()` p-value elsewhere in this chapter runs on the full, untrimmed series. The histogram below restores those boundary points, showing the full term distribution on the same 3x3 layout (diagonal = variance term, upper triangle = covariance term), so the impact is visible directly rather than trimmed away.
+
+```{R cpi-bic-trend-hist}
+#| echo: false
+
+cpi_plot_ece_hist(ece_terms_bic)
+```
+
+Almost every observation sits in a single bar near zero. The x-axis stretches to several hundred just to fit one or two boundary points per panel — the same points `bs_multiplier_test` and `bs_parametric_test` build their statistics from internally, since both call `ece_terms(X)` on this exact, untrimmed data. The mean (dashed red) and median (dashed orange) both sit near zero in every panel: the boundary points barely move the center of the distribution. They do move `sum(s_t^2)`, though, the quantity the bootstrap null variance is built from — a handful of points out of 807 is enough to shift that by an order of magnitude.
+
+###### Mean-Shift-Invariant (Segment)
+
+Same terms as the Mean-Shift-Invariant tab (`lag_term()`, same 3x3 layout), computed on `X_resid_bic` (the `segment_mean()` residuals) instead of the raw levels. This is the diagnostic behind the Segment-ECE row in the Results table below. With the trend already removed, `lag_term()` no longer sees a 60-year monotonic climb, so the `rotate()` boundary wraparound never produces the spike seen in the raw-level tab. The remaining large excursions — Transportation near t=600 and t=750, Medical Care near t=800 — line up with the 2008 and 2021-2022 energy and inflation shocks, not an artifact.
+
+```{R cpi-bic-trend-segment-ece}
+#| echo: false
+
+window_bic_seg    <- max(10, floor(nrow(X_resid_bic) / 5))
+ece_terms_bic_seg <- cpi_ece_terms(X_resid_bic, window_bic_seg)
+cpi_plot_ece_trend(ece_terms_bic_seg, window_bic_seg)
+```
+
+:::
+
+##### Kappa
+
+The default pairwise z-test (`ece.test(..., type = "z.test")`) uses `kappa = "gaussian"`: a delta-method standard error that assumes the fourth-moment terms take their Gaussian values (`k40 = k04 = 3`, `k22 = 1 + 2ρ²`, `k31 = k13 = 3ρ`), with the correlation `ρ` plugged in at its estimated value. We check that assumption directly, estimating these terms from the segmented residuals (`ece.kappa(..., method = "mom")`):
+
+```{R cpi-bic-kappa-check}
+#| echo: false
+
+kable(cpi_kappa_table(X_resid_bic), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+Under a Gaussian sampling check (iid `rnorm`, same n=807, 50 replicates), these estimators center near the Gaussian reference values with modest spread (`k40`, `k04`: mean 3.0, sd ~0.4; `k22`: mean 1.0, sd ~0.16). The estimates above sit far outside that range. For the two pairs involving `Apparel` and `Transportation`, `k40`/`k04` reach 15-20 against a reference of 3, and `k22` reaches 4.05 against a reference near 1. `Medical Care`'s own marginal term (`k04` in the last two rows) stays closer to Gaussian, at 1.78. The `kappa = "gaussian"` z-test understates the true standard error for these pairs — its p-values run lower than the bootstrap methods (`bs.multiplier`, `bs.parametric`) agree with.
+
+**Fix: test under the null instead of estimating all five kappas.** `ece.cor.se()` forces `ρ = 0` when `rho = 0` is passed. Every kappa term with a nonzero coefficient in the SE formula — `k40`, `k04`, `k31`, `k13` — carries a factor of `ρ` or `ρ²`, so at `ρ = 0` they all drop out algebraically. Only `k22` remains, and under true independence it collapses to exactly 1 for any marginal distribution, not just Gaussian. This is standard practice: a test of H0: ρ=0 should use the standard error *at* ρ=0, not one built from the plug-in estimate of ρ.
+
+The Results section below uses this null-restricted z-test — `kappa = ece.kappa(X, rho = 0, method = "mom")`, `rho = 0` — instead of the full Gaussian one, so it only has to estimate `k22` rather than assume all five kappas take their Gaussian values. Every pairwise p-value moves toward the bootstrap methods' answer, though not all the way there. `Apparel`'s residual autocorrelation (lag-1 ACF of 0.44) is a second factor no z-test variant addresses, since `ece.cor.se()` carries no lag terms at all. All three tests here — z-test, `bs.multiplier`, `bs.parametric` — assume the underlying series is independent over time. The bootstrap tests' lag-1/lag-2 correction is calibrated to the dependence `lag_term()`'s own construction mechanically induces, not to arbitrary leftover autocorrelation in the data.
+
+##### Omega
+
+This chapter residualizes the trend throughout with `segment_mean(penalty = "BIC")`, for Segment-ECE and the residualized joint tests in Results. It's one reasonable change-point fit, not a known-true segmentation. We check how well it describes the actual mean-shift structure using ECE itself. `ece.complexity()` estimates $\omega$ — the mean-heterogeneity parameter from `omega-estimation.qmd` — directly from the raw data via lagged differences, with no change-point model at all. If the segmentation fits well, the same $\omega$ quantity computed from the fitted segmented mean (`lag_diff(X_seg[,i], X_seg[,j]) / n`, the same construction `omega-estimation.qmd` uses for the true mean process) should closely match ECE's own estimate.
+
+```{R cpi-bic-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_bic <- cpi_omega_check(X_mat, X_seg_bic)
+knitr::kable(round(omega_bic$ece, 1), caption = "ECE (raw data, no segmentation)")
+knitr::kable(round(omega_bic$seg, 1), caption = "Segmentation-implied")
+```
+
+The two agree to within 0.1-2.2% on every entry — independent corroboration of the segmentation choice. `ece.complexity()` requires no change-point model at all, built the same way as the correlation and variance terms throughout this chapter, yet it recovers essentially the same mean-heterogeneity structure as the explicit `segment_mean(penalty = "BIC")` fit. That doesn't make the BIC segmentation the "right" one in any absolute sense. It does mean two independent descriptions of this data's mean-shift structure — ECE's differencing-based estimator and an explicit change-point model — aren't in tension.
+
+:::
+
+#### Results
+
+We start with pairwise comparisons: ECE and Segment-ECE — ECE applied to the raw levels and to the `segment_mean()` residuals — alongside naive and residual Pearson correlation, the same two versions of the data run through Pearson.
+
+```{R cpi-bic-pairwise}
+#| echo: false
+#| warning: false
+
+pw_bic <- cpi_pairwise_results(X_mat, X_resid_bic)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R cpi-bic-pairwise-cor-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_bic$ece_cor, pw_bic$ece_pmat),         caption = "ECE Correlation", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_bic$seg_ece_cor, pw_bic$seg_ece_pmat), caption = "Segment-ECE Correlation", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_bic$pearson_cor, pw_bic$pearson_pmat), caption = "Naive Pearson Correlation", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_bic$resid_cor, pw_bic$resid_pmat),     caption = "Residual Pearson Correlation", escape = FALSE, format = "html")
 ```
 
 Bold marks pairs significant at p < 0.05: correlation cells bold when the matching p-value clears it, p-value cells bold when they clear it themselves.
 
-##### P-Values
+###### P-Values
 
-```{R cpi-pairwise-pval-output}
+```{R cpi-bic-pairwise-pval-output}
 #| layout-ncol: 2
 #| echo: false
 
-knitr::kable(bold_sig(ece_pmat, ece_pmat),         caption = "ECE P-Values (null-restricted z-test)", escape = FALSE, format = "html")
-knitr::kable(bold_sig(seg_ece_pmat, seg_ece_pmat), caption = "Segment-ECE P-Values (null-restricted z-test)", escape = FALSE, format = "html")
-knitr::kable(bold_sig(pearson_pmat, pearson_pmat), caption = "Naive Pearson P-Values", escape = FALSE, format = "html")
-knitr::kable(bold_sig(resid_pmat, resid_pmat),     caption = "Residual Pearson P-Values", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_bic$ece_pmat, pw_bic$ece_pmat),         caption = "ECE P-Values (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_bic$seg_ece_pmat, pw_bic$seg_ece_pmat), caption = "Segment-ECE P-Values (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_bic$pearson_pmat, pw_bic$pearson_pmat), caption = "Naive Pearson P-Values", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_bic$resid_pmat, pw_bic$resid_pmat),     caption = "Residual Pearson P-Values", escape = FALSE, format = "html")
 ```
 
 :::
@@ -448,54 +1028,17 @@ Applying ECE to the segmented residuals instead (Segment-ECE) sidesteps that pro
 
 The Omega tab in Diagnostics checks whether the `segment_mean()` fit used throughout this chapter — for Segment-ECE and the residualized joint tests below — is corroborated by ECE's own segmentation-free estimator. It is.
 
-#### Diagonal
+##### Diagonal
 
-We run all four tests on the raw levels, then again on `X_resid` — the same segmented residuals used for Segment-ECE above — as a check.
+We run all four tests on the raw levels, then again on `X_resid_bic` — the same segmented residuals used for Segment-ECE above — as a check.
 
-```{R cpi-diagonal-tests}
-#| echo: false
-set.seed(123)
-
-results <- data.frame(
-  Method = c(
-    "Bootstrap Multiplier",
-    "Parametric Bootstrap",
-    "Parametric Bootstrap (Naive)",
-    "Bartlett Test"
-  ),
-  `p-value` = c(
-    round(ece.test(X_mat, type = "bs.multiplier")$p.value, 3),
-    round(ece.test(X_mat, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
-    round(ece.test(X_mat, type = "bs.parametric.naive")$p.value, 3),
-    round(cortest.bartlett(cor(X_mat), nrow(X_mat))$p.value, 3)
-  ),
-  check.names = FALSE
-)
-
-set.seed(123)
-results_seg <- data.frame(
-  Method = c(
-    "Bootstrap Multiplier",
-    "Parametric Bootstrap",
-    "Parametric Bootstrap (Naive)",
-    "Bartlett Test"
-  ),
-  `p-value` = c(
-    round(ece.test(X_resid, type = "bs.multiplier")$p.value, 3),
-    round(ece.test(X_resid, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
-    round(ece.test(X_resid, type = "bs.parametric.naive")$p.value, 3),
-    round(cortest.bartlett(cor(X_resid), nrow(X_resid))$p.value, 3)
-  ),
-  check.names = FALSE
-)
-```
-
-```{R cpi-diagonal-tests-output}
+```{R cpi-bic-diagonal-tests-output}
 #| layout-ncol: 2
 #| echo: false
 
-knitr::kable(results,     caption = "Raw Levels")
-knitr::kable(results_seg, caption = "Segmented Residuals")
+diag_bic <- cpi_diagonal_results(X_mat, X_resid_bic)
+knitr::kable(diag_bic$raw, caption = "Raw Levels")
+knitr::kable(diag_bic$seg, caption = "Segmented Residuals")
 ```
 
 On the raw levels (left), the Bartlett test and the naive parametric bootstrap — neither accounts for the mean shift — reject the diagonal null outright. The bootstrap multiplier and the mean-shift-aware parametric bootstrap both fail to reject: p = 0.18 and p = 0.41. These raw-level tests carry the `rotate()` boundary artifact from the Trend diagnostic: the last point or two get compared against the 1959 starting level, producing term values in the hundreds against a typical magnitude near zero. This already made the pairwise ECE correlation `NaN`. It also makes `bs.multiplier` mildly trim-sensitive here — p ranges 0.06-0.20 across boundary trims of 0-10 rows, "fail to reject" throughout but not a fixed number.
@@ -508,11 +1051,15 @@ That fit is not an oracle. It's one reasonable change-point model (BIC-penalized
 
 :::
 
-Where this leaves us: apparel, transportation, and medical care prices have no known mechanism linking their month-to-month movements. At monthly resolution, every mean-shift-aware test agrees. Both the bootstrap multiplier and the mean-shift-aware parametric bootstrap fail to reject the diagonal null, while Bartlett and the naive parametric bootstrap reject confidently — at essentially the same significance level as the two mean-shift-related sector correlations in `labor-productivity.qmd` that *are* real. That's the headline result: naive Pearson and Bartlett can't tell a shared secular trend from real contemporaneous correlation, and here domain knowledge tells us which one this is.
+:::
+
+Where this leaves us: apparel, transportation, and medical care prices have no known mechanism linking their month-to-month movements. At monthly resolution, every mean-shift-aware test agrees. Both the bootstrap multiplier and the mean-shift-aware parametric bootstrap fail to reject the diagonal null, while Bartlett and the naive parametric bootstrap reject confidently — at essentially the same significance level as the two mean-shift-related sector correlations in `labor-productivity.qmd` that *are* real. That's the headline result, from the `BIC` tab above: naive Pearson and Bartlett can't tell a shared secular trend from real contemporaneous correlation, and here domain knowledge tells us which one this is.
 
 ## Log-Transformed
 
 Everything above runs on raw index levels — the same approach `pce-components.qmd` tries first and abandons, because dollar levels over-segment and break `ece.cor()` outright (see that chapter's "Raw Levels: An Initial Attempt"). CPI's raw-level analysis doesn't hit that failure mode: `segment_mean(penalty = "BIC")` finds a handful of genuine trend breaks rather than fitting local noise, and the pairwise/joint results above are usable. Still, log-differencing is standard economic convention — growth *rates*, not index levels, are the meaningful unit for prices — and it's the transformation used throughout `pce-components.qmd`. This section repeats the diagnostics and Results tables on log-differenced CPI data, to see whether the transformation changes either the diagnostics or the conclusions. On this transformed scale, `penalty = "BIC"` finds no change points at all — too conservative for growth-rate-sized shifts — and a single blanket `penalty = "AIC"` would still just be a guess at the right sensitivity. Instead, segmentation below picks a separate `pen.value` for each series, chosen so that series' segmentation-implied $\omega$ (the diagonal Omega-tab quantity, `lag_diff(seg, seg, k = 1) / n`) matches ECE's own segmentation-free estimate, `ece.complexity(x, x)`, as closely as possible — grid-searched over `10^seq(-8, 0, length.out = 100)`. Because `ece.complexity(x, x)` depends only on series `x` itself, this search is independent across the three series: each gets its own `pen.value`, chosen without reference to the other two.
+
+The tabs below are different ways of choosing that segmentation. `ω fitted` and `ω fitted (1980+)` use the per-series omega-matched penalty search described above, on the full sample and on the post-1980 window, respectively — the latter a check on whether the erratic pre-1980 Medical Care segmentation residual flagged in the raw-level Residuals diagnostic actually matters for the log-transformed conclusions, rather than an assumption that it should be trimmed. `AIC` and `BIC` instead hand the penalty choice to `segment_mean()`'s own built-in criterion, with no omega-matching at all — the same off-the-shelf choice used throughout the Raw section above. All four tabs run the identical Diagnostics/Results pipeline on whatever segmentation each produces; that pipeline is written once as parameterized helper functions and called once per tab, rather than duplicated inline.
 
 ```{R cpi-log-load-data}
 #| echo: false
@@ -530,56 +1077,37 @@ X_data_log <- fred_data |>
   select(date, Apparel, Transportation, `Medical Care`)
 
 X_mat_log <- as.matrix(X_data_log[, -1])
+dates_log <- X_data_log$date
+```
 
-# Per-series penalty search: choose pen.value so the segmentation-implied
-# omega (diagonal, variance scale) matches ECE's own segmentation-free
-# estimate as closely as possible. ece.complexity(x, x) depends only on
-# column x, so each series is optimized independently of the other two.
-pen_grid_log <- 10^seq(-8, 0, length.out = 100)
+::: {.panel-tabset}
 
-omega_match_penalty <- function(x, grid) {
-  target <- ece.complexity(x, x)
-  errs <- sapply(grid, function(pv) {
-    seg       <- segment_mean_vec(x, penalty = "Manual", pen.value = pv)
-    seg_omega <- lag_diff(seg, seg, k = 1) / length(x)
-    abs(seg_omega - target) / abs(target)
-  })
-  grid[which.min(errs)]
-}
+### ω fitted
 
-pen_log <- apply(X_mat_log, 2, omega_match_penalty, grid = pen_grid_log)
+`r nrow(X_data_log)` monthly log growth-rate observations (one fewer than the raw-level series, lost to differencing).
 
-X_seg_log <- sapply(colnames(X_mat_log), function(cn) {
-  segment_mean_vec(X_mat_log[, cn], penalty = "Manual", pen.value = pen_log[cn])
-})
-colnames(X_seg_log) <- colnames(X_mat_log)
+```{R cpi-log-fit}
+#| echo: false
+
+fit_log     <- cpi_fit_segmentation(X_mat_log, pen_grid_log)
+X_seg_log   <- fit_log$X_seg
 X_resid_log <- X_mat_log - X_seg_log
 ```
 
 ```{R cpi-log-penalty-table}
 #| echo: false
 
-n_segs_log <- apply(X_seg_log, 2, function(c) length(unique(c)))
-
-penalty_tbl_log <- tibble(
-  Series      = colnames(X_mat_log),
-  `pen.value` = signif(pen_log, 3),
-  Segments    = n_segs_log
-)
-
-kable(penalty_tbl_log, align = c("l", "c", "c")) |>
+kable(cpi_penalty_table(fit_log$pen, X_seg_log), align = c("l", "c", "c")) |>
   kable_styling(full_width = FALSE)
 ```
 
-`r nrow(X_data_log)` monthly log growth-rate observations (one fewer than the raw-level series, lost to differencing).
+::: {.panel-tabset}
+
+#### Diagnostics
 
 ::: {.panel-tabset}
 
-### Diagnostics
-
-::: {.panel-tabset}
-
-#### Plot
+##### Plot
 
 ```{R cpi-log-plot-raw}
 #| echo: false
@@ -587,33 +1115,12 @@ kable(penalty_tbl_log, align = c("l", "c", "c")) |>
 #| fig-cap: "CPI subcomponents, monthly log growth rates. Thick lines show the segmented mean."
 #| fig-height: 7
 
-X_log <- bind_cols(
-  date = X_data_log$date, X_data_log[, -1],
-  as.data.frame(X_seg_log) |> rename_with(~ paste0(.x, "_segment"))
-)
-
-X_log |>
-  pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
-  mutate(
-    type     = if_else(str_ends(series, "_segment"), "Segmented", "Raw"),
-    category = str_remove(series, "_segment$")
-  ) |>
-  ggplot(aes(x = date, y = value, color = category, group = series)) +
-  geom_hline(yintercept = 0, color = "gray") +
-  geom_line(aes(linewidth = type)) +
-  scale_linewidth_manual(values = c(Raw = 0.4, Segmented = 1.0), guide = "none") +
-  facet_wrap(~category, scales = "free_y", ncol = 1) +
-  labs(
-    title = "CPI Subcomponents, Log Growth", x = NULL, y = "Log growth rate", color = "Category",
-    caption = "Source: FRED-MD"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "none")
+cpi_plot_series(dates_log, X_mat_log, X_seg_log, "CPI Subcomponents, Log Growth", "Log growth rate", zero_line = TRUE)
 ```
 
 Log-differencing converts each series from a monotonic 60-year climb into a stationary-looking growth rate oscillating around zero. `segment_mean()` still finds breaks — most visibly around the 2021-2022 inflation shock — but nothing like the near-every-point over-segmentation `pce-components.qmd` hits on raw dollar levels.
 
-#### Residuals
+##### Residuals
 
 ```{R cpi-log-plot-residuals}
 #| echo: false
@@ -621,38 +1128,22 @@ Log-differencing converts each series from a monotonic 60-year climb into a stat
 #| fig-cap: "Residuals after removing the segmented mean from each log-growth category."
 #| fig-height: 7
 
-X_resid_log |>
-  as_tibble() |>
-  bind_cols(date = X_data_log$date) |>
-  pivot_longer(cols = -date, names_to = "category", values_to = "value") |>
-  ggplot(aes(x = date, y = value, color = category)) +
-  geom_hline(yintercept = 0, color = "gray") +
-  geom_line(linewidth = 0.4) +
-  facet_wrap(~category, scales = "free_y", ncol = 1) +
-  labs(title = "Residuals after Segmentation (Log Growth)", x = NULL, y = "Residual") +
-  theme_minimal() +
-  theme(legend.position = "none")
+cpi_plot_residuals(dates_log, X_resid_log, "Residuals after Segmentation (Log Growth)")
 ```
 
-#### ACF
+##### ACF
 
 ::: {.panel-tabset}
 
-##### Naive
+###### Naive
 
 ```{R cpi-log-acf-naive}
 #| echo: false
 
-par(mfrow = c(ncol(X_resid_log), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
-
-for (i in seq_len(ncol(X_resid_log))) {
-  acf(X_resid_log[, i], main = "", xaxt = "n", ylab = colnames(X_resid_log)[i])
-}
-axis(1)
-mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+cpi_acf_naive(X_resid_log)
 ```
 
-##### Mean-Shift-Invariant
+###### Mean-Shift-Invariant
 
 ```{R cpi-log-acf-sip}
 #| echo: false
@@ -662,11 +1153,11 @@ plot_sip_acf(X_mat_log)
 
 :::
 
-#### Trend
+##### Trend
 
 ::: {.panel-tabset}
 
-##### Naive
+###### Naive
 
 ```{R cpi-log-trend-naive}
 #| echo: false
@@ -674,49 +1165,14 @@ plot_sip_acf(X_mat_log)
 plot_naive_terms(X_mat_log)
 ```
 
-##### Mean-Shift-Invariant
-
-```{R cpi-log-trend-ece-data}
-#| echo: false
-
-window_log <- max(10, floor(nrow(X_mat_log) / 5))
-cn_log      <- colnames(X_mat_log)
-idx_log     <- combn(ncol(X_mat_log), 2)
-n_log       <- nrow(X_mat_log)
-
-ece_cov_log <- purrr::map_dfr(seq_len(ncol(idx_log)), function(k) {
-  i <- idx_log[1, k]
-  j <- idx_log[2, k]
-  s <- lag_term(X_mat_log[, i], X_mat_log[, j])
-  tibble(t = seq_len(n_log), row = cn_log[i], col = cn_log[j], raw = s)
-})
-ece_var_log <- purrr::map_dfr(seq_len(ncol(X_mat_log)), function(i) {
-  s <- lag_term(X_mat_log[, i], X_mat_log[, i])
-  tibble(t = seq_len(n_log), row = cn_log[i], col = cn_log[i], raw = s)
-})
-ece_terms_log <- bind_rows(ece_cov_log, ece_var_log) |>
-  mutate(row = factor(row, levels = cn_log), col = factor(col, levels = cn_log)) |>
-  group_by(row, col) |>
-  mutate(run = rolling_mean(raw, window_log), mean = mean(raw), median = median(raw)) |>
-  ungroup()
-
-ece_terms_log_labels <- ece_terms_log |> distinct(row, col, mean, median)
-```
+###### Mean-Shift-Invariant
 
 ```{R cpi-log-trend-ece}
 #| echo: false
 
-ggplot(ece_terms_log, aes(x = t)) +
-  geom_line(aes(y = raw), color = "gray80") +
-  geom_hline(aes(yintercept = mean), linetype = "dashed", color = "firebrick") +
-  geom_hline(aes(yintercept = median), linetype = "dashed", color = "darkorange") +
-  geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
-  facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
-  labs(
-    x = "time", y = "ECE term (covariance / variance scale)",
-    subtitle = sprintf("gray = raw term, blue = %d-window mean, red = mean, orange = median", window_log)
-  ) +
-  theme_minimal()
+window_log    <- max(10, floor(nrow(X_mat_log) / 5))
+ece_terms_log <- cpi_ece_terms(X_mat_log, window_log)
+cpi_plot_ece_trend(ece_terms_log, window_log)
 ```
 
 Unlike the raw-level Trend tab above, there's no 60-year monotonic climb for `rotate()`'s circular boundary wraparound to catch — mean and median track each other closely in every panel, with no single point dominating the way the raw-level boundary artifact did.
@@ -724,183 +1180,615 @@ Unlike the raw-level Trend tab above, there's no 60-year monotonic climb for `ro
 ```{R cpi-log-trend-hist}
 #| echo: false
 
-ece_terms_log_trimmed <- ece_terms_log |>
-  group_by(row, col) |>
-  filter(raw > quantile(raw, 0.005), raw < quantile(raw, 0.995)) |>
-  ungroup()
-
-ggplot(ece_terms_log_trimmed, aes(x = raw)) +
-  geom_histogram(bins = 40, fill = "steelblue", color = "white") +
-  geom_vline(data = ece_terms_log_labels, aes(xintercept = mean), color = "firebrick", linetype = "dashed") +
-  geom_vline(data = ece_terms_log_labels, aes(xintercept = median), color = "darkorange", linetype = "dashed") +
-  facet_grid(rows = vars(row), cols = vars(col), scales = "free") +
-  labs(x = "ECE term value (middle 99%)", y = "Count") +
-  theme_minimal()
+cpi_plot_ece_hist(ece_terms_log)
 ```
 
 :::
 
-#### Kappa
+##### Kappa
 
 ```{R cpi-log-kappa-check}
 #| echo: false
 
-cn_log_k  <- colnames(X_mat_log)
-idx_log_k <- combn(ncol(X_mat_log), 2)
-
-kappa_tbl_log <- purrr::map_dfr(seq_len(ncol(idx_log_k)), function(k) {
-  i <- idx_log_k[1, k]
-  j <- idx_log_k[2, k]
-  kap <- ece.kappa(X_resid_log[, i], X_resid_log[, j], method = "mom")
-  tibble(
-    Pair = paste(cn_log_k[i], "/", cn_log_k[j]),
-    k40  = round(kap$k40, 2),
-    k31  = round(kap$k31, 2),
-    k22  = round(kap$k22, 2),
-    k13  = round(kap$k13, 2),
-    k04  = round(kap$k04, 2)
-  )
-})
-
-kable(kappa_tbl_log, align = c("l", "c", "c", "c", "c", "c")) |>
+kable(cpi_kappa_table(X_resid_log), align = c("l", "c", "c", "c", "c", "c")) |>
   kable_styling(full_width = FALSE)
 ```
 
 Compare against the raw-level Kappa table above. As on the raw levels, we use the null-restricted z-test (`rho = 0`) for the Results tables below, rather than assume these Gaussian reference values hold.
 
-#### Omega
+##### Omega
 
 ```{R cpi-log-omega-check}
 #| echo: false
-
-n_log_o  <- nrow(X_mat_log)
-cn_log_o <- colnames(X_mat_log)
-
-ece_omega_log <- ece.complexity(X_mat_log) |> round(6)
-rownames(ece_omega_log) <- colnames(ece_omega_log) <- cn_log_o
-
-seg_omega_log <- matrix(0, ncol(X_mat_log), ncol(X_mat_log), dimnames = list(cn_log_o, cn_log_o))
-for (i in seq_len(ncol(X_mat_log))) {
-  for (j in seq_len(ncol(X_mat_log))) {
-    seg_omega_log[i, j] <- lag_diff(X_seg_log[, i], X_seg_log[, j], k = 1) / n_log_o
-  }
-}
-seg_omega_log <- round(seg_omega_log, 6)
-```
-
-```{R cpi-log-omega-check-output}
 #| layout-ncol: 2
-#| echo: false
 
-knitr::kable(ece_omega_log, caption = "ECE (log growth, no segmentation)")
-knitr::kable(seg_omega_log, caption = "Segmentation-implied (log growth)")
+omega_log <- cpi_omega_check(X_mat_log, X_seg_log)
+knitr::kable(omega_log$ece, caption = "ECE (log growth, no segmentation)")
+knitr::kable(omega_log$seg, caption = "Segmentation-implied (log growth)")
 ```
 
-Unlike the raw-level Omega check above, close agreement on the diagonal here isn't independent corroboration — the diagonal is exactly what the per-series `pen.value` search targeted, so `seg_omega_log`'s diagonal is expected to sit close to `ece_omega_log`'s by construction. The honest check is the off-diagonal (covariance-scale) entries: the search never had visibility into any pairwise term, only each series' own variance-scale $\omega$, so agreement there — or lack of it — is a genuine, uncontrived signal about whether a segmentation chosen purely from single-series information also happens to describe the joint mean-shift structure. Both estimates also run several orders of magnitude smaller than the raw-level Omega check above (that comparison was on the order of 1-100; this one is on the order of 1e-4 to 1e-6) — expected, since differencing removes the six-decade compounding trend that dominated the raw-level $\omega$.
+Unlike the raw-level Omega check above, close agreement on the diagonal here isn't independent corroboration — the diagonal is exactly what the per-series `pen.value` search targeted, so the segmentation-implied diagonal is expected to sit close to ECE's own estimate by construction. The honest check is the off-diagonal (covariance-scale) entries: the search never had visibility into any pairwise term, only each series' own variance-scale $\omega$, so agreement there — or lack of it — is a genuine, uncontrived signal about whether a segmentation chosen purely from single-series information also happens to describe the joint mean-shift structure. Both estimates also run several orders of magnitude smaller than the raw-level Omega check above (that comparison was on the order of 1-100; this one is on the order of 1e-4 to 1e-6) — expected, since differencing removes the six-decade compounding trend that dominated the raw-level $\omega$.
 
 :::
 
-### Results
+#### Results
 
-```{R cpi-log-pairwise-cor}
+```{R cpi-log-pairwise}
 #| echo: false
 #| warning: false
 
-ece_cor_log               <- ece.cor(X_mat_log) |> round(3)
-rownames(ece_cor_log)     <- colnames(ece_cor_log) <- colnames(X_mat_log)
-seg_ece_cor_log           <- ece.cor(X_resid_log) |> round(3)
-rownames(seg_ece_cor_log) <- colnames(seg_ece_cor_log) <- colnames(X_mat_log)
-
-resid_cor_log   <- cor(X_resid_log) |> round(3)
-pearson_cor_log <- cor(X_mat_log) |> round(3)
-
-ece_pmat_log     <- ece_pval_null(X_mat_log) |> round(3)
-seg_ece_pmat_log <- ece_pval_null(X_resid_log) |> round(3)
-resid_pmat_log   <- cor_pval(X_resid_log) |> round(3)
-pearson_pmat_log <- cor_pval(X_mat_log) |> round(3)
+pw_log <- cpi_pairwise_results(X_mat_log, X_resid_log)
 ```
 
 ::: {.panel-tabset}
 
-#### Pairwise
+##### Pairwise
 
 ::: {.panel-tabset}
 
-##### Correlation
+###### Correlation
 
 ```{R cpi-log-pairwise-cor-output}
 #| layout-ncol: 2
 #| echo: false
 
-knitr::kable(bold_sig(ece_cor_log, ece_pmat_log),         caption = "ECE Correlation (Log Growth)", escape = FALSE, format = "html")
-knitr::kable(bold_sig(seg_ece_cor_log, seg_ece_pmat_log), caption = "Segment-ECE Correlation (Log Growth)", escape = FALSE, format = "html")
-knitr::kable(bold_sig(pearson_cor_log, pearson_pmat_log), caption = "Naive Pearson Correlation (Log Growth)", escape = FALSE, format = "html")
-knitr::kable(bold_sig(resid_cor_log, resid_pmat_log),     caption = "Residual Pearson Correlation (Log Growth)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log$ece_cor, pw_log$ece_pmat),         caption = "ECE Correlation (Log Growth)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log$seg_ece_cor, pw_log$seg_ece_pmat), caption = "Segment-ECE Correlation (Log Growth)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log$pearson_cor, pw_log$pearson_pmat), caption = "Naive Pearson Correlation (Log Growth)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log$resid_cor, pw_log$resid_pmat),     caption = "Residual Pearson Correlation (Log Growth)", escape = FALSE, format = "html")
 ```
 
 Bold marks pairs significant at p < 0.05, using the same null-restricted z-test (`ece_pval_null()`) as the raw-level Results section above.
 
-##### P-Values
+###### P-Values
 
 ```{R cpi-log-pairwise-pval-output}
 #| layout-ncol: 2
 #| echo: false
 
-knitr::kable(bold_sig(ece_pmat_log, ece_pmat_log),         caption = "ECE P-Values, Log Growth (null-restricted z-test)", escape = FALSE, format = "html")
-knitr::kable(bold_sig(seg_ece_pmat_log, seg_ece_pmat_log), caption = "Segment-ECE P-Values, Log Growth (null-restricted z-test)", escape = FALSE, format = "html")
-knitr::kable(bold_sig(pearson_pmat_log, pearson_pmat_log), caption = "Naive Pearson P-Values, Log Growth", escape = FALSE, format = "html")
-knitr::kable(bold_sig(resid_pmat_log, resid_pmat_log),     caption = "Residual Pearson P-Values, Log Growth", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log$ece_pmat, pw_log$ece_pmat),         caption = "ECE P-Values, Log Growth (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log$seg_ece_pmat, pw_log$seg_ece_pmat), caption = "Segment-ECE P-Values, Log Growth (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log$pearson_pmat, pw_log$pearson_pmat), caption = "Naive Pearson P-Values, Log Growth", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log$resid_pmat, pw_log$resid_pmat),     caption = "Residual Pearson P-Values, Log Growth", escape = FALSE, format = "html")
 ```
 
 :::
 
-#### Diagonal
-
-```{R cpi-log-diagonal-tests}
-#| echo: false
-set.seed(123)
-
-results_log <- data.frame(
-  Method = c(
-    "Bootstrap Multiplier",
-    "Parametric Bootstrap",
-    "Parametric Bootstrap (Naive)",
-    "Bartlett Test"
-  ),
-  `p-value` = c(
-    round(ece.test(X_mat_log, type = "bs.multiplier")$p.value, 3),
-    round(ece.test(X_mat_log, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
-    round(ece.test(X_mat_log, type = "bs.parametric.naive")$p.value, 3),
-    round(cortest.bartlett(cor(X_mat_log), nrow(X_mat_log))$p.value, 3)
-  ),
-  check.names = FALSE
-)
-
-set.seed(123)
-results_seg_log <- data.frame(
-  Method = c(
-    "Bootstrap Multiplier",
-    "Parametric Bootstrap",
-    "Parametric Bootstrap (Naive)",
-    "Bartlett Test"
-  ),
-  `p-value` = c(
-    round(ece.test(X_resid_log, type = "bs.multiplier")$p.value, 3),
-    round(ece.test(X_resid_log, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
-    round(ece.test(X_resid_log, type = "bs.parametric.naive")$p.value, 3),
-    round(cortest.bartlett(cor(X_resid_log), nrow(X_resid_log))$p.value, 3)
-  ),
-  check.names = FALSE
-)
-```
+##### Diagonal
 
 ```{R cpi-log-diagonal-tests-output}
 #| layout-ncol: 2
 #| echo: false
 
-knitr::kable(results_log,     caption = "Log Growth, Raw")
-knitr::kable(results_seg_log, caption = "Log Growth, Segmented Residuals")
+diag_log <- cpi_diagonal_results(X_mat_log, X_resid_log)
+knitr::kable(diag_log$raw, caption = "Log Growth, Raw")
+knitr::kable(diag_log$seg, caption = "Log Growth, Segmented Residuals")
 ```
+
+:::
+
+:::
+
+### ω fitted (1980+)
+
+Same pipeline as `ω fitted`, restricted to `date >= 1980-01-01`. This is a robustness check, not a data-quality correction: the raw-level Residuals diagnostic shows Medical Care's `segment_mean(BIC)` residual as an erratic sawtooth in this window, but that traces to `segment_mean()` fitting a piecewise-*constant* mean to a near-*linear* ramp, not to a confirmed data defect (see the discussion following that plot). Dropping the window and re-fitting tells us whether it actually moves the log-transformed conclusions, independent of whether trimming it is otherwise justified.
+
+```{R cpi-log-1980-fit}
+#| echo: false
+
+X_data_log_1980 <- X_data_log |> filter(date >= as.Date("1980-01-01"))
+X_mat_log_1980  <- as.matrix(X_data_log_1980[, -1])
+dates_log_1980  <- X_data_log_1980$date
+
+fit_log_1980     <- cpi_fit_segmentation(X_mat_log_1980, pen_grid_log)
+X_seg_log_1980   <- fit_log_1980$X_seg
+X_resid_log_1980 <- X_mat_log_1980 - X_seg_log_1980
+```
+
+`r nrow(X_data_log_1980)` monthly log growth-rate observations, 1980-01 onward.
+
+```{R cpi-log-1980-penalty-table}
+#| echo: false
+
+kable(cpi_penalty_table(fit_log_1980$pen, X_seg_log_1980), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R cpi-log-1980-plot-raw}
+#| echo: false
+#| fig-height: 7
+
+cpi_plot_series(dates_log_1980, X_mat_log_1980, X_seg_log_1980, "CPI Subcomponents, Log Growth (1980+)", "Log growth rate", zero_line = TRUE)
+```
+
+##### Residuals
+
+```{R cpi-log-1980-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+cpi_plot_residuals(dates_log_1980, X_resid_log_1980, "Residuals after Segmentation, Log Growth (1980+)")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-log-1980-acf-naive}
+#| echo: false
+
+cpi_acf_naive(X_resid_log_1980)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-log-1980-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_log_1980)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-log-1980-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_log_1980)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-log-1980-trend-ece}
+#| echo: false
+
+window_log_1980    <- max(10, floor(nrow(X_mat_log_1980) / 5))
+ece_terms_log_1980 <- cpi_ece_terms(X_mat_log_1980, window_log_1980)
+cpi_plot_ece_trend(ece_terms_log_1980, window_log_1980)
+```
+
+```{R cpi-log-1980-trend-hist}
+#| echo: false
+
+cpi_plot_ece_hist(ece_terms_log_1980)
+```
+
+:::
+
+##### Kappa
+
+```{R cpi-log-1980-kappa-check}
+#| echo: false
+
+kable(cpi_kappa_table(X_resid_log_1980), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R cpi-log-1980-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_log_1980 <- cpi_omega_check(X_mat_log_1980, X_seg_log_1980)
+knitr::kable(omega_log_1980$ece, caption = "ECE (log growth, 1980+, no segmentation)")
+knitr::kable(omega_log_1980$seg, caption = "Segmentation-implied (log growth, 1980+)")
+```
+
+:::
+
+#### Results
+
+```{R cpi-log-1980-pairwise}
+#| echo: false
+#| warning: false
+
+pw_log_1980 <- cpi_pairwise_results(X_mat_log_1980, X_resid_log_1980)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R cpi-log-1980-pairwise-cor-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_1980$ece_cor, pw_log_1980$ece_pmat),         caption = "ECE Correlation, Log Growth (1980+)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_1980$seg_ece_cor, pw_log_1980$seg_ece_pmat), caption = "Segment-ECE Correlation, Log Growth (1980+)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_1980$pearson_cor, pw_log_1980$pearson_pmat), caption = "Naive Pearson Correlation, Log Growth (1980+)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_1980$resid_cor, pw_log_1980$resid_pmat),     caption = "Residual Pearson Correlation, Log Growth (1980+)", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R cpi-log-1980-pairwise-pval-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_1980$ece_pmat, pw_log_1980$ece_pmat),         caption = "ECE P-Values, Log Growth (1980+, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_1980$seg_ece_pmat, pw_log_1980$seg_ece_pmat), caption = "Segment-ECE P-Values, Log Growth (1980+, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_1980$pearson_pmat, pw_log_1980$pearson_pmat), caption = "Naive Pearson P-Values, Log Growth (1980+)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_1980$resid_pmat, pw_log_1980$resid_pmat),     caption = "Residual Pearson P-Values, Log Growth (1980+)", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+```{R cpi-log-1980-diagonal-tests-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_1980 <- cpi_diagonal_results(X_mat_log_1980, X_resid_log_1980)
+knitr::kable(diag_log_1980$raw, caption = "Log Growth (1980+), Raw")
+knitr::kable(diag_log_1980$seg, caption = "Log Growth (1980+), Segmented Residuals")
+```
+
+:::
+
+:::
+
+### AIC
+
+Segmentation via `segment_mean(X_mat_log, penalty = "AIC")` on the full sample — no per-series omega-matching, using the built-in AIC penalty directly instead.
+
+```{R cpi-log-aic-fit}
+#| echo: false
+
+X_seg_log_aic   <- segment_mean(X_mat_log, penalty = "AIC")
+X_resid_log_aic <- X_mat_log - X_seg_log_aic
+```
+
+```{R cpi-log-aic-segments-table}
+#| echo: false
+
+kable(cpi_segments_table(X_seg_log_aic, "AIC"), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R cpi-log-aic-plot-raw}
+#| echo: false
+#| fig-height: 7
+
+cpi_plot_series(dates_log, X_mat_log, X_seg_log_aic, "CPI Subcomponents, Log Growth (AIC)", "Log growth rate", zero_line = TRUE)
+```
+
+##### Residuals
+
+```{R cpi-log-aic-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+cpi_plot_residuals(dates_log, X_resid_log_aic, "Residuals after Segmentation, Log Growth (AIC)")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-log-aic-acf-naive}
+#| echo: false
+
+cpi_acf_naive(X_resid_log_aic)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-log-aic-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_log)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-log-aic-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_log)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-log-aic-trend-ece}
+#| echo: false
+
+window_log_aic    <- max(10, floor(nrow(X_mat_log) / 5))
+ece_terms_log_aic <- cpi_ece_terms(X_mat_log, window_log_aic)
+cpi_plot_ece_trend(ece_terms_log_aic, window_log_aic)
+```
+
+```{R cpi-log-aic-trend-hist}
+#| echo: false
+
+cpi_plot_ece_hist(ece_terms_log_aic)
+```
+
+:::
+
+##### Kappa
+
+```{R cpi-log-aic-kappa-check}
+#| echo: false
+
+kable(cpi_kappa_table(X_resid_log_aic), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R cpi-log-aic-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_log_aic <- cpi_omega_check(X_mat_log, X_seg_log_aic)
+knitr::kable(omega_log_aic$ece, caption = "ECE (log growth, no segmentation)")
+knitr::kable(omega_log_aic$seg, caption = "Segmentation-implied (log growth, AIC)")
+```
+
+:::
+
+#### Results
+
+```{R cpi-log-aic-pairwise}
+#| echo: false
+#| warning: false
+
+pw_log_aic <- cpi_pairwise_results(X_mat_log, X_resid_log_aic)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R cpi-log-aic-pairwise-cor-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_aic$ece_cor, pw_log_aic$ece_pmat),         caption = "ECE Correlation, Log Growth (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic$seg_ece_cor, pw_log_aic$seg_ece_pmat), caption = "Segment-ECE Correlation, Log Growth (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic$pearson_cor, pw_log_aic$pearson_pmat), caption = "Naive Pearson Correlation, Log Growth (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic$resid_cor, pw_log_aic$resid_pmat),     caption = "Residual Pearson Correlation, Log Growth (AIC)", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R cpi-log-aic-pairwise-pval-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_aic$ece_pmat, pw_log_aic$ece_pmat),         caption = "ECE P-Values, Log Growth (AIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic$seg_ece_pmat, pw_log_aic$seg_ece_pmat), caption = "Segment-ECE P-Values, Log Growth (AIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic$pearson_pmat, pw_log_aic$pearson_pmat), caption = "Naive Pearson P-Values, Log Growth (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic$resid_pmat, pw_log_aic$resid_pmat),     caption = "Residual Pearson P-Values, Log Growth (AIC)", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+```{R cpi-log-aic-diagonal-tests-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_aic <- cpi_diagonal_results(X_mat_log, X_resid_log_aic)
+knitr::kable(diag_log_aic$raw, caption = "Log Growth (AIC), Raw")
+knitr::kable(diag_log_aic$seg, caption = "Log Growth (AIC), Segmented Residuals")
+```
+
+:::
+
+:::
+
+### BIC
+
+Segmentation via `segment_mean(X_mat_log, penalty = "BIC")` on the full sample — the same off-the-shelf choice used throughout the Raw section above, applied here to the log-differenced data instead. As noted in the intro above, `BIC` tends to be too conservative on this transformed scale and finds few or no change points; this tab exists to show that directly rather than assert it.
+
+```{R cpi-log-bic-fit}
+#| echo: false
+
+X_seg_log_bic   <- segment_mean(X_mat_log, penalty = "BIC")
+X_resid_log_bic <- X_mat_log - X_seg_log_bic
+```
+
+```{R cpi-log-bic-segments-table}
+#| echo: false
+
+kable(cpi_segments_table(X_seg_log_bic, "BIC"), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R cpi-log-bic-plot-raw}
+#| echo: false
+#| fig-height: 7
+
+cpi_plot_series(dates_log, X_mat_log, X_seg_log_bic, "CPI Subcomponents, Log Growth (BIC)", "Log growth rate", zero_line = TRUE)
+```
+
+##### Residuals
+
+```{R cpi-log-bic-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+cpi_plot_residuals(dates_log, X_resid_log_bic, "Residuals after Segmentation, Log Growth (BIC)")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-log-bic-acf-naive}
+#| echo: false
+
+cpi_acf_naive(X_resid_log_bic)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-log-bic-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_log)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R cpi-log-bic-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_log)
+```
+
+###### Mean-Shift-Invariant
+
+```{R cpi-log-bic-trend-ece}
+#| echo: false
+
+window_log_bic    <- max(10, floor(nrow(X_mat_log) / 5))
+ece_terms_log_bic <- cpi_ece_terms(X_mat_log, window_log_bic)
+cpi_plot_ece_trend(ece_terms_log_bic, window_log_bic)
+```
+
+```{R cpi-log-bic-trend-hist}
+#| echo: false
+
+cpi_plot_ece_hist(ece_terms_log_bic)
+```
+
+:::
+
+##### Kappa
+
+```{R cpi-log-bic-kappa-check}
+#| echo: false
+
+kable(cpi_kappa_table(X_resid_log_bic), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R cpi-log-bic-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_log_bic <- cpi_omega_check(X_mat_log, X_seg_log_bic)
+knitr::kable(omega_log_bic$ece, caption = "ECE (log growth, no segmentation)")
+knitr::kable(omega_log_bic$seg, caption = "Segmentation-implied (log growth, BIC)")
+```
+
+:::
+
+#### Results
+
+```{R cpi-log-bic-pairwise}
+#| echo: false
+#| warning: false
+
+pw_log_bic <- cpi_pairwise_results(X_mat_log, X_resid_log_bic)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R cpi-log-bic-pairwise-cor-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_bic$ece_cor, pw_log_bic$ece_pmat),         caption = "ECE Correlation, Log Growth (BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic$seg_ece_cor, pw_log_bic$seg_ece_pmat), caption = "Segment-ECE Correlation, Log Growth (BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic$pearson_cor, pw_log_bic$pearson_pmat), caption = "Naive Pearson Correlation, Log Growth (BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic$resid_cor, pw_log_bic$resid_pmat),     caption = "Residual Pearson Correlation, Log Growth (BIC)", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R cpi-log-bic-pairwise-pval-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_bic$ece_pmat, pw_log_bic$ece_pmat),         caption = "ECE P-Values, Log Growth (BIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic$seg_ece_pmat, pw_log_bic$seg_ece_pmat), caption = "Segment-ECE P-Values, Log Growth (BIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic$pearson_pmat, pw_log_bic$pearson_pmat), caption = "Naive Pearson P-Values, Log Growth (BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic$resid_pmat, pw_log_bic$resid_pmat),     caption = "Residual Pearson P-Values, Log Growth (BIC)", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+```{R cpi-log-bic-diagonal-tests-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_bic <- cpi_diagonal_results(X_mat_log, X_resid_log_bic)
+knitr::kable(diag_log_bic$raw, caption = "Log Growth (BIC), Raw")
+knitr::kable(diag_log_bic$seg, caption = "Log Growth (BIC), Segmented Residuals")
+```
+
+:::
 
 :::
 
