@@ -52,6 +52,7 @@ book:
         - cpi-components.qmd
         - pce-components.qmd
         - sleep-eeg-connectivity.qmd
+        - uk-housing.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd
