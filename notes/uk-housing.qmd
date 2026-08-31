@@ -55,29 +55,69 @@ X_mat <- as.matrix(X_data[, -1])
 
 `r nrow(X_data)` monthly observations across `r ncol(X_mat)` boroughs, `r format(min(X_data$Date))` to `r format(max(X_data$Date))`.
 
+**Segmentation.** Maeng et al. detect their change-points on PCA-transformed scores, not the raw borough panel, using a bottom-up algorithm (BUHDA) with no published exact dates — only a figure. Reproducing their pipeline as closely as the paper documents it (`remotes::install_github("hmaeng/BUHDA")`, standardized PCA scores, their Section 4.1 threshold-selection procedure) recovers 4 of their reported 5 change-points, stable across seeds: 2003-10, 2009-02, 2009-04, and 2019-12. Rather than chase the missing fifth point through undocumented preprocessing choices, we instead read the change-points directly off the plot below: **2003-02**, **2007-12**, **2009-01**, **2009-03**, and **2019-12** (dashed vertical lines) — the same two clusters BUHDA finds (the 2008-09 financial crisis, split into two nearby breaks, and the run-up to the 2020 Covid shock) plus one break in the early 2000s.
+
+These five dates are used as a single known segmentation, applied identically across all 32 boroughs via `segment_mean_oracle()` (`penalty = "Oracle"` in `segment_test()`/`segment_pval()`), rather than estimated per-series as `cpi-components.qmd` and `pce-components.qmd` do. Everything from here on — Diagnostics and Results alike — works with `X_resid`, the residuals after removing this segmented mean, rather than the raw panel.
+
+```{R uk-housing-segmentation-setup}
+#| echo: false
+
+cp_dates <- as.Date(c("2003-02-01", "2007-12-01", "2009-01-01", "2009-03-01", "2019-12-01"))
+cp_idx   <- sapply(cp_dates, function(d) which(X_data$Date == d))
+h_vec    <- rep(seq_len(length(cp_idx) + 1), diff(c(0, cp_idx, nrow(X_mat))))
+h_mat    <- matrix(rep(h_vec, ncol(X_mat)), nrow(X_mat), ncol(X_mat))
+seg_params <- list(h = h_mat, scenario_param = list(cp = cp_idx))
+
+X_resid <- X_mat - segment_mean_oracle(X_mat, seg_params)
+colnames(X_resid) <- colnames(X_mat)
+```
+
 ```{R uk-housing-plot-raw}
 #| echo: false
 #| label: fig-uk-housing-raw
-#| fig-cap: "Monthly percentage change in house prices, 32 London boroughs, 1995-2025."
+#| fig-cap: "Monthly percentage change in house prices, 32 London boroughs, 1995-2025. Dashed lines mark the 5-breakpoint segmentation."
 
 X_data |>
   pivot_longer(-Date, names_to = "Borough", values_to = "pct_change") |>
   ggplot(aes(x = Date, y = pct_change, color = Borough, group = Borough)) +
   geom_line(linewidth = 0.3, alpha = 0.7) +
+  geom_vline(xintercept = cp_dates, linetype = "dashed", color = "black", alpha = 0.6) +
   labs(title = "UK House Price Index, Monthly % Change (32 London Boroughs)", x = NULL, y = "Percentage change (monthly)") +
   theme_minimal() +
   theme(legend.position = "none")
 ```
 
-Same shape as Maeng et al.'s Figure 1: a noisy band centered near zero, widening sharply around the 2008-09 financial crisis and again around 2020.
+Same shape as Maeng et al.'s Figure 1: a noisy band centered near zero, widening sharply around the 2008-09 financial crisis and again around 2020 — exactly where the segmentation's breaks fall.
 
-With 32 series, `cpi-components.qmd`'s per-series ACF stack and per-pair Trend facets don't scale (32 stacked panels, 496 pairwise facets), and this data has no analog of CPI/PCE's price-level trend requiring `segment_mean()` residualization — it's already a growth rate. So the diagnostics here are aggregated across boroughs/pairs instead of shown one at a time, checking assumptions before the correlation Results below rather than after.
+With 32 series, `cpi-components.qmd`'s per-series ACF stack and per-pair Trend facets don't scale (32 stacked panels, 496 pairwise facets). So the diagnostics here are aggregated across boroughs/pairs instead of shown one at a time, checking assumptions before the correlation Results below rather than after.
 
 ## Diagnostics
 
 ::: {.panel-tabset}
 
 ### ACF
+
+Before aggregating across all 32 boroughs, the same per-series base-R `acf()` view used throughout `cpi-components.qmd`/`pce-components.qmd`, on 5 randomly sampled boroughs:
+
+```{R uk-housing-acf-sample}
+#| echo: false
+#| label: fig-uk-housing-acf-sample
+#| fig-cap: "Naive ACF (lags 1-4), 5 randomly sampled boroughs."
+#| fig-height: 7
+
+set.seed(1)
+sample_boroughs <- sample(colnames(X_mat), 5)
+par(mfrow = c(5, 1), mar = c(0, 4, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+for (b in sample_boroughs) {
+  acf(X_mat[, b], lag.max = 4, main = "", xaxt = "n", ylab = b)
+}
+axis(1)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+The damped-cycle shape described below is visible borough by borough, not just in the aggregate: a positive bar at lag 1, mostly positive at lag 2, negative at lag 3, back positive at lag 4, for most of these 5 — this isn't an artifact of boxplotting 32 series together, it's the same pattern repeating in individual series.
+
+Aggregated across all 32 boroughs:
 
 ```{R uk-housing-acf}
 #| echo: false
@@ -97,7 +137,131 @@ ggplot(acf_df, aes(x = lag, y = acf)) +
 
 Every borough's lag-1 autocorrelation is positive (0.14 to 0.63, mean 0.39) — real, shared month-to-month persistence, not noise. Lag-2 stays positive; lag-3 dips negative for most boroughs before lag-4 turns positive again, consistent with a short damped cycle common across the panel. This directly undercuts Pearson's p-values: `cor_pval()`'s classical formula assumes iid observations, and positive serial correlation this size shrinks the effective sample size well below the nominal n = 365, making its p-values anti-conservative — a likely driver of the near-universal significant count the Pearson tab below shows.
 
-`plot_sip_acf()` — this book's usual mean-shift-invariant ACF, used throughout `cpi-components.qmd` and `pce-components.qmd` — isn't shown here because it breaks on this data: its variance denominator is built to discount large discrete mean shifts, and with none present in a growth-rate series, that denominator collapses toward zero and the normalized ACF it reports runs far outside [-1, 1] (e.g. -3.35 at lag 1 for one borough). That's a diagnostic finding in its own right — the correction is miscalibrated for data without the trend it was built to remove — not a usable autocorrelation estimate, so the naive ACF above is what we rely on here.
+`plot_sip_acf()` — this book's usual mean-shift-invariant ACF, used throughout `cpi-components.qmd` and `pce-components.qmd` — isn't shown here because it breaks on this data: its variance denominator is built to discount large discrete mean shifts, and with none present in a growth-rate series, that denominator collapses toward zero and the normalized ACF it reports runs far outside [-1, 1] (e.g. -3.35 at lag 1 for one borough).
+
+That raises an obvious question: is SIP-ACF breaking *because* of the change-points identified in the Segmentation section above, i.e. would it behave once the known shifts are removed? We can check directly, against `X_resid`, the residuals after removing that 5-breakpoint segmented mean:
+
+```{R uk-housing-sip-acf-check}
+#| echo: false
+
+sip_lag1_raw <- apply(X_mat,   2, function(x) suppressWarnings(SIP::SIP.acf(x, lag.max = 4, plot = FALSE)$acf[2]))
+sip_lag1_seg <- apply(X_resid, 2, function(x) suppressWarnings(SIP::SIP.acf(x, lag.max = 4, plot = FALSE)$acf[2]))
+
+sip_check <- data.frame(
+  `Median lag-1 SIP-ACF` = round(c(median(sip_lag1_raw), median(sip_lag1_seg)), 2),
+  `Range`                = c(paste(round(range(sip_lag1_raw), 1), collapse = " to "), paste(round(range(sip_lag1_seg), 1), collapse = " to ")),
+  `Boroughs with |ACF| > 1` = c(sum(abs(sip_lag1_raw) > 1), sum(abs(sip_lag1_seg) > 1)),
+  row.names = c("Raw", "After removing 5 known change-points"),
+  check.names = FALSE
+)
+knitr::kable(sip_check, caption = "Lag-1 SIP-ACF across 32 boroughs, before and after removing the 5-breakpoint segmented mean.")
+```
+
+Removing the five known change-points barely moves it: the median lag-1 SIP-ACF goes from -0.50 to -0.61, and the same 12 of 32 boroughs still blow past the valid [-1, 1] range either way, with similarly extreme outliers (-24.6 vs -20.9). So the miscalibration isn't primarily coming from these five discrete shifts — it persists almost unchanged once they're removed. That's evidence the naive ACF's lag-3 dip reported above is real, ongoing serial correlation rather than a change-point artifact: SIP-ACF is built to discount rare, large, discrete mean shifts, not a growth-rate series' continuous month-to-month dependence, and it breaks on this data for that structural reason, not because of the specific 2003/2008/2019 breaks. That's a diagnostic finding in its own right — the correction is miscalibrated for data without the sparse discrete jumps it was built to remove — not a usable autocorrelation estimate, so the naive ACF above is what we rely on here.
+
+The same question is worth asking of the plain, non-SIP naive ACF at the top of this tab: is *that* damped-cycle shape a change-point artifact? `X_resid` gives us the answer directly — the same 5 boroughs' naive ACF, computed on residuals after removing the 5 known change-points instead of on the raw series:
+
+```{R uk-housing-acf-sample-seg}
+#| echo: false
+#| label: fig-uk-housing-acf-sample-seg
+#| fig-cap: "Naive ACF (lags 1-4), same 5 boroughs, after removing the 5-breakpoint segmented mean."
+#| fig-height: 7
+
+par(mfrow = c(5, 1), mar = c(0, 4, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+for (b in sample_boroughs) {
+  acf(X_resid[, b], lag.max = 4, main = "", xaxt = "n", ylab = b)
+}
+axis(1)
+mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+```
+
+```{R uk-housing-acf-seg}
+#| echo: false
+#| label: fig-uk-housing-acf-seg
+#| fig-cap: "Naive autocorrelation (lags 1-4), all 32 boroughs, after removing the 5-breakpoint segmented mean."
+
+naive_acf_seg <- sapply(1:4, function(l) apply(X_resid, 2, function(x) acf(x, plot = FALSE, lag.max = 4)$acf[l + 1, 1, 1]))
+colnames(naive_acf_seg) <- paste0("Lag ", 1:4)
+acf_seg_df <- as.data.frame(naive_acf_seg) |> pivot_longer(everything(), names_to = "lag", values_to = "acf")
+
+ggplot(acf_seg_df, aes(x = lag, y = acf)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.5) +
+  geom_hline(yintercept = 0, color = "gray40") +
+  theme_minimal() +
+  labs(x = NULL, y = "Naive ACF", title = "Naive autocorrelation after segmentation, 32 boroughs")
+```
+
+If anything, removing the five known change-points makes the pattern sharper, not weaker: mean lag-1 ACF drops somewhat (0.39 to 0.31, some of that persistence really was shift-driven), but mean lag-3 gets *more* negative (-0.09 to -0.21). A change-point artifact should shrink once you remove the change-points; this one doesn't. That's the same conclusion the SIP-ACF check above reached by a different route — the damped cycle is a genuine feature of the month-to-month dynamics, not a byproduct of the 2003/2008/2019 shifts, so there's no segmentation-based fix for it here.
+
+### Trend
+
+`cpi-components.qmd`'s Trend tab facets `plot_naive_terms()`/`plot_ece_terms()` one panel per pair — workable at 3 series (3 pairs), not at 32 (496 pairs). Instead, at each time point we take the median and interquartile range of the rolling-window term across all 496 pairs, the same aggregate-across-pairs approach the ACF tab above uses.
+
+```{R uk-housing-trend-helper}
+#| echo: false
+
+uk_housing_trend_terms <- function(X) {
+  n <- nrow(X)
+  window <- max(10, floor(n / 5))
+  idx <- combn(ncol(X), 2)
+
+  ece_terms <- sapply(seq_len(ncol(idx)), function(k) {
+    i <- idx[1, k]; j <- idx[2, k]
+    rolling_mean(lag_term(X[, i], X[, j]), window)
+  })
+  naive_R <- apply(X, 2, function(col) col - rolling_mean(col, window))
+  naive_terms <- sapply(seq_len(ncol(idx)), function(k) {
+    i <- idx[1, k]; j <- idx[2, k]
+    rolling_mean(naive_R[, i] * naive_R[, j], window)
+  })
+  list(ece = ece_terms, naive = naive_terms, window = window)
+}
+
+uk_housing_plot_trend <- function(term_mat, dates, title) {
+  tibble(
+    Date = dates,
+    med  = apply(term_mat, 1, median, na.rm = TRUE),
+    q25  = apply(term_mat, 1, quantile, 0.25, na.rm = TRUE),
+    q75  = apply(term_mat, 1, quantile, 0.75, na.rm = TRUE)
+  ) |>
+    ggplot(aes(x = Date)) +
+    geom_ribbon(aes(ymin = q25, ymax = q75), fill = "steelblue", alpha = 0.3, na.rm = TRUE) +
+    geom_line(aes(y = med), color = "steelblue", na.rm = TRUE) +
+    geom_hline(yintercept = 0, color = "gray40", linetype = "dashed") +
+    theme_minimal() +
+    labs(x = NULL, y = "Rolling-mean term (covariance scale)", title = title)
+}
+
+trend_terms <- uk_housing_trend_terms(X_mat)
+```
+
+::: {.panel-tabset}
+
+#### Naive
+
+```{R uk-housing-trend-naive}
+#| echo: false
+#| label: fig-uk-housing-trend-naive
+#| fig-cap: "Naive covariance term, median and IQR across 496 borough pairs, rolling window = 73 months."
+
+uk_housing_plot_trend(trend_terms$naive, X_data$Date, "Naive covariance term (median +/- IQR, 496 pairs)")
+```
+
+Something funny: the naive term is far from stationary. Its across-pair median climbs from 0.38 at the start of the sample to a peak of 1.11 in December 2007, then falls back to 0.18 by 2020 — a threefold rise and fall tracking the housing bubble and the 2008-09 crash almost exactly, not noise around a constant covariance. This is a textbook mean-shift-contaminated covariance: as prices rose (and later fell) together across boroughs, the level shift alone inflates the naive rolling second moment, independent of any genuine change in how boroughs comove. This is exactly the failure mode `cpi-components.qmd` also documents on its raw price levels, just in a growth-rate series here instead of a level series.
+
+#### Mean-Shift-Invariant
+
+```{R uk-housing-trend-ece}
+#| echo: false
+#| label: fig-uk-housing-trend-ece
+#| fig-cap: "ECE (lag-1 difference) covariance term, median and IQR across 496 borough pairs, rolling window = 73 months."
+
+uk_housing_plot_trend(trend_terms$ece, X_data$Date, "ECE covariance term (median +/- IQR, 496 pairs)")
+```
+
+The ECE term stays close to flat by comparison: its across-pair median ranges only from -0.11 to 0.04 over the full 30 years, dipping to its lowest around July 2008 — the same crisis window that drove the naive term to its peak — before drifting back toward zero. ECE's lag-1 differencing cancels the shared price-level swing that dominates the naive term above, leaving a much smaller, though not perfectly flat, residual drift. That residual dip during 2008-09 is worth flagging honestly: it suggests genuine covariance instability during the crisis on top of the mean-shift artifact, not a case where ECE recovers a perfectly constant covariance.
+
+:::
 
 ### Kappa
 
@@ -199,132 +363,11 @@ ece_pval_null <- function(X) {
 
 ## Results
 
-::: {.panel-tabset}
-
-### Pearson
+All Results below use `X_resid` — residuals after removing the 5-breakpoint segmented mean established above — rather than the raw panel. The Diagnostics ACF tab already showed this segmentation doesn't touch the panel's real driver (ongoing month-to-month serial correlation), so the segmented and raw versions of these results were close throughout; segmented is kept as the single, primary version rather than showing both.
 
 ::: {.panel-tabset}
 
-#### p < 0.05
-
-```{R uk-housing-cor-heatmap}
-#| echo: false
-#| label: fig-uk-housing-cor-heatmap
-#| fig-cap: "Pairwise Pearson correlation, monthly % change, 32 London boroughs."
-#| fig-height: 7
-
-cor_mat      <- cor(X_mat, use = "pairwise.complete.obs")
-pearson_pmat <- cor_pval(X_mat)
-dimnames(pearson_pmat) <- list(colnames(X_mat), colnames(X_mat))
-uk_housing_plot_cor_heatmap(cor_mat, pearson_pmat, "Pearson r")
-```
-
-Every pairwise correlation is positive, from near 0 up to 0.58. No pair is negative — a shared national housing-market factor, not the mix of positive and negative relationships something like `cpi-components.qmd` or `copy-number-variation.qmd` looks for. Asterisks mark p < 0.05: with n = 365 and correlations this uniformly positive, almost every pair clears it (942 of 992 off-diagonal pairs) — the unmarked white cells are the interesting exceptions, not the marked ones. Per the ACF diagnostic above, treat this count as optimistic: naive Pearson's p-value doesn't account for the positive serial correlation present in every borough.
-
-#### BH q < 0.05
-
-```{R uk-housing-cor-heatmap-bh}
-#| echo: false
-#| label: fig-uk-housing-cor-heatmap-bh
-#| fig-cap: "Pairwise Pearson correlation, monthly % change, 32 London boroughs (BH-adjusted)."
-#| fig-height: 7
-
-pearson_qmat <- bh_adjust_pmat(pearson_pmat)
-uk_housing_plot_cor_heatmap(cor_mat, pearson_qmat, "Pearson r")
-```
-
-Benjamini-Hochberg, applied to the 496 unique Pearson p-values at a target FDR of 5%, barely moves the count: 940 of 992 pairs still clear q < 0.05, down from 942 under raw p-values. With correlations and p-values this uniformly small and significant, the sorted p-value curve stays well under the BH line for almost its entire length, so the adjustment only trims the handful of pairs sitting right at the boundary. This is the multiple-testing correction working as intended, not failing: when the vast majority of a large panel really is autocorrelation-inflated near-significance, BH doesn't manufacture a stricter answer out of nothing — it only guards against the fraction of flagged pairs that's actually likely to be noise, and here that fraction was never the main problem. The real inflation, per the ACF diagnostic, is in each individual p-value's validity under serial correlation, which no multiple-testing correction can fix.
-
-:::
-
-### ECE
-
-::: {.panel-tabset}
-
-#### p < 0.05
-
-```{R uk-housing-ece-heatmap}
-#| echo: false
-#| label: fig-uk-housing-ece-heatmap
-#| fig-cap: "Pairwise ECE correlation, monthly % change, 32 London boroughs."
-#| fig-height: 7
-
-ece_cor  <- ece.cor(X_mat)
-ece_pmat <- ece_pval_null(X_mat)
-dimnames(ece_cor) <- dimnames(ece_pmat) <- list(colnames(X_mat), colnames(X_mat))
-uk_housing_plot_cor_heatmap(ece_cor, ece_pmat, "ECE r")
-```
-
-ECE tells a different story: values range from -0.67 to 0.47, a mix of positive and negative pairs scattered with no visible structure, against Pearson's uniform mild-positive wash. 208 of 992 off-diagonal pairs clear p < 0.05 under the null-restricted z-test — close to the 218 the default Gaussian z-test finds (the Kappa diagnostic's fat tails mostly bias individual pairs' standard errors rather than swinging many pairs across the 0.05 line), but this is the count worth trusting given that diagnostic. Some of the gap between the two methods is real information ECE recovers that naive Pearson can't (autocorrelation, mean-shift contamination); some may be estimator noise from a pairwise pipeline built for a handful of series, not 32.
-
-#### BH q < 0.05
-
-```{R uk-housing-ece-heatmap-bh}
-#| echo: false
-#| label: fig-uk-housing-ece-heatmap-bh
-#| fig-cap: "Pairwise ECE correlation, monthly % change, 32 London boroughs (BH-adjusted)."
-#| fig-height: 7
-
-ece_qmat <- bh_adjust_pmat(ece_pmat)
-uk_housing_plot_cor_heatmap(ece_cor, ece_qmat, "ECE r")
-```
-
-Here BH does real work: 66 of 992 pairs clear q < 0.05, down from 208 under raw p-values — a much larger relative drop than Pearson's 942 to 940. ECE's 208 significant pairs sat much closer to the noise floor than Pearson's, so a larger share of them were the modest p-values just under 0.05 that BH is built to catch, not the very small ones a true signal would produce. That's consistent with the earlier concern that some of ECE's pairwise significant count is estimator noise rather than real structure: unlike Pearson, where the correction barely changes the picture, ECE's result is sensitive to which multiple-testing correction you apply, and the BH-adjusted map is the more trustworthy of the two here.
-
-:::
-
-### Diagonal
-
-The 496 pairwise tests above run into the multiple-testing problem directly: at α = 0.05, roughly 50 false positives are expected across 992 off-diagonal entries by chance alone. A joint test of a single null hypothesis — the full 32x32 correlation matrix is diagonal, i.e. no borough pair is correlated — sidesteps that problem entirely, at the cost of not saying which pairs.
-
-```{R uk-housing-diagonal-tests}
-#| echo: false
-
-set.seed(123)
-bs_mult_p  <- ece.test(X_mat, type = "bs.multiplier")$p.value
-set.seed(123)
-bs_param_p <- ece.test(X_mat, type = "bs.parametric.lag1.diag.psd")$p.value
-set.seed(123)
-bs_naive_p <- ece.test(X_mat, type = "bs.parametric.naive")$p.value
-bartlett_p <- cortest.bartlett(cor(X_mat), nrow(X_mat))$p.value
-
-diag_results <- data.frame(
-  Method = c(
-    "Bootstrap Multiplier",
-    "Parametric Bootstrap",
-    "Parametric Bootstrap (Naive)",
-    "Bartlett Test"
-  ),
-  `p-value` = round(c(bs_mult_p, bs_param_p, bs_naive_p, bartlett_p), 3),
-  check.names = FALSE
-)
-knitr::kable(diag_results, caption = "Joint test of H0: the 32x32 correlation matrix is diagonal.")
-```
-
-The four tests split along the same line `cpi-components.qmd` and `pce-components.qmd` find on their own raw, untransformed levels: Bartlett and the naive parametric bootstrap reject outright (both p < 0.01), while the two tests built on ECE's lag-1 block difference — `bs.multiplier` and `bs.parametric.lag1.diag.psd` — don't reject at conventional levels. Bartlett and the naive bootstrap have no mechanism to distinguish a shared trend from genuine contemporaneous correlation; fed data where every borough moves with the same national housing cycle, they read that shared movement as correlation and reject. The two ECE-based tests cancel that shared trend internally via lagged differencing before testing, and don't. Given the ACF diagnostic's finding of real, positive serial correlation in every borough, this is the same reading the pairwise Results above already suggested informally: naive Pearson's near-universal significant count is inflated, and the joint test here confirms it isn't just a multiple-testing artifact — the untransformed, trend-sensitive tests reject even as a single global test, while the mean-shift-aware ones don't.
-
-### Segmented
-
-Maeng et al. detect their change-points on PCA-transformed scores, not the raw borough panel, using a bottom-up algorithm (BUHDA) with no published exact dates — only a figure. Reproducing their pipeline as closely as the paper documents it (`remotes::install_github("hmaeng/BUHDA")`, standardized PCA scores, their Section 4.1 threshold-selection procedure) recovers 4 of their reported 5 change-points, stable across seeds: 2003-10, 2009-02, 2009-04, and 2019-12. Rather than chase the missing fifth point through undocumented preprocessing choices, we instead read the change-points directly off @fig-uk-housing-raw: **2003-02**, **2007-12**, **2009-01**, **2009-03**, and **2019-12** — the same two clusters BUHDA finds (the 2008-09 financial crisis, split into two nearby breaks, and the run-up to the 2020 Covid shock) plus one break in the early 2000s.
-
-These five dates are used as a single known segmentation, applied identically across all 32 boroughs via `segment_mean_oracle()` (`penalty = "Oracle"` in `segment_test()`/`segment_pval()`), rather than estimated per-series as `cpi-components.qmd` and `pce-components.qmd` do. The Results below repeat Pearson, ECE, and the diagonal joint test on the residuals after removing this segmented mean, to check whether these five known breaks were driving any of the raw-panel results above.
-
-```{R uk-housing-segmentation-setup}
-#| echo: false
-
-cp_dates <- as.Date(c("2003-02-01", "2007-12-01", "2009-01-01", "2009-03-01", "2019-12-01"))
-cp_idx   <- sapply(cp_dates, function(d) which(X_data$Date == d))
-h_vec    <- rep(seq_len(length(cp_idx) + 1), diff(c(0, cp_idx, nrow(X_mat))))
-h_mat    <- matrix(rep(h_vec, ncol(X_mat)), nrow(X_mat), ncol(X_mat))
-seg_params <- list(h = h_mat, scenario_param = list(cp = cp_idx))
-
-X_resid <- X_mat - segment_mean_oracle(X_mat, seg_params)
-colnames(X_resid) <- colnames(X_mat)
-```
-
-::: {.panel-tabset}
-
-#### Plot
+### Plot
 
 ```{R uk-housing-segmented-plot}
 #| echo: false
@@ -345,66 +388,106 @@ ggplot() +
 
 The segmented mean (blue) is flat within each of the 6 segments and jumps only at the 5 breaks (dashed red), sitting close to zero throughout since the shared shift across boroughs here is mostly higher variance, not a shared change in mean level — the gray raw series (all 32 boroughs) still carries the full month-to-month variation the segmented mean doesn't touch.
 
-#### Pearson
+### Pearson
 
-```{R uk-housing-segmented-pearson}
+::: {.panel-tabset}
+
+#### p < 0.05
+
+```{R uk-housing-cor-heatmap}
 #| echo: false
-#| label: fig-uk-housing-segmented-pearson
+#| label: fig-uk-housing-cor-heatmap
 #| fig-cap: "Pairwise Pearson correlation on residuals after removing the 5-breakpoint segmented mean."
 #| fig-height: 7
 
-cor_mat_seg      <- cor(X_resid, use = "pairwise.complete.obs")
-pearson_pmat_seg <- cor_pval(X_resid)
-dimnames(pearson_pmat_seg) <- list(colnames(X_resid), colnames(X_resid))
-uk_housing_plot_cor_heatmap(cor_mat_seg, pearson_pmat_seg, "Pearson r")
+cor_mat      <- cor(X_resid, use = "pairwise.complete.obs")
+pearson_pmat <- cor_pval(X_resid)
+dimnames(pearson_pmat) <- list(colnames(X_resid), colnames(X_resid))
+uk_housing_plot_cor_heatmap(cor_mat, pearson_pmat, "Pearson r")
 ```
 
-Removing the segmented mean brings the significant count down from 942 to 860 of 992 pairs, and shrinks the correlation range from [-0.004, 0.584] to [-0.064, 0.485] — a real but modest effect. Most of Pearson's near-universal significance was never about these five specific breaks; it's the autocorrelation the Diagnostics ACF tab already flagged, which this segmentation doesn't touch.
+Every pairwise correlation is positive, from -0.06 up to 0.48. Asterisks mark p < 0.05: 860 of 992 off-diagonal pairs clear it, down only modestly from 942 on the raw (unsegmented) panel — most of Pearson's near-universal significance was never about these five specific breaks, it's the autocorrelation the Diagnostics ACF tab flagged, which segmentation doesn't touch. Per that diagnostic, treat this count as optimistic: naive Pearson's p-value doesn't account for the positive serial correlation present in every borough.
 
-#### ECE
+#### BH q < 0.05
 
-```{R uk-housing-segmented-ece}
+```{R uk-housing-cor-heatmap-bh}
 #| echo: false
-#| label: fig-uk-housing-segmented-ece
+#| label: fig-uk-housing-cor-heatmap-bh
+#| fig-cap: "Pairwise Pearson correlation on residuals after removing the 5-breakpoint segmented mean (BH-adjusted)."
+#| fig-height: 7
+
+pearson_qmat <- bh_adjust_pmat(pearson_pmat)
+uk_housing_plot_cor_heatmap(cor_mat, pearson_qmat, "Pearson r")
+```
+
+Benjamini-Hochberg, applied to the 496 unique Pearson p-values at a target FDR of 5%, barely moves the count: 854 of 992 pairs still clear q < 0.05, down from 860 under raw p-values. With correlations and p-values this uniformly small and significant, the sorted p-value curve stays well under the BH line for almost its entire length, so the adjustment only trims the handful of pairs sitting right at the boundary. This is the multiple-testing correction working as intended, not failing: when the vast majority of a large panel really is autocorrelation-inflated near-significance, BH doesn't manufacture a stricter answer out of nothing — it only guards against the fraction of flagged pairs that's actually likely to be noise, and here that fraction was never the main problem. The real inflation, per the ACF diagnostic, is in each individual p-value's validity under serial correlation, which no multiple-testing correction can fix.
+
+:::
+
+### ECE
+
+::: {.panel-tabset}
+
+#### p < 0.05
+
+```{R uk-housing-ece-heatmap}
+#| echo: false
+#| label: fig-uk-housing-ece-heatmap
 #| fig-cap: "Pairwise ECE correlation on residuals after removing the 5-breakpoint segmented mean."
 #| fig-height: 7
 
-ece_cor_seg  <- ece.cor(X_resid)
-ece_pmat_seg <- ece_pval_null(X_resid)
-dimnames(ece_cor_seg) <- dimnames(ece_pmat_seg) <- list(colnames(X_resid), colnames(X_resid))
-uk_housing_plot_cor_heatmap(ece_cor_seg, ece_pmat_seg, "ECE r")
+ece_cor  <- ece.cor(X_resid)
+ece_pmat <- ece_pval_null(X_resid)
+dimnames(ece_cor) <- dimnames(ece_pmat) <- list(colnames(X_resid), colnames(X_resid))
+uk_housing_plot_cor_heatmap(ece_cor, ece_pmat, "ECE r")
 ```
 
-ECE's significant count is unchanged: 208 of 992 pairs both before and after removing the segmented mean, and the correlation range barely moves ([-0.67, 0.47] raw vs. [-0.62, 0.47] segmented). That's the expected result, not a coincidence to explain away — ECE's lag-1 differencing already cancels out shared mean shifts like these five breaks before any correlation is computed, so imposing the same breaks as an explicit oracle segmentation on top has little left to do.
+ECE tells a different story: values range from -0.62 to 0.47, a mix of positive and negative pairs scattered with no visible structure, against Pearson's uniform mild-positive wash. 208 of 992 off-diagonal pairs clear p < 0.05 under the null-restricted z-test — essentially the same count as on the raw panel, and the correlation range barely moves either ([-0.67, 0.47] raw vs. [-0.62, 0.47] here). That's the expected result, not a coincidence to explain away: ECE's lag-1 differencing already cancels out shared mean shifts like these five breaks before any correlation is computed, so imposing the same breaks as an explicit segmentation on top has little left to do. Some of the gap with Pearson is real information ECE recovers that naive Pearson can't (autocorrelation, mean-shift contamination); some may be estimator noise from a pairwise pipeline built for a handful of series, not 32.
 
-#### Diagonal
+#### BH q < 0.05
 
-```{R uk-housing-segmented-diagonal}
+```{R uk-housing-ece-heatmap-bh}
+#| echo: false
+#| label: fig-uk-housing-ece-heatmap-bh
+#| fig-cap: "Pairwise ECE correlation on residuals after removing the 5-breakpoint segmented mean (BH-adjusted)."
+#| fig-height: 7
+
+ece_qmat <- bh_adjust_pmat(ece_pmat)
+uk_housing_plot_cor_heatmap(ece_cor, ece_qmat, "ECE r")
+```
+
+Here BH does real work: 56 of 992 pairs clear q < 0.05, down from 208 under raw p-values — a much larger relative drop than Pearson's 860 to 854. ECE's 208 significant pairs sit much closer to the noise floor than Pearson's, so a larger share of them were the modest p-values just under 0.05 that BH is built to catch, not the very small ones a true signal would produce. That's consistent with the earlier concern that some of ECE's pairwise significant count is estimator noise rather than real structure: unlike Pearson, where the correction barely changes the picture, ECE's result is sensitive to which multiple-testing correction you apply, and the BH-adjusted map is the more trustworthy of the two here.
+
+:::
+
+### Diagonal
+
+The 496 pairwise tests above run into the multiple-testing problem directly: at α = 0.05, roughly 50 false positives are expected across 992 off-diagonal entries by chance alone. A joint test of a single null hypothesis — the full 32x32 correlation matrix (of segmented residuals) is diagonal, i.e. no borough pair is correlated — sidesteps that problem entirely, at the cost of not saying which pairs.
+
+```{R uk-housing-diagonal-tests}
 #| echo: false
 
 set.seed(123)
-bs_mult_p_seg  <- ece.test(X_resid, type = "bs.multiplier")$p.value
+bs_mult_p  <- ece.test(X_resid, type = "bs.multiplier")$p.value
 set.seed(123)
-bs_param_p_seg <- ece.test(X_resid, type = "bs.parametric.lag1.diag.psd")$p.value
+bs_param_p <- ece.test(X_resid, type = "bs.parametric.lag1.diag.psd")$p.value
 set.seed(123)
-bs_naive_p_seg <- ece.test(X_resid, type = "bs.parametric.naive")$p.value
-bartlett_p_seg <- cortest.bartlett(cor(X_resid), nrow(X_resid))$p.value
+bs_naive_p <- ece.test(X_resid, type = "bs.parametric.naive")$p.value
+bartlett_p <- cortest.bartlett(cor(X_resid), nrow(X_resid))$p.value
 
-diag_results_seg <- data.frame(
+diag_results <- data.frame(
   Method = c(
     "Bootstrap Multiplier",
     "Parametric Bootstrap",
     "Parametric Bootstrap (Naive)",
     "Bartlett Test"
   ),
-  `p-value` = round(c(bs_mult_p_seg, bs_param_p_seg, bs_naive_p_seg, bartlett_p_seg), 3),
+  `p-value` = round(c(bs_mult_p, bs_param_p, bs_naive_p, bartlett_p), 3),
   check.names = FALSE
 )
-knitr::kable(diag_results_seg, caption = "Joint test of H0: the 32x32 correlation matrix of segmented-mean residuals is diagonal.")
+knitr::kable(diag_results, caption = "Joint test of H0: the 32x32 correlation matrix of segmented-mean residuals is diagonal.")
 ```
 
-Same split as the raw-panel Diagonal tab, at nearly the same p-values: Bartlett and the naive bootstrap still reject outright, `bs.multiplier` and `bs.parametric.lag1.diag.psd` still don't. Removing five known, economically-motivated breaks changes almost nothing about which tests reject — consistent with the Pearson and ECE tabs above, the untransformed tests' rejection is driven by ongoing serial correlation across the whole sample, not by these five specific mean shifts.
-
-:::
+The four tests split along the same line `cpi-components.qmd` and `pce-components.qmd` find on their own raw, untransformed levels: Bartlett and the naive parametric bootstrap reject outright (both p < 0.01), while the two tests built on ECE's lag-1 block difference — `bs.multiplier` and `bs.parametric.lag1.diag.psd` — don't reject at conventional levels, and are nearly unchanged from the raw (unsegmented) panel. Bartlett and the naive bootstrap have no mechanism to distinguish a shared trend from genuine contemporaneous correlation; fed data where every borough moves with the same national housing cycle, they read that shared movement as correlation and reject. The two ECE-based tests cancel that shared trend internally via lagged differencing before testing, and don't. Given the ACF diagnostic's finding of real, positive serial correlation in every borough — persisting almost unchanged after removing these five known breaks — this is the same reading the pairwise Results above already suggested: naive Pearson's near-universal significant count is inflated, and the joint test here confirms it isn't just a multiple-testing artifact, nor an artifact of these five specific mean shifts — the untransformed, trend-sensitive tests reject even as a single global test on segmented residuals, while the mean-shift-aware ones don't.
 
 :::
