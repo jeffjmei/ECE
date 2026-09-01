@@ -1560,6 +1560,10 @@ pearson_pmat_pre <- cor_pval(X_mat_pre_total) |> round(3)
 
 ##### Pairwise
 
+::: {.panel-tabset}
+
+###### Correlation
+
 ```{R pce-pre-pairwise-output}
 #| layout-ncol: 2
 #| echo: false
@@ -1569,6 +1573,20 @@ knitr::kable(bold_sig(seg_ece_cor_pre, seg_ece_pmat_pre), caption = "Segment-ECE
 knitr::kable(bold_sig(pearson_cor_pre, pearson_pmat_pre), caption = "Naive Pearson Correlation (Pre-COVID)", escape = FALSE, format = "html")
 knitr::kable(bold_sig(resid_cor_pre, resid_pmat_pre),     caption = "Residual Pearson Correlation (Pre-COVID)", escape = FALSE, format = "html")
 ```
+
+###### P-Values
+
+```{R pce-pre-pairwise-pval-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(ece_pmat_pre, ece_pmat_pre),         caption = "ECE P-Values, Pre-COVID (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(seg_ece_pmat_pre, seg_ece_pmat_pre), caption = "Segment-ECE P-Values, Pre-COVID (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pearson_pmat_pre, pearson_pmat_pre), caption = "Naive Pearson P-Values, Pre-COVID", escape = FALSE, format = "html")
+knitr::kable(bold_sig(resid_pmat_pre, resid_pmat_pre),     caption = "Residual Pearson P-Values, Pre-COVID", escape = FALSE, format = "html")
+```
+
+:::
 
 `Total` (log growth of `PCECC96`) is included as a fourth series in every table here rather than shown separately.
 
