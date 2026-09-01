@@ -35,6 +35,7 @@ book:
         - copy-number-variation.qmd
         - labor-productivity.qmd
         - unemployment.qmd
+        - fred-md.qmd
         - mental-load.qmd
         - elnino.qmd
         - glen-canyon-dam.qmd

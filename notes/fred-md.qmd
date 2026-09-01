@@ -1,0 +1,2514 @@
+---
+title: "FRED-MD"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all()
+library(tidyverse)
+library(fbi)
+library(psych)
+library(kableExtra)
+```
+
+This chapter combines the four Labor-market series from [Unemployment](unemployment.qmd) with the three CPI subcomponents from [CPI Components](cpi-components.qmd) into one 7-series matrix, spanning two economic domains that have no obvious reason to comove:
+
+- `MANEMP`: Manufacturing
+- `DMANEMP`: Durable Goods
+- `NDMANEMP`: Nondurable Goods
+- `SRVPRD`: Service-Providing
+- `CPIAPPSL`: Apparel
+- `CPITRNSL`: Transportation
+- `CPIMEDSL`: Medical Care
+
+Manufacturing is still (approximately) the sum of Durable and Nondurable Goods, so that mechanical near-identity persists in this larger matrix. The question this chapter asks: does the joint diagonal test still correctly separate that one known real relationship from the six cross-domain (Labor vs. CPI) and near-independent within-domain pairs that surround it, once the matrix is no longer curated down to 3-4 series? As in the Unemployment chapter, every Diagonal subsection below also reports a "No Manufacturing" variant — the same joint test with Manufacturing dropped — to isolate how much of any rejection is that one mechanical relationship versus broader structure across the matrix.
+
+```{R fredmd-load-data}
+#| echo: false
+#| message: false
+
+fred_data <- fredmd(
+  "../data/real-data/FRED-2026-05.csv",
+  date_start = NULL, date_end = NULL, transform = FALSE
+) |> as_tibble()
+
+X_data <- fred_data |>
+  select(date, MANEMP, DMANEMP, NDMANEMP, SRVPRD, CPIAPPSL, CPITRNSL, CPIMEDSL) |>
+  drop_na() |>
+  rename(
+    Manufacturing = MANEMP,
+    `Durable Goods` = DMANEMP,
+    `Nondurable Goods` = NDMANEMP,
+    Services = SRVPRD,
+    Apparel = CPIAPPSL,
+    Transportation = CPITRNSL,
+    `Medical Care` = CPIMEDSL
+  )
+
+X_mat <- as.matrix(X_data[, -1])
+```
+
+`r nrow(X_data)` monthly observations, `r format(min(X_data$date))` to `r format(max(X_data$date))`.
+
+```{R fredmd-helpers}
+#| echo: false
+
+# Null-restricted z-test (rho = 0): avoids assuming Gaussian k40/k04/k31/k13.
+ece_pval_null <- function(X) {
+  p <- ncol(X)
+  pval_mat <- matrix(NA, p, p)
+  colnames(pval_mat) <- rownames(pval_mat) <- colnames(X)
+  for (i in 1:(p - 1)) {
+    for (j in (i + 1):p) {
+      pair <- cbind(X[, i], X[, j])
+      pval <- ece.test(pair, type = "z.test", kappa = ece.kappa(pair, rho = 0, method = "mom"), rho = 0)$p.value
+      pval_mat[i, j] <- pval
+      pval_mat[j, i] <- pval
+    }
+  }
+  diag(pval_mat) <- 0
+  pval_mat
+}
+
+# Bold any off-diagonal cell whose corresponding p-value is < 0.05.
+bold_sig <- function(display_mat, pval_mat) {
+  m   <- nrow(display_mat)
+  out <- matrix("", m, m, dimnames = dimnames(display_mat))
+  for (i in seq_len(m)) {
+    for (j in seq_len(m)) {
+      sig <- i != j && !is.na(pval_mat[i, j]) && pval_mat[i, j] < 0.05
+      out[i, j] <- kableExtra::cell_spec(sprintf("%.3f", display_mat[i, j]), "html", bold = sig)
+    }
+  }
+  out
+}
+
+# Per-series penalty search: choose pen.value so the segmentation-implied
+# omega matches ECE's own segmentation-free estimate as closely as possible.
+omega_match_penalty <- function(x, grid) {
+  target <- ece.complexity(x, x)
+  errs <- sapply(grid, function(pv) {
+    seg       <- segment_mean_vec(x, penalty = "Manual", pen.value = pv)
+    seg_omega <- lag_diff(seg, seg, k = 1) / length(x)
+    abs(seg_omega - target) / abs(target)
+  })
+  grid[which.min(errs)]
+}
+
+fredmd_fit_segmentation <- function(X_mat, grid) {
+  pen <- apply(X_mat, 2, omega_match_penalty, grid = grid)
+  X_seg <- sapply(colnames(X_mat), function(cn) {
+    segment_mean_vec(X_mat[, cn], penalty = "Manual", pen.value = pen[cn])
+  })
+  colnames(X_seg) <- colnames(X_mat)
+  list(pen = pen, X_seg = X_seg)
+}
+
+fredmd_plot_series <- function(dates, X_mat, X_seg, title, ylab, zero_line = FALSE) {
+  X_df <- bind_cols(
+    date = dates, as.data.frame(X_mat),
+    as.data.frame(X_seg) |> rename_with(~ paste0(.x, "_segment"))
+  )
+  p <- X_df |>
+    pivot_longer(cols = -date, names_to = "series", values_to = "value") |>
+    mutate(
+      type   = if_else(str_ends(series, "_segment"), "Segmented", "Raw"),
+      sector = str_remove(series, "_segment$")
+    ) |>
+    ggplot(aes(x = date, y = value, color = sector, group = series))
+  if (zero_line) p <- p + geom_hline(yintercept = 0, color = "gray")
+  p +
+    geom_line(aes(linewidth = type)) +
+    scale_linewidth_manual(values = c(Raw = 0.4, Segmented = 1.0), guide = "none") +
+    facet_wrap(~sector, scales = "free_y", ncol = 1) +
+    labs(title = title, x = NULL, y = ylab, color = "Sector", caption = "Source: FRED-MD") +
+    theme_minimal() +
+    theme(legend.position = "none")
+}
+
+fredmd_plot_residuals <- function(dates, X_resid, title) {
+  X_resid |>
+    as_tibble() |>
+    bind_cols(date = dates) |>
+    pivot_longer(cols = -date, names_to = "sector", values_to = "value") |>
+    ggplot(aes(x = date, y = value, color = sector)) +
+    geom_hline(yintercept = 0, color = "gray") +
+    geom_line(linewidth = 0.4) +
+    facet_wrap(~sector, scales = "free_y", ncol = 1) +
+    labs(title = title, x = NULL, y = "Residual") +
+    theme_minimal() +
+    theme(legend.position = "none")
+}
+
+fredmd_acf_naive <- function(X_resid) {
+  par(mfrow = c(ncol(X_resid), 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+  for (i in seq_len(ncol(X_resid))) {
+    acf(X_resid[, i], main = "", xaxt = "n", ylab = colnames(X_resid)[i])
+  }
+  axis(1)
+  mtext("Lag", side = 1, outer = TRUE, line = 2.5)
+}
+
+fredmd_ece_terms <- function(X_mat, window) {
+  cn  <- colnames(X_mat)
+  idx <- combn(ncol(X_mat), 2)
+
+  ece_cov <- purrr::map_dfr(seq_len(ncol(idx)), function(k) {
+    i <- idx[1, k]
+    j <- idx[2, k]
+    s <- lag_term(X_mat[, i], X_mat[, j])
+    tibble(t = seq_len(nrow(X_mat)), row = cn[i], col = cn[j], raw = s)
+  })
+  ece_var <- purrr::map_dfr(seq_len(ncol(X_mat)), function(i) {
+    s <- lag_term(X_mat[, i], X_mat[, i])
+    tibble(t = seq_len(nrow(X_mat)), row = cn[i], col = cn[i], raw = s)
+  })
+  bind_rows(ece_cov, ece_var) |>
+    mutate(row = factor(row, levels = cn), col = factor(col, levels = cn)) |>
+    group_by(row, col) |>
+    mutate(run = rolling_mean(raw, window), global = mean(raw)) |>
+    ungroup()
+}
+
+fredmd_plot_ece_trend <- function(terms_df) {
+  ggplot(terms_df, aes(x = t)) +
+    geom_line(aes(y = raw), color = "gray80") +
+    geom_hline(aes(yintercept = global), linetype = "dashed", color = "firebrick") +
+    geom_line(aes(y = run), color = "steelblue", na.rm = TRUE) +
+    facet_grid(rows = vars(row), cols = vars(col), scales = "free_y") +
+    labs(x = "time", y = "ECE term (covariance scale)") +
+    theme_minimal()
+}
+
+fredmd_kappa_table <- function(X_resid) {
+  cn  <- colnames(X_resid)
+  idx <- combn(ncol(X_resid), 2)
+  purrr::map_dfr(seq_len(ncol(idx)), function(k) {
+    i <- idx[1, k]
+    j <- idx[2, k]
+    kap <- ece.kappa(X_resid[, i], X_resid[, j], method = "mom")
+    tibble(
+      Pair = paste(cn[i], "/", cn[j]),
+      k40  = round(kap$k40, 2),
+      k31  = round(kap$k31, 2),
+      k22  = round(kap$k22, 2),
+      k13  = round(kap$k13, 2),
+      k04  = round(kap$k04, 2)
+    )
+  })
+}
+
+fredmd_omega_check <- function(X_mat, X_seg) {
+  n  <- nrow(X_mat)
+  cn <- colnames(X_mat)
+  ece_omega <- ece.complexity(X_mat) |> round(6)
+  rownames(ece_omega) <- colnames(ece_omega) <- cn
+
+  seg_omega <- matrix(0, ncol(X_mat), ncol(X_mat), dimnames = list(cn, cn))
+  for (i in seq_len(ncol(X_mat))) {
+    for (j in seq_len(ncol(X_mat))) {
+      seg_omega[i, j] <- lag_diff(X_seg[, i], X_seg[, j], k = 1) / n
+    }
+  }
+  list(ece = ece_omega, seg = round(seg_omega, 6))
+}
+
+fredmd_pairwise_results <- function(X_mat, X_resid) {
+  ece_cor     <- ece.cor(X_mat) |> round(3)
+  seg_ece_cor <- ece.cor(X_resid) |> round(3)
+  dimnames(ece_cor) <- dimnames(seg_ece_cor) <- list(colnames(X_mat), colnames(X_mat))
+
+  list(
+    ece_cor      = ece_cor,
+    seg_ece_cor  = seg_ece_cor,
+    resid_cor    = cor(X_resid) |> round(3),
+    pearson_cor  = cor(X_mat) |> round(3),
+    ece_pmat     = ece_pval_null(X_mat) |> round(3),
+    seg_ece_pmat = ece_pval_null(X_resid) |> round(3),
+    resid_pmat   = cor_pval(X_resid) |> round(3),
+    pearson_pmat = cor_pval(X_mat) |> round(3)
+  )
+}
+
+# Drops Manufacturing, which is close to a linear identity (Durable + Nondurable),
+# so the Diagonal test can be checked without that mechanical near-collinearity.
+fredmd_no_manu <- function(X) X[, colnames(X) != "Manufacturing", drop = FALSE]
+
+fredmd_diagonal_results <- function(X_mat, X_resid, seed = 123) {
+  run_row <- function(X) {
+    data.frame(
+      Method = c(
+        "Bootstrap Multiplier",
+        "Parametric Bootstrap",
+        "Parametric Bootstrap (Naive)",
+        "Bartlett Test"
+      ),
+      `p-value` = c(
+        round(ece.test(X, type = "bs.multiplier")$p.value, 3),
+        round(ece.test(X, type = "bs.parametric.lag1.diag.psd")$p.value, 3),
+        round(ece.test(X, type = "bs.parametric.naive")$p.value, 3),
+        round(cortest.bartlett(cor(X), nrow(X))$p.value, 3)
+      ),
+      check.names = FALSE
+    )
+  }
+  set.seed(seed)
+  raw <- run_row(X_mat)
+  set.seed(seed)
+  seg <- run_row(X_resid)
+  list(raw = raw, seg = seg)
+}
+
+fredmd_penalty_table <- function(pen, X_seg) {
+  tibble(
+    Series      = colnames(X_seg),
+    `pen.value` = signif(pen, 3),
+    Segments    = apply(X_seg, 2, function(c) length(unique(c)))
+  )
+}
+
+fredmd_segments_table <- function(X_seg, penalty_label) {
+  tibble(
+    Series   = colnames(X_seg),
+    Penalty  = penalty_label,
+    Segments = apply(X_seg, 2, function(c) length(unique(c)))
+  )
+}
+
+pen_grid_raw <- 10^seq(-2, 14, length.out = 100)
+pen_grid_log <- 10^seq(-8, 0, length.out = 100)
+```
+
+
+::: {.panel-tabset}
+
+## Raw
+
+`ω fitted` uses the per-series omega-matched penalty search (`pen.value` chosen so the segmentation-implied $\omega$ matches ECE's own segmentation-free estimate, `ece.complexity(x, x)`, grid-searched over `pen_grid_raw <- 10^seq(-2, 14, length.out = 100)`). `AIC` and `BIC` instead hand the penalty choice to `segment_mean()`'s own built-in criterion. All three tabs run the identical Diagnostics/Results pipeline via the same parameterized helper functions.
+
+April 2020 is a single-month, double-digit collapse in the employment series (Manufacturing -10%, Services -14% month over month) that has no CPI counterpart of similar magnitude. The `(Pre-COVID)` tabs below rerun each of the three segmentation choices restricted to `date < 2020-01-01`, dropping the pandemic shock and every month since, to check how much of this chapter's conclusions depend on that one event.
+
+```{R fredmd-raw-precovid-data}
+#| echo: false
+
+X_data_precovid <- X_data |> filter(date < as.Date("2020-01-01"))
+X_mat_precovid  <- as.matrix(X_data_precovid[, -1])
+dates_precovid  <- X_data_precovid$date
+```
+
+`r nrow(X_data_precovid)` monthly observations, `r format(min(dates_precovid))` to `r format(max(dates_precovid))`.
+
+::: {.panel-tabset}
+
+
+### ω fitted
+
+```{R fredmd-raw-omegafit-fit}
+#| echo: false
+
+fit_raw_omegafit  <- fredmd_fit_segmentation(X_mat, pen_grid_raw)
+X_seg_raw_omegafit   <- fit_raw_omegafit$X_seg
+X_resid_raw_omegafit <- X_mat - X_seg_raw_omegafit
+```
+
+```{R fredmd-raw-omegafit-penalty-table}
+#| echo: false
+
+kable(fredmd_penalty_table(fit_raw_omegafit$pen, X_seg_raw_omegafit), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R fredmd-raw-omegafit-plot}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_series(X_data$date, X_mat, X_seg_raw_omegafit, "Levels by Series (ω fitted)", "Level (series-specific units)", zero_line = FALSE)
+```
+
+##### Residuals
+
+```{R fredmd-raw-omegafit-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_residuals(X_data$date, X_resid_raw_omegafit, "Residuals after Segmentation (ω fitted)")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-raw-omegafit-acf-naive}
+#| echo: false
+
+fredmd_acf_naive(X_resid_raw_omegafit)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-raw-omegafit-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-raw-omegafit-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-raw-omegafit-trend-ece}
+#| echo: false
+
+window_raw_omegafit <- max(10, floor(nrow(X_mat) / 5))
+terms_raw_omegafit  <- fredmd_ece_terms(X_mat, window_raw_omegafit)
+fredmd_plot_ece_trend(terms_raw_omegafit)
+```
+
+:::
+
+##### Kappa
+
+```{R fredmd-raw-omegafit-kappa-check}
+#| echo: false
+
+kable(fredmd_kappa_table(X_resid_raw_omegafit), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R fredmd-raw-omegafit-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_raw_omegafit <- fredmd_omega_check(X_mat, X_seg_raw_omegafit)
+knitr::kable(omega_raw_omegafit$ece, caption = "ECE (raw data, no segmentation)")
+knitr::kable(omega_raw_omegafit$seg, caption = "Segmentation-implied (ω fitted)")
+```
+
+:::
+
+#### Results
+
+```{R fredmd-raw-omegafit-pairwise}
+#| echo: false
+#| warning: false
+
+pw_raw_omegafit <- fredmd_pairwise_results(X_mat, X_resid_raw_omegafit)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R fredmd-raw-omegafit-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_raw_omegafit$ece_cor, pw_raw_omegafit$ece_pmat),         caption = "ECE Correlation (ω fitted)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_omegafit$seg_ece_cor, pw_raw_omegafit$seg_ece_pmat), caption = "Segment-ECE Correlation (ω fitted)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_omegafit$pearson_cor, pw_raw_omegafit$pearson_pmat), caption = "Naive Pearson Correlation (ω fitted)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_omegafit$resid_cor, pw_raw_omegafit$resid_pmat),     caption = "Residual Pearson Correlation (ω fitted)", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R fredmd-raw-omegafit-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_raw_omegafit$ece_pmat, pw_raw_omegafit$ece_pmat),         caption = "ECE P-Values (ω fitted, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_omegafit$seg_ece_pmat, pw_raw_omegafit$seg_ece_pmat), caption = "Segment-ECE P-Values (ω fitted, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_omegafit$pearson_pmat, pw_raw_omegafit$pearson_pmat), caption = "Naive Pearson P-Values (ω fitted)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_omegafit$resid_pmat, pw_raw_omegafit$resid_pmat),     caption = "Residual Pearson P-Values (ω fitted)", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+::: {.panel-tabset}
+
+###### All Sectors
+
+```{R fredmd-raw-omegafit-diagonal-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_raw_omegafit <- fredmd_diagonal_results(X_mat, X_resid_raw_omegafit)
+knitr::kable(diag_raw_omegafit$raw, caption = "ω fitted, Unsegmented")
+knitr::kable(diag_raw_omegafit$seg, caption = "ω fitted, Segmented Residuals")
+```
+
+###### No Manufacturing
+
+```{R fredmd-raw-omegafit-diagonal-output-noman}
+#| layout-ncol: 2
+#| echo: false
+
+diag_raw_omegafit_noman <- fredmd_diagonal_results(fredmd_no_manu(X_mat), fredmd_no_manu(X_resid_raw_omegafit))
+knitr::kable(diag_raw_omegafit_noman$raw, caption = "ω fitted, Unsegmented, No Manufacturing")
+knitr::kable(diag_raw_omegafit_noman$seg, caption = "ω fitted, Segmented Residuals, No Manufacturing")
+```
+
+:::
+
+:::
+
+:::
+
+### AIC
+
+```{R fredmd-raw-aic-fit}
+#| echo: false
+
+X_seg_raw_aic   <- segment_mean(X_mat, penalty = "AIC")
+X_resid_raw_aic <- X_mat - X_seg_raw_aic
+```
+
+```{R fredmd-raw-aic-segments-table}
+#| echo: false
+
+kable(fredmd_segments_table(X_seg_raw_aic, "AIC"), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R fredmd-raw-aic-plot}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_series(X_data$date, X_mat, X_seg_raw_aic, "Levels by Series (AIC)", "Level (series-specific units)", zero_line = FALSE)
+```
+
+##### Residuals
+
+```{R fredmd-raw-aic-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_residuals(X_data$date, X_resid_raw_aic, "Residuals after Segmentation (AIC)")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-raw-aic-acf-naive}
+#| echo: false
+
+fredmd_acf_naive(X_resid_raw_aic)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-raw-aic-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-raw-aic-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-raw-aic-trend-ece}
+#| echo: false
+
+window_raw_aic <- max(10, floor(nrow(X_mat) / 5))
+terms_raw_aic  <- fredmd_ece_terms(X_mat, window_raw_aic)
+fredmd_plot_ece_trend(terms_raw_aic)
+```
+
+:::
+
+##### Kappa
+
+```{R fredmd-raw-aic-kappa-check}
+#| echo: false
+
+kable(fredmd_kappa_table(X_resid_raw_aic), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R fredmd-raw-aic-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_raw_aic <- fredmd_omega_check(X_mat, X_seg_raw_aic)
+knitr::kable(omega_raw_aic$ece, caption = "ECE (raw data, no segmentation)")
+knitr::kable(omega_raw_aic$seg, caption = "Segmentation-implied (AIC)")
+```
+
+:::
+
+#### Results
+
+```{R fredmd-raw-aic-pairwise}
+#| echo: false
+#| warning: false
+
+pw_raw_aic <- fredmd_pairwise_results(X_mat, X_resid_raw_aic)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R fredmd-raw-aic-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_raw_aic$ece_cor, pw_raw_aic$ece_pmat),         caption = "ECE Correlation (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_aic$seg_ece_cor, pw_raw_aic$seg_ece_pmat), caption = "Segment-ECE Correlation (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_aic$pearson_cor, pw_raw_aic$pearson_pmat), caption = "Naive Pearson Correlation (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_aic$resid_cor, pw_raw_aic$resid_pmat),     caption = "Residual Pearson Correlation (AIC)", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R fredmd-raw-aic-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_raw_aic$ece_pmat, pw_raw_aic$ece_pmat),         caption = "ECE P-Values (AIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_aic$seg_ece_pmat, pw_raw_aic$seg_ece_pmat), caption = "Segment-ECE P-Values (AIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_aic$pearson_pmat, pw_raw_aic$pearson_pmat), caption = "Naive Pearson P-Values (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_aic$resid_pmat, pw_raw_aic$resid_pmat),     caption = "Residual Pearson P-Values (AIC)", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+::: {.panel-tabset}
+
+###### All Sectors
+
+```{R fredmd-raw-aic-diagonal-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_raw_aic <- fredmd_diagonal_results(X_mat, X_resid_raw_aic)
+knitr::kable(diag_raw_aic$raw, caption = "AIC, Unsegmented")
+knitr::kable(diag_raw_aic$seg, caption = "AIC, Segmented Residuals")
+```
+
+###### No Manufacturing
+
+```{R fredmd-raw-aic-diagonal-output-noman}
+#| layout-ncol: 2
+#| echo: false
+
+diag_raw_aic_noman <- fredmd_diagonal_results(fredmd_no_manu(X_mat), fredmd_no_manu(X_resid_raw_aic))
+knitr::kable(diag_raw_aic_noman$raw, caption = "AIC, Unsegmented, No Manufacturing")
+knitr::kable(diag_raw_aic_noman$seg, caption = "AIC, Segmented Residuals, No Manufacturing")
+```
+
+:::
+
+:::
+
+:::
+
+### BIC
+
+```{R fredmd-raw-bic-fit}
+#| echo: false
+
+X_seg_raw_bic   <- segment_mean(X_mat, penalty = "BIC")
+X_resid_raw_bic <- X_mat - X_seg_raw_bic
+```
+
+```{R fredmd-raw-bic-segments-table}
+#| echo: false
+
+kable(fredmd_segments_table(X_seg_raw_bic, "BIC"), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R fredmd-raw-bic-plot}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_series(X_data$date, X_mat, X_seg_raw_bic, "Levels by Series (BIC)", "Level (series-specific units)", zero_line = FALSE)
+```
+
+##### Residuals
+
+```{R fredmd-raw-bic-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_residuals(X_data$date, X_resid_raw_bic, "Residuals after Segmentation (BIC)")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-raw-bic-acf-naive}
+#| echo: false
+
+fredmd_acf_naive(X_resid_raw_bic)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-raw-bic-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-raw-bic-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-raw-bic-trend-ece}
+#| echo: false
+
+window_raw_bic <- max(10, floor(nrow(X_mat) / 5))
+terms_raw_bic  <- fredmd_ece_terms(X_mat, window_raw_bic)
+fredmd_plot_ece_trend(terms_raw_bic)
+```
+
+:::
+
+##### Kappa
+
+```{R fredmd-raw-bic-kappa-check}
+#| echo: false
+
+kable(fredmd_kappa_table(X_resid_raw_bic), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R fredmd-raw-bic-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_raw_bic <- fredmd_omega_check(X_mat, X_seg_raw_bic)
+knitr::kable(omega_raw_bic$ece, caption = "ECE (raw data, no segmentation)")
+knitr::kable(omega_raw_bic$seg, caption = "Segmentation-implied (BIC)")
+```
+
+:::
+
+#### Results
+
+```{R fredmd-raw-bic-pairwise}
+#| echo: false
+#| warning: false
+
+pw_raw_bic <- fredmd_pairwise_results(X_mat, X_resid_raw_bic)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R fredmd-raw-bic-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_raw_bic$ece_cor, pw_raw_bic$ece_pmat),         caption = "ECE Correlation (BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_bic$seg_ece_cor, pw_raw_bic$seg_ece_pmat), caption = "Segment-ECE Correlation (BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_bic$pearson_cor, pw_raw_bic$pearson_pmat), caption = "Naive Pearson Correlation (BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_bic$resid_cor, pw_raw_bic$resid_pmat),     caption = "Residual Pearson Correlation (BIC)", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R fredmd-raw-bic-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_raw_bic$ece_pmat, pw_raw_bic$ece_pmat),         caption = "ECE P-Values (BIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_bic$seg_ece_pmat, pw_raw_bic$seg_ece_pmat), caption = "Segment-ECE P-Values (BIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_bic$pearson_pmat, pw_raw_bic$pearson_pmat), caption = "Naive Pearson P-Values (BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_bic$resid_pmat, pw_raw_bic$resid_pmat),     caption = "Residual Pearson P-Values (BIC)", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+::: {.panel-tabset}
+
+###### All Sectors
+
+```{R fredmd-raw-bic-diagonal-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_raw_bic <- fredmd_diagonal_results(X_mat, X_resid_raw_bic)
+knitr::kable(diag_raw_bic$raw, caption = "BIC, Unsegmented")
+knitr::kable(diag_raw_bic$seg, caption = "BIC, Segmented Residuals")
+```
+
+###### No Manufacturing
+
+```{R fredmd-raw-bic-diagonal-output-noman}
+#| layout-ncol: 2
+#| echo: false
+
+diag_raw_bic_noman <- fredmd_diagonal_results(fredmd_no_manu(X_mat), fredmd_no_manu(X_resid_raw_bic))
+knitr::kable(diag_raw_bic_noman$raw, caption = "BIC, Unsegmented, No Manufacturing")
+knitr::kable(diag_raw_bic_noman$seg, caption = "BIC, Segmented Residuals, No Manufacturing")
+```
+
+:::
+
+:::
+
+:::
+
+### ω fitted (Pre-COVID)
+
+```{R fredmd-raw-omegafit-precovid-fit}
+#| echo: false
+
+fit_raw_omegafit_precovid  <- fredmd_fit_segmentation(X_mat_precovid, pen_grid_raw)
+X_seg_raw_omegafit_precovid   <- fit_raw_omegafit_precovid$X_seg
+X_resid_raw_omegafit_precovid <- X_mat_precovid - X_seg_raw_omegafit_precovid
+```
+
+```{R fredmd-raw-omegafit-precovid-penalty-table}
+#| echo: false
+
+kable(fredmd_penalty_table(fit_raw_omegafit_precovid$pen, X_seg_raw_omegafit_precovid), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R fredmd-raw-omegafit-precovid-plot}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_series(dates_precovid, X_mat_precovid, X_seg_raw_omegafit_precovid, "Levels by Series (ω fitted, Pre-COVID)", "Level (series-specific units)", zero_line = FALSE)
+```
+
+##### Residuals
+
+```{R fredmd-raw-omegafit-precovid-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_residuals(dates_precovid, X_resid_raw_omegafit_precovid, "Residuals after Segmentation (ω fitted (Pre-COVID))")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-raw-omegafit-precovid-acf-naive}
+#| echo: false
+
+fredmd_acf_naive(X_resid_raw_omegafit_precovid)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-raw-omegafit-precovid-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_precovid)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-raw-omegafit-precovid-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_precovid)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-raw-omegafit-precovid-trend-ece}
+#| echo: false
+
+window_raw_omegafit_precovid <- max(10, floor(nrow(X_mat_precovid) / 5))
+terms_raw_omegafit_precovid  <- fredmd_ece_terms(X_mat_precovid, window_raw_omegafit_precovid)
+fredmd_plot_ece_trend(terms_raw_omegafit_precovid)
+```
+
+:::
+
+##### Kappa
+
+```{R fredmd-raw-omegafit-precovid-kappa-check}
+#| echo: false
+
+kable(fredmd_kappa_table(X_resid_raw_omegafit_precovid), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R fredmd-raw-omegafit-precovid-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_raw_omegafit_precovid <- fredmd_omega_check(X_mat_precovid, X_seg_raw_omegafit_precovid)
+knitr::kable(omega_raw_omegafit_precovid$ece, caption = "ECE (raw data, Pre-COVID, no segmentation)")
+knitr::kable(omega_raw_omegafit_precovid$seg, caption = "Segmentation-implied (ω fitted (Pre-COVID))")
+```
+
+:::
+
+#### Results
+
+```{R fredmd-raw-omegafit-precovid-pairwise}
+#| echo: false
+#| warning: false
+
+pw_raw_omegafit_precovid <- fredmd_pairwise_results(X_mat_precovid, X_resid_raw_omegafit_precovid)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R fredmd-raw-omegafit-precovid-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_raw_omegafit_precovid$ece_cor, pw_raw_omegafit_precovid$ece_pmat),         caption = "ECE Correlation (ω fitted (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_omegafit_precovid$seg_ece_cor, pw_raw_omegafit_precovid$seg_ece_pmat), caption = "Segment-ECE Correlation (ω fitted (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_omegafit_precovid$pearson_cor, pw_raw_omegafit_precovid$pearson_pmat), caption = "Naive Pearson Correlation (ω fitted (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_omegafit_precovid$resid_cor, pw_raw_omegafit_precovid$resid_pmat),     caption = "Residual Pearson Correlation (ω fitted (Pre-COVID))", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R fredmd-raw-omegafit-precovid-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_raw_omegafit_precovid$ece_pmat, pw_raw_omegafit_precovid$ece_pmat),         caption = "ECE P-Values (ω fitted (Pre-COVID), null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_omegafit_precovid$seg_ece_pmat, pw_raw_omegafit_precovid$seg_ece_pmat), caption = "Segment-ECE P-Values (ω fitted (Pre-COVID), null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_omegafit_precovid$pearson_pmat, pw_raw_omegafit_precovid$pearson_pmat), caption = "Naive Pearson P-Values (ω fitted (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_omegafit_precovid$resid_pmat, pw_raw_omegafit_precovid$resid_pmat),     caption = "Residual Pearson P-Values (ω fitted (Pre-COVID))", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+::: {.panel-tabset}
+
+###### All Sectors
+
+```{R fredmd-raw-omegafit-precovid-diagonal-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_raw_omegafit_precovid <- fredmd_diagonal_results(X_mat_precovid, X_resid_raw_omegafit_precovid)
+knitr::kable(diag_raw_omegafit_precovid$raw, caption = "ω fitted (Pre-COVID), Unsegmented")
+knitr::kable(diag_raw_omegafit_precovid$seg, caption = "ω fitted (Pre-COVID), Segmented Residuals")
+```
+
+###### No Manufacturing
+
+```{R fredmd-raw-omegafit-precovid-diagonal-output-noman}
+#| layout-ncol: 2
+#| echo: false
+
+diag_raw_omegafit_precovid_noman <- fredmd_diagonal_results(fredmd_no_manu(X_mat_precovid), fredmd_no_manu(X_resid_raw_omegafit_precovid))
+knitr::kable(diag_raw_omegafit_precovid_noman$raw, caption = "ω fitted (Pre-COVID), Unsegmented, No Manufacturing")
+knitr::kable(diag_raw_omegafit_precovid_noman$seg, caption = "ω fitted (Pre-COVID), Segmented Residuals, No Manufacturing")
+```
+
+:::
+
+:::
+
+:::
+
+### AIC (Pre-COVID)
+
+```{R fredmd-raw-aic-precovid-fit}
+#| echo: false
+
+X_seg_raw_aic_precovid   <- segment_mean(X_mat_precovid, penalty = "AIC")
+X_resid_raw_aic_precovid <- X_mat_precovid - X_seg_raw_aic_precovid
+```
+
+```{R fredmd-raw-aic-precovid-segments-table}
+#| echo: false
+
+kable(fredmd_segments_table(X_seg_raw_aic_precovid, "AIC (Pre-COVID)"), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R fredmd-raw-aic-precovid-plot}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_series(dates_precovid, X_mat_precovid, X_seg_raw_aic_precovid, "Levels by Series (AIC, Pre-COVID)", "Level (series-specific units)", zero_line = FALSE)
+```
+
+##### Residuals
+
+```{R fredmd-raw-aic-precovid-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_residuals(dates_precovid, X_resid_raw_aic_precovid, "Residuals after Segmentation (AIC (Pre-COVID))")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-raw-aic-precovid-acf-naive}
+#| echo: false
+
+fredmd_acf_naive(X_resid_raw_aic_precovid)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-raw-aic-precovid-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_precovid)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-raw-aic-precovid-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_precovid)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-raw-aic-precovid-trend-ece}
+#| echo: false
+
+window_raw_aic_precovid <- max(10, floor(nrow(X_mat_precovid) / 5))
+terms_raw_aic_precovid  <- fredmd_ece_terms(X_mat_precovid, window_raw_aic_precovid)
+fredmd_plot_ece_trend(terms_raw_aic_precovid)
+```
+
+:::
+
+##### Kappa
+
+```{R fredmd-raw-aic-precovid-kappa-check}
+#| echo: false
+
+kable(fredmd_kappa_table(X_resid_raw_aic_precovid), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R fredmd-raw-aic-precovid-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_raw_aic_precovid <- fredmd_omega_check(X_mat_precovid, X_seg_raw_aic_precovid)
+knitr::kable(omega_raw_aic_precovid$ece, caption = "ECE (raw data, Pre-COVID, no segmentation)")
+knitr::kable(omega_raw_aic_precovid$seg, caption = "Segmentation-implied (AIC (Pre-COVID))")
+```
+
+:::
+
+#### Results
+
+```{R fredmd-raw-aic-precovid-pairwise}
+#| echo: false
+#| warning: false
+
+pw_raw_aic_precovid <- fredmd_pairwise_results(X_mat_precovid, X_resid_raw_aic_precovid)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R fredmd-raw-aic-precovid-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_raw_aic_precovid$ece_cor, pw_raw_aic_precovid$ece_pmat),         caption = "ECE Correlation (AIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_aic_precovid$seg_ece_cor, pw_raw_aic_precovid$seg_ece_pmat), caption = "Segment-ECE Correlation (AIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_aic_precovid$pearson_cor, pw_raw_aic_precovid$pearson_pmat), caption = "Naive Pearson Correlation (AIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_aic_precovid$resid_cor, pw_raw_aic_precovid$resid_pmat),     caption = "Residual Pearson Correlation (AIC (Pre-COVID))", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R fredmd-raw-aic-precovid-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_raw_aic_precovid$ece_pmat, pw_raw_aic_precovid$ece_pmat),         caption = "ECE P-Values (AIC (Pre-COVID), null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_aic_precovid$seg_ece_pmat, pw_raw_aic_precovid$seg_ece_pmat), caption = "Segment-ECE P-Values (AIC (Pre-COVID), null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_aic_precovid$pearson_pmat, pw_raw_aic_precovid$pearson_pmat), caption = "Naive Pearson P-Values (AIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_aic_precovid$resid_pmat, pw_raw_aic_precovid$resid_pmat),     caption = "Residual Pearson P-Values (AIC (Pre-COVID))", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+::: {.panel-tabset}
+
+###### All Sectors
+
+```{R fredmd-raw-aic-precovid-diagonal-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_raw_aic_precovid <- fredmd_diagonal_results(X_mat_precovid, X_resid_raw_aic_precovid)
+knitr::kable(diag_raw_aic_precovid$raw, caption = "AIC (Pre-COVID), Unsegmented")
+knitr::kable(diag_raw_aic_precovid$seg, caption = "AIC (Pre-COVID), Segmented Residuals")
+```
+
+###### No Manufacturing
+
+```{R fredmd-raw-aic-precovid-diagonal-output-noman}
+#| layout-ncol: 2
+#| echo: false
+
+diag_raw_aic_precovid_noman <- fredmd_diagonal_results(fredmd_no_manu(X_mat_precovid), fredmd_no_manu(X_resid_raw_aic_precovid))
+knitr::kable(diag_raw_aic_precovid_noman$raw, caption = "AIC (Pre-COVID), Unsegmented, No Manufacturing")
+knitr::kable(diag_raw_aic_precovid_noman$seg, caption = "AIC (Pre-COVID), Segmented Residuals, No Manufacturing")
+```
+
+:::
+
+:::
+
+:::
+
+### BIC (Pre-COVID)
+
+```{R fredmd-raw-bic-precovid-fit}
+#| echo: false
+
+X_seg_raw_bic_precovid   <- segment_mean(X_mat_precovid, penalty = "BIC")
+X_resid_raw_bic_precovid <- X_mat_precovid - X_seg_raw_bic_precovid
+```
+
+```{R fredmd-raw-bic-precovid-segments-table}
+#| echo: false
+
+kable(fredmd_segments_table(X_seg_raw_bic_precovid, "BIC (Pre-COVID)"), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R fredmd-raw-bic-precovid-plot}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_series(dates_precovid, X_mat_precovid, X_seg_raw_bic_precovid, "Levels by Series (BIC, Pre-COVID)", "Level (series-specific units)", zero_line = FALSE)
+```
+
+##### Residuals
+
+```{R fredmd-raw-bic-precovid-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_residuals(dates_precovid, X_resid_raw_bic_precovid, "Residuals after Segmentation (BIC (Pre-COVID))")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-raw-bic-precovid-acf-naive}
+#| echo: false
+
+fredmd_acf_naive(X_resid_raw_bic_precovid)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-raw-bic-precovid-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_precovid)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-raw-bic-precovid-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_precovid)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-raw-bic-precovid-trend-ece}
+#| echo: false
+
+window_raw_bic_precovid <- max(10, floor(nrow(X_mat_precovid) / 5))
+terms_raw_bic_precovid  <- fredmd_ece_terms(X_mat_precovid, window_raw_bic_precovid)
+fredmd_plot_ece_trend(terms_raw_bic_precovid)
+```
+
+:::
+
+##### Kappa
+
+```{R fredmd-raw-bic-precovid-kappa-check}
+#| echo: false
+
+kable(fredmd_kappa_table(X_resid_raw_bic_precovid), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R fredmd-raw-bic-precovid-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_raw_bic_precovid <- fredmd_omega_check(X_mat_precovid, X_seg_raw_bic_precovid)
+knitr::kable(omega_raw_bic_precovid$ece, caption = "ECE (raw data, Pre-COVID, no segmentation)")
+knitr::kable(omega_raw_bic_precovid$seg, caption = "Segmentation-implied (BIC (Pre-COVID))")
+```
+
+:::
+
+#### Results
+
+```{R fredmd-raw-bic-precovid-pairwise}
+#| echo: false
+#| warning: false
+
+pw_raw_bic_precovid <- fredmd_pairwise_results(X_mat_precovid, X_resid_raw_bic_precovid)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R fredmd-raw-bic-precovid-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_raw_bic_precovid$ece_cor, pw_raw_bic_precovid$ece_pmat),         caption = "ECE Correlation (BIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_bic_precovid$seg_ece_cor, pw_raw_bic_precovid$seg_ece_pmat), caption = "Segment-ECE Correlation (BIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_bic_precovid$pearson_cor, pw_raw_bic_precovid$pearson_pmat), caption = "Naive Pearson Correlation (BIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_bic_precovid$resid_cor, pw_raw_bic_precovid$resid_pmat),     caption = "Residual Pearson Correlation (BIC (Pre-COVID))", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R fredmd-raw-bic-precovid-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_raw_bic_precovid$ece_pmat, pw_raw_bic_precovid$ece_pmat),         caption = "ECE P-Values (BIC (Pre-COVID), null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_bic_precovid$seg_ece_pmat, pw_raw_bic_precovid$seg_ece_pmat), caption = "Segment-ECE P-Values (BIC (Pre-COVID), null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_bic_precovid$pearson_pmat, pw_raw_bic_precovid$pearson_pmat), caption = "Naive Pearson P-Values (BIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_raw_bic_precovid$resid_pmat, pw_raw_bic_precovid$resid_pmat),     caption = "Residual Pearson P-Values (BIC (Pre-COVID))", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+::: {.panel-tabset}
+
+###### All Sectors
+
+```{R fredmd-raw-bic-precovid-diagonal-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_raw_bic_precovid <- fredmd_diagonal_results(X_mat_precovid, X_resid_raw_bic_precovid)
+knitr::kable(diag_raw_bic_precovid$raw, caption = "BIC (Pre-COVID), Unsegmented")
+knitr::kable(diag_raw_bic_precovid$seg, caption = "BIC (Pre-COVID), Segmented Residuals")
+```
+
+###### No Manufacturing
+
+```{R fredmd-raw-bic-precovid-diagonal-output-noman}
+#| layout-ncol: 2
+#| echo: false
+
+diag_raw_bic_precovid_noman <- fredmd_diagonal_results(fredmd_no_manu(X_mat_precovid), fredmd_no_manu(X_resid_raw_bic_precovid))
+knitr::kable(diag_raw_bic_precovid_noman$raw, caption = "BIC (Pre-COVID), Unsegmented, No Manufacturing")
+knitr::kable(diag_raw_bic_precovid_noman$seg, caption = "BIC (Pre-COVID), Segmented Residuals, No Manufacturing")
+```
+
+:::
+
+:::
+
+:::
+
+:::
+
+## Log-Transformed
+
+```{R fredmd-log-data}
+#| echo: false
+
+X_data_log <- X_data |>
+  mutate(across(-date, ~ c(NA, diff(log(.x))))) |>
+  filter(!is.na(Manufacturing))
+
+X_mat_log <- as.matrix(X_data_log[, -1])
+dates_log <- X_data_log$date
+```
+
+`r nrow(X_data_log)` monthly log growth-rate observations (one fewer than the raw series, lost to differencing). Same three segmentation choices as Raw above: `ω fitted` uses `pen_grid_log <- 10^seq(-8, 0, length.out = 100)`, since log growth sits on a much smaller scale than raw levels; `AIC` and `BIC` use `segment_mean()`'s built-in criteria.
+
+```{R fredmd-log-precovid-data}
+#| echo: false
+
+X_data_log_precovid <- X_data_log |> filter(date < as.Date("2020-01-01"))
+X_mat_log_precovid  <- as.matrix(X_data_log_precovid[, -1])
+dates_log_precovid  <- X_data_log_precovid$date
+```
+
+`r nrow(X_data_log_precovid)` monthly log growth-rate observations, Pre-COVID. Same rationale as Raw above: the `(Pre-COVID)` tabs drop the pandemic shock and every month since (`date < 2020-01-01`).
+
+::: {.panel-tabset}
+
+
+### ω fitted
+
+```{R fredmd-log-omegafit-fit}
+#| echo: false
+
+fit_log_omegafit  <- fredmd_fit_segmentation(X_mat_log, pen_grid_log)
+X_seg_log_omegafit   <- fit_log_omegafit$X_seg
+X_resid_log_omegafit <- X_mat_log - X_seg_log_omegafit
+```
+
+```{R fredmd-log-omegafit-penalty-table}
+#| echo: false
+
+kable(fredmd_penalty_table(fit_log_omegafit$pen, X_seg_log_omegafit), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R fredmd-log-omegafit-plot}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_series(dates_log, X_mat_log, X_seg_log_omegafit, "Log Growth by Series (ω fitted)", "Log growth rate", zero_line = TRUE)
+```
+
+##### Residuals
+
+```{R fredmd-log-omegafit-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_residuals(dates_log, X_resid_log_omegafit, "Residuals after Segmentation (ω fitted)")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-log-omegafit-acf-naive}
+#| echo: false
+
+fredmd_acf_naive(X_resid_log_omegafit)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-log-omegafit-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_log)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-log-omegafit-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_log)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-log-omegafit-trend-ece}
+#| echo: false
+
+window_log_omegafit <- max(10, floor(nrow(X_mat_log) / 5))
+terms_log_omegafit  <- fredmd_ece_terms(X_mat_log, window_log_omegafit)
+fredmd_plot_ece_trend(terms_log_omegafit)
+```
+
+:::
+
+##### Kappa
+
+```{R fredmd-log-omegafit-kappa-check}
+#| echo: false
+
+kable(fredmd_kappa_table(X_resid_log_omegafit), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R fredmd-log-omegafit-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_log_omegafit <- fredmd_omega_check(X_mat_log, X_seg_log_omegafit)
+knitr::kable(omega_log_omegafit$ece, caption = "ECE (log growth, no segmentation)")
+knitr::kable(omega_log_omegafit$seg, caption = "Segmentation-implied (ω fitted)")
+```
+
+:::
+
+#### Results
+
+```{R fredmd-log-omegafit-pairwise}
+#| echo: false
+#| warning: false
+
+pw_log_omegafit <- fredmd_pairwise_results(X_mat_log, X_resid_log_omegafit)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R fredmd-log-omegafit-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_omegafit$ece_cor, pw_log_omegafit$ece_pmat),         caption = "ECE Correlation (ω fitted)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_omegafit$seg_ece_cor, pw_log_omegafit$seg_ece_pmat), caption = "Segment-ECE Correlation (ω fitted)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_omegafit$pearson_cor, pw_log_omegafit$pearson_pmat), caption = "Naive Pearson Correlation (ω fitted)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_omegafit$resid_cor, pw_log_omegafit$resid_pmat),     caption = "Residual Pearson Correlation (ω fitted)", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R fredmd-log-omegafit-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_omegafit$ece_pmat, pw_log_omegafit$ece_pmat),         caption = "ECE P-Values (ω fitted, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_omegafit$seg_ece_pmat, pw_log_omegafit$seg_ece_pmat), caption = "Segment-ECE P-Values (ω fitted, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_omegafit$pearson_pmat, pw_log_omegafit$pearson_pmat), caption = "Naive Pearson P-Values (ω fitted)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_omegafit$resid_pmat, pw_log_omegafit$resid_pmat),     caption = "Residual Pearson P-Values (ω fitted)", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+::: {.panel-tabset}
+
+###### All Sectors
+
+```{R fredmd-log-omegafit-diagonal-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_omegafit <- fredmd_diagonal_results(X_mat_log, X_resid_log_omegafit)
+knitr::kable(diag_log_omegafit$raw, caption = "ω fitted, Unsegmented")
+knitr::kable(diag_log_omegafit$seg, caption = "ω fitted, Segmented Residuals")
+```
+
+###### No Manufacturing
+
+```{R fredmd-log-omegafit-diagonal-output-noman}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_omegafit_noman <- fredmd_diagonal_results(fredmd_no_manu(X_mat_log), fredmd_no_manu(X_resid_log_omegafit))
+knitr::kable(diag_log_omegafit_noman$raw, caption = "ω fitted, Unsegmented, No Manufacturing")
+knitr::kable(diag_log_omegafit_noman$seg, caption = "ω fitted, Segmented Residuals, No Manufacturing")
+```
+
+:::
+
+:::
+
+:::
+
+### AIC
+
+```{R fredmd-log-aic-fit}
+#| echo: false
+
+X_seg_log_aic   <- segment_mean(X_mat_log, penalty = "AIC")
+X_resid_log_aic <- X_mat_log - X_seg_log_aic
+```
+
+```{R fredmd-log-aic-segments-table}
+#| echo: false
+
+kable(fredmd_segments_table(X_seg_log_aic, "AIC"), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R fredmd-log-aic-plot}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_series(dates_log, X_mat_log, X_seg_log_aic, "Log Growth by Series (AIC)", "Log growth rate", zero_line = TRUE)
+```
+
+##### Residuals
+
+```{R fredmd-log-aic-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_residuals(dates_log, X_resid_log_aic, "Residuals after Segmentation (AIC)")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-log-aic-acf-naive}
+#| echo: false
+
+fredmd_acf_naive(X_resid_log_aic)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-log-aic-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_log)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-log-aic-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_log)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-log-aic-trend-ece}
+#| echo: false
+
+window_log_aic <- max(10, floor(nrow(X_mat_log) / 5))
+terms_log_aic  <- fredmd_ece_terms(X_mat_log, window_log_aic)
+fredmd_plot_ece_trend(terms_log_aic)
+```
+
+:::
+
+##### Kappa
+
+```{R fredmd-log-aic-kappa-check}
+#| echo: false
+
+kable(fredmd_kappa_table(X_resid_log_aic), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R fredmd-log-aic-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_log_aic <- fredmd_omega_check(X_mat_log, X_seg_log_aic)
+knitr::kable(omega_log_aic$ece, caption = "ECE (log growth, no segmentation)")
+knitr::kable(omega_log_aic$seg, caption = "Segmentation-implied (AIC)")
+```
+
+:::
+
+#### Results
+
+```{R fredmd-log-aic-pairwise}
+#| echo: false
+#| warning: false
+
+pw_log_aic <- fredmd_pairwise_results(X_mat_log, X_resid_log_aic)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R fredmd-log-aic-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_aic$ece_cor, pw_log_aic$ece_pmat),         caption = "ECE Correlation (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic$seg_ece_cor, pw_log_aic$seg_ece_pmat), caption = "Segment-ECE Correlation (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic$pearson_cor, pw_log_aic$pearson_pmat), caption = "Naive Pearson Correlation (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic$resid_cor, pw_log_aic$resid_pmat),     caption = "Residual Pearson Correlation (AIC)", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R fredmd-log-aic-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_aic$ece_pmat, pw_log_aic$ece_pmat),         caption = "ECE P-Values (AIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic$seg_ece_pmat, pw_log_aic$seg_ece_pmat), caption = "Segment-ECE P-Values (AIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic$pearson_pmat, pw_log_aic$pearson_pmat), caption = "Naive Pearson P-Values (AIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic$resid_pmat, pw_log_aic$resid_pmat),     caption = "Residual Pearson P-Values (AIC)", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+::: {.panel-tabset}
+
+###### All Sectors
+
+```{R fredmd-log-aic-diagonal-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_aic <- fredmd_diagonal_results(X_mat_log, X_resid_log_aic)
+knitr::kable(diag_log_aic$raw, caption = "AIC, Unsegmented")
+knitr::kable(diag_log_aic$seg, caption = "AIC, Segmented Residuals")
+```
+
+###### No Manufacturing
+
+```{R fredmd-log-aic-diagonal-output-noman}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_aic_noman <- fredmd_diagonal_results(fredmd_no_manu(X_mat_log), fredmd_no_manu(X_resid_log_aic))
+knitr::kable(diag_log_aic_noman$raw, caption = "AIC, Unsegmented, No Manufacturing")
+knitr::kable(diag_log_aic_noman$seg, caption = "AIC, Segmented Residuals, No Manufacturing")
+```
+
+:::
+
+:::
+
+:::
+
+### BIC
+
+```{R fredmd-log-bic-fit}
+#| echo: false
+
+X_seg_log_bic   <- segment_mean(X_mat_log, penalty = "BIC")
+X_resid_log_bic <- X_mat_log - X_seg_log_bic
+```
+
+```{R fredmd-log-bic-segments-table}
+#| echo: false
+
+kable(fredmd_segments_table(X_seg_log_bic, "BIC"), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R fredmd-log-bic-plot}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_series(dates_log, X_mat_log, X_seg_log_bic, "Log Growth by Series (BIC)", "Log growth rate", zero_line = TRUE)
+```
+
+##### Residuals
+
+```{R fredmd-log-bic-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_residuals(dates_log, X_resid_log_bic, "Residuals after Segmentation (BIC)")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-log-bic-acf-naive}
+#| echo: false
+
+fredmd_acf_naive(X_resid_log_bic)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-log-bic-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_log)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-log-bic-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_log)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-log-bic-trend-ece}
+#| echo: false
+
+window_log_bic <- max(10, floor(nrow(X_mat_log) / 5))
+terms_log_bic  <- fredmd_ece_terms(X_mat_log, window_log_bic)
+fredmd_plot_ece_trend(terms_log_bic)
+```
+
+:::
+
+##### Kappa
+
+```{R fredmd-log-bic-kappa-check}
+#| echo: false
+
+kable(fredmd_kappa_table(X_resid_log_bic), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R fredmd-log-bic-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_log_bic <- fredmd_omega_check(X_mat_log, X_seg_log_bic)
+knitr::kable(omega_log_bic$ece, caption = "ECE (log growth, no segmentation)")
+knitr::kable(omega_log_bic$seg, caption = "Segmentation-implied (BIC)")
+```
+
+:::
+
+#### Results
+
+```{R fredmd-log-bic-pairwise}
+#| echo: false
+#| warning: false
+
+pw_log_bic <- fredmd_pairwise_results(X_mat_log, X_resid_log_bic)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R fredmd-log-bic-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_bic$ece_cor, pw_log_bic$ece_pmat),         caption = "ECE Correlation (BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic$seg_ece_cor, pw_log_bic$seg_ece_pmat), caption = "Segment-ECE Correlation (BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic$pearson_cor, pw_log_bic$pearson_pmat), caption = "Naive Pearson Correlation (BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic$resid_cor, pw_log_bic$resid_pmat),     caption = "Residual Pearson Correlation (BIC)", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R fredmd-log-bic-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_bic$ece_pmat, pw_log_bic$ece_pmat),         caption = "ECE P-Values (BIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic$seg_ece_pmat, pw_log_bic$seg_ece_pmat), caption = "Segment-ECE P-Values (BIC, null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic$pearson_pmat, pw_log_bic$pearson_pmat), caption = "Naive Pearson P-Values (BIC)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic$resid_pmat, pw_log_bic$resid_pmat),     caption = "Residual Pearson P-Values (BIC)", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+::: {.panel-tabset}
+
+###### All Sectors
+
+```{R fredmd-log-bic-diagonal-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_bic <- fredmd_diagonal_results(X_mat_log, X_resid_log_bic)
+knitr::kable(diag_log_bic$raw, caption = "BIC, Unsegmented")
+knitr::kable(diag_log_bic$seg, caption = "BIC, Segmented Residuals")
+```
+
+###### No Manufacturing
+
+```{R fredmd-log-bic-diagonal-output-noman}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_bic_noman <- fredmd_diagonal_results(fredmd_no_manu(X_mat_log), fredmd_no_manu(X_resid_log_bic))
+knitr::kable(diag_log_bic_noman$raw, caption = "BIC, Unsegmented, No Manufacturing")
+knitr::kable(diag_log_bic_noman$seg, caption = "BIC, Segmented Residuals, No Manufacturing")
+```
+
+:::
+
+:::
+
+:::
+
+### ω fitted (Pre-COVID)
+
+```{R fredmd-log-omegafit-precovid-fit}
+#| echo: false
+
+fit_log_omegafit_precovid  <- fredmd_fit_segmentation(X_mat_log_precovid, pen_grid_log)
+X_seg_log_omegafit_precovid   <- fit_log_omegafit_precovid$X_seg
+X_resid_log_omegafit_precovid <- X_mat_log_precovid - X_seg_log_omegafit_precovid
+```
+
+```{R fredmd-log-omegafit-precovid-penalty-table}
+#| echo: false
+
+kable(fredmd_penalty_table(fit_log_omegafit_precovid$pen, X_seg_log_omegafit_precovid), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R fredmd-log-omegafit-precovid-plot}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_series(dates_log_precovid, X_mat_log_precovid, X_seg_log_omegafit_precovid, "Log Growth by Series (ω fitted, Pre-COVID)", "Log growth rate", zero_line = TRUE)
+```
+
+##### Residuals
+
+```{R fredmd-log-omegafit-precovid-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_residuals(dates_log_precovid, X_resid_log_omegafit_precovid, "Residuals after Segmentation (ω fitted (Pre-COVID))")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-log-omegafit-precovid-acf-naive}
+#| echo: false
+
+fredmd_acf_naive(X_resid_log_omegafit_precovid)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-log-omegafit-precovid-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_log_precovid)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-log-omegafit-precovid-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_log_precovid)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-log-omegafit-precovid-trend-ece}
+#| echo: false
+
+window_log_omegafit_precovid <- max(10, floor(nrow(X_mat_log_precovid) / 5))
+terms_log_omegafit_precovid  <- fredmd_ece_terms(X_mat_log_precovid, window_log_omegafit_precovid)
+fredmd_plot_ece_trend(terms_log_omegafit_precovid)
+```
+
+:::
+
+##### Kappa
+
+```{R fredmd-log-omegafit-precovid-kappa-check}
+#| echo: false
+
+kable(fredmd_kappa_table(X_resid_log_omegafit_precovid), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R fredmd-log-omegafit-precovid-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_log_omegafit_precovid <- fredmd_omega_check(X_mat_log_precovid, X_seg_log_omegafit_precovid)
+knitr::kable(omega_log_omegafit_precovid$ece, caption = "ECE (log growth, Pre-COVID, no segmentation)")
+knitr::kable(omega_log_omegafit_precovid$seg, caption = "Segmentation-implied (ω fitted (Pre-COVID))")
+```
+
+:::
+
+#### Results
+
+```{R fredmd-log-omegafit-precovid-pairwise}
+#| echo: false
+#| warning: false
+
+pw_log_omegafit_precovid <- fredmd_pairwise_results(X_mat_log_precovid, X_resid_log_omegafit_precovid)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R fredmd-log-omegafit-precovid-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_omegafit_precovid$ece_cor, pw_log_omegafit_precovid$ece_pmat),         caption = "ECE Correlation (ω fitted (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_omegafit_precovid$seg_ece_cor, pw_log_omegafit_precovid$seg_ece_pmat), caption = "Segment-ECE Correlation (ω fitted (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_omegafit_precovid$pearson_cor, pw_log_omegafit_precovid$pearson_pmat), caption = "Naive Pearson Correlation (ω fitted (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_omegafit_precovid$resid_cor, pw_log_omegafit_precovid$resid_pmat),     caption = "Residual Pearson Correlation (ω fitted (Pre-COVID))", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R fredmd-log-omegafit-precovid-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_omegafit_precovid$ece_pmat, pw_log_omegafit_precovid$ece_pmat),         caption = "ECE P-Values (ω fitted (Pre-COVID), null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_omegafit_precovid$seg_ece_pmat, pw_log_omegafit_precovid$seg_ece_pmat), caption = "Segment-ECE P-Values (ω fitted (Pre-COVID), null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_omegafit_precovid$pearson_pmat, pw_log_omegafit_precovid$pearson_pmat), caption = "Naive Pearson P-Values (ω fitted (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_omegafit_precovid$resid_pmat, pw_log_omegafit_precovid$resid_pmat),     caption = "Residual Pearson P-Values (ω fitted (Pre-COVID))", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+::: {.panel-tabset}
+
+###### All Sectors
+
+```{R fredmd-log-omegafit-precovid-diagonal-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_omegafit_precovid <- fredmd_diagonal_results(X_mat_log_precovid, X_resid_log_omegafit_precovid)
+knitr::kable(diag_log_omegafit_precovid$raw, caption = "ω fitted (Pre-COVID), Unsegmented")
+knitr::kable(diag_log_omegafit_precovid$seg, caption = "ω fitted (Pre-COVID), Segmented Residuals")
+```
+
+###### No Manufacturing
+
+```{R fredmd-log-omegafit-precovid-diagonal-output-noman}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_omegafit_precovid_noman <- fredmd_diagonal_results(fredmd_no_manu(X_mat_log_precovid), fredmd_no_manu(X_resid_log_omegafit_precovid))
+knitr::kable(diag_log_omegafit_precovid_noman$raw, caption = "ω fitted (Pre-COVID), Unsegmented, No Manufacturing")
+knitr::kable(diag_log_omegafit_precovid_noman$seg, caption = "ω fitted (Pre-COVID), Segmented Residuals, No Manufacturing")
+```
+
+:::
+
+:::
+
+:::
+
+### AIC (Pre-COVID)
+
+```{R fredmd-log-aic-precovid-fit}
+#| echo: false
+
+X_seg_log_aic_precovid   <- segment_mean(X_mat_log_precovid, penalty = "AIC")
+X_resid_log_aic_precovid <- X_mat_log_precovid - X_seg_log_aic_precovid
+```
+
+```{R fredmd-log-aic-precovid-segments-table}
+#| echo: false
+
+kable(fredmd_segments_table(X_seg_log_aic_precovid, "AIC (Pre-COVID)"), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R fredmd-log-aic-precovid-plot}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_series(dates_log_precovid, X_mat_log_precovid, X_seg_log_aic_precovid, "Log Growth by Series (AIC, Pre-COVID)", "Log growth rate", zero_line = TRUE)
+```
+
+##### Residuals
+
+```{R fredmd-log-aic-precovid-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_residuals(dates_log_precovid, X_resid_log_aic_precovid, "Residuals after Segmentation (AIC (Pre-COVID))")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-log-aic-precovid-acf-naive}
+#| echo: false
+
+fredmd_acf_naive(X_resid_log_aic_precovid)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-log-aic-precovid-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_log_precovid)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-log-aic-precovid-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_log_precovid)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-log-aic-precovid-trend-ece}
+#| echo: false
+
+window_log_aic_precovid <- max(10, floor(nrow(X_mat_log_precovid) / 5))
+terms_log_aic_precovid  <- fredmd_ece_terms(X_mat_log_precovid, window_log_aic_precovid)
+fredmd_plot_ece_trend(terms_log_aic_precovid)
+```
+
+:::
+
+##### Kappa
+
+```{R fredmd-log-aic-precovid-kappa-check}
+#| echo: false
+
+kable(fredmd_kappa_table(X_resid_log_aic_precovid), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R fredmd-log-aic-precovid-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_log_aic_precovid <- fredmd_omega_check(X_mat_log_precovid, X_seg_log_aic_precovid)
+knitr::kable(omega_log_aic_precovid$ece, caption = "ECE (log growth, Pre-COVID, no segmentation)")
+knitr::kable(omega_log_aic_precovid$seg, caption = "Segmentation-implied (AIC (Pre-COVID))")
+```
+
+:::
+
+#### Results
+
+```{R fredmd-log-aic-precovid-pairwise}
+#| echo: false
+#| warning: false
+
+pw_log_aic_precovid <- fredmd_pairwise_results(X_mat_log_precovid, X_resid_log_aic_precovid)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R fredmd-log-aic-precovid-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_aic_precovid$ece_cor, pw_log_aic_precovid$ece_pmat),         caption = "ECE Correlation (AIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic_precovid$seg_ece_cor, pw_log_aic_precovid$seg_ece_pmat), caption = "Segment-ECE Correlation (AIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic_precovid$pearson_cor, pw_log_aic_precovid$pearson_pmat), caption = "Naive Pearson Correlation (AIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic_precovid$resid_cor, pw_log_aic_precovid$resid_pmat),     caption = "Residual Pearson Correlation (AIC (Pre-COVID))", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R fredmd-log-aic-precovid-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_aic_precovid$ece_pmat, pw_log_aic_precovid$ece_pmat),         caption = "ECE P-Values (AIC (Pre-COVID), null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic_precovid$seg_ece_pmat, pw_log_aic_precovid$seg_ece_pmat), caption = "Segment-ECE P-Values (AIC (Pre-COVID), null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic_precovid$pearson_pmat, pw_log_aic_precovid$pearson_pmat), caption = "Naive Pearson P-Values (AIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_aic_precovid$resid_pmat, pw_log_aic_precovid$resid_pmat),     caption = "Residual Pearson P-Values (AIC (Pre-COVID))", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+::: {.panel-tabset}
+
+###### All Sectors
+
+```{R fredmd-log-aic-precovid-diagonal-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_aic_precovid <- fredmd_diagonal_results(X_mat_log_precovid, X_resid_log_aic_precovid)
+knitr::kable(diag_log_aic_precovid$raw, caption = "AIC (Pre-COVID), Unsegmented")
+knitr::kable(diag_log_aic_precovid$seg, caption = "AIC (Pre-COVID), Segmented Residuals")
+```
+
+###### No Manufacturing
+
+```{R fredmd-log-aic-precovid-diagonal-output-noman}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_aic_precovid_noman <- fredmd_diagonal_results(fredmd_no_manu(X_mat_log_precovid), fredmd_no_manu(X_resid_log_aic_precovid))
+knitr::kable(diag_log_aic_precovid_noman$raw, caption = "AIC (Pre-COVID), Unsegmented, No Manufacturing")
+knitr::kable(diag_log_aic_precovid_noman$seg, caption = "AIC (Pre-COVID), Segmented Residuals, No Manufacturing")
+```
+
+:::
+
+:::
+
+:::
+
+### BIC (Pre-COVID)
+
+```{R fredmd-log-bic-precovid-fit}
+#| echo: false
+
+X_seg_log_bic_precovid   <- segment_mean(X_mat_log_precovid, penalty = "BIC")
+X_resid_log_bic_precovid <- X_mat_log_precovid - X_seg_log_bic_precovid
+```
+
+```{R fredmd-log-bic-precovid-segments-table}
+#| echo: false
+
+kable(fredmd_segments_table(X_seg_log_bic_precovid, "BIC (Pre-COVID)"), align = c("l", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+::: {.panel-tabset}
+
+#### Diagnostics
+
+::: {.panel-tabset}
+
+##### Plot
+
+```{R fredmd-log-bic-precovid-plot}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_series(dates_log_precovid, X_mat_log_precovid, X_seg_log_bic_precovid, "Log Growth by Series (BIC, Pre-COVID)", "Log growth rate", zero_line = TRUE)
+```
+
+##### Residuals
+
+```{R fredmd-log-bic-precovid-plot-residuals}
+#| echo: false
+#| fig-height: 7
+
+fredmd_plot_residuals(dates_log_precovid, X_resid_log_bic_precovid, "Residuals after Segmentation (BIC (Pre-COVID))")
+```
+
+##### ACF
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-log-bic-precovid-acf-naive}
+#| echo: false
+
+fredmd_acf_naive(X_resid_log_bic_precovid)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-log-bic-precovid-acf-sip}
+#| echo: false
+
+plot_sip_acf(X_mat_log_precovid)
+```
+
+:::
+
+##### Trend
+
+::: {.panel-tabset}
+
+###### Naive
+
+```{R fredmd-log-bic-precovid-trend-naive}
+#| echo: false
+
+plot_naive_terms(X_mat_log_precovid)
+```
+
+###### Mean-Shift-Invariant
+
+```{R fredmd-log-bic-precovid-trend-ece}
+#| echo: false
+
+window_log_bic_precovid <- max(10, floor(nrow(X_mat_log_precovid) / 5))
+terms_log_bic_precovid  <- fredmd_ece_terms(X_mat_log_precovid, window_log_bic_precovid)
+fredmd_plot_ece_trend(terms_log_bic_precovid)
+```
+
+:::
+
+##### Kappa
+
+```{R fredmd-log-bic-precovid-kappa-check}
+#| echo: false
+
+kable(fredmd_kappa_table(X_resid_log_bic_precovid), align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+##### Omega
+
+```{R fredmd-log-bic-precovid-omega-check}
+#| echo: false
+#| layout-ncol: 2
+
+omega_log_bic_precovid <- fredmd_omega_check(X_mat_log_precovid, X_seg_log_bic_precovid)
+knitr::kable(omega_log_bic_precovid$ece, caption = "ECE (log growth, Pre-COVID, no segmentation)")
+knitr::kable(omega_log_bic_precovid$seg, caption = "Segmentation-implied (BIC (Pre-COVID))")
+```
+
+:::
+
+#### Results
+
+```{R fredmd-log-bic-precovid-pairwise}
+#| echo: false
+#| warning: false
+
+pw_log_bic_precovid <- fredmd_pairwise_results(X_mat_log_precovid, X_resid_log_bic_precovid)
+```
+
+::: {.panel-tabset}
+
+##### Pairwise
+
+::: {.panel-tabset}
+
+###### Correlation
+
+```{R fredmd-log-bic-precovid-output-cor}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_bic_precovid$ece_cor, pw_log_bic_precovid$ece_pmat),         caption = "ECE Correlation (BIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic_precovid$seg_ece_cor, pw_log_bic_precovid$seg_ece_pmat), caption = "Segment-ECE Correlation (BIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic_precovid$pearson_cor, pw_log_bic_precovid$pearson_pmat), caption = "Naive Pearson Correlation (BIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic_precovid$resid_cor, pw_log_bic_precovid$resid_pmat),     caption = "Residual Pearson Correlation (BIC (Pre-COVID))", escape = FALSE, format = "html")
+```
+
+###### P-Values
+
+```{R fredmd-log-bic-precovid-output-pval}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw_log_bic_precovid$ece_pmat, pw_log_bic_precovid$ece_pmat),         caption = "ECE P-Values (BIC (Pre-COVID), null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic_precovid$seg_ece_pmat, pw_log_bic_precovid$seg_ece_pmat), caption = "Segment-ECE P-Values (BIC (Pre-COVID), null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic_precovid$pearson_pmat, pw_log_bic_precovid$pearson_pmat), caption = "Naive Pearson P-Values (BIC (Pre-COVID))", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw_log_bic_precovid$resid_pmat, pw_log_bic_precovid$resid_pmat),     caption = "Residual Pearson P-Values (BIC (Pre-COVID))", escape = FALSE, format = "html")
+```
+
+:::
+
+##### Diagonal
+
+::: {.panel-tabset}
+
+###### All Sectors
+
+```{R fredmd-log-bic-precovid-diagonal-output}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_bic_precovid <- fredmd_diagonal_results(X_mat_log_precovid, X_resid_log_bic_precovid)
+knitr::kable(diag_log_bic_precovid$raw, caption = "BIC (Pre-COVID), Unsegmented")
+knitr::kable(diag_log_bic_precovid$seg, caption = "BIC (Pre-COVID), Segmented Residuals")
+```
+
+###### No Manufacturing
+
+```{R fredmd-log-bic-precovid-diagonal-output-noman}
+#| layout-ncol: 2
+#| echo: false
+
+diag_log_bic_precovid_noman <- fredmd_diagonal_results(fredmd_no_manu(X_mat_log_precovid), fredmd_no_manu(X_resid_log_bic_precovid))
+knitr::kable(diag_log_bic_precovid_noman$raw, caption = "BIC (Pre-COVID), Unsegmented, No Manufacturing")
+knitr::kable(diag_log_bic_precovid_noman$seg, caption = "BIC (Pre-COVID), Segmented Residuals, No Manufacturing")
+```
+
+:::
+
+:::
+
+:::
+
+:::
+
+:::
