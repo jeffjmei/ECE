@@ -91,6 +91,13 @@ X_seg_raw   <- segment_mean(X_mat_raw, penalty = "BIC")
 X_resid_raw <- X_mat_raw - X_seg_raw
 
 n_segs_raw <- apply(X_seg_raw, 2, function(c) length(unique(c)))
+
+# Total (PCECC96) added in for the pairwise comparisons below, and reused by
+# the Diagonal tab's "With Total" check further down.
+X_mat_raw_total   <- cbind(X_mat_raw, Total = X_raw$PCECC96)
+X_seg_raw_total   <- segment_mean(X_mat_raw_total, penalty = "BIC")
+colnames(X_seg_raw_total) <- colnames(X_mat_raw_total)
+X_resid_raw_total <- X_mat_raw_total - X_seg_raw_total
 ```
 
 BIC finds `r n_segs_raw[["Durables"]]`, `r n_segs_raw[["Nondurables"]]`, and `r n_segs_raw[["Services"]]` segments for Durables, Nondurables, and Services respectively, out of `r nrow(X_mat_raw)` quarters.
@@ -330,18 +337,18 @@ We start with pairwise comparisons: ECE and Segment-ECE — ECE applied to the r
 #| echo: false
 #| warning: false
 
-ece_cor_raw               <- ece.cor(X_mat_raw) |> round(3)
-rownames(ece_cor_raw)     <- colnames(ece_cor_raw) <- colnames(X_mat_raw)
-seg_ece_cor_raw           <- ece.cor(X_resid_raw) |> round(3)
-rownames(seg_ece_cor_raw) <- colnames(seg_ece_cor_raw) <- colnames(X_mat_raw)
+ece_cor_raw               <- ece.cor(X_mat_raw_total) |> round(3)
+rownames(ece_cor_raw)     <- colnames(ece_cor_raw) <- colnames(X_mat_raw_total)
+seg_ece_cor_raw           <- ece.cor(X_resid_raw_total) |> round(3)
+rownames(seg_ece_cor_raw) <- colnames(seg_ece_cor_raw) <- colnames(X_mat_raw_total)
 
-resid_cor_raw   <- cor(X_resid_raw) |> round(3)
-pearson_cor_raw <- cor(X_mat_raw) |> round(3)
+resid_cor_raw   <- cor(X_resid_raw_total) |> round(3)
+pearson_cor_raw <- cor(X_mat_raw_total) |> round(3)
 
-ece_pmat_raw     <- ece_pval_null(X_mat_raw) |> round(3)
-seg_ece_pmat_raw <- ece_pval_null(X_resid_raw) |> round(3)
-resid_pmat_raw   <- cor_pval(X_resid_raw) |> round(3)
-pearson_pmat_raw <- cor_pval(X_mat_raw) |> round(3)
+ece_pmat_raw     <- ece_pval_null(X_mat_raw_total) |> round(3)
+seg_ece_pmat_raw <- ece_pval_null(X_resid_raw_total) |> round(3)
+resid_pmat_raw   <- cor_pval(X_resid_raw_total) |> round(3)
+pearson_pmat_raw <- cor_pval(X_mat_raw_total) |> round(3)
 ```
 
 ::: {.panel-tabset}
@@ -362,7 +369,7 @@ knitr::kable(bold_sig(pearson_cor_raw, pearson_pmat_raw), caption = "Naive Pears
 knitr::kable(bold_sig(resid_cor_raw, resid_pmat_raw),     caption = "Residual Pearson Correlation (Raw Levels, BIC)", escape = FALSE, format = "html")
 ```
 
-Bold marks pairs significant at p < 0.05, using the same null-restricted z-test (`ece_pval_null()`) as the Log-Transformed Results section below.
+Bold marks pairs significant at p < 0.05, using the same null-restricted z-test (`ece_pval_null()`) as the Log-Transformed Results section below. `Total` (`PCECC96`) is included as a fourth series in every table here rather than shown separately — its row/column can be read on its own or ignored to recover the three-component-only picture.
 
 ###### P-Values
 
@@ -378,11 +385,11 @@ knitr::kable(bold_sig(resid_pmat_raw, resid_pmat_raw),     caption = "Residual P
 
 :::
 
-Naive Pearson on the unsegmented levels runs 0.94-0.98 across all three pairs — every series shares the same six-decade growth trend, so this is almost entirely the shared-trend confound, not evidence of contemporaneous correlation. The pairwise ECE correlation on those same unsegmented levels comes out above 1 for the Durables/Services pair (1.349): the same `rotate()` boundary-wraparound failure mode CPI Components hits on its raw levels. Residualizing against the BIC segmentation fixes that — Segment-ECE stays within [-1, 1] for every pair (-0.070 to 0.169) — and residual Pearson collapses to near zero as well (-0.100 to 0.011). Under the null-restricted z-test, none of the three pairs reject on the residualized data (p = 0.051-0.654); the same is true of the unsegmented Segment-ECE-style comparison. This is the same qualitative picture as CPI Components' raw-level result — a shared trend, not real contemporaneous correlation — though the ACF tab's residual lag-1 autocorrelation (still around -0.5) means this reading carries more caveats here than CPI's cleaner BIC fit.
+Restricted to the three components, naive Pearson on the unsegmented levels runs 0.94-0.99 — every series shares the same six-decade growth trend, so this is almost entirely the shared-trend confound, not evidence of contemporaneous correlation. `Total` sits in the same range against each component (0.966-0.998), unsurprising since it's their sum. The pairwise ECE correlation on those same unsegmented levels comes out above 1 for several pairs (up to 1.349, Durables/Services): the same `rotate()` boundary-wraparound failure mode CPI Components hits on its raw levels — a problem `Total`'s inclusion doesn't fix or worsen, it's a property of testing unsegmented raw levels at all. Residualizing against the BIC segmentation fixes that for the three original components — Durables/Nondurables/Services stay within [-1, 1] (-0.247 to 0.169) — and residual Pearson among them collapses toward zero as well (-0.100 to 0.011). `Total` is where this section earns its keep: Segment-ECE for Services/Total comes out at 0.487 and residual Pearson at 0.654, both well above anything among the three original components, and the null-restricted z-test rejects Nondurables/Total (p = 0.001) even after segmentation — the one pair in this table that clears p < 0.05. Durables/Services (p = 0.065) and Nondurables/Services (p = 0.051) sit just outside significance, both tighter than the confirmed-null-shaped picture the three-component-only view would have suggested. This is the same qualitative shared-trend picture as CPI Components' raw-level result on the three original components, but `Total`'s row is exactly the accounting-identity positive control the Diagonal tab argues for: known, near-exact dependence the segmented ECE-family tests can still pick out. The ACF tab's residual lag-1 autocorrelation (still around -0.5) means this reading carries more caveats here than CPI's cleaner BIC fit.
 
 ##### Diagonal
 
-We run all four tests on the raw levels, then again on `X_resid_raw` — the same segmented residuals used for Segment-ECE above — as a check. `PCECC96` (Total PCE) tracks `PCDGx + PCNDx + PCESVx` at r = 0.9999 — a near-exact accounting identity (real chain-weighted PCE components don't sum to the chain-weighted total exactly, but the gap is a roughly constant ~4-6% offset, not real independent variation) — so it's excluded from the panel above. The `With Total` tab reruns all four tests with it added back in, to see how much of the joint-diagonal result is this near-identity rather than genuine cross-component correlation.
+We run all four tests on the raw levels, then again on `X_resid_raw` — the same segmented residuals used for Segment-ECE above — as a check, on the three original components only (`Total` is included in the Pairwise tab's tables above, but the joint-diagonal null hypothesis itself is a statement about a specific set of columns, so it has to be rerun rather than read off a subset of one matrix). `PCECC96` (Total PCE) tracks `PCDGx + PCNDx + PCESVx` at r = 0.9999 — a near-exact accounting identity (real chain-weighted PCE components don't sum to the chain-weighted total exactly, but the gap is a roughly constant ~4-6% offset, not real independent variation). The `With Total` tab reruns all four tests with it added back in, to see how much of the joint-diagonal result is this near-identity rather than genuine cross-component correlation.
 
 ```{R pce-raw-diagonal-tests}
 #| echo: false
@@ -425,9 +432,7 @@ results_seg_raw <- data.frame(
 ```{R pce-raw-diagonal-total-tests}
 #| echo: false
 
-X_mat_raw_total   <- cbind(X_mat_raw, Total = X_raw$PCECC96)
-X_seg_raw_total   <- segment_mean(X_mat_raw_total, penalty = "BIC")
-X_resid_raw_total <- X_mat_raw_total - X_seg_raw_total
+# X_mat_raw_total / X_resid_raw_total built in pce-raw-load-data above.
 
 set.seed(123)
 results_raw_total <- data.frame(
@@ -510,6 +515,13 @@ X_seg_raw_pre   <- segment_mean(X_mat_raw_pre, penalty = "BIC")
 X_resid_raw_pre <- X_mat_raw_pre - X_seg_raw_pre
 
 n_segs_raw_pre <- apply(X_seg_raw_pre, 2, function(c) length(unique(c)))
+
+# Total (PCECC96) added in for the pairwise comparisons below, and reused by
+# the Diagonal tab's "With Total" check further down.
+X_mat_raw_pre_total   <- cbind(X_mat_raw_pre, Total = X_raw_pre$PCECC96)
+X_seg_raw_pre_total   <- segment_mean(X_mat_raw_pre_total, penalty = "BIC")
+colnames(X_seg_raw_pre_total) <- colnames(X_mat_raw_pre_total)
+X_resid_raw_pre_total <- X_mat_raw_pre_total - X_seg_raw_pre_total
 ```
 
 BIC finds `r n_segs_raw_pre[["Durables"]]`, `r n_segs_raw_pre[["Nondurables"]]`, and `r n_segs_raw_pre[["Services"]]` segments for Durables, Nondurables, and Services respectively, out of `r nrow(X_mat_raw_pre)` quarters, ending `r format(max(X_raw_pre$sasdate))`.
@@ -743,18 +755,18 @@ We start with pairwise comparisons: ECE and Segment-ECE — ECE applied to the r
 #| echo: false
 #| warning: false
 
-ece_cor_raw_pre               <- ece.cor(X_mat_raw_pre) |> round(3)
-rownames(ece_cor_raw_pre)     <- colnames(ece_cor_raw_pre) <- colnames(X_mat_raw_pre)
-seg_ece_cor_raw_pre           <- ece.cor(X_resid_raw_pre) |> round(3)
-rownames(seg_ece_cor_raw_pre) <- colnames(seg_ece_cor_raw_pre) <- colnames(X_mat_raw_pre)
+ece_cor_raw_pre               <- ece.cor(X_mat_raw_pre_total) |> round(3)
+rownames(ece_cor_raw_pre)     <- colnames(ece_cor_raw_pre) <- colnames(X_mat_raw_pre_total)
+seg_ece_cor_raw_pre           <- ece.cor(X_resid_raw_pre_total) |> round(3)
+rownames(seg_ece_cor_raw_pre) <- colnames(seg_ece_cor_raw_pre) <- colnames(X_mat_raw_pre_total)
 
-resid_cor_raw_pre   <- cor(X_resid_raw_pre) |> round(3)
-pearson_cor_raw_pre <- cor(X_mat_raw_pre) |> round(3)
+resid_cor_raw_pre   <- cor(X_resid_raw_pre_total) |> round(3)
+pearson_cor_raw_pre <- cor(X_mat_raw_pre_total) |> round(3)
 
-ece_pmat_raw_pre     <- ece_pval_null(X_mat_raw_pre) |> round(3)
-seg_ece_pmat_raw_pre <- ece_pval_null(X_resid_raw_pre) |> round(3)
-resid_pmat_raw_pre   <- cor_pval(X_resid_raw_pre) |> round(3)
-pearson_pmat_raw_pre <- cor_pval(X_mat_raw_pre) |> round(3)
+ece_pmat_raw_pre     <- ece_pval_null(X_mat_raw_pre_total) |> round(3)
+seg_ece_pmat_raw_pre <- ece_pval_null(X_resid_raw_pre_total) |> round(3)
+resid_pmat_raw_pre   <- cor_pval(X_resid_raw_pre_total) |> round(3)
+pearson_pmat_raw_pre <- cor_pval(X_mat_raw_pre_total) |> round(3)
 ```
 
 ::: {.panel-tabset}
@@ -775,7 +787,7 @@ knitr::kable(bold_sig(pearson_cor_raw_pre, pearson_pmat_raw_pre), caption = "Nai
 knitr::kable(bold_sig(resid_cor_raw_pre, resid_pmat_raw_pre),     caption = "Residual Pearson Correlation (Raw Levels, BIC)", escape = FALSE, format = "html")
 ```
 
-Bold marks pairs significant at p < 0.05, using the same null-restricted z-test (`ece_pval_null()`) as the Log-Transformed Results section below.
+Bold marks pairs significant at p < 0.05, using the same null-restricted z-test (`ece_pval_null()`) as the Log-Transformed Results section below. `Total` (`PCECC96`) is included as a fourth series in every table here rather than shown separately.
 
 ###### P-Values
 
@@ -791,11 +803,11 @@ knitr::kable(bold_sig(resid_pmat_raw_pre, resid_pmat_raw_pre),     caption = "Re
 
 :::
 
-Naive Pearson on the unsegmented levels runs 0.94-0.98 across all three pairs — every series shares the same six-decade growth trend, so this is almost entirely the shared-trend confound, not evidence of contemporaneous correlation. The pairwise ECE correlation on those same unsegmented levels comes out above 1 for the Durables/Services pair (1.349): the same `rotate()` boundary-wraparound failure mode CPI Components hits on its raw levels. Residualizing against the BIC segmentation fixes that — Segment-ECE stays within [-1, 1] for every pair (-0.070 to 0.169) — and residual Pearson collapses to near zero as well (-0.100 to 0.011). Under the null-restricted z-test, none of the three pairs reject on the residualized data (p = 0.051-0.654); the same is true of the unsegmented Segment-ECE-style comparison. This is the same qualitative picture as CPI Components' raw-level result — a shared trend, not real contemporaneous correlation — though the ACF tab's residual lag-1 autocorrelation (still around -0.5) means this reading carries more caveats here than CPI's cleaner BIC fit.
+Restricted to the three components, naive Pearson on the unsegmented levels runs 0.96-1.00 — every series shares the same growth trend, so this is almost entirely the shared-trend confound, not evidence of contemporaneous correlation; `Total` sits in the same range against each (0.974-0.999). Unsegmented ECE is unusable here, more severely than in the Full Sample tab: beyond the usual `rotate()` boundary-wraparound values above 1, `Nondurables`' unsegmented ECE comes out `NaN` against every other series in this shorter window — residualizing is not optional for this dataset. Residualizing against the BIC segmentation brings Durables/Nondurables/Services within [-1, 1] (-0.049 to 0.365) and residual Pearson among them toward zero (-0.000 to 0.257), though less cleanly than the Full Sample tab. Unlike the Full Sample tab, two pairs do reject here under the null-restricted z-test on segmented residuals: Durables/Nondurables (p = 0.003, Segment-ECE = 0.365) and Durables/Total (p = 0.011, Segment-ECE = 0.304) — Total's near-identity is picked up through Durables in this window, not through Nondurables as in the Full Sample tab. Nondurables/Total and Services/Total, by contrast, don't reject (p = 0.543, 0.222) despite both being algebraic components of `Total`, and their Segment-ECE correlations are in fact negative (-0.064, -0.126) — a reminder that the joint-diagonal Diagonal tab below, not this pairwise view, is the test actually built to detect the accounting identity as a whole. The ACF tab's residual lag-1 autocorrelation (still around -0.5) means this reading carries more caveats here than CPI's cleaner BIC fit.
 
 ##### Diagonal
 
-We run all four tests on the raw levels, then again on `X_resid_raw_pre` — the same segmented residuals used for Segment-ECE above — as a check. Same `With Total` check as the Full Sample tab above, restricted to this Pre-COVID window.
+We run all four tests on the raw levels, then again on `X_resid_raw_pre` — the same segmented residuals used for Segment-ECE above — as a check, on the three original components (see the Full Sample tab above for why this is rerun rather than read off the Pairwise tables, which already include `Total`). Same `With Total` check as the Full Sample tab above, restricted to this Pre-COVID window.
 
 ```{R pce-raw-pre-diagonal-tests}
 #| echo: false
@@ -838,9 +850,7 @@ results_seg_raw_pre <- data.frame(
 ```{R pce-raw-pre-diagonal-total-tests}
 #| echo: false
 
-X_mat_raw_pre_total   <- cbind(X_mat_raw_pre, Total = X_raw_pre$PCECC96)
-X_seg_raw_pre_total   <- segment_mean(X_mat_raw_pre_total, penalty = "BIC")
-X_resid_raw_pre_total <- X_mat_raw_pre_total - X_seg_raw_pre_total
+# X_mat_raw_pre_total / X_resid_raw_pre_total built in pce-raw-pre-load-data above.
 
 set.seed(123)
 results_raw_pre_total <- data.frame(
@@ -936,6 +946,13 @@ colnames(X_segment) <- colnames(X_mat)
 X_resid   <- X_mat - X_segment
 
 X <- bind_cols(date = X_data$sasdate, as.data.frame(X_mat), as.data.frame(X_segment) |> rename_with(~ paste0(.x, "_segment")))
+
+# Total added in for the pairwise comparisons below, and reused by the
+# Diagonal tab's "With Total" check further down.
+X_mat_total     <- as.matrix(X_data[, c("Durables", "Nondurables", "Services", "Total")])
+X_segment_total <- segment_mean(X_mat_total, penalty = "Manual", pen.value = 0.005)
+colnames(X_segment_total) <- colnames(X_mat_total)
+X_resid_total   <- X_mat_total - X_segment_total
 ```
 
 `r nrow(X_data)` quarterly growth-rate observations. Every diagnostic below flags the same single quarter — 2020-06-01, the COVID lockdown shock — as an extreme outlier dominating the term distribution (Trend tab) and the excess kurtosis in every pair's Kappa estimate, especially those touching `Services`. The two tabs below check how much of this chapter's conclusions depend on the pandemic era: `Full Sample` is the analysis above in its usual form, `Pre-COVID` reruns the identical pipeline restricted to `sasdate < 2020-01-01` — dropping the pandemic shock itself and every quarter since, not just the single worst one.
@@ -1203,18 +1220,18 @@ Beyond the pairwise correlations, we can test the joint null hypothesis that the
 ```{R pce-calc-cor}
 #| echo: false
 
-ece_cor               <- ece.cor(X_mat) |> round(3)
-rownames(ece_cor)     <- colnames(ece_cor) <- colnames(X_mat)
-seg_ece_cor           <- ece.cor(X_resid) |> round(3)
-rownames(seg_ece_cor) <- colnames(seg_ece_cor) <- colnames(X_mat)
+ece_cor               <- ece.cor(X_mat_total) |> round(3)
+rownames(ece_cor)     <- colnames(ece_cor) <- colnames(X_mat_total)
+seg_ece_cor           <- ece.cor(X_resid_total) |> round(3)
+rownames(seg_ece_cor) <- colnames(seg_ece_cor) <- colnames(X_mat_total)
 
-resid_cor   <- cor(X_resid) |> round(3)
-pearson_cor <- cor(X_mat) |> round(3)
+resid_cor   <- cor(X_resid_total) |> round(3)
+pearson_cor <- cor(X_mat_total) |> round(3)
 
-ece_pmat     <- ece_pval_null(X_mat) |> round(3)
-seg_ece_pmat <- ece_pval_null(X_resid) |> round(3)
-resid_pmat   <- cor_pval(X_resid) |> round(3)
-pearson_pmat <- cor_pval(X_mat) |> round(3)
+ece_pmat     <- ece_pval_null(X_mat_total) |> round(3)
+seg_ece_pmat <- ece_pval_null(X_resid_total) |> round(3)
+resid_pmat   <- cor_pval(X_resid_total) |> round(3)
+pearson_pmat <- cor_pval(X_mat_total) |> round(3)
 ```
 
 ::: {.panel-tabset}
@@ -1249,15 +1266,17 @@ knitr::kable(bold_sig(resid_pmat, resid_pmat),     caption = "Residual Pearson P
 
 :::
 
-Bold marks pairs significant at p < 0.05: correlation cells bold when the matching p-value clears it, p-value cells bold when they clear it themselves.
+Bold marks pairs significant at p < 0.05: correlation cells bold when the matching p-value clears it, p-value cells bold when they clear it themselves. `Total` (log growth of `PCECC96`) is included as a fourth series in every table here rather than shown separately — its row/column can be read on its own or ignored to recover the three-component-only picture.
 
 Naive Pearson puts Durables-Nondurables at 0.478 and Nondurables-Services at 0.539, both significant. Residualizing pulls Durables-Nondurables down to 0.310 (still significant, p = 0.022) and Nondurables-Services to 0.579 (still significant). ECE (raw) and Segment-ECE go further on that same pair — 0.745 and 0.720 — well above either Pearson version, for the reason the Omega tab traces to `Nondurables` carrying no detected mean shift into every comparison it's part of, unlike its partners. See the `Pre-COVID` tab: restricted to data before 2020, ECE for this pair drops to 0.209/0.207 — well below even naive Pearson — and no pair reaches p < 0.05 under the null-restricted z-test at all. The full-sample significance on Durables-Nondurables doesn't survive dropping the pandemic era.
 
-But under the null-restricted z-test (Kappa tab), only Durables-Nondurables clears p < 0.05 for both ECE (p = 0.043) and Segment-ECE (p = 0.038). Durables-Services and Nondurables-Services — the two pairs involving `Services`, whose residuals carry the heaviest excess kurtosis in the Kappa table — don't reject under either ECE variant (p = 0.127-0.183), despite Pearson finding both significant on the same data. The two families of test agree on which pair is strongest and disagree on whether the other two are distinguishable from noise, and the disagreement traces directly to the kappa misspecification diagnosed above, not to a different point estimate.
+But under the null-restricted z-test (Kappa tab), only Durables-Nondurables clears p < 0.05 among the three original components, for both ECE (p = 0.043) and Segment-ECE (p = 0.038). Durables-Services and Nondurables-Services — the two pairs involving `Services`, whose residuals carry the heaviest excess kurtosis in the Kappa table — don't reject under either ECE variant (p = 0.083-0.183), despite Pearson finding both significant on the same data. The two families of test agree on which pair is strongest and disagree on whether the other two are distinguishable from noise, and the disagreement traces directly to the kappa misspecification diagnosed above, not to a different point estimate.
+
+`Total`'s row is the more interesting addition. Its correlation against `Services` is the largest in the whole table (ECE/Segment-ECE 0.883/0.865, Pearson 0.874/0.696) — expected, since services spending is the largest component of `Total` by weight — yet Durables-Total is the pair that actually rejects (p = 0.001/0.000), while Services-Total does not (p = 0.104-0.177), despite the smaller point estimate. That inversion is exactly what the Kappa tab predicts: `Services`' residuals carry the heaviest excess kurtosis of any series here (`k04` up to 83.11), which inflates its standard error enough to swallow a large correlation, while `Durables`' comparatively well-behaved residuals let a smaller correlation clear significance. Nondurables-Total sits in between (p = 0.060 both versions) — close to, but not across, the boundary. `Total`'s near-identity with the other three doesn't automatically show up as "biggest correlation wins"; it shows up wherever the underlying series is well-behaved enough for the test to detect it, which is a genuinely different, and more informative, statement than the point estimates alone would suggest.
 
 ##### Diagonal
 
-We run all four tests on the raw growth rates, then again on `X_resid` — the same segmented residuals used for Segment-ECE above — as a check. `Total` (log growth of `PCECC96`) is computed above but excluded from `X_mat`, for the same near-identity reason given in the Raw section's Diagonal tab. The `With Total` tab adds it back in.
+We run all four tests on the raw growth rates, then again on `X_resid` — the same segmented residuals used for Segment-ECE above — as a check, on the three original components (`Total` is included in the Pairwise tab's tables above, but the joint-diagonal null hypothesis is a statement about a specific set of columns, so it has to be rerun rather than read off a subset of one matrix — see the Raw section's Diagonal tab for the same point). The `With Total` tab adds it back in.
 
 ```{R pce-diagonal-tests}
 #| echo: false
@@ -1300,10 +1319,7 @@ results_seg <- data.frame(
 ```{R pce-diagonal-total-tests}
 #| echo: false
 
-X_mat_total     <- as.matrix(X_data[, c("Durables", "Nondurables", "Services", "Total")])
-X_segment_total <- segment_mean(X_mat_total, penalty = "Manual", pen.value = 0.005)
-colnames(X_segment_total) <- colnames(X_mat_total)
-X_resid_total   <- X_mat_total - X_segment_total
+# X_mat_total / X_resid_total built in pce-load-data above.
 
 set.seed(123)
 results_total <- data.frame(
@@ -1391,6 +1407,13 @@ colnames(X_segment_pre) <- colnames(X_mat_pre)
 X_resid_pre <- X_mat_pre - X_segment_pre
 
 n_segs_pre <- apply(X_segment_pre, 2, function(c) length(unique(c)))
+
+# Total added in for the pairwise comparisons below, and reused by the
+# Diagonal tab's "With Total" check further down.
+X_mat_pre_total     <- as.matrix(X_data_pre[, c("Durables", "Nondurables", "Services", "Total")])
+X_segment_pre_total <- segment_mean(X_mat_pre_total, penalty = "Manual", pen.value = 0.005)
+colnames(X_segment_pre_total) <- colnames(X_mat_pre_total)
+X_resid_pre_total   <- X_mat_pre_total - X_segment_pre_total
 ```
 
 `r nrow(X_data_pre)` observations instead of `r nrow(X_data)`, ending `r format(max(X_data_pre$sasdate))`. Durables still finds `r n_segs_pre[["Durables"]]` segments; Nondurables and Services both drop to a single segment (`r n_segs_pre[["Nondurables"]]`, `r n_segs_pre[["Services"]]`) — Services' entire 2020-tied segment disappears along with the window that produced it.
@@ -1519,18 +1542,18 @@ Both estimates shrink further than in the Full Sample tab — unsurprising, sinc
 #| echo: false
 #| warning: false
 
-ece_cor_pre               <- ece.cor(X_mat_pre) |> round(3)
-rownames(ece_cor_pre)     <- colnames(ece_cor_pre) <- colnames(X_mat_pre)
-seg_ece_cor_pre           <- ece.cor(X_resid_pre) |> round(3)
-rownames(seg_ece_cor_pre) <- colnames(seg_ece_cor_pre) <- colnames(X_mat_pre)
+ece_cor_pre               <- ece.cor(X_mat_pre_total) |> round(3)
+rownames(ece_cor_pre)     <- colnames(ece_cor_pre) <- colnames(X_mat_pre_total)
+seg_ece_cor_pre           <- ece.cor(X_resid_pre_total) |> round(3)
+rownames(seg_ece_cor_pre) <- colnames(seg_ece_cor_pre) <- colnames(X_mat_pre_total)
 
-resid_cor_pre   <- cor(X_resid_pre) |> round(3)
-pearson_cor_pre <- cor(X_mat_pre) |> round(3)
+resid_cor_pre   <- cor(X_resid_pre_total) |> round(3)
+pearson_cor_pre <- cor(X_mat_pre_total) |> round(3)
 
-ece_pmat_pre     <- ece_pval_null(X_mat_pre) |> round(3)
-seg_ece_pmat_pre <- ece_pval_null(X_resid_pre) |> round(3)
-resid_pmat_pre   <- cor_pval(X_resid_pre) |> round(3)
-pearson_pmat_pre <- cor_pval(X_mat_pre) |> round(3)
+ece_pmat_pre     <- ece_pval_null(X_mat_pre_total) |> round(3)
+seg_ece_pmat_pre <- ece_pval_null(X_resid_pre_total) |> round(3)
+resid_pmat_pre   <- cor_pval(X_resid_pre_total) |> round(3)
+pearson_pmat_pre <- cor_pval(X_mat_pre_total) |> round(3)
 ```
 
 ::: {.panel-tabset}
@@ -1547,11 +1570,15 @@ knitr::kable(bold_sig(pearson_cor_pre, pearson_pmat_pre), caption = "Naive Pears
 knitr::kable(bold_sig(resid_cor_pre, resid_pmat_pre),     caption = "Residual Pearson Correlation (Pre-COVID)", escape = FALSE, format = "html")
 ```
 
-Naive Pearson drops for every pair once the pandemic era is gone: Durables-Nondurables 0.403 (vs. 0.478 full sample), Nondurables-Services 0.390 (vs. 0.539), Durables-Services 0.270. ECE moves further still — Durables-Nondurables falls to 0.209/0.207 (ECE/Segment-ECE), well below even naive Pearson, and Durables-Services goes to essentially zero (-0.027/0.000). Under the null-restricted z-test, no pair reaches p < 0.05 anywhere in this table (Durables-Nondurables comes closest at p = 0.099/0.095). The one pairwise result that survived the Full Sample tab's kappa correction — Durables-Nondurables — doesn't survive dropping the pandemic era on top of it.
+`Total` (log growth of `PCECC96`) is included as a fourth series in every table here rather than shown separately.
+
+Among the three original components, naive Pearson drops for every pair once the pandemic era is gone: Durables-Nondurables 0.403 (vs. 0.478 full sample), Nondurables-Services 0.390 (vs. 0.539), Durables-Services 0.270. ECE moves further still — Durables-Nondurables falls to 0.209/0.207 (ECE/Segment-ECE), well below even naive Pearson, and Durables-Services goes to essentially zero (-0.027/0.000). Under the null-restricted z-test, no pair among the three original components reaches p < 0.05 anywhere in this table (Durables-Nondurables comes closest at p = 0.099/0.095). The one pairwise result that survived the Full Sample tab's kappa correction — Durables-Nondurables — doesn't survive dropping the pandemic era on top of it.
+
+`Total`'s row is the cleanest specificity result in this chapter. All three components-vs-Total pairs reject under the null-restricted z-test, both unsegmented and residualized: Durables-Total (p < 0.001, r = 0.871/0.881), Nondurables-Total (p = 0.001, r = 0.544), Services-Total (p = 0.030, r = 0.343) — the full ordering of correlation strength matches the ordering of significance here, unlike the Full Sample tab, where `Services`' heavy kurtosis inverted that relationship. With the pandemic-era kappa misspecification gone (Kappa tab), every genuine accounting-identity pair rejects and every non-identity pair among the three original components doesn't — the sharpest version, in this whole chapter, of ECE correctly discriminating a known dependence source from components that merely share a business cycle.
 
 ##### Diagonal
 
-Same `With Total` check as the Full Sample tab above, restricted to this Pre-COVID window.
+Run on the three original components (`Total` is included in the Pairwise tab's tables above; see the Raw section's Diagonal tab for why the joint-diagonal test is rerun rather than read off a subset of one matrix). Same `With Total` check as the Full Sample tab above, restricted to this Pre-COVID window.
 
 ```{R pce-pre-diagonal}
 #| echo: false
@@ -1584,10 +1611,7 @@ results_seg_pre <- data.frame(
 ```{R pce-pre-diagonal-total}
 #| echo: false
 
-X_mat_pre_total     <- as.matrix(X_data_pre[, c("Durables", "Nondurables", "Services", "Total")])
-X_segment_pre_total <- segment_mean(X_mat_pre_total, penalty = "Manual", pen.value = 0.005)
-colnames(X_segment_pre_total) <- colnames(X_mat_pre_total)
-X_resid_pre_total   <- X_mat_pre_total - X_segment_pre_total
+# X_mat_pre_total / X_resid_pre_total built in pce-pre-load-data above.
 
 set.seed(123)
 results_pre_total <- data.frame(
