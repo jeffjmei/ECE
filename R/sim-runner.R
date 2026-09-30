@@ -28,6 +28,9 @@ test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...)
     segment.oracle = segment_test(X, params, penalty = "Oracle", ...),
     segment.aic = segment_test(X, params, penalty = "AIC", ...),
     segment.bic = segment_test(X, params, penalty = "BIC", ...),
+    segment.ece.oracle = segment_test(X, params, penalty = "Oracle", cor_method = "ece", ...),
+    segment.ece.aic = segment_test(X, params, penalty = "AIC", cor_method = "ece", ...),
+    segment.ece.bic = segment_test(X, params, penalty = "BIC", cor_method = "ece", ...),
     stop("Unknown method: ", method)
   )
 }

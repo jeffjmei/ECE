@@ -1,7 +1,12 @@
 #' @export
-segment_test <- function(X, params, penalty = c("Oracle", "BIC", "AIC"), correct_df = FALSE) {
+segment_test <- function(X, params, penalty = c("Oracle", "BIC", "AIC"), correct_df = FALSE,
+                          cor_method = c("pearson", "ece"), ...) {
   penalty <- match.arg(penalty)
+  cor_method <- match.arg(cor_method)
   if (ncol(X) != 2) stop("segment_test requires a 2-column matrix")
+  if (correct_df && cor_method == "ece") {
+    warning("correct_df has no effect when cor_method = 'ece'")
+  }
   n <- nrow(X)
 
   if (penalty == "Oracle") {
@@ -14,6 +19,11 @@ segment_test <- function(X, params, penalty = c("Oracle", "BIC", "AIC"), correct
   }
 
   resid <- X - fitted
+
+  if (cor_method == "ece") {
+    return(ece.test(resid, ...))
+  }
+
   r <- cor(resid[, 1], resid[, 2])
 
   df <- if (correct_df) n - K - 2 else n - 2
@@ -24,15 +34,19 @@ segment_test <- function(X, params, penalty = c("Oracle", "BIC", "AIC"), correct
 }
 
 #' @export
-segment_pval <- function(X, params, penalty = c("Oracle", "BIC", "AIC"), correct_df = FALSE) {
+segment_pval <- function(X, params, penalty = c("Oracle", "BIC", "AIC"), correct_df = FALSE,
+                          cor_method = c("pearson", "ece"), ...) {
   penalty <- match.arg(penalty)
+  cor_method <- match.arg(cor_method)
   p <- ncol(X)
   pval_mat <- matrix(NA, p, p)
   colnames(pval_mat) <- rownames(pval_mat) <- colnames(X)
   for (i in 1:(p - 1)) {
     for (j in (i + 1):p) {
       params_ij <- modifyList(params, list(h = params$h[, c(i, j), drop = FALSE]))
-      pval <- segment_test(cbind(X[, i], X[, j]), params_ij, penalty = penalty, correct_df = correct_df)$p.value
+      pval <- segment_test(cbind(X[, i], X[, j]), params_ij,
+        penalty = penalty, correct_df = correct_df, cor_method = cor_method, ...
+      )$p.value
       pval_mat[i, j] <- pval
       pval_mat[j, i] <- pval
     }
