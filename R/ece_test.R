@@ -204,19 +204,21 @@ bs_multiplier_test <- function(X, B = 1000, center = FALSE) {
 }
 
 # Parametric bootstrap test using a bandwidth-2 HAC variance estimate of the lag terms.
-bs_parametric_test <- function(X, B = 1000, drop_lag2 = FALSE, mask_disjoint = FALSE, diag_lag1 = FALSE, force_psd = FALSE) {
+bs_parametric_test <- function(X, B = 1000, drop_lag2 = FALSE, mask_disjoint = FALSE, 
+                               diag_lag1 = FALSE, force_psd = FALSE, center = FALSE) {
   # Calculate Variance of ECE Terms
   n <- nrow(X)
   p <- ncol(X)
   S <- ece_terms(X)
 
   # Estimate Covariance Matrix
-  W0 <- t(S) %*% S
-  W1 <- t(rotate(S)) %*% S + t(S) %*% rotate(S)
+  R <- if (center) scale(S, center = TRUE, scale = FALSE) else S
+  W0 <- t(R) %*% R
+  W1 <- t(rotate(R)) %*% R + t(R) %*% rotate(R)
   if (diag_lag1) W1[row(W1) != col(W1)] <- 0
   W <- W0 + W1
   if (!drop_lag2) {
-    W2 <- t(rotate(S, 2)) %*% S + t(S) %*% rotate(S, 2)
+    W2 <- t(rotate(R, 2)) %*% R + t(R) %*% rotate(R, 2)
     W <- W0 + W1 + W2
   }
   W <- (1 / n^2) * W
@@ -285,6 +287,10 @@ bs_parametric_naive_test <- function(X, B = 1000) {
 #'     \item{\code{"bs.parametric"}}{Parametric bootstrap test using a
 #'       bandwidth-2 variance estimate of the lag terms to approximate the
 #'       null distribution.}
+#'     \item{\code{"bs.parametric.center"}}{Same as \code{"bs.parametric"}, but
+#'       the term columns are demeaned before estimating the variance, removing
+#'       the mean contamination that inflates the null variance under
+#'       alternatives. The observed statistic uses the raw terms.}
 #'   }
 #' @param B Number of bootstrap replicates for bootstrap methods (default 1000).
 #'
@@ -311,6 +317,8 @@ ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95,
     bs_multiplier_nosplit_test(X, B)
   } else if (type == "bs.parametric") {
     bs_parametric_test(X, B)
+  } else if (type == "bs.parametric.center") {
+    bs_parametric_test(X, B, center = TRUE)
   } else if (type == "bs.parametric.psd") {
     bs_parametric_test(X, B, force_psd = TRUE)
   } else if (type == "bs.parametric.mask") {
@@ -333,6 +341,28 @@ ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95,
     bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = FALSE, diag_lag1 = TRUE, force_psd = TRUE)
   } else if (type == "bs.parametric.lag1.diag.mask.psd") {
     bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, diag_lag1 = TRUE, force_psd = TRUE)
+  } else if (type == "bs.parametric.psd.center") {
+    bs_parametric_test(X, B, force_psd = TRUE, center = TRUE)
+  } else if (type == "bs.parametric.mask.center") {
+    bs_parametric_test(X, B, mask_disjoint = TRUE, center = TRUE)
+  } else if (type == "bs.parametric.mask.psd.center") {
+    bs_parametric_test(X, B, mask_disjoint = TRUE, force_psd = TRUE, center = TRUE)
+  } else if (type == "bs.parametric.lag1.center") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, center = TRUE)
+  } else if (type == "bs.parametric.lag1.psd.center") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, force_psd = TRUE, center = TRUE)
+  } else if (type == "bs.parametric.lag1.mask.center") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, center = TRUE)
+  } else if (type == "bs.parametric.lag1.mask.psd.center") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, force_psd = TRUE, center = TRUE)
+  } else if (type == "bs.parametric.lag1.diag.center") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = FALSE, diag_lag1 = TRUE, center = TRUE)
+  } else if (type == "bs.parametric.lag1.diag.mask.center") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, diag_lag1 = TRUE, center = TRUE)
+  } else if (type == "bs.parametric.lag1.diag.psd.center") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = FALSE, diag_lag1 = TRUE, force_psd = TRUE, center = TRUE)
+  } else if (type == "bs.parametric.lag1.diag.mask.psd.center") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, diag_lag1 = TRUE, force_psd = TRUE, center = TRUE)
   } else if (type == "bs.parametric.naive") {
     bs_parametric_naive_test(X, B)
   }

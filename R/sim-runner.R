@@ -6,6 +6,7 @@ test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...)
     bs.multiplier.center = do.call(ece.test, c(list(X, type = "bs.multiplier.center"), b_arg, list(...))),
     bs.multiplier.nosplit = do.call(ece.test, c(list(X, type = "bs.multiplier.nosplit"), b_arg, list(...))),
     bs.parametric = do.call(ece.test, c(list(X, type = "bs.parametric"), b_arg, list(...))),
+    bs.parametric.center = do.call(ece.test, c(list(X, type = "bs.parametric.center"), b_arg, list(...))),
     bs.parametric.psd = do.call(ece.test, c(list(X, type = "bs.parametric.psd"), b_arg, list(...))),
     bs.parametric.mask = do.call(ece.test, c(list(X, type = "bs.parametric.mask"), b_arg, list(...))),
     bs.parametric.mask.psd = do.call(ece.test, c(list(X, type = "bs.parametric.mask.psd"), b_arg, list(...))),
@@ -17,6 +18,17 @@ test.diag <- function(X, method = "bs.multiplier", B = NULL, params = NULL, ...)
     bs.parametric.lag1.diag.mask = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.diag.mask"), b_arg, list(...))),
     bs.parametric.lag1.diag.psd = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.diag.psd"), b_arg, list(...))),
     bs.parametric.lag1.diag.mask.psd = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.diag.mask.psd"), b_arg, list(...))),
+    bs.parametric.psd.center = do.call(ece.test, c(list(X, type = "bs.parametric.psd.center"), b_arg, list(...))),
+    bs.parametric.mask.center = do.call(ece.test, c(list(X, type = "bs.parametric.mask.center"), b_arg, list(...))),
+    bs.parametric.mask.psd.center = do.call(ece.test, c(list(X, type = "bs.parametric.mask.psd.center"), b_arg, list(...))),
+    bs.parametric.lag1.center = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.center"), b_arg, list(...))),
+    bs.parametric.lag1.psd.center = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.psd.center"), b_arg, list(...))),
+    bs.parametric.lag1.mask.center = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.mask.center"), b_arg, list(...))),
+    bs.parametric.lag1.mask.psd.center = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.mask.psd.center"), b_arg, list(...))),
+    bs.parametric.lag1.diag.center = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.diag.center"), b_arg, list(...))),
+    bs.parametric.lag1.diag.mask.center = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.diag.mask.center"), b_arg, list(...))),
+    bs.parametric.lag1.diag.psd.center = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.diag.psd.center"), b_arg, list(...))),
+    bs.parametric.lag1.diag.mask.psd.center = do.call(ece.test, c(list(X, type = "bs.parametric.lag1.diag.mask.psd.center"), b_arg, list(...))),
     z.test = ece.test(X, type = "z.test", kappa = ece.kappa(X, method = "mom"), ...),
     z.test.gaussian = ece.test(X, type = "z.test", kappa = "gaussian", ...),
     z.test.oracle = ece.test(X, type = "z.test", kappa = params$kappa, ...),
@@ -87,7 +99,7 @@ run_sim <- function(config_row, N = 1000) {
         params$scenario_param[setdiff(names(params$scenario_param), "cp")],
         list(mean_seed = mean_seed)
       ))),
-      method_params = as.character(if (config_row$method %in% c("bs.multiplier", "bs.multiplier.center", "bs.parametric")) {
+      method_params = as.character(if (config_row$method %in% c("bs.multiplier", "bs.multiplier.center", "bs.parametric", "bs.parametric.center")) {
         jsonlite::toJSON(list(B = config_row$B))
       } else {
         jsonlite::toJSON(list())
@@ -163,7 +175,7 @@ run_sim_t1 <- function(config_row, N = 1000) {
         params$scenario_param[setdiff(names(params$scenario_param), "cp")],
         list(mean_seed = mean_seed)
       ))),
-      method_params = as.character(if (config_row$method %in% c("bs.multiplier", "bs.multiplier.center", "bs.parametric")) {
+      method_params = as.character(if (config_row$method %in% c("bs.multiplier", "bs.multiplier.center", "bs.parametric", "bs.parametric.center")) {
         jsonlite::toJSON(list(B = config_row$B))
       } else {
         jsonlite::toJSON(list())
