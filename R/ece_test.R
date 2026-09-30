@@ -205,7 +205,8 @@ bs_multiplier_test <- function(X, B = 1000, center = FALSE) {
 
 # Parametric bootstrap test using a bandwidth-2 HAC variance estimate of the lag terms.
 bs_parametric_test <- function(X, B = 1000, drop_lag2 = FALSE, mask_disjoint = FALSE, 
-                               diag_lag1 = FALSE, force_psd = FALSE, center = FALSE) {
+                               diag_lag1 = FALSE, force_psd = FALSE, center = FALSE,
+                               normalize = FALSE) {
   # Calculate Variance of ECE Terms
   n <- nrow(X)
   p <- ncol(X)
@@ -229,10 +230,23 @@ bs_parametric_test <- function(X, B = 1000, drop_lag2 = FALSE, mask_disjoint = F
   if (mask_disjoint) W[O == 0] <- 0
   if (force_psd) W <- make_psd(W)
 
+  # Studentize Each Pair by its Long-Run SD (Bootstrap and Observed Statistic)
+  S_bar <- colMeans(S)
+  if (normalize) {
+    d <- diag(W)
+    if (any(d <= 0)) {
+      warning("non-positive variance estimate; normalized test undefined")
+      return(list(p.value = NA_real_))
+    }
+    d <- sqrt(d)
+    W <- W / outer(d, d)
+    S_bar <- S_bar / d
+  }
+
   # Boostrap Test
   S_bs <- MASS::mvrnorm(n = B, mu = rep(0, ncol(W)), Sigma = W)
   Q_bs <- abs(S_bs) |> apply(1, max)
-  Q_obs <- max(abs(colMeans(S)))
+  Q_obs <- max(abs(S_bar))
 
   # Return Object
   list(
@@ -291,6 +305,14 @@ bs_parametric_naive_test <- function(X, B = 1000) {
 #'       the term columns are demeaned before estimating the variance, removing
 #'       the mean contamination that inflates the null variance under
 #'       alternatives. The observed statistic uses the raw terms.}
+#'     \item{\code{"bs.parametric.norm"}}{Same as \code{"bs.parametric"}, but
+#'       each pair's term is divided by its estimated long-run standard deviation
+#'       (the square root of the diagonal of the variance estimate), in both the
+#'       observed statistic and the bootstrap null. The maximum is then taken over
+#'       standardized statistics, so high-variance series do not dominate. The
+#'       \code{.psd}, \code{.mask}, \code{.lag1}, and \code{.lag1.diag} variants
+#'       all have a \code{.norm} counterpart. Returns \code{NA} with a warning if
+#'       any variance estimate is non-positive.}
 #'   }
 #' @param B Number of bootstrap replicates for bootstrap methods (default 1000).
 #'
@@ -363,6 +385,30 @@ ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95,
     bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = FALSE, diag_lag1 = TRUE, force_psd = TRUE, center = TRUE)
   } else if (type == "bs.parametric.lag1.diag.mask.psd.center") {
     bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, diag_lag1 = TRUE, force_psd = TRUE, center = TRUE)
+  } else if (type == "bs.parametric.norm") {
+    bs_parametric_test(X, B, normalize = TRUE)
+  } else if (type == "bs.parametric.psd.norm") {
+    bs_parametric_test(X, B, force_psd = TRUE, normalize = TRUE)
+  } else if (type == "bs.parametric.mask.norm") {
+    bs_parametric_test(X, B, mask_disjoint = TRUE, normalize = TRUE)
+  } else if (type == "bs.parametric.mask.psd.norm") {
+    bs_parametric_test(X, B, mask_disjoint = TRUE, force_psd = TRUE, normalize = TRUE)
+  } else if (type == "bs.parametric.lag1.norm") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, normalize = TRUE)
+  } else if (type == "bs.parametric.lag1.psd.norm") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, force_psd = TRUE, normalize = TRUE)
+  } else if (type == "bs.parametric.lag1.mask.norm") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, normalize = TRUE)
+  } else if (type == "bs.parametric.lag1.mask.psd.norm") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, force_psd = TRUE, normalize = TRUE)
+  } else if (type == "bs.parametric.lag1.diag.norm") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, diag_lag1 = TRUE, normalize = TRUE)
+  } else if (type == "bs.parametric.lag1.diag.mask.norm") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, diag_lag1 = TRUE, normalize = TRUE)
+  } else if (type == "bs.parametric.lag1.diag.psd.norm") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, diag_lag1 = TRUE, force_psd = TRUE, normalize = TRUE)
+  } else if (type == "bs.parametric.lag1.diag.mask.psd.norm") {
+    bs_parametric_test(X, B, drop_lag2 = TRUE, mask_disjoint = TRUE, diag_lag1 = TRUE, force_psd = TRUE, normalize = TRUE)
   } else if (type == "bs.parametric.naive") {
     bs_parametric_naive_test(X, B)
   }
