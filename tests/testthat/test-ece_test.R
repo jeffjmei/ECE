@@ -119,9 +119,9 @@ test_that("normalization is a no-op for a single pair", {
 test_that("normalized test is undefined with a warning when a variance is non-positive", {
   set.seed(4)
   X <- matrix(rnorm(300), ncol = 3)
-  local_mocked_bindings(make_psd = function(S) -diag(nrow(S)))
+  local_mocked_bindings(ece.cov = function(...) -1)
   expect_warning(
-    res <- bs_parametric_test(X, B = 50, force_psd = TRUE, normalize = TRUE),
+    res <- bs_parametric_test(X, B = 50, normalize = TRUE),
     "non-positive"
   )
   expect_true(is.na(res$p.value))
@@ -247,4 +247,16 @@ test_that("centered test has controlled type I error", {
   })
   # rejection rate at 0.10 should be near 0.10 (200 reps: SE ~ 0.02)
   expect_lt(abs(mean(pvals < 0.10) - 0.10), 0.07)
+})
+
+test_that("normalization rescales W to the ECE correlation scale", {
+  set.seed(6)
+  X <- generate_data(scenario(2, n = 500, p = 3, r = 0.3, L = 4))
+  sd_x <- sqrt(diag(ece.cov(X)))
+  idx <- combn(3, 2)
+  d <- sd_x[idx[1, ]] * sd_x[idx[2, ]]
+
+  W_raw <- capture_W(X)
+  W_norm <- capture_W(X, normalize = TRUE)
+  expect_equal(W_norm, W_raw / outer(d, d), ignore_attr = TRUE)
 })

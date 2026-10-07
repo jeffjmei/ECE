@@ -230,15 +230,17 @@ bs_parametric_test <- function(X, B = 1000, drop_lag2 = FALSE, mask_disjoint = F
   if (mask_disjoint) W[O == 0] <- 0
   if (force_psd) W <- make_psd(W)
 
-  # Studentize Each Pair by its Long-Run SD (Bootstrap and Observed Statistic)
+  # Convert Each Pair to the Correlation Scale (Bootstrap and Observed Statistic)
+  # by dividing by the ECE standard deviations of its two series
   S_bar <- colMeans(S)
   if (normalize) {
-    d <- diag(W)
-    if (any(d <= 0)) {
+    v <- map_dbl(seq_len(p), \(j) ece.cov(X[, j]))
+    if (any(v <= 0)) {
       warning("non-positive variance estimate; normalized test undefined")
       return(list(p.value = NA_real_))
     }
-    d <- sqrt(d)
+    idx <- combn(p, 2)
+    d <- sqrt(v[idx[1, ]] * v[idx[2, ]])
     W <- W / outer(d, d)
     S_bar <- S_bar / d
   }
@@ -306,13 +308,13 @@ bs_parametric_naive_test <- function(X, B = 1000) {
 #'       the mean contamination that inflates the null variance under
 #'       alternatives. The observed statistic uses the raw terms.}
 #'     \item{\code{"bs.parametric.norm"}}{Same as \code{"bs.parametric"}, but
-#'       each pair's term is divided by its estimated long-run standard deviation
-#'       (the square root of the diagonal of the variance estimate), in both the
-#'       observed statistic and the bootstrap null. The maximum is then taken over
-#'       standardized statistics, so high-variance series do not dominate. The
+#'       each pair's term is divided by the product of the ECE standard
+#'       deviations of its two series, in both the observed statistic and the
+#'       bootstrap null. The maximum is then taken over ECE correlations rather
+#'       than covariances, so high-variance series do not dominate. The
 #'       \code{.psd}, \code{.mask}, \code{.lag1}, and \code{.lag1.diag} variants
 #'       all have a \code{.norm} counterpart. Returns \code{NA} with a warning if
-#'       any variance estimate is non-positive.}
+#'       any series has a non-positive ECE variance estimate.}
 #'   }
 #' @param B Number of bootstrap replicates for bootstrap methods (default 1000).
 #'
