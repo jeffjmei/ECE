@@ -412,3 +412,83 @@ plot_w_component(sims_s2_r05, "W2")
 ::::
 
 :::::
+
+### Normalization
+
+The test statistic $T = \max_j |\bar S_j|$ compares covariances across pairs on a common scale, but the pairs do not share one. By the Theorem, the variance of $S_{i,(a,b)}$ is proportional to $\sigma_a^2\sigma_b^2$ plus mean-jump terms, so $\operatorname{sd}(\bar S_{(a,b)}) \propto \sigma_a\sigma_b$. Multiplying series $a$ by $c$ multiplies the null standard deviation of every pair involving $a$ by $c$, and leaves the other pairs unchanged. The max is then increasingly attained by the pairs involving the noisiest series, whatever the correlations are.
+
+This does not affect validity: $V$ is estimated from the same terms, so the bootstrap null already reflects the unequal scales. It affects power. A real correlation between two quiet series is compared against the fluctuations of the noisy pairs, and can be hidden by them.
+
+To put the pairs on a common scale, we divide each covariance by the estimated standard deviations of its two series, which gives the ECE correlation, and take the max of these instead,
+$$
+T = \max_{(a,b)} |\hat\rho_{(a,b)}|, \qquad \hat\rho_{(a,b)} = \frac{\bar S_{(a,b)}}{\hat\sigma_a \hat\sigma_b},
+$$
+where $\hat\sigma_a^2$ is the ECE variance of series $a$. Rescaling a series then leaves $T$ unchanged, and its mean-shift robustness is inherited from the ECE.
+
+To see the difference, let every pair have the same correlation, $r = 0.5$ (compound), and inflate the standard deviation of series 1 to 3. The evidence for dependence is the same for all 10 pairs. We record which pair attains the max over 3000 replicates, for the covariance statistic $\max_j |\bar S_j|$ and for the correlation statistic $T$.
+
+```{r bs-norm-pairs-helpers}
+#| echo: false
+# Winning pair under the covariance and the correlation statistic
+argmax_pair <- function(X) {
+  pairs <- combn(ncol(X), 2)
+  S_bar <- colMeans(ece_terms(X))
+  rho <- ece.cor(X)[cbind(pairs[1, ], pairs[2, ])]
+  c(
+    Covariance = names(which.max(abs(S_bar))),
+    Correlation = colnames(ece_terms(X))[which.max(abs(rho))]
+  )
+}
+
+# Share of replicates in which each pair attains the max, by statistic
+argmax_pair_shares <- function(params, reps = 3000) {
+  winners <- replicate(reps, argmax_pair(generate_data(params)))
+  pairs <- colnames(ece_terms(generate_data(params)))
+  as_tibble(t(winners)) |>
+    pivot_longer(everything(), names_to = "statistic", values_to = "pair") |>
+    count(statistic, pair) |>
+    complete(statistic, pair = pairs, fill = list(n = 0)) |>
+    mutate(
+      share = n / reps,
+      pair = factor(pair, levels = pairs),
+      statistic = factor(statistic, levels = c("Covariance", "Correlation"))
+    )
+}
+
+plot_argmax_pair_shares <- function(shares) {
+  ggplot(shares, aes(x = pair, y = share)) +
+    geom_col(fill = "steelblue") +
+    geom_hline(yintercept = 1 / nlevels(shares$pair), linetype = "dashed", color = "firebrick") +
+    facet_wrap(~statistic) +
+    labs(x = "Pair", y = "Share of replicates attaining the max") +
+    theme_minimal()
+}
+```
+
+::: {.panel-tabset}
+
+#### Scenario 1
+
+```{r bs-norm-pairs-s1}
+#| cache: true
+#| echo: false
+#| dependson: "bs-norm-pairs-helpers"
+set.seed(123)
+params <- scenario(1, n = 1000, p = 5, r = 0.5, cov_type = "compound", sigma = c(3, 1, 1, 1, 1))
+argmax_pair_shares(params) |> plot_argmax_pair_shares()
+```
+
+#### Scenario 2 (L = 4)
+
+```{r bs-norm-pairs-s2}
+#| cache: true
+#| echo: false
+#| dependson: "bs-norm-pairs-helpers"
+set.seed(123)
+params <- scenario(2, n = 1000, p = 5, r = 0.5, cov_type = "compound", L = 4, sigma = c(3, 1, 1, 1, 1))
+argmax_pair_shares(params) |> plot_argmax_pair_shares()
+```
+
+:::
+
+The covariance statistic is attained only by the four pairs involving series 1, since their covariances are three times larger. The correlation statistic spreads the max across all 10 pairs, close to the uniform share $1/10$ (dashed line).
