@@ -283,6 +283,22 @@ bs_parametric_naive_test <- function(X, B = 1000) {
   )
 }
 
+# Pairwise z-test on the ECE covariance using the sandwich variance of the lag terms
+# S_i. `drop_lag2 = TRUE` is valid for minimum segment length L >= 4. `center = TRUE`
+# demeans S_i before estimating the variance, so the variance is not inflated by
+# sigma_xy^2 under the alternative; the statistic still uses the raw mean.
+z_test_hac <- function(X, drop_lag2 = TRUE, center = FALSE) {
+  if (ncol(X) != 2) stop("type = 'z.test.hac' requires a 2-column matrix")
+  n <- nrow(X)
+  s <- ece_terms(X)[, 1]
+  s_v <- if (center) s - mean(s) else s
+  v <- sum(s_v^2) + 2 * sum(s_v * rotate(s_v, 1))
+  if (!drop_lag2) v <- v + 2 * sum(s_v * rotate(s_v, 2))
+  v <- v / n^2
+  z <- mean(s) / sqrt(v)
+  list(estimate = mean(s), se = sqrt(v), p.value = 2 * pnorm(abs(z), lower.tail = FALSE))
+}
+
 #' Equivariant Correlation Test
 #'
 #' Tests for correlation among time series in the presence of unknown mean
@@ -333,6 +349,12 @@ ece.test <- function(X, type = "z.test", B = 1000, conf.level = 0.95,
   X <- as.matrix(X)
   if (type == "z.test") {
     z_test(X, conf.level = conf.level, kappa = kappa, rho = rho)
+  } else if (type == "z.test.hac") {
+    z_test_hac(X)
+  } else if (type == "z.test.hac.center") {
+    z_test_hac(X, center = TRUE)
+  } else if (type == "z.test.hac.lag2") {
+    z_test_hac(X, drop_lag2 = FALSE)
   } else if (type == "bs.multiplier") {
     bs_multiplier_test(X, B)
   } else if (type == "bs.multiplier.center") {
