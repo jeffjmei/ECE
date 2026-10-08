@@ -632,3 +632,151 @@ se_bias |>
   theme_minimal()
 ```
 :::
+
+## Pairwise Z-Test from $S_i$
+
+The z-test above studentizes $\hat\rho$ with a delta-method variance that depends on the cumulants $\kappa$ and the jump terms. To test $H_0: \sigma_{xy} = 0$ for a single pair, there is a shorter route through the terms $S_i$ of the [multiplier](multiplier-bootstrap-test.qmd) and [parametric](parametric-bootstrap-test.qmd) bootstrap chapters. It is the $p = 2$ case of the diagonal test, and it needs no bootstrap.
+
+**Setup.** The ECE covariance is a sample mean,
+$$
+\hat\sigma_{xy} = \frac{2T_1(X,Y) - T_2(X,Y)}{2n} = \bar S = \frac{1}{n}\sum_{i=1}^n S_i, \qquad S_i = \frac{s_i^{(1)} + s_{i+1}^{(1)} - s_i^{(2)}}{2}.
+$$
+The jump terms in $\mathbb{E}[S_i]$ cancel by the minimum segment length alone, without using $H_0$, so $\mathbb{E}[S_i] = \sigma_{xy}$ and $\bar S$ is unbiased for $\sigma_{xy}$ under the alternative as well.
+
+**Normality.** $\bar S = (2Z_5 - Z_6)/(2n)$ is a linear combination of $Z$, so the Proposition above gives
+$$
+\frac{\bar S - \sigma_{xy}}{\sqrt{\operatorname{Var}(\bar S)}} \xrightarrow{d} N(0, 1)
+$$
+under the same conditions as the Theorem (jumps $o(n)$, finite 4th moments). No new conditions are needed for the CLT. The $S_i$ are neither independent nor identically distributed, but the Proposition already handles this: the dependence is $2$-dependence, and the unequal variances near change points are covered by the Lindeberg condition on the jumps.
+
+**Variance.** $S_i$ depends only on $X_i, X_{i+1}, X_{i+2}$, so
+$$
+\operatorname{Var}(\bar S) = \frac{1}{n^2}\sum_{i=1}^n\Bigl[\operatorname{Var}(S_i) + 2\operatorname{Cov}(S_i, S_{i+1}) + 2\operatorname{Cov}(S_i, S_{i+2})\Bigr].
+$$
+This is the scalar case of $V$ in the parametric bootstrap chapter. There the bootstrap draws from $N(0, V)$ to get the null law of a max over pairs. With one pair, the max is $|\bar S|$ and the draw is one-dimensional, so the bootstrap reduces to a z-test.
+
+**Sandwich estimator.** In the notation of the parametric bootstrap chapter, let $S \in \mathbb{R}^{n \times q}$ have rows $S_i^\top$ and let $C_k$ be the cyclic shift, so that $C_kS$ has rows $S_{i+k}^\top$. Replacing each expectation by its realized product gives
+$$
+V = \frac{1}{n^2}\, S^\top\left(I + C_1 + C_1^\top + C_2 + C_2^\top\right) S.
+$$
+Under $H_0$ every term is mean zero, so each product is unbiased for its covariance and $V$ is unbiased for $\operatorname{Var}(\bar S)$, with no stationarity assumption. For $L \geq 4$ the lag-2 terms estimate an exact zero, so the `lag1` form applies,
+$$
+V = \frac{1}{n^2}\, S^\top\left(I + C_1 + C_1^\top\right) S.
+$$
+With $p = 2$ there is a single pair, so $q = 1$ and $S$ is the vector $(S_1, \ldots, S_n)^\top$. The masking and lag-1 diagonalization of that chapter act on off-diagonal entries and are vacuous, and $V$ reduces to the scalar
+$$
+\hat V = \frac{1}{n^2}\left(\sum_{i=1}^n S_i^2 + 2\sum_{i=1}^n S_i S_{i+1}\right).
+$$
+
+**Test.** Reject $H_0: \sigma_{xy} = 0$ when
+$$
+z = \frac{\bar S}{\sqrt{\hat V}}, \qquad p = 2\,\Phi(-|z|).
+$$
+Under $H_0$, testing $\sigma_{xy}$ and testing $\rho$ are the same test: $\hat\rho = \bar S/(\hat\sigma_x\hat\sigma_y)$, and since $\hat\sigma_x\hat\sigma_y$ is consistent, dividing both $\bar S$ and its standard error by it leaves $z$ unchanged to first order.
+
+::: {.callout-note collapse="true"}
+## Remark: how this compares to the delta-method z-test
+
+- The sandwich $\hat V$ needs no $\kappa$. The delta-method SE needs $\kappa_{22}, \kappa_{40}, \kappa_{04}, \kappa_{31}, \kappa_{13}$, which are either assumed Gaussian or estimated.
+- Consistency of $\hat V$ needs more than normality does. The products $S_i S_j$ are quartic in the errors, so a bounded variance of $S_i S_j$ requires roughly finite 8th moments. We have not yet checked the exact condition.
+- With $p = 2$ the masking and lag-1 diagonalization of the parametric bootstrap chapter are vacuous, since there is one pair and $V$ is $1 \times 1$. Only the lag-2 drop ($L \geq 4$) applies. The Theorem also pins the lag-1 term to $\tfrac12\sigma_x^2\sigma_y^2$, so $2\sum_i S_iS_{i+1}$ could be replaced by $n\hat\sigma_x^2\hat\sigma_y^2$.
+- For $L \geq 4$, $\hat V > 0$ with probability approaching one, by the same argument as for `bs.parametric.lag1.diag`. At small $n$ a floor may still be needed.
+- These simplifications use the Theorem's null model, so they are valid for testing $H_0$ only. Under the alternative the lag terms gain $\sigma_{xy}$ contributions, and a CI would need the full centered sandwich.
+:::
+
+### Type I Error
+
+Under $H_0: \sigma_{xy} = 0$, a valid test has uniform p-values. We simulate $n = 1000$ and $\rho = 0$ under four settings, scenarios 1 and 2 ($L = 4$) crossed with Gaussian and exponential errors, and plot the p-values of the pairwise z-test with the lag-1 sandwich variance.
+
+```{r z-hac-null-sim}
+#| echo: false
+#| cache: true
+set.seed(1)
+hac_grid <- expand_grid(scenario_num = c(1, 2), err_type = c("normal", "exponential"))
+hac_pvals <- pmap(hac_grid, \(scenario_num, err_type) {
+  params <- scenario(scenario_num, n = 1000, L = 4, r = 0, err_type = err_type)
+  map_dbl(1:10000, ~ test.diag(generate_data(params), method = "z.test.hac")$p.value)
+})
+hac_dat <- hac_grid |>
+  mutate(scenario = paste("Scenario", scenario_num), p = hac_pvals) |>
+  unnest(p)
+```
+
+```{r z-hac-null-plot}
+#| echo: false
+hac_dat |>
+  ggplot(aes(x = p)) +
+  geom_histogram(aes(y = after_stat(density)),
+    breaks = seq(0, 1, by = 0.1), fill = "steelblue", color = "white", alpha = 0.8
+  ) +
+  geom_hline(yintercept = 1, color = "firebrick", linetype = "dashed") +
+  facet_grid(scenario ~ err_type) +
+  labs(x = "p-value", y = "density",
+       title = "P-value distributions of the pairwise z-test under H₀ (nsim = 10,000)") +
+  theme_minimal()
+```
+
+### Power
+
+We compare the pairwise z-test (`z.test.hac`, the lag-1 sandwich variance) with the delta-method z-test in its null setting (`z.test.null`), which fixes $\rho = 0$ in the standard error and only estimates $\kappa_{22}$. The comparison is at $\alpha = 0.10$, $n = 1000$, in scenario 1 and scenario 2 ($L = 4$), under Gaussian and exponential errors. The point at $\rho = 0$ is the size. We also ran a variant of the sandwich that demeans $S_i$ before estimating $\hat V$, which keeps $\hat V$ from being inflated by $\sigma_{xy}^2$ under the alternative. It made almost no difference to power, so it is omitted from the plots.
+
+```{r z-hac-power-sim}
+#| echo: false
+#| cache: true
+set.seed(1)
+power_methods <- c("z.test.null", "z.test.hac")
+power_grid <- expand_grid(
+  err_type = c("normal", "exponential"),
+  scenario_num = c(1, 2),
+  r = seq(0, 0.3, by = 0.05),
+  method = power_methods
+)
+power_dat <- power_grid |>
+  mutate(power = pmap_dbl(list(err_type, scenario_num, r, method), \(et, sn, r, m) {
+    params <- scenario(sn, n = 1000, L = 4, r = r, err_type = et)
+    mean(map_dbl(1:5000, ~ test.diag(generate_data(params), method = m)$p.value) < 0.10)
+  }))
+```
+
+```{r z-hac-power-helpers}
+#| echo: false
+power_labels <- c(
+  "z.test.null" = "Delta method (null)",
+  "z.test.hac"  = "Sandwich"
+)
+
+plot_power <- function(et) {
+  power_dat |>
+    filter(err_type == et) |>
+    mutate(
+      method = factor(method, levels = names(power_labels), labels = power_labels),
+      scenario = paste("Scenario", scenario_num)
+    ) |>
+    ggplot(aes(x = r, y = power, color = method)) +
+    geom_hline(yintercept = 0.10, linetype = "dashed", color = "gray50") +
+    geom_line() +
+    geom_point() +
+    facet_wrap(~scenario) +
+    labs(x = expression(rho), y = "Rejection rate at 0.10", color = NULL,
+         title = paste0("Power, ", et, " errors (n = 1000, nsim = 5,000)")) +
+    theme_minimal()
+}
+```
+
+::: {.panel-tabset}
+
+## Normal
+
+```{r z-hac-power-normal}
+#| echo: false
+plot_power("normal")
+```
+
+## Exponential
+
+```{r z-hac-power-exponential}
+#| echo: false
+plot_power("exponential")
+```
+
+:::
