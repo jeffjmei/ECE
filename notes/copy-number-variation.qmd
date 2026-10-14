@@ -154,8 +154,164 @@ kable(results, align = c("l", "c"), na = "—") |>
 
 - As expected, both parametric bootstrap and bootstrap multiplier fail to reject the null hypothesis
 - Parametric bootstrap produces a non-PSD covariance matrix, so the PSD correction is necessary
-- Classical methods that do not account for mean shifts strongly reject the null hypothesis 
+- Classical methods that do not account for mean shifts strongly reject the null hypothesis
 - Centering and normalization both move the parametric bootstrap p-value away from the rejection boundary (PSD: 0.053; centered: 0.081; normalized: 0.126; both: 0.141). The conclusion at $\alpha = 0.05$ does not change, but the plain PSD version is borderline
+
+```{R cnv-cor-heatmap-helper}
+#| echo: false
+
+cnv_plot_cor_heatmap <- function(cor_mat, pval_mat, fill_lab) {
+  cor_df <- as.data.frame(cor_mat) |>
+    rownames_to_column("Series1") |>
+    pivot_longer(-Series1, names_to = "Series2", values_to = "correlation")
+  pval_df <- as.data.frame(pval_mat) |>
+    rownames_to_column("Series1") |>
+    pivot_longer(-Series1, names_to = "Series2", values_to = "p_value")
+  df <- left_join(cor_df, pval_df, by = c("Series1", "Series2"))
+  bound <- max(abs(df$correlation))
+  sig_df <- df |> filter(Series1 != Series2, p_value < 0.05)
+
+  ggplot(df, aes(x = Series1, y = Series2, fill = correlation)) +
+    geom_tile() +
+    geom_text(data = sig_df, aes(label = "*"), color = "black", size = 3, vjust = 0.75) +
+    scale_fill_gradient2(low = "steelblue", mid = "white", high = "firebrick", midpoint = 0, limits = c(-bound, bound)) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6), axis.text.y = element_text(size = 6)) +
+    labs(x = NULL, y = NULL, fill = fill_lab)
+}
+
+# Benjamini-Hochberg adjustment on the unique off-diagonal p-values (each pair
+# appears twice in a symmetric p-value matrix; adjusting the full vectorized
+# matrix would double-count every test and treat the zeroed diagonal as p more
+# tests).
+cnv_bh_adjust_pmat <- function(pmat) {
+  p   <- ncol(pmat)
+  idx <- combn(p, 2)
+  q   <- p.adjust(pmat[cbind(idx[1, ], idx[2, ])], method = "BH")
+  qmat <- matrix(NA_real_, p, p, dimnames = dimnames(pmat))
+  qmat[cbind(idx[1, ], idx[2, ])] <- q
+  qmat[cbind(idx[2, ], idx[1, ])] <- q
+  diag(qmat) <- 0
+  qmat
+}
+
+# Null-restricted z-test (rho = 0): under the theoretical null that individuals'
+# copy-number ratios are uncorrelated, only k22 needs estimating, since every
+# other kappa term carries a factor of rho or rho^2 and drops out algebraically
+# at rho = 0.
+cnv_ece_pval_null <- function(X) {
+  p <- ncol(X)
+  pval_mat <- matrix(NA, p, p)
+  colnames(pval_mat) <- rownames(pval_mat) <- colnames(X)
+  for (i in 1:(p - 1)) {
+    for (j in (i + 1):p) {
+      pair <- cbind(X[, i], X[, j])
+      pval <- ece.test(pair, type = "z.test", kappa = ece.kappa(pair, rho = 0, method = "mom"), rho = 0)$p.value
+      pval_mat[i, j] <- pval
+      pval_mat[j, i] <- pval
+    }
+  }
+  diag(pval_mat) <- 0
+  pval_mat
+}
+```
+
+### Results
+
+```{R cnv-cor-histogram}
+#| echo: false
+#| label: fig-cnv-cor-histogram
+#| fig-cap: "Distribution of pairwise correlations, Pearson vs. ECE."
+
+cnv_cor_mat <- cor(X, use = "pairwise.complete.obs")
+cnv_ece_cor <- ece.cor(X)
+dimnames(cnv_ece_cor) <- dimnames(cnv_cor_mat)
+
+pair_idx <- combn(ncol(X), 2)
+cnv_cor_df <- data.frame(
+  method = rep(c("Pearson", "ECE"), each = ncol(pair_idx)),
+  correlation = c(cnv_cor_mat[t(pair_idx)], cnv_ece_cor[t(pair_idx)])
+)
+cnv_cor_means <- cnv_cor_df |> summarise(mean = mean(correlation), .by = method)
+
+ggplot(cnv_cor_df, aes(x = correlation, fill = method)) +
+  geom_histogram(aes(y = after_stat(density)), breaks = seq(-1, 1, by = 0.05),
+                  position = "identity", alpha = 0.5, color = "white") +
+  geom_vline(data = cnv_cor_means, aes(xintercept = mean, color = method),
+              linetype = "dashed", linewidth = 0.7, show.legend = FALSE) +
+  scale_fill_manual(values = c("Pearson" = "firebrick", "ECE" = "steelblue")) +
+  scale_color_manual(values = c("Pearson" = "firebrick", "ECE" = "steelblue")) +
+  theme_minimal() +
+  labs(x = "Estimated correlation", y = "Density", fill = NULL)
+```
+
+::: {.panel-tabset}
+
+#### Pearson
+
+::: {.panel-tabset}
+
+##### p < 0.05
+
+```{R cnv-pearson-heatmap}
+#| echo: false
+#| label: fig-cnv-pearson-heatmap
+#| fig-cap: "Pairwise Pearson correlation, 43 CNV series."
+#| fig-height: 7
+
+cnv_cor_mat      <- cor(X, use = "pairwise.complete.obs")
+cnv_pearson_pmat <- cor_pval(X)
+dimnames(cnv_pearson_pmat) <- list(colnames(X), colnames(X))
+cnv_plot_cor_heatmap(cnv_cor_mat, cnv_pearson_pmat, "Pearson r")
+```
+
+##### BH q < 0.05
+
+```{R cnv-pearson-heatmap-bh}
+#| echo: false
+#| label: fig-cnv-pearson-heatmap-bh
+#| fig-cap: "Pairwise Pearson correlation, 43 CNV series (BH-adjusted)."
+#| fig-height: 7
+
+cnv_pearson_qmat <- cnv_bh_adjust_pmat(cnv_pearson_pmat)
+cnv_plot_cor_heatmap(cnv_cor_mat, cnv_pearson_qmat, "Pearson r")
+```
+
+:::
+
+#### ECE
+
+::: {.panel-tabset}
+
+##### p < 0.05
+
+```{R cnv-ece-heatmap}
+#| echo: false
+#| label: fig-cnv-ece-heatmap
+#| fig-cap: "Pairwise ECE correlation, 43 CNV series."
+#| fig-height: 7
+
+cnv_ece_cor  <- ece.cor(X)
+cnv_ece_pmat <- cnv_ece_pval_null(X)
+dimnames(cnv_ece_cor) <- dimnames(cnv_ece_pmat) <- list(colnames(X), colnames(X))
+cnv_plot_cor_heatmap(cnv_ece_cor, cnv_ece_pmat, "ECE r")
+```
+
+##### BH q < 0.05
+
+```{R cnv-ece-heatmap-bh}
+#| echo: false
+#| label: fig-cnv-ece-heatmap-bh
+#| fig-cap: "Pairwise ECE correlation, 43 CNV series (BH-adjusted)."
+#| fig-height: 7
+
+cnv_ece_qmat <- cnv_bh_adjust_pmat(cnv_ece_pmat)
+cnv_plot_cor_heatmap(cnv_ece_cor, cnv_ece_qmat, "ECE r")
+```
+
+:::
+
+:::
 
 ---
 
@@ -273,6 +429,103 @@ results <- data.frame(
 kable(results, align = c("l", "c"), na = "—") |>
   kable_styling(full_width = FALSE)
 ```
+
+### Results
+
+```{R cnv-cor-histogram-remove-outlier}
+#| echo: false
+#| label: fig-cnv-cor-histogram-remove-outlier
+#| fig-cap: "Distribution of pairwise correlations, Pearson vs. ECE, outlier removed."
+
+cnv_cor_mat <- cor(X, use = "pairwise.complete.obs")
+cnv_ece_cor <- ece.cor(X)
+dimnames(cnv_ece_cor) <- dimnames(cnv_cor_mat)
+
+pair_idx <- combn(ncol(X), 2)
+cnv_cor_df <- data.frame(
+  method = rep(c("Pearson", "ECE"), each = ncol(pair_idx)),
+  correlation = c(cnv_cor_mat[t(pair_idx)], cnv_ece_cor[t(pair_idx)])
+)
+cnv_cor_means <- cnv_cor_df |> summarise(mean = mean(correlation), .by = method)
+
+ggplot(cnv_cor_df, aes(x = correlation, fill = method)) +
+  geom_histogram(aes(y = after_stat(density)), breaks = seq(-1, 1, by = 0.05),
+                  position = "identity", alpha = 0.5, color = "white") +
+  geom_vline(data = cnv_cor_means, aes(xintercept = mean, color = method),
+              linetype = "dashed", linewidth = 0.7, show.legend = FALSE) +
+  scale_fill_manual(values = c("Pearson" = "firebrick", "ECE" = "steelblue")) +
+  scale_color_manual(values = c("Pearson" = "firebrick", "ECE" = "steelblue")) +
+  theme_minimal() +
+  labs(x = "Estimated correlation", y = "Density", fill = NULL)
+```
+
+::: {.panel-tabset}
+
+#### Pearson
+
+::: {.panel-tabset}
+
+##### p < 0.05
+
+```{R cnv-pearson-heatmap-remove-outlier}
+#| echo: false
+#| label: fig-cnv-pearson-heatmap-remove-outlier
+#| fig-cap: "Pairwise Pearson correlation, 43 CNV series, outlier removed."
+#| fig-height: 7
+
+cnv_cor_mat      <- cor(X, use = "pairwise.complete.obs")
+cnv_pearson_pmat <- cor_pval(X)
+dimnames(cnv_pearson_pmat) <- list(colnames(X), colnames(X))
+cnv_plot_cor_heatmap(cnv_cor_mat, cnv_pearson_pmat, "Pearson r")
+```
+
+##### BH q < 0.05
+
+```{R cnv-pearson-heatmap-bh-remove-outlier}
+#| echo: false
+#| label: fig-cnv-pearson-heatmap-bh-remove-outlier
+#| fig-cap: "Pairwise Pearson correlation, 43 CNV series, outlier removed (BH-adjusted)."
+#| fig-height: 7
+
+cnv_pearson_qmat <- cnv_bh_adjust_pmat(cnv_pearson_pmat)
+cnv_plot_cor_heatmap(cnv_cor_mat, cnv_pearson_qmat, "Pearson r")
+```
+
+:::
+
+#### ECE
+
+::: {.panel-tabset}
+
+##### p < 0.05
+
+```{R cnv-ece-heatmap-remove-outlier}
+#| echo: false
+#| label: fig-cnv-ece-heatmap-remove-outlier
+#| fig-cap: "Pairwise ECE correlation, 43 CNV series, outlier removed."
+#| fig-height: 7
+
+cnv_ece_cor  <- ece.cor(X)
+cnv_ece_pmat <- cnv_ece_pval_null(X)
+dimnames(cnv_ece_cor) <- dimnames(cnv_ece_pmat) <- list(colnames(X), colnames(X))
+cnv_plot_cor_heatmap(cnv_ece_cor, cnv_ece_pmat, "ECE r")
+```
+
+##### BH q < 0.05
+
+```{R cnv-ece-heatmap-bh-remove-outlier}
+#| echo: false
+#| label: fig-cnv-ece-heatmap-bh-remove-outlier
+#| fig-cap: "Pairwise ECE correlation, 43 CNV series, outlier removed (BH-adjusted)."
+#| fig-height: 7
+
+cnv_ece_qmat <- cnv_bh_adjust_pmat(cnv_ece_pmat)
+cnv_plot_cor_heatmap(cnv_ece_cor, cnv_ece_qmat, "ECE r")
+```
+
+:::
+
+:::
 
 ```{R identify-max-pair-remove-outlier}
 #| echo: false
