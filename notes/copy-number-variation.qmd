@@ -126,7 +126,10 @@ results <- data.frame(
   Method  = c(
     "Bootstrap Multiplier",
     "Parametric Bootstrap (PSD)",
-    "Parametric Bootstrap", 
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (PSD, Centered)",
+    "Parametric Bootstrap (PSD, Normalized)",
+    "Parametric Bootstrap (PSD, Centered + Normalized)",
     "Parametric Bootstrap (Naive)",
     "Bartlett Test"
   ),
@@ -134,7 +137,10 @@ results <- data.frame(
     round(test.diag(X, method="bs.multiplier")$p.value, 3),
     round(test.diag(X, method="bs.parametric.psd")$p.value, 3),
     NA,
-    round(bs_parametric_naive_test(X)$p.value, 3), 
+    round(test.diag(X, method="bs.parametric.psd.center")$p.value, 3),
+    round(test.diag(X, method="bs.parametric.psd.norm")$p.value, 3),
+    round(bs_parametric_test(X, force_psd = TRUE, center = TRUE, normalize = TRUE)$p.value, 3),
+    round(bs_parametric_naive_test(X)$p.value, 3),
     round(cortest.bartlett(cor(X), nrow(X))$p.value)
   ),
   check.names = FALSE
@@ -149,6 +155,7 @@ kable(results, align = c("l", "c"), na = "—") |>
 - As expected, both parametric bootstrap and bootstrap multiplier fail to reject the null hypothesis
 - Parametric bootstrap produces a non-PSD covariance matrix, so the PSD correction is necessary
 - Classical methods that do not account for mean shifts strongly reject the null hypothesis 
+- Centering and normalization both move the parametric bootstrap p-value away from the rejection boundary (PSD: 0.053; centered: 0.081; normalized: 0.126; both: 0.141). The conclusion at $\alpha = 0.05$ does not change, but the plain PSD version is borderline
 
 ---
 
@@ -243,7 +250,10 @@ results <- data.frame(
   Method  = c(
     "Bootstrap Multiplier",
     "Parametric Bootstrap (PSD)",
-    "Parametric Bootstrap", 
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (PSD, Centered)",
+    "Parametric Bootstrap (PSD, Normalized)",
+    "Parametric Bootstrap (PSD, Centered + Normalized)",
     "Parametric Bootstrap (Naive)",
     "Bartlett Test"
   ),
@@ -251,7 +261,10 @@ results <- data.frame(
     round(test.diag(X, method="bs.multiplier")$p.value, 3),
     round(test.diag(X, method="bs.parametric.psd")$p.value, 3),
     NA,
-    round(bs_parametric_naive_test(X)$p.value, 3), 
+    round(test.diag(X, method="bs.parametric.psd.center")$p.value, 3),
+    round(test.diag(X, method="bs.parametric.psd.norm")$p.value, 3),
+    round(bs_parametric_test(X, force_psd = TRUE, center = TRUE, normalize = TRUE)$p.value, 3),
+    round(bs_parametric_naive_test(X)$p.value, 3),
     round(cortest.bartlett(cor(X), nrow(X))$p.value)
   ),
   check.names = FALSE
