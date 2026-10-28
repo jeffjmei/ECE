@@ -55,6 +55,7 @@ book:
         - pce-components.qmd
         - sleep-eeg-connectivity.qmd
         - uk-housing.qmd
+        - gnss.qmd
     - part: "In Progress"
       chapters:
         - positive-semidefinite.qmd

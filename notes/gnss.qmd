@@ -1,0 +1,517 @@
+---
+title: "GNSS Station Positions"
+---
+
+```{R}
+#| echo: false
+#| message: false
+#| warning: false
+devtools::load_all("~/Documents/Research/Code/ECE")
+library(tidyverse)
+library(kableExtra)
+library(psych)
+```
+
+Daily GNSS station positions from the Jet Propulsion Laboratory (`sideshow.jpl.nasa.gov/pub/JPL_GPS_Timeseries/repro2018a/post/point/`, one `.series` file per station). The stations and window follow the application in Collilieux, Lebarbier and Robin, *A factor model approach for the joint segmentation with between-series correlation* ([arXiv:1505.05660](https://arxiv.org/abs/1505.05660)). Unlike that paper, we use the raw station series with no differencing.
+
+Five stations in Michigan and Ohio, less than 250 km apart: `ADRI`, `BAYR`, `BRIG`, `DEFI` and `MPLE`. We use the east component from March 2002 to June 2013, in mm.
+
+Why correlation is expected: nearby stations see the same ground deformation, atmosphere and correlated processing errors, so their noise should be positively correlated.
+
+Why the mean is non-stationary: the North American plate moves about -16 mm/yr in this component, so every series is a steep, nearly linear trend that is shared across stations. On top of that, receiver and antenna changes cause sudden jumps in a single station's recorded position. Naive Pearson correlation on the raw levels picks up the shared trend and is close to 1 for every pair. The question here is whether ECE, which is built for piecewise-constant means, also tolerates a linear trend of this size.
+
+```{R}
+#| echo: false
+#| label: gnss-load
+
+read_series <- function(station) {
+  read.table(
+    sprintf("../data/real-data/gnss/%s.series", station),
+    col.names = c("decyear", "east", "north", "up", "sig_e", "sig_n", "sig_u",
+                  "cor_en", "cor_eu", "cor_nu", "j2000", "yr", "mo", "day",
+                  "hr", "min", "sec")
+  ) |>
+    mutate(date = as.Date(sprintf("%d-%02d-%02d", yr, mo, day)),
+           station = station, east = 1000 * east) |>
+    group_by(station, date) |>
+    summarise(east = mean(east), .groups = "drop")
+}
+
+stations <- c("ADRI", "BAYR", "BRIG", "DEFI", "MPLE")
+
+X_raw <- map(stations, read_series) |>
+  list_rbind() |>
+  filter(date >= "2002-03-01", date <= "2013-06-30") |>
+  pivot_wider(names_from = station, values_from = east) |>
+  filter(complete.cases(pick(everything()))) |>
+  arrange(date)
+
+X_mat <- X_raw |> select(all_of(stations)) |> as.matrix()
+
+win <- 25
+roll_mat <- apply(X_mat, 2, function(col) rolling_mean(col, win))
+colnames(roll_mat) <- colnames(X_mat)
+```
+
+The data covers days on which all five stations report: `r nrow(X_mat)` of about 4,100 days, so roughly 6% of days are missing. The first weeks of 2002 are dropped because the series start with a short transient. Same-day observations are averaged.
+
+Known equipment changes, from Table 2 of the paper. All are receiver changes except where noted.
+
+```{R table-gnss-events}
+#| echo: false
+
+tribble(
+  ~Station, ~`Known changes`,
+  "ADRI", "2004-12-02, 2005-09-15, 2006-08-02",
+  "BAYR", "2004-12-02, 2005-08-31, 2006-07-11",
+  "BRIG", "2004-12-02, 2005-09-12, 2008-04-14 (antenna)",
+  "DEFI", "2006-10-11 (antenna), 2009-04-07, 2011-01-26, 2012-08-02 (antenna), 2012-11-05 (antenna)",
+  "MPLE", "2004-12-02, 2005-09-14, 2006-12-28, 2007-05-08 (receiver and antenna), 2007-10-05"
+) |>
+  kable(align = c("l", "l")) |>
+  kable_styling(full_width = FALSE)
+```
+
+## Full Resolution
+
+::: {.panel-tabset}
+
+## Plot
+
+The paper subtracts `MPLE` from the other four stations, which cancels the shared plate motion and leaves the jumps (its Figure 7). This plot is the same view, with the known equipment changes marked. Red dotted lines are `MPLE` events, which appear in every difference. Blue dashed lines are the other station's own events. The tabs after this one use the raw stations.
+
+```{R plot-gnss-diff}
+#| echo: false
+
+own_events <- tribble(
+  ~station, ~date,
+  "ADRI", "2004-12-02", "ADRI", "2005-09-15", "ADRI", "2006-08-02",
+  "BAYR", "2004-12-02", "BAYR", "2005-08-31", "BAYR", "2006-07-11",
+  "BRIG", "2004-12-02", "BRIG", "2005-09-12", "BRIG", "2008-04-14",
+  "DEFI", "2006-10-11", "DEFI", "2009-04-07", "DEFI", "2011-01-26",
+  "DEFI", "2012-08-02", "DEFI", "2012-11-05"
+) |>
+  mutate(date = as.Date(date), series = paste0(station, "-MPLE"))
+
+mple_events <- as.Date(c("2004-12-02", "2005-09-14", "2006-12-28",
+                         "2007-05-08", "2007-10-05"))
+
+plot_gnss_diff <- function(dates, X) {
+  diff_long <- tibble(date = dates,
+                      `ADRI-MPLE` = X[, "ADRI"] - X[, "MPLE"],
+                      `BAYR-MPLE` = X[, "BAYR"] - X[, "MPLE"],
+                      `BRIG-MPLE` = X[, "BRIG"] - X[, "MPLE"],
+                      `DEFI-MPLE` = X[, "DEFI"] - X[, "MPLE"]) |>
+    pivot_longer(-date, names_to = "series", values_to = "mm")
+
+  ggplot(diff_long, aes(date, mm)) +
+    geom_line(color = "gray55", linewidth = 0.25) +
+    geom_vline(data = expand_grid(series = unique(diff_long$series), date = mple_events),
+               aes(xintercept = date), color = "red", linetype = "dotted") +
+    geom_vline(data = own_events, aes(xintercept = date),
+               color = "steelblue", linetype = "dashed") +
+    facet_grid(series ~ ., scales = "free_y") +
+    labs(x = NULL, y = "East difference (mm)") +
+    theme_minimal()
+}
+
+plot_gnss_diff(X_raw$date, X_mat)
+```
+
+## Residuals
+
+```{R resid-gnss-full}
+#| echo: false
+
+par(mfrow = c(5, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:5) {
+  resid_i <- X_mat[, i] - roll_mat[, i]
+  plot(X_raw$date, resid_i, type = "l", xaxt = "n",
+       ylab = colnames(X_mat)[i], cex.lab = 0.8)
+  abline(h = 0, lty = "dotted")
+}
+axis.Date(1, X_raw$date)
+mtext("Date", side = 1, outer = TRUE, line = 2.5)
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R acf-gnss-naive}
+#| echo: false
+
+par(mfrow = c(5, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:5) {
+  resid_i <- na.omit(X_mat[, i] - roll_mat[, i])
+  acf(resid_i, main = "", xlab = "", ylab = colnames(X_mat)[i])
+}
+mtext("Lag (days)", side = 1, outer = TRUE, line = 0.5)
+```
+
+### Mean-Shift-Invariant
+
+```{R acf-gnss-invariant}
+#| echo: false
+
+plot_sip_acf(X_mat)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R trend-gnss-naive}
+#| echo: false
+
+plot_naive_terms(X_mat, window = win)
+```
+
+### Mean-Shift-Invariant
+
+```{R trend-gnss-invariant}
+#| echo: false
+
+plot_ece_terms(X_mat, window = win)
+```
+
+:::
+
+:::
+
+Residual lag-1 ACF is 0.32, 0.35, 0.33, 0.19 and 0.38 (`ADRI`, `BAYR`, `BRIG`, `DEFI`, `MPLE`). This is real short-lag dependence, but well below the 0.7 to 0.9 seen in streamflow or ocean series. The ACF is also slightly negative near lag 7 (about -0.12), a weak weekly effect. Fixed steps of 2 to 3 days bring lag 1 to about 0.1 to 0.2, and none of them divides the 7-day period.
+
+## Downsampled (k = 3)
+
+```{R downsample-gnss-3}
+#| echo: false
+
+k_ds <- 3
+idx <- seq(1, nrow(X_mat), by = k_ds)
+X_ds3 <- X_mat[idx, ]
+dates_ds3 <- X_raw$date[idx]
+roll_ds3 <- apply(X_ds3, 2, function(col) rolling_mean(col, win))
+colnames(roll_ds3) <- colnames(X_ds3)
+```
+
+::: {.panel-tabset}
+
+## Plot
+
+```{R plot-gnss-ds3}
+#| echo: false
+
+plot_gnss_diff(dates_ds3, X_ds3)
+```
+
+## Residuals
+
+```{R resid-gnss-ds3}
+#| echo: false
+
+par(mfrow = c(5, 1), mar = c(0, 3, 0, 1), oma = c(4, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:5) {
+  resid_i <- X_ds3[, i] - roll_ds3[, i]
+  plot(dates_ds3, resid_i, type = "l", xaxt = "n",
+       ylab = colnames(X_ds3)[i], cex.lab = 0.8)
+  abline(h = 0, lty = "dotted")
+}
+axis.Date(1, dates_ds3)
+mtext("Date (every 3rd day)", side = 1, outer = TRUE, line = 2.5)
+```
+
+## ACF
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R acf-gnss-ds3-naive}
+#| echo: false
+
+par(mfrow = c(5, 1), mar = c(2, 3, 0, 1), oma = c(2, 0, 1, 0), mgp = c(1.8, 1, 0))
+
+for (i in 1:5) {
+  resid_i <- na.omit(X_ds3[, i] - roll_ds3[, i])
+  acf(resid_i, main = "", xlab = "", ylab = colnames(X_ds3)[i])
+}
+mtext("Lag (every 3rd day)", side = 1, outer = TRUE, line = 0.5)
+```
+
+### Mean-Shift-Invariant
+
+```{R acf-gnss-ds3-invariant}
+#| echo: false
+
+plot_sip_acf(X_ds3)
+```
+
+:::
+
+## Trend
+
+::: {.panel-tabset}
+
+### Naive
+
+```{R trend-gnss-ds3-naive}
+#| echo: false
+
+plot_naive_terms(X_ds3, window = win)
+```
+
+### Mean-Shift-Invariant
+
+```{R trend-gnss-ds3-invariant}
+#| echo: false
+
+plot_ece_terms(X_ds3, window = win)
+```
+
+:::
+
+## Kappa
+
+The default pairwise z-test (`ece.test(..., type = "z.test")`) uses `kappa = "gaussian"`, which assumes `k40 = k04 = 3`, `k22 = 1 + 2ρ²` and `k31 = k13 = 3ρ`. We check this by estimating the terms from the segmented residuals of `X_ds3` (`ece.kappa(..., method = "mom")`, `segment_mean(penalty = "BIC")`):
+
+```{R gnss-kappa-check}
+#| echo: false
+
+X_seg_ds3   <- segment_mean(X_ds3, penalty = "BIC")
+X_resid_ds3 <- X_ds3 - X_seg_ds3
+
+cn_k  <- colnames(X_ds3)
+idx_k <- combn(ncol(X_ds3), 2)
+
+kappa_tbl <- purrr::map_dfr(seq_len(ncol(idx_k)), function(k) {
+  i <- idx_k[1, k]
+  j <- idx_k[2, k]
+  kap <- ece.kappa(X_resid_ds3[, i], X_resid_ds3[, j], method = "mom")
+  tibble(
+    Pair = paste(cn_k[i], "/", cn_k[j]),
+    k40  = round(kap$k40, 2),
+    k31  = round(kap$k31, 2),
+    k22  = round(kap$k22, 2),
+    k13  = round(kap$k13, 2),
+    k04  = round(kap$k04, 2)
+  )
+})
+
+kable(kappa_tbl, align = c("l", "c", "c", "c", "c", "c")) |>
+  kable_styling(full_width = FALSE)
+```
+
+The marginal terms `k40` and `k04` are above 3 for every station, from about 4 to 22, and `DEFI` is the heaviest-tailed (`k04` = 22.02). The `k22` terms are above 1 for most pairs, and a few `k13` terms are negative. The Gaussian reference does not hold, so the null-restricted z-test (`rho = 0`) used in the pairwise results is the safer choice.
+
+## Omega
+
+ECE's estimate of $\omega$, the mean-heterogeneity parameter from `omega-estimation.qmd`. `ece.complexity()` computes it directly from lagged differences of the raw data, with no segmentation.
+
+```{R gnss-omega-check}
+#| echo: false
+
+ece_omega <- ece.complexity(X_ds3) |> round(4)
+rownames(ece_omega) <- colnames(ece_omega) <- colnames(X_ds3)
+
+knitr::kable(ece_omega, caption = "ECE (no segmentation)")
+```
+
+## Size
+
+Under H0 the p-values of a valid test are uniform. To check this on the GNSS data, we circularly shift each station by an independent random offset. This keeps each station's own dynamics (trend, jumps, serial dependence) and removes any alignment across stations, so the stations are independent by construction. We run each ECE-based global test on 1,000 shifted copies of `X_ds3`. The naive tests are left out.
+
+```{R gnss-size-sim}
+#| echo: false
+#| warning: false
+#| cache: true
+
+shift_cols <- function(X) {
+  n <- nrow(X)
+  apply(X, 2, function(x) x[((seq_len(n) + sample(n, 1)) %% n) + 1])
+}
+
+set.seed(123)
+size_sim <- map_dfr(1:1000, function(b) {
+  Xs <- shift_cols(X_ds3)
+  tibble(
+    rep = b,
+    `Bootstrap Multiplier`                              = ece.test(Xs, type = "bs.multiplier")$p.value,
+    `Parametric Bootstrap`                              = ece.test(Xs, type = "bs.parametric.lag1.diag.psd")$p.value,
+    `Parametric Bootstrap (PSD)`                        = ece.test(Xs, type = "bs.parametric.psd")$p.value,
+    `Parametric Bootstrap (PSD, Centered)`              = ece.test(Xs, type = "bs.parametric.psd.center")$p.value,
+    `Parametric Bootstrap (PSD, Normalized)`            = ece.test(Xs, type = "bs.parametric.psd.norm")$p.value,
+    `Parametric Bootstrap (PSD, Centered + Normalized)` = bs_parametric_test(Xs, force_psd = TRUE, center = TRUE, normalize = TRUE)$p.value
+  )
+})
+
+size_long <- size_sim |>
+  pivot_longer(-rep, names_to = "Method", values_to = "p") |>
+  mutate(Method = factor(Method, levels = names(size_sim)[-1]))
+```
+
+```{R gnss-size-hist}
+#| echo: false
+#| label: fig-gnss-size-hist
+#| fig-cap: "P-values of each ECE-based global test on 1,000 independently shifted copies of the data. A valid test has density 1 in every bin."
+#| fig-height: 6
+
+ggplot(size_long, aes(x = p)) +
+  geom_histogram(aes(y = after_stat(density)), breaks = seq(0, 1, by = 0.1), fill = "steelblue", color = "white") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "firebrick") +
+  facet_wrap(~Method, ncol = 2) +
+  theme_minimal() +
+  labs(x = "p-value", y = "Density")
+```
+
+:::
+
+Lag-1 residual ACF drops to 0.13, 0.16, 0.19, 0.08 and 0.20, with lag 2 at 0.03 to 0.09. Some dependence is left, so the p-values below should be read with that in mind.
+
+## Results
+
+```{R gnss-results-helpers}
+#| echo: false
+
+# Null-restricted z-test (rho = 0), as in the CPI chapter.
+ece_pval_null <- function(X) {
+  p <- ncol(X)
+  pval_mat <- matrix(NA, p, p)
+  colnames(pval_mat) <- rownames(pval_mat) <- colnames(X)
+  for (i in 1:(p - 1)) {
+    for (j in (i + 1):p) {
+      pair <- cbind(X[, i], X[, j])
+      pval <- ece.test(pair, type = "z.test", kappa = ece.kappa(pair, rho = 0, method = "mom"), rho = 0)$p.value
+      pval_mat[i, j] <- pval
+      pval_mat[j, i] <- pval
+    }
+  }
+  diag(pval_mat) <- 0
+  pval_mat
+}
+
+# Bold any off-diagonal cell whose corresponding p-value is < 0.05.
+bold_sig <- function(display_mat, pval_mat) {
+  m   <- nrow(display_mat)
+  out <- matrix("", m, m, dimnames = dimnames(display_mat))
+  for (i in seq_len(m)) {
+    for (j in seq_len(m)) {
+      sig <- i != j && !is.na(pval_mat[i, j]) && pval_mat[i, j] < 0.05
+      out[i, j] <- kableExtra::cell_spec(sprintf("%.3f", display_mat[i, j]), "html", bold = sig)
+    }
+  }
+  out
+}
+```
+
+```{R gnss-pairwise}
+#| echo: false
+#| warning: false
+
+ece_cor <- ece.cor(X_ds3) |> round(3)
+dimnames(ece_cor) <- list(colnames(X_ds3), colnames(X_ds3))
+
+pw <- list(
+  ece_cor      = ece_cor,
+  pearson_cor  = cor(X_ds3) |> round(3),
+  ece_pmat     = ece_pval_null(X_ds3) |> round(3),
+  pearson_pmat = cor_pval(X_ds3) |> round(3)
+)
+
+set.seed(123)
+bs_mult_p <- ece.test(X_ds3, type = "bs.multiplier")$p.value
+bs_param_p <- ece.test(X_ds3, type = "bs.parametric.lag1.diag.psd")$p.value
+bs_naive_p <- ece.test(X_ds3, type = "bs.parametric.naive")$p.value
+set.seed(123)
+bs_psd_p <- ece.test(X_ds3, type = "bs.parametric.psd")$p.value
+set.seed(123)
+bs_psd_center_p <- ece.test(X_ds3, type = "bs.parametric.psd.center")$p.value
+set.seed(123)
+bs_psd_norm_p <- ece.test(X_ds3, type = "bs.parametric.psd.norm")$p.value
+set.seed(123)
+bs_psd_cn_p <- bs_parametric_test(X_ds3, force_psd = TRUE, center = TRUE, normalize = TRUE)$p.value
+bartlett_p <- cortest.bartlett(cor(X_ds3), nrow(X_ds3))$p.value
+
+diag_res <- data.frame(
+  Method = c(
+    "Bootstrap Multiplier",
+    "Parametric Bootstrap",
+    "Parametric Bootstrap (PSD)",
+    "Parametric Bootstrap (PSD, Centered)",
+    "Parametric Bootstrap (PSD, Normalized)",
+    "Parametric Bootstrap (PSD, Centered + Normalized)",
+    "Parametric Bootstrap (Naive)",
+    "Bartlett Test"
+  ),
+  `p-value` = round(c(bs_mult_p, bs_param_p, bs_psd_p, bs_psd_center_p, bs_psd_norm_p, bs_psd_cn_p, bs_naive_p, bartlett_p), 3),
+  check.names = FALSE
+)
+```
+
+::: {.panel-tabset}
+
+## Pairwise
+
+::: {.panel-tabset}
+
+### Correlation
+
+```{R gnss-pairwise-cor-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw$ece_cor, pw$ece_pmat),         caption = "ECE Correlation", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw$pearson_cor, pw$pearson_pmat), caption = "Naive Pearson Correlation", escape = FALSE, format = "html")
+```
+
+### P-Values
+
+```{R gnss-pairwise-pval-output}
+#| layout-ncol: 2
+#| echo: false
+
+knitr::kable(bold_sig(pw$ece_pmat, pw$ece_pmat),         caption = "ECE P-Values (null-restricted z-test)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw$pearson_pmat, pw$pearson_pmat), caption = "Naive Pearson P-Values", escape = FALSE, format = "html")
+```
+
+:::
+
+## Diagonal
+
+```{R gnss-diagonal-tests-output}
+#| echo: false
+
+# Bold any row with p-value < 0.05.
+diag_table <- function(df, caption) {
+  df[["p-value"]] <- sprintf("%.3f", df[["p-value"]])
+  sig <- which(as.numeric(df[["p-value"]]) < 0.05)
+  kable(df, align = c("l", "c"), row.names = FALSE, caption = caption) |>
+    row_spec(sig, bold = TRUE) |>
+    kable_styling(full_width = FALSE)
+}
+
+is_naive <- grepl("Naive|Bartlett", diag_res$Method)
+
+diag_table(diag_res[!is_naive, ], "ECE-based tests (mean-shift-aware)")
+diag_table(diag_res[is_naive, ],  "Naive tests (no mean-shift adjustment)")
+```
+
+:::
+
+## Conclusion
+
+Naive Pearson correlation on the raw levels is 0.998 to 1.000 for every pair, which reflects the shared plate motion and says nothing about the noise. ECE, run on the same raw series with no differencing or detrending, gives 0.43 to 0.76. All are positive, and the values are in the range we would expect for stations less than 250 km apart, so ECE does not seem to be thrown off by the linear trend. We have no independent ground truth for these correlations, so this is a plausibility check, not a validation.
+
+The evidence for correlation is weaker than the estimates suggest. The ECE pairwise p-values are between 0.05 and 0.20, and only `BAYR`-`MPLE` (0.046) falls below 0.05. Among the diagonal tests, the multiplier bootstrap, the naive parametric bootstrap and Bartlett all give essentially zero. The parametric bootstrap gives 0.061 and does not reject at 0.05. The naive parametric bootstrap and Bartlett do not account for the mean non-stationarity, so their rejections are not informative here.
+
+The additional parametric bootstrap variants change this reading. The `Parametric Bootstrap` row above uses `bs.parametric.lag1.diag.psd`, which assumes the lag-2 terms are zero and the lag-1 terms are diagonal. The PSD version without those restrictions gives 0.007, and centering (0.005), normalizing (0.004) and both (0.003) all reject at 0.05. So the borderline 0.061 is specific to the restricted variance. Centering and normalizing do not matter much here; what matters is whether the lag-1 and lag-2 structure is imposed. The residual ACF of 0.08 to 0.20 at `k = 3` means the restriction is not exactly true, so the unrestricted variants are the more defensible choice. We have not checked their size on this data, so this is a reason to prefer them, not a verified result.
+
+Residual lag-1 ACF is still 0.08 to 0.20 at `k = 3`. The remaining dependence or the trend could be inflating the variance of the ECE terms and so the p-values, but we did not check which. Sample size after downsampling is `r nrow(X_ds3)`. Every 3rd day is a choice, and the estimates and p-values could move with a different stride. We did not test that.
