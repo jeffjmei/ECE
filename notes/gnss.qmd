@@ -506,6 +506,184 @@ diag_table(diag_res[is_naive, ],  "Naive tests (no mean-shift adjustment)")
 
 :::
 
+## Analysis
+
+The ECE correlations are large, but the pairwise tests do not reject. With $\rho = 0$ imposed, the standard error depends on the data only through $\omega_x^2/\sigma_x^2$, $\omega_y^2/\sigma_y^2$ and $\kappa_{22}$, so the smallest significant $|\hat\rho|$ at $\alpha = 0.05$ is a fixed curve in $n$ for each pair. We plug in the GNSS estimates, using the same null-restricted $\kappa_{22}$ as the pairwise tests, and mark each pair at the downsampled sample size ($k = 3$). These estimates come from the circular lagged differences, which the trend inflates; see "No Wrap-Around" below.
+
+::: {.callout-note collapse="true"}
+## Why isn't large correlation significant?
+
+```{r gnss-critical-corr}
+#| echo: false
+#| fig-height: 5
+#| fig-cap: "Smallest |correlation| that rejects at 0.05, as a function of n. Curves are the null-restricted delta-method SE with each pair's estimated omega and k22. Points mark the downsampled GNSS sample size. Dotted: naive Pearson. Dashed: simulation scenario 2 (Gaussian)."
+
+n0 <- nrow(X_ds3)
+z  <- qnorm(0.975)
+cn <- colnames(X_ds3)
+idx <- combn(ncol(X_ds3), 2)
+
+# Critical value at n0 for each pair, scaled to other n by sqrt(n0 / n)
+crit_pairs <- map_dfr(seq_len(ncol(idx)), function(k) {
+  pair <- X_ds3[, idx[, k]]
+  se0 <- ece.cor.se(pair, kappa = ece.kappa(pair, rho = 0, method = "mom"), rho = 0)
+  tibble(pair = paste(cn[idx[1, k]], "/", cn[idx[2, k]]), crit0 = z * se0)
+})
+
+n_grid <- round(n0 * 2^seq(-2, 2, length.out = 50))
+
+curves <- crit_pairs |>
+  cross_join(tibble(n = n_grid)) |>
+  mutate(crit = crit0 * sqrt(n0 / n))
+
+ref <- tibble(
+  n = n_grid,
+  naive = z / sqrt(n),
+  scenario2 = map_dbl(n, \(m) z * ece.cor.se.formula(scenario(2, n = m, L = 4, r = 0)))
+) |>
+  pivot_longer(-n, names_to = "ref", values_to = "crit")
+
+ggplot() +
+  geom_line(data = curves, aes(n, crit, color = pair)) +
+  geom_line(data = ref, aes(n, crit, linetype = ref), color = "gray30") +
+  geom_point(data = crit_pairs, aes(n0, crit0, color = pair), size = 4) +
+  scale_x_log10() +
+  scale_linetype_manual(
+    values = c(naive = "dotted", scenario2 = "dashed"),
+    labels = c(naive = "Naive Pearson", scenario2 = "Scenario 2")
+  ) +
+  labs(x = "n", y = "Smallest significant |correlation|", color = NULL, linetype = NULL,
+       title = "Critical correlation at 0.05 given estimated \u03c9 and \u03ba\u2082\u2082",
+       subtitle = "GNSS pairs, downsampled (k = 3)") +
+  theme_minimal()
+```
+
+:::
+
+## No Wrap-Around
+
+The package computes lagged differences circularly: `rotate()` pairs the last observations with the first. With piecewise-constant means this adds at most one extra jump. Here the series carry a steep linear trend, so the wrapped terms compare $x_n$ with $x_1$, a gap of about 180 mm instead of about 1 mm. Those two terms dwarf every real jump, and they inflate $\omega$ and $\kappa_{22}$, and with them the standard error. The Analysis section above is built on those inflated values.
+
+Below we recompute everything on the downsampled data with a non-circular version of the two primitives (`lag_term` and `ece_pair`). The override is scoped: `with_noncircular()` swaps the functions in only for the code passed to it, so the rest of the chapter is unchanged and still circular.
+
+```{R gnss-nowrap-fns}
+#| echo: false
+
+# Non-circular lagged terms: drop the first two instead of wrapping around.
+nc_lag_term <- function(x, y = x) {
+  n <- length(x)
+  i <- 3:n
+  ((x[i] - x[i - 1]) * (y[i] - y[i - 1]) +
+    (x[i - 1] - x[i - 2]) * (y[i - 1] - y[i - 2]) -
+    (x[i] - x[i - 2]) * (y[i] - y[i - 2])) / 2
+}
+
+# Same extrapolation as ece_pair, but each lag k averages its n - k differences.
+nc_ece_pair <- function(x, y, L = 2) {
+  n <- length(x)
+  ld <- function(k) {
+    sum((x[(k + 1):n] - x[1:(n - k)]) * (y[(k + 1):n] - y[1:(n - k)])) / (2 * (n - k))
+  }
+  K <- matrix(c(rep(1, L), 1:L), ncol = 2)
+  B <- solve(t(K) %*% K) %*% t(K) %*% matrix(sapply(1:L, ld), ncol = 1)
+  list(cov = as.numeric(B[1]), complexity = as.numeric(2 * B[2]))
+}
+
+# Evaluate `expr` with the package's lag_term and ece_pair replaced.
+with_noncircular <- function(expr) {
+  testthat::with_mocked_bindings(
+    expr,
+    lag_term = nc_lag_term, ece_pair = nc_ece_pair,
+    .package = "ECE"
+  )
+}
+```
+
+::: {.panel-tabset}
+
+### Omega
+
+The ECE $\omega$ of each station, with and without the wrap.
+
+```{R gnss-nowrap-diag}
+#| echo: false
+
+tibble(
+  station        = colnames(X_ds3),
+  circular       = diag(ece.complexity(X_ds3)),
+  `non-circular` = with_noncircular(diag(ece.complexity(X_ds3)))
+) |>
+  knitr::kable(digits = 3, caption = "ECE omega")
+```
+
+### Pairwise
+
+```{R gnss-nowrap-pairwise}
+#| echo: false
+#| warning: false
+
+nc_cor <- with_noncircular(ece.cor(X_ds3)) |> round(3)
+dimnames(nc_cor) <- list(colnames(X_ds3), colnames(X_ds3))
+nc_pmat <- with_noncircular(ece_pval_null(X_ds3)) |> round(3)
+```
+
+::: {.panel-tabset}
+
+#### Correlation
+
+```{R gnss-nowrap-cor-output}
+#| layout: [[1, 1], [1, -1]]
+#| echo: false
+
+knitr::kable(bold_sig(pw$ece_cor, pw$ece_pmat),         caption = "ECE (circular)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(nc_cor, nc_pmat),                 caption = "ECE (non-circular)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw$pearson_cor, pw$pearson_pmat), caption = "Naive Pearson", escape = FALSE, format = "html")
+```
+
+#### P-Values
+
+```{R gnss-nowrap-pval-output}
+#| layout: [[1, 1], [1, -1]]
+#| echo: false
+
+knitr::kable(bold_sig(pw$ece_pmat, pw$ece_pmat),         caption = "ECE (circular)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(nc_pmat, nc_pmat),                 caption = "ECE (non-circular)", escape = FALSE, format = "html")
+knitr::kable(bold_sig(pw$pearson_pmat, pw$pearson_pmat), caption = "Naive Pearson", escape = FALSE, format = "html")
+```
+
+:::
+
+### Diagonal Tests
+
+The ECE-based global tests from the Results section, rerun without the wrap.
+
+```{R gnss-nowrap-diagtests}
+#| echo: false
+#| warning: false
+
+nc_diag <- with_noncircular({
+  set.seed(123)
+  c(
+    ece.test(X_ds3, type = "bs.multiplier")$p.value,
+    ece.test(X_ds3, type = "bs.parametric.lag1.diag.psd")$p.value,
+    ece.test(X_ds3, type = "bs.parametric.psd")$p.value,
+    ece.test(X_ds3, type = "bs.parametric.psd.center")$p.value,
+    ece.test(X_ds3, type = "bs.parametric.psd.norm")$p.value,
+    bs_parametric_test(X_ds3, force_psd = TRUE, center = TRUE, normalize = TRUE)$p.value
+  )
+})
+
+ece_rows <- !grepl("Naive|Bartlett", diag_res$Method)
+tibble(
+  Method       = diag_res$Method[ece_rows],
+  circular     = diag_res$`p-value`[ece_rows],
+  `non-circular` = round(nc_diag, 3)
+) |>
+  knitr::kable(digits = 3, caption = "Global test p-values")
+```
+
+:::
+
 ## Conclusion
 
 Naive Pearson correlation on the raw levels is 0.998 to 1.000 for every pair, which reflects the shared plate motion and says nothing about the noise. ECE, run on the same raw series with no differencing or detrending, gives 0.43 to 0.76. All are positive, and the values are in the range we would expect for stations less than 250 km apart, so ECE does not seem to be thrown off by the linear trend. We have no independent ground truth for these correlations, so this is a plausibility check, not a validation.
