@@ -146,6 +146,48 @@ plot_pcurve <- function(pvals, facet = ~method, title = NULL, ncol = NULL, dir =
     )
 }
 
+# Draws per-pair term panels as the upper triangle of a p x p grid (cell
+# (i, j), i < j, in row i and column j; diagonal and lower triangle empty),
+# with series names along the top and left edges. `dat` needs columns
+# i, j, t, raw, run, global. Draws with grid and returns NULL invisibly.
+draw_terms_upper_tri <- function(dat, nms, ylab, subtitle) {
+  p <- length(nms)
+  grid::grid.newpage()
+  grid::pushViewport(grid::viewport(layout = grid::grid.layout(
+    p + 2, p + 1,
+    heights = grid::unit(c(1.2, rep(1, p), 1.2), c("lines", rep("null", p), "lines")),
+    widths  = grid::unit(c(1.2, rep(1, p)), c("lines", rep("null", p)))
+  )))
+  for (k in seq_len(p)) {
+    grid::pushViewport(grid::viewport(layout.pos.row = 1, layout.pos.col = k + 1))
+    grid::grid.text(nms[k], gp = grid::gpar(fontsize = 10))
+    grid::popViewport()
+    grid::pushViewport(grid::viewport(layout.pos.row = k + 1, layout.pos.col = 1))
+    grid::grid.text(nms[k], rot = 90, gp = grid::gpar(fontsize = 10))
+    grid::popViewport()
+  }
+  grid::pushViewport(grid::viewport(layout.pos.row = p + 2, layout.pos.col = 1:(p + 1)))
+  grid::grid.text(subtitle, gp = grid::gpar(fontsize = 8, col = "gray30"))
+  grid::popViewport()
+  for (a in seq_len(p - 1)) {
+    for (b in (a + 1):p) {
+      d <- dat[dat$i == a & dat$j == b, ]
+      g <- ggplot2::ggplot(d, ggplot2::aes(x = t)) +
+        ggplot2::geom_line(ggplot2::aes(y = raw), color = "gray80", na.rm = TRUE) +
+        ggplot2::geom_hline(
+          ggplot2::aes(yintercept = global),
+          linetype = "dashed", color = "firebrick"
+        ) +
+        ggplot2::geom_line(ggplot2::aes(y = run), color = "steelblue", na.rm = TRUE) +
+        ggplot2::labs(x = NULL, y = NULL) +
+        ggplot2::theme_minimal(base_size = 8)
+      print(g, vp = grid::viewport(layout.pos.row = a + 1, layout.pos.col = b + 1))
+    }
+  }
+  grid::popViewport()
+  invisible(NULL)
+}
+
 # Diagnostic: is the ECE covariance constant over time?
 #
 # For each column pair of `X`, plots the raw ECE terms (light gray, so outliers
@@ -153,7 +195,7 @@ plot_pcurve <- function(pvals, facet = ~method, title = NULL, ncol = NULL, dir =
 # global mean (the ECE covariance the test sums). Under a constant correlation
 # the running mean fluctuates around the flat line; a change point shows up as a
 # step or ramp away from it. `window` controls smoothing (defaults to n/5).
-plot_ece_terms <- function(X, window = NULL) {
+plot_ece_terms <- function(X, window = NULL, upper_tri = FALSE) {
   X <- as.matrix(X)
   n <- nrow(X)
   p <- ncol(X)
@@ -168,11 +210,21 @@ plot_ece_terms <- function(X, window = NULL) {
     tibble::tibble(
       t      = seq_len(n),
       pair   = paste(i, j, sep = "-"),
+      i      = i,
+      j      = j,
       raw    = s,
       run    = rolling_mean(s, window),
       global = mean(s)
     )
   })
+
+  if (upper_tri) {
+    nms <- if (is.null(colnames(X))) paste0("V", seq_len(p)) else colnames(X)
+    return(draw_terms_upper_tri(
+      dat, nms, "ECE term (covariance scale)",
+      sprintf("gray = raw term, blue = %d-window mean, dashed = global mean", window)
+    ))
+  }
 
   ggplot2::ggplot(dat, ggplot2::aes(x = t)) +
     ggplot2::geom_line(ggplot2::aes(y = raw), color = "gray80") +
@@ -242,7 +294,7 @@ plot_ece_variance <- function(X, window = NULL) {
 # both genuine covariance non-stationarity and any mean-shift leakage the
 # rolling mean failed to remove, so comparing this against plot_ece_terms()
 # shows how much of the naive drift is a mean-shift artifact.
-plot_naive_terms <- function(X, window = NULL) {
+plot_naive_terms <- function(X, window = NULL, upper_tri = FALSE) {
   X <- as.matrix(X)
   n <- nrow(X)
   p <- ncol(X)
@@ -258,11 +310,21 @@ plot_naive_terms <- function(X, window = NULL) {
     tibble::tibble(
       t      = seq_len(n),
       pair   = paste(i, j, sep = "-"),
+      i      = i,
+      j      = j,
       raw    = s,
       run    = rolling_mean(s, window),
       global = mean(s, na.rm = TRUE)
     )
   })
+
+  if (upper_tri) {
+    nms <- if (is.null(colnames(X))) paste0("V", seq_len(p)) else colnames(X)
+    return(draw_terms_upper_tri(
+      dat, nms, "naive term (covariance scale)",
+      sprintf("gray = raw product of rolling-mean residuals, blue = %d-window mean, dashed = global mean", window)
+    ))
+  }
 
   ggplot2::ggplot(dat, ggplot2::aes(x = t)) +
     ggplot2::geom_line(ggplot2::aes(y = raw), color = "gray80", na.rm = TRUE) +
