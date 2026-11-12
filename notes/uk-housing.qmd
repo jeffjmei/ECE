@@ -72,6 +72,12 @@ X_resid <- X_mat - segment_mean_oracle(X_mat, seg_params)
 colnames(X_resid) <- colnames(X_mat)
 ```
 
+## Full Resolution
+
+::: {.panel-tabset}
+
+### Plot
+
 ```{R uk-housing-plot-raw}
 #| echo: false
 #| label: fig-uk-housing-raw
@@ -87,9 +93,44 @@ X_data |>
   theme(legend.position = "none")
 ```
 
-## Diagnostics
+```{R uk-housing-segmented-plot}
+#| echo: false
+#| label: fig-uk-housing-segmented-plot
+#| fig-cap: "Monthly % change, all 32 boroughs, with the 5-breakpoint segmented mean overlaid."
 
-::: {.panel-tabset}
+X_fit <- X_mat - X_resid
+raw_df <- as.data.frame(X_mat) |> bind_cols(Date = X_data$Date) |> pivot_longer(-Date, names_to = "Borough", values_to = "value")
+fit_df <- as.data.frame(X_fit) |> bind_cols(Date = X_data$Date) |> pivot_longer(-Date, names_to = "Borough", values_to = "value")
+
+ggplot() +
+  geom_line(data = raw_df, aes(x = Date, y = value, group = Borough), color = "gray70", linewidth = 0.3, alpha = 0.6) +
+  geom_line(data = fit_df, aes(x = Date, y = value, group = Borough), color = "steelblue", linewidth = 0.7) +
+  geom_vline(xintercept = cp_dates, linetype = "dashed", color = "firebrick", alpha = 0.5) +
+  theme_minimal() +
+  labs(title = "UK House Price % Change with segmented mean (32 boroughs)", x = NULL, y = "Percentage change (monthly)")
+```
+
+The segmented mean (blue) is flat within each of the 6 segments and jumps only at the 5 breaks (dashed red), sitting close to zero throughout since the shared shift across boroughs here is mostly higher variance, not a shared change in mean level — the gray raw series (all 32 boroughs) still carries the full month-to-month variation the segmented mean doesn't touch.
+
+### Residuals
+
+```{R uk-housing-resid-plot}
+#| echo: false
+#| label: fig-uk-housing-resid-plot
+#| fig-cap: "Monthly % change minus the 5-breakpoint segmented mean, all 32 boroughs."
+
+as.data.frame(X_resid) |>
+  bind_cols(Date = X_data$Date) |>
+  pivot_longer(-Date, names_to = "Borough", values_to = "value") |>
+  ggplot(aes(x = Date, y = value, group = Borough)) +
+  geom_line(color = "gray50", linewidth = 0.25, alpha = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  geom_vline(xintercept = cp_dates, linetype = "dashed", color = "firebrick", alpha = 0.5) +
+  theme_minimal() +
+  labs(x = NULL, y = "Residual (monthly % change)")
+```
+
+Difference between each borough's series and its segmented mean (the blue line in the Plot tab). These residuals are what every Results tab below is computed from.
 
 ### ACF
 
@@ -270,6 +311,59 @@ ggplot(kap_long, aes(x = value)) +
 
 `k40` and `k04` cluster a bit above the Gaussian reference of 3 (median 4.3 and 3.6) with a long right tail out past 20 — heavier-tailed marginals than Gaussian, the same direction `cpi-components.qmd` found for `Apparel` and `Transportation`. `k22` centers near 1, close to its small-ρ Gaussian reference, and `k31`/`k13` center near 0 as expected for mostly-small correlations. The fat tails in `k40`/`k04` mean the default `kappa = "gaussian"` z-test — what `ece_pval()` assumes — understates the true standard error for at least some pairs, so the Results section below uses the null-restricted z-test instead (`kappa = ece.kappa(X, rho = 0, method = "mom")`, `rho = 0`), which only needs `k22` rather than all five Gaussian values to hold — the same fix `cpi-components.qmd` applies for the same reason. Neither this Kappa check nor the ACF check above touches the sign-flip question directly — a heavier-tailed marginal or serial correlation changes a pair's standard error and p-value, not the sign of its point estimate — so a flipped sign in the ECE heatmap below is more likely a real trend-removal effect than a kappa or autocorrelation artifact.
 
+### Size
+
+To check whether the global tests hold their size on this panel, we break the cross-borough dependence while keeping each series' own dynamics: every column of `X_resid` is circularly shifted by an independent random offset, so the null of a diagonal correlation matrix is true by construction. We rerun the tests on 200 shifted copies. A valid test gives uniform p-values (density 1 in every bin).
+
+```{R uk-size-sim}
+#| echo: false
+#| warning: false
+
+size_file <- "../data/real-data/uk-housing/size-sim.rds"
+
+if (file.exists(size_file)) {
+  size_sim <- readRDS(size_file)
+} else {
+  shift_cols <- function(X) {
+    n <- nrow(X)
+    apply(X, 2, function(x) x[((seq_len(n) + sample(n, 1)) %% n) + 1])
+  }
+
+  set.seed(123)
+  size_sim <- map_dfr(1:200, function(b) {
+    Xs <- shift_cols(X_resid)
+    tibble(
+      rep = b,
+      `Bootstrap Multiplier` = ece.test(Xs, type = "bs.multiplier")$p.value,
+      `Parametric Bootstrap` = ece.test(Xs, type = "bs.parametric.lag1.diag.psd")$p.value,
+      `Parametric Bootstrap (PSD, Centered + Normalized)` =
+        bs_parametric_test(Xs, force_psd = TRUE, center = TRUE, normalize = TRUE)$p.value
+    )
+  })
+
+  dir.create(dirname(size_file), showWarnings = FALSE, recursive = TRUE)
+  saveRDS(size_sim, size_file)
+}
+
+size_long <- size_sim |>
+  pivot_longer(-rep, names_to = "Method", values_to = "p") |>
+  mutate(Method = factor(Method, levels = names(size_sim)[-1]))
+```
+
+```{R uk-size-hist}
+#| echo: false
+#| label: fig-uk-size-hist
+#| fig-cap: "P-values of each global test on 200 independently shifted copies of the segmented residuals. A valid test has density 1 in every bin."
+#| fig-height: 3
+
+ggplot(size_long, aes(x = p)) +
+  geom_histogram(aes(y = after_stat(density)), breaks = seq(0, 1, by = 0.1), fill = "steelblue", color = "white") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "firebrick") +
+  facet_wrap(~Method, ncol = 3, labeller = label_wrap_gen(24)) +
+  theme_minimal() +
+  labs(x = "p-value", y = "Density")
+```
+
 :::
 
 With those two caveats in hand — Pearson's p-values run anti-conservative under positive autocorrelation, and ECE's default Gaussian kappa understates the standard error for heavy-tailed pairs — the pairwise correlation matrix is easier to read as a heatmap than a table.
@@ -277,7 +371,7 @@ With those two caveats in hand — Pearson's p-values run anti-conservative unde
 ```{R uk-housing-cor-heatmap-helper}
 #| echo: false
 
-uk_housing_plot_cor_heatmap <- function(cor_mat, pval_mat, fill_lab) {
+uk_housing_plot_cor_heatmap <- function(cor_mat, pval_mat, fill_lab, blank_diag = FALSE) {
   cor_df <- as.data.frame(cor_mat) |>
     rownames_to_column("Borough1") |>
     pivot_longer(-Borough1, names_to = "Borough2", values_to = "correlation")
@@ -285,13 +379,16 @@ uk_housing_plot_cor_heatmap <- function(cor_mat, pval_mat, fill_lab) {
     rownames_to_column("Borough1") |>
     pivot_longer(-Borough1, names_to = "Borough2", values_to = "p_value")
   df <- left_join(cor_df, pval_df, by = c("Borough1", "Borough2"))
-  bound <- max(abs(df$correlation))
+  # Covariance heatmaps: the diagonal holds variances, which would swamp the
+  # off-diagonal color scale, so show it as gray NA instead.
+  if (blank_diag) df$correlation[df$Borough1 == df$Borough2] <- NA
+  bound <- max(abs(df$correlation), na.rm = TRUE)
   sig_df <- df |> filter(Borough1 != Borough2, p_value < 0.05)
 
   ggplot(df, aes(x = Borough1, y = Borough2, fill = correlation)) +
     geom_tile() +
     geom_text(data = sig_df, aes(label = "*"), color = "black", size = 3, vjust = 0.75) +
-    scale_fill_gradient2(low = "steelblue", mid = "white", high = "firebrick", midpoint = 0, limits = c(-bound, bound)) +
+    scale_fill_gradient2(low = "steelblue", mid = "white", high = "firebrick", midpoint = 0, limits = c(-bound, bound), na.value = "firebrick") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6), axis.text.y = element_text(size = 6)) +
     labs(x = NULL, y = NULL, fill = fill_lab)
@@ -335,30 +432,9 @@ ece_pval_null <- function(X) {
 
 ## Results
 
-All Results below use `X_resid` — residuals after removing the 5-breakpoint segmented mean established above — rather than the raw panel. The Diagnostics ACF tab already showed this segmentation doesn't touch the panel's real driver (ongoing month-to-month serial correlation), so the segmented and raw versions of these results were close throughout; segmented is kept as the single, primary version rather than showing both.
+All Results below use `X_resid` — residuals after removing the 5-breakpoint segmented mean established above — rather than the raw panel. The Full Resolution ACF tab already showed this segmentation doesn't touch the panel's real driver (ongoing month-to-month serial correlation), so the segmented and raw versions of these results were close throughout; segmented is kept as the single, primary version rather than showing both.
 
 ::: {.panel-tabset}
-
-### Plot
-
-```{R uk-housing-segmented-plot}
-#| echo: false
-#| label: fig-uk-housing-segmented-plot
-#| fig-cap: "Monthly % change, all 32 boroughs, with the 5-breakpoint segmented mean overlaid."
-
-X_fit <- X_mat - X_resid
-raw_df <- as.data.frame(X_mat) |> bind_cols(Date = X_data$Date) |> pivot_longer(-Date, names_to = "Borough", values_to = "value")
-fit_df <- as.data.frame(X_fit) |> bind_cols(Date = X_data$Date) |> pivot_longer(-Date, names_to = "Borough", values_to = "value")
-
-ggplot() +
-  geom_line(data = raw_df, aes(x = Date, y = value, group = Borough), color = "gray70", linewidth = 0.3, alpha = 0.6) +
-  geom_line(data = fit_df, aes(x = Date, y = value, group = Borough), color = "steelblue", linewidth = 0.7) +
-  geom_vline(xintercept = cp_dates, linetype = "dashed", color = "firebrick", alpha = 0.5) +
-  theme_minimal() +
-  labs(title = "UK House Price % Change with segmented mean (32 boroughs)", x = NULL, y = "Percentage change (monthly)")
-```
-
-The segmented mean (blue) is flat within each of the 6 segments and jumps only at the 5 breaks (dashed red), sitting close to zero throughout since the shared shift across boroughs here is mostly higher variance, not a shared change in mean level — the gray raw series (all 32 boroughs) still carries the full month-to-month variation the segmented mean doesn't touch.
 
 ### Pearson
 
@@ -426,31 +502,44 @@ uk_housing_plot_cor_heatmap(ece_cor, ece_qmat, "ECE r")
 
 ### Diagonal z-test
 
-The null-restricted z-test above estimates the standard error from `k22` under the null. The diagonal z-test (`z.test.hac`) instead uses the variance of the ECE terms themselves, with no kappa assumption. Both test the same null of zero correlation, but the diagonal test has no correlation estimate of its own, so the two heatmaps are not directly comparable. Instead we compare the p-value distributions across the 496 pairs.
+::: {.panel-tabset}
 
-```{R uk-housing-diag-ztest}
+#### p < 0.05
+
+```{R uk-housing-diag-heatmap}
 #| echo: false
-#| label: fig-uk-housing-diag-ztest
-#| fig-cap: "P-values across 496 borough pairs: null-restricted z-test vs. diagonal z-test."
-#| fig-height: 4
+#| label: fig-uk-housing-diag-heatmap
+#| fig-cap: "Pairwise ECE covariance on residuals, with significance from the diagonal z-test."
+#| fig-height: 7
 
-idx <- combn(ncol(X_resid), 2)
-diag_p <- apply(idx, 2, function(k) {
-  suppressWarnings(ece.test(X_resid[, k], type = "z.test.hac")$p.value)
-})
-null_p <- ece_pmat[cbind(idx[1, ], idx[2, ])]
+diag_pmat <- matrix(NA_real_, ncol(X_resid), ncol(X_resid), dimnames = list(colnames(X_resid), colnames(X_resid)))
+for (k in seq_len(ncol(combn(ncol(X_resid), 2)))) {
+  ij <- combn(ncol(X_resid), 2)[, k]
+  diag_pmat[ij[1], ij[2]] <- diag_pmat[ij[2], ij[1]] <-
+    suppressWarnings(ece.test(X_resid[, ij], type = "z.test.hac.center")$p.value)
+}
+diag(diag_pmat) <- 0
 
-pcurve_df <- bind_rows(
-  tibble(test = "ECE (null-restricted)", p = null_p),
-  tibble(test = "ECE (Diagonal)", p = diag_p)
-)
-
-ggplot(pcurve_df, aes(x = p, fill = test)) +
-  geom_histogram(breaks = seq(0, 1, by = 0.1), position = "identity", alpha = 0.5, color = "white", na.rm = TRUE) +
-  scale_fill_manual(values = c("ECE (null-restricted)" = "steelblue", "ECE (Diagonal)" = "firebrick")) +
-  theme_minimal() +
-  labs(x = "p-value", y = "Count", fill = NULL, title = "Pairwise p-values, 496 borough pairs")
+ece_cov_mat <- ece.cov(X_resid)
+dimnames(ece_cov_mat) <- list(colnames(X_resid), colnames(X_resid))
+uk_housing_plot_cor_heatmap(ece_cov_mat, diag_pmat, "ECE cov", blank_diag = TRUE)
 ```
+
+#### BH q < 0.05
+
+```{R uk-housing-diag-heatmap-bh}
+#| echo: false
+#| label: fig-uk-housing-diag-heatmap-bh
+#| fig-cap: "Pairwise ECE covariance on residuals, with significance from the diagonal z-test (BH-adjusted)."
+#| fig-height: 7
+
+diag_qmat <- bh_adjust_pmat(diag_pmat)
+uk_housing_plot_cor_heatmap(ece_cov_mat, diag_qmat, "ECE cov", blank_diag = TRUE)
+```
+
+:::
+
+The null-restricted z-test above estimates the standard error from `k22` under the null. The diagonal z-test (`z.test.hac.center`) instead uses the variance of the ECE terms themselves, with no kappa assumption. The terms are demeaned before the variance is estimated, so the variance is not inflated when the true correlation is nonzero. The test is a test of the ECE covariance $\hat\sigma_{xy} = \bar S$, so the heatmaps above show that same covariance as the fill (in squared percentage-point units) and take the stars from the diagonal z-test. Fill and stars are on the same scale, but the tiles are no longer on the correlation scale of the ECE tab, so colors are not comparable across the two. The diagonal (the variances) is shown in the top color (red) so it does not set the color scale.
 
 ### Diagonal
 
@@ -502,3 +591,86 @@ knitr::kable(naive_results, caption = "Naive tests of the same hypothesis.")
 ```
 
 :::
+
+## Why the Diagonal and Delta-Method Tests Disagree
+
+```{R uk-housing-diag-vs-delta-z}
+#| echo: false
+#| label: fig-uk-housing-diag-vs-delta-z
+#| fig-cap: "Absolute z-statistic of the diagonal test against that of the null-restricted delta-method test, one point per borough pair. Dashed line: equal statistics; dotted lines: 1.96."
+#| fig-height: 4.5
+
+pair_idx <- combn(ncol(X_resid), 2)
+pair_ij  <- cbind(pair_idx[1, ], pair_idx[2, ])
+
+z_df <- tibble(
+  z_delta = qnorm(ece_pmat[pair_ij] / 2, lower.tail = FALSE),
+  z_diag  = qnorm(diag_pmat[pair_ij] / 2, lower.tail = FALSE)
+)
+
+ggplot(z_df, aes(x = z_delta, y = z_diag)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_hline(yintercept = 1.96, linetype = "dotted") +
+  geom_vline(xintercept = 1.96, linetype = "dotted") +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  coord_equal() +
+  theme_minimal() +
+  labs(x = "|z| (delta method)", y = "|z| (diagonal)",
+       title = sprintf("z-statistics, %d borough pairs", nrow(pair_ij)))
+```
+
+```{R uk-housing-diag-vs-delta-se}
+#| echo: false
+#| label: fig-uk-housing-diag-vs-delta-se
+#| fig-cap: "Ratio of the diagonal (centered) SE to the null-restricted delta-method SE, both on the correlation scale, against the absolute ECE correlation."
+#| fig-height: 4
+
+pair_idx <- combn(ncol(X_resid), 2)
+pair_ij  <- cbind(pair_idx[1, ], pair_idx[2, ])
+
+se_df <- map_dfr(seq_len(nrow(pair_ij)), \(k) {
+  pair <- X_resid[, pair_ij[k, ]]
+  sc <- sqrt(ece.cov(pair[, 1]) * ece.cov(pair[, 2]))
+  tibble(
+    rho = abs(ece_cor[pair_ij[k, 1], pair_ij[k, 2]]),
+    se_diag  = z_test_hac(pair, center = TRUE)$se / sc,
+    se_delta = ece.cor.se(pair[, 1], pair[, 2], kappa = ece.kappa(pair, rho = 0, method = "mom"), rho = 0)
+  )
+})
+
+ggplot(se_df, aes(x = rho, y = se_diag / se_delta)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  theme_minimal() +
+  labs(x = "|ECE correlation|", y = "SE (diagonal) / SE (delta method)",
+       title = "SE ratio, 496 borough pairs")
+```
+
+## Downsampling
+
+The Diagnostics ACF tab shows strong positive serial correlation at lag 1. Keeping every other month removes half the data, and lag $j$ of the downsampled series is lag $2j$ of the original. We segment first and then downsample the residuals `X_resid`, since the two breaks at 2009-01 and 2009-03 are only two months apart. As in `gnss.qmd`, each subsample starts at the first month and takes every k-th one (`seq(1, n, by = k)`).
+
+```{R uk-housing-down-acf}
+#| echo: false
+#| label: fig-uk-housing-down-acf
+#| fig-cap: "Downsampling by k = 2 (every other month) and k = 3 (every third month), starting at the first month. Fraction of the 32 boroughs whose ACF falls outside the 95% band (±1.96/sqrt(n)) at each lag of the downsampled series. Dashed line: 5% expected under no dependence."
+#| fig-height: 3.5
+
+down_lags <- 10
+
+down_frac <- map_dfr(2:3, function(k) {
+  Xd <- X_resid[seq(1, nrow(X_resid), by = k), ]
+  band <- 1.96 / sqrt(nrow(Xd))
+  acf_d <- sapply(seq_len(down_lags), function(l)
+    apply(Xd, 2, function(x) acf(x, plot = FALSE, lag.max = down_lags)$acf[l + 1]))
+  tibble(k = paste0("k = ", k, " (n = ", nrow(Xd), ")"),
+         lag = seq_len(down_lags), frac = colMeans(abs(acf_d) > band))
+})
+
+ggplot(down_frac, aes(x = factor(lag), y = frac)) +
+  geom_col(fill = "steelblue", alpha = 0.7) +
+  geom_hline(yintercept = 0.05, linetype = "dashed", color = "firebrick") +
+  facet_wrap(~k, ncol = 1) +
+  theme_minimal() +
+  labs(x = "Lag (downsampled series)", y = "Fraction outside band")
+```
